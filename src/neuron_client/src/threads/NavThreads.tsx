@@ -1,0 +1,52 @@
+import { useEffect } from "react";
+import { MessageCircle, MessageCircleDashed } from "lucide-react";
+import { NavLink } from "react-router-dom";
+import { useAppSelector } from "../hooks";
+import { useAppDispatch } from "../hooks";
+import NewThreadButton from "../threads/NewThreadButton";
+import { getThreads } from "../slices/threadsSlice";
+import { getActivePersonalityId } from "../slices/personalitiesSlice";
+import { socketManager } from "@/WebSocketManager";
+
+export default function NavThreads() {
+  const threads = useAppSelector(getThreads);
+  const dispatch = useAppDispatch();
+  const activePersonalityId = useAppSelector(getActivePersonalityId);
+  useEffect(() => {
+    socketManager.ready().then(() => {
+      if (activePersonalityId) {
+        dispatch({
+          type: "socket/GetThreads",
+          personality_id: activePersonalityId,
+        });
+      }
+    });
+  }, [activePersonalityId]);
+
+  return (
+    <nav className="grid items-start px-4 mt-2 text-sm font-medium">
+      <NewThreadButton />
+      {threads
+        .filter((thread) => thread.personality_id === activePersonalityId)
+        .map((thread) => (
+          <NavLink
+            end
+            className={({ isActive }) =>
+              `flex items-center gap-3 rounded-lg px-3 py-2 transition-all  hover:text-primary ${
+                isActive ? "text-primary bg-muted" : "text-muted-foreground"
+              }`
+            }
+            to={`/thread/${thread.id}`}
+            key={thread.id}
+          >
+            {thread.name ? (
+              <MessageCircle className="size-4 min-w-[20px]" />
+            ) : (
+              <MessageCircleDashed className="size-4 min-w-[20px]" />
+            )}{" "}
+            {thread.name || "Start conversation"}
+          </NavLink>
+        ))}
+    </nav>
+  );
+}

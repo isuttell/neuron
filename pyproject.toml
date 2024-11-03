@@ -1,0 +1,33 @@
+[tool.poetry]
+name = "neuron_server"
+version = "0.1.0"
+description = ""
+authors = ["Your Name <you@example.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+python-dotenv = "*"
+huggingface_hub = "*"
+opencv-python-headless = "*"
+pillow = "*"
+pydantic = "*"
+quart = "*"
+langchain = "*"
+langgraph = "*"
+langchain_huggingface = "*"
+langchain_openai = "*"
+langchain_community = "*"
+langchain_anthropic = "*"
+langsmith = "*"
+aiohttp = "*"
+arxiv = "*"
+pymupdf4llm = "*"
+faiss-cpu = "*"
+
+[[tool.poetry.source]]
+name = "pytorch"
+url = "https://download.pytorch.org/whl/cu121"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

@@ -1,0 +1,68 @@
+from pydantic import (
+    BaseModel,
+    Field,
+)
+from dotenv import load_dotenv
+import os
+
+# Load environment variables from a .env file
+load_dotenv()
+
+
+class HomeAssistantConfig(BaseModel):
+    server: str = Field(
+        default=os.environ.get("HOMEASSISTANT_SERVER", "http://localhost:8123"),
+        description="Home Assistant URL",
+    )
+    token: str = Field(
+        default=os.environ.get("HOMEASSISTANT_TOKEN", ""),
+        description="Home Assistant Token",
+    )
+
+
+class Config(BaseModel):
+    debug: bool = Field(
+        default=os.environ.get("DEBUG", False), description="Debug mode"
+    )
+    hf_token: str = Field(
+        default=os.environ.get("HF_TOKEN"), description="Hugging Face token"
+    )
+    openai_api_key: str = Field(
+        default=os.environ.get("OPENAI_API_KEY"), description="OpenAI API key"
+    )
+    anthropic_api_key: str = Field(
+        default=os.environ.get("ANTHROPIC_API_KEY"), description="Anthropic API key"
+    )
+    log_level: str = Field(
+        default=os.environ.get("LOG_LEVEL", "DEBUG"), description="Log level"
+    )
+    host: str = Field(default=os.environ.get("HOST", "0.0.0.0"), description="Host")
+    port: int = Field(default=int(os.environ.get("PORT", 5000)), description="Port")
+    database_path: str = Field(
+        default=os.environ.get("DATABASE_PATH", "neuron_server.sqlite3"),
+        description="Database path",
+    )
+    client_assets_folder: str = Field(
+        default=os.environ.get("STATIC_FOLDER", "../neuron_client/dist"),
+        description="Static folder",
+    )
+    images_folder: str = Field(
+        default=os.environ.get("IMAGE_OUTPUT_FOLDER", "./images"),
+        description="Image output folder",
+    )
+    static_folder: str = Field(
+        default=os.environ.get("OUTPUT_FOLDER", "./static"),
+        description="Output folder for generated and downloaded files",
+    )
+    static_content_url: str = Field(
+        default=os.environ.get("STATIC_CONTENT_URL", "http://localhost:5000/static"),
+        description="Static content URL",
+    )
+    homeassistant: HomeAssistantConfig = HomeAssistantConfig()
+    temp_folder: str = Field(
+        default=os.environ.get("TEMP_FOLDER", "./tmp"),
+        description="Temp folder",
+    )
+
+
+config = Config()
