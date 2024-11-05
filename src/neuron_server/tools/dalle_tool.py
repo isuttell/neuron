@@ -62,7 +62,6 @@ class DalleTool(BaseTool):
             str: The URL or path to the generated image.
         """
         try:
-            logger.debug(f'Generating image of "{prompt}"')
             image = self.generate_image(
                 prompt=prompt,
                 style=style,

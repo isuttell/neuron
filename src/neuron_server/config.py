@@ -33,6 +33,9 @@ class Config(BaseModel):
     anthropic_api_key: str = Field(
         default=os.environ.get("ANTHROPIC_API_KEY"), description="Anthropic API key"
     )
+    elevenlabs_api_key: str = Field(
+        default=os.environ.get("ELEVENLABS_API_KEY"), description="ElevenLabs API key"
+    )
     log_level: str = Field(
         default=os.environ.get("LOG_LEVEL", "DEBUG"), description="Log level"
     )

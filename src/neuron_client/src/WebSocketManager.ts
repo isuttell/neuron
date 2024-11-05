@@ -96,4 +96,6 @@ export default class WebSocketManager {
   }
 }
 
-export const socketManager = new WebSocketManager("ws://localhost:5000/ws");
+export const socketManager = new WebSocketManager(
+  `ws://${window.location.hostname}:5000/ws`
+);

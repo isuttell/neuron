@@ -89,25 +89,31 @@ export default function Thread() {
         </Button>
       </div>
       <ScrollArea className="flex-1 overflow-y-auto">
-        {messages
-          .filter((message) => message.role !== "system")
-          .map((message) => (
-            <MessageItem key={message.id} message={message} />
-          ))}
+        <div className="flex flex-col flex-nowrap max-w-[1170px] mx-auto">
+          {messages
+            .filter((message) => message.role !== "system")
+            .map((message) => (
+              <MessageItem key={message.id} message={message} />
+            ))}
 
-        {thread && thread.message_count === 0 && messages.length === 0 ? (
-          <div>No messages</div>
-        ) : null}
-        {(!thread || !messages) && <div>Loading...</div>}
-        {thread && ["thinking", "tools"].includes(thread.status) && (
-          <div className="text-sm text-gray-500 my-2">
-            {getStatusMessage(thread.status)}
-          </div>
-        )}
-        <div ref={messagesEndRef} />
+          {thread && thread.message_count === 0 && messages.length === 0 ? (
+            <div>No messages</div>
+          ) : null}
+          {(!thread || !messages) && <div>Loading...</div>}
+          {thread && ["thinking", "tools"].includes(thread.status) && (
+            <div className="text-sm text-gray-500 my-2">
+              {getStatusMessage(thread.status)}
+            </div>
+          )}
+          <div ref={messagesEndRef} />
+        </div>
       </ScrollArea>
       <div className="bottom-0">
-        <MessageForm className="bg-background" onSubmit={() => {}} />
+        <MessageForm
+          className="max-w-[1170px] mx-auto"
+          isLoading={thread.status !== "idle"}
+          onSubmit={() => {}}
+        />
       </div>
     </div>
   );

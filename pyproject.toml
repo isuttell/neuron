@@ -23,6 +23,7 @@ aiohttp = "*"
 arxiv = "*"
 pymupdf4llm = "*"
 faiss-cpu = "*"
+elevenlabs = "*"
 
 [[tool.poetry.source]]
 name = "pytorch"

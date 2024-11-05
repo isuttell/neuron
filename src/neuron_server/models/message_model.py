@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from uuid import UUID, uuid4
 from datetime import datetime
 from typing import Literal, Self, Optional, List
@@ -13,6 +13,12 @@ from langchain_core.messages import (
     ToolMessage,
 )
 from typing import Type
+from langchain_core.messages.tool import (
+    InvalidToolCall,
+    ToolCall,
+)
+import json
+from typing import Dict, Any
 
 Role = Literal["human", "ai", "system", "tool", "function"]
 
@@ -20,10 +26,37 @@ Role = Literal["human", "ai", "system", "tool", "function"]
 class MessageModel(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid4()))
     thread_id: UUID = Field(description="The ID of the thread the message belongs to")
-    content: str = Field(..., description="The content of the message")
+    content: str = Field(description="The content of the message")
     role: Role = Field(description="The role of the message sender")
+    tool_call_id: Optional[str] = Field(
+        default=None, description="The ID of the tool call the message belongs to"
+    )
+    tool_calls: List[ToolCall] = Field(
+        default=[], description="The tool calls the message belongs to"
+    )
+    usage_metadata: Dict[str, Any] = Field(
+        default={}, description="The usage metadata of the message"
+    )
     created_at: datetime = Field(default_factory=lambda: datetime.now())
     updated_at: datetime = Field(default_factory=lambda: datetime.now())
+
+    @field_validator("tool_calls", mode="before")
+    def parse_tool_calls(cls, value):
+        if isinstance(value, str):
+            try:
+                return json.loads(value)
+            except json.JSONDecodeError as e:
+                raise ValueError(f"Invalid JSON for tool_calls: {e}")
+        return value
+
+    @field_validator("usage_metadata", mode="before")
+    def parse_usage_metadata(cls, value):
+        if isinstance(value, str):
+            try:
+                return json.loads(value)
+            except json.JSONDecodeError as e:
+                raise ValueError(f"Invalid JSON for usage_metadata: {e}")
+        return value
 
     @classmethod
     def create_table_if_not_exists(cls):
@@ -35,6 +68,9 @@ class MessageModel(BaseModel):
                 thread_id uuid REFERENCES threads(id) NOT NULL,
                 content TEXT NOT NULL DEFAULT '',
                 role TEXT NOT NULL,
+                tool_call_id TEXT,
+                tool_calls TEXT NOT NULL DEFAULT '[]',
+                usage_metadata TEXT NOT NULL DEFAULT '{}',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
@@ -43,21 +79,36 @@ class MessageModel(BaseModel):
         database.commit()
 
     @classmethod
+    def set(cls, id: str, key: str, value: Any) -> Self:
+        cursor = database.cursor()
+        cursor.execute(
+            "UPDATE messages SET ? = ? WHERE id = ? RETURNING *", (key, value, str(id))
+        )
+        database.commit()
+        return create_model(cls, cursor.fetchone())
+
+    @classmethod
     def create(
         cls,
-        content: str,
         role: Role,
         thread_id: UUID,
+        content: str = "",
+        tool_call_id: Optional[str] = None,
+        tool_calls: Optional[List[ToolCall]] = None,
+        usage_metadata: Optional[Dict[str, Any]] = None,
         id: Optional[str] = None,
     ) -> Self:
         cursor = database.cursor()
         cursor.execute(
-            "INSERT INTO messages (id, thread_id, content, role) VALUES (?, ?, ?, ?) RETURNING *",
+            "INSERT INTO messages (id, thread_id, content, role, tool_call_id, tool_calls, usage_metadata) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING *",
             (
                 str(id) if id else str(uuid4()),
                 str(thread_id),
                 content,
                 role,
+                tool_call_id,
+                json.dumps(tool_calls or []),
+                json.dumps(usage_metadata or {}),
             ),
         )
         data = cursor.fetchone()
@@ -71,18 +122,42 @@ class MessageModel(BaseModel):
         content: str,
         role: Role,
         thread_id: UUID,
+        tool_call_id: Optional[str] = None,
+        tool_calls: Optional[List[ToolCall]] = None,
+        usage_metadata: Optional[Dict[str, Any]] = None,
         id: Optional[str] = None,
     ) -> Self:
         cursor = database.cursor()
+        cursor.execute("SELECT tool_calls FROM messages WHERE id = ?", (str(id),))
+        existing_tool_calls = cursor.fetchone()
+        existing_tool_calls_list = (
+            json.loads(existing_tool_calls[0]) if existing_tool_calls else []
+        )
+
+        # Merge existing tool calls with new ones, avoiding duplicates
+        merged_tool_calls = list(
+            {
+                tool_call["id"]: tool_call
+                for tool_call in existing_tool_calls_list + (tool_calls or [])
+            }.values()
+        )
+
         cursor.execute(
-            "INSERT INTO messages (id, thread_id, content, role) VALUES (?, ?, ?, ?) ON CONFLICT (id) DO UPDATE SET content = ?, role = ? RETURNING *",
+            "INSERT INTO messages (id, thread_id, content, role, tool_call_id, tool_calls, usage_metadata) VALUES (?, ?, ?, ?, ?, ?, ?) "
+            "ON CONFLICT (id) DO UPDATE SET content = ?, role = ?, tool_call_id = ?, tool_calls = ?, usage_metadata = ? RETURNING *",
             (
                 str(id) if id else str(uuid4()),
                 str(thread_id),
                 content,
                 role,
+                tool_call_id,
+                json.dumps(merged_tool_calls),
+                json.dumps(usage_metadata or {}),
                 content,
                 role,
+                tool_call_id,
+                json.dumps(merged_tool_calls),
+                json.dumps(usage_metadata or {}),
             ),
         )
         data = cursor.fetchone()
@@ -117,7 +192,8 @@ class MessageModel(BaseModel):
     def list(cls, thread_id: UUID) -> List[Self]:
         cursor = database.cursor()
         cursor.execute("SELECT * FROM messages WHERE thread_id = ?", (str(thread_id),))
-        return [create_model(cls, row) for row in cursor.fetchall()]
+        records = cursor.fetchall()
+        return [create_model(cls, row) for row in records]
 
     @classmethod
     def count(cls, thread_id: UUID) -> int:
@@ -144,11 +220,20 @@ class MessageModel(BaseModel):
         cls,
         id: str,
         content: str,
+        tool_call_id: Optional[str] = None,
+        tool_calls: Optional[List[ToolCall]] = None,
+        usage_metadata: Optional[Dict[str, Any]] = None,
     ) -> Self:
         cursor = database.cursor()
         cursor.execute(
-            "UPDATE messages SET content = ? WHERE id = ? RETURNING *",
-            (content, str(id)),
+            "UPDATE messages SET content = ?, tool_call_id = ?, tool_calls = ?, usage_metadata = ? WHERE id = ? RETURNING *",
+            (
+                content,
+                tool_call_id,
+                json.dumps(tool_calls or []),
+                json.dumps(usage_metadata or {}),
+                str(id),
+            ),
         )
         data = cursor.fetchone()
         if not data:
@@ -158,20 +243,18 @@ class MessageModel(BaseModel):
         return record
 
     def to_message(self) -> BaseMessage:
-        model: Type[BaseMessage]
         if self.role == "human":
-            model = HumanMessage
+            return HumanMessage(
+                content=self.content,
+            )
         elif self.role == "ai":
-            model = AIMessage
-        elif self.role == "system":
-            model = SystemMessage
+            return AIMessage(
+                content=self.content,
+                tool_calls=self.tool_calls,
+            )
         elif self.role == "tool":
-            model = ToolMessage
-        elif self.role == "function":
-            model = FunctionMessage
+            if not self.tool_call_id:
+                raise ValueError("Tool call ID is required for tool messages")
+            return ToolMessage(content=self.content, tool_call_id=self.tool_call_id)
         else:
             raise ValueError(f"Invalid role: {self.role}")
-
-        return model(
-            content=self.content,
-        )

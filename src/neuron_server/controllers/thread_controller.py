@@ -79,7 +79,7 @@ async def create_thread(event: CreateThread):
         [
             SystemMessage(content=system_prompt),
             HumanMessage(
-                content="Write a short welcome greeting message for the user to start the conversation and prompt next steps."
+                content="Write a couple sentences greeting the user to start the conversation off and prompt next steps."
             ),
         ],
         {"run_name": "greeting", "metadata": {"thread_id": thread.id}},

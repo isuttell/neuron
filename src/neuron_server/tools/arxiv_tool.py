@@ -3,17 +3,13 @@ from neuron_server.config import config
 from neuron_server.logger import logger
 import arxiv
 import os
-from typing import Literal, List
-from langchain_community.document_loaders import PyMuPDFLoader
-from langchain_text_splitters import CharacterTextSplitter
-from langchain_community.vectorstores import FAISS
-from langchain_openai import OpenAIEmbeddings
+from typing import List
 
 
 class ArxivTool(BaseTool):
     name: str = "arxiv"
     description: str = """
-Searches arXiv for the latest research articles and downloads the PDFs for later inspection. The default action is to search, requires a query as described below, for articles and download the pdfs. If action is inspect, then id_list with the id of the article to inspect is required and query is a semantic search query to return relevant parts of the article. Source are critical so make sure to include short ids so that the original sources can be found.
+Searches arXiv for research articles, returns their summaries and downloads article to be used later. Source are critical so make sure to include short ids so that the original sources can be found.
 
 **arXiv API Query Guide**
 
@@ -43,9 +39,8 @@ Searches arXiv for the latest research articles and downloads the PDFs for later
 
     def _run(
         self,
-        id_list: List[str] | None = None,
         query: str = "",
-        action: Literal["search", "inspect"] = "search",
+        id_list: List[str] | None = None,
         max_results: int = 10,
         sort_by: arxiv.SortCriterion = arxiv.SortCriterion.SubmittedDate,
         sort_order: arxiv.SortOrder = arxiv.SortOrder.Descending,
@@ -55,13 +50,8 @@ Searches arXiv for the latest research articles and downloads the PDFs for later
                 sort_by = arxiv.SortCriterion[sort_by]
             if isinstance(sort_order, str):
                 sort_order = arxiv.SortOrder[sort_order]
-            if action == "inspect" and (id_list is None or len(id_list) != 1):
-                raise ValueError(
-                    "id_list of one article is required for inspect action"
-                )
-            elif action == "search" and query.strip() == "":
-                raise ValueError("query is required for search action")
-
+            if not query and not id_list:
+                raise ValueError("query or id_list is required")
             logger.debug(f"Searching arXiv with: query={query}, id_list={id_list}")
             # Construct the default API client.
             client = arxiv.Client()
@@ -88,10 +78,10 @@ Authors: {", ".join([author.name for author in result.authors])}
 Published: {result.published}
 Primary Category: {result.primary_category}
 Categories: {", ".join(result.categories)}
-Summary: {result.summary}
 Comment: {result.comment}
 Links: {", ".join([link.href for link in result.links])}
-                                """.strip()
+Summary: {result.summary}
+""".strip()
                 )
                 pdf_filename = result._get_default_filename()
                 pdf_full_path = f"{article_directory}/{pdf_filename}"
@@ -102,38 +92,8 @@ Links: {", ".join([link.href for link in result.links])}
                     result.download_pdf(
                         dirpath=article_directory, filename=pdf_filename
                     )
-                if action == "inspect":
-                    embeddings = OpenAIEmbeddings()
-                    vectorstore: FAISS | None = None
-                    if os.path.exists(article_directory + "/index.faiss"):
-                        logger.debug(
-                            f"Loading existing vectorstore from {article_directory}"
-                        )
-                        vectorstore = FAISS.load_local(article_directory, embeddings)
-                    else:
-                        loader = PyMuPDFLoader(pdf_full_path)
-                        docs = loader.load()
-                        text_splitter = CharacterTextSplitter(
-                            chunk_size=1000, chunk_overlap=100
-                        )
-                        texts = text_splitter.split_documents(docs)
-                        vectorstore = FAISS.from_documents(texts, embeddings)
-                        vectorstore.save_local(article_directory)
-                    assert vectorstore is not None
-                    results = vectorstore.similarity_search(
-                        query,
-                        k=max_results,
-                    )
-                    result = "\n\n-----\n\n".join(
-                        [text.page_content for text in results]
-                    ).strip()
-                    return f"""
-{articles[0]}
 
-Search Results:
-{result if len(result) > 0 else "No results found"}
-                    """
-            return "\n\n".join(articles)
+            return "\n\n--------------\n\n".join(articles)
         except Exception as e:
             logger.exception(e)
             return f"arXiv error: {str(e)}"

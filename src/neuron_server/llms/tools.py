@@ -9,9 +9,10 @@ from neuron_server.tools.security_camera_tool import SecurityCameraTool
 from neuron_server.tools.homeassistant_tool import HomeAssistantTool, HomeAssistantAPI
 from neuron_server.tools.homeassistant_service_tool import HomeAssistantServiceTool
 from neuron_server.tools.dalle_tool import DalleTool
-from neuron_server.config import config
 from neuron_server.tools.arxiv_tool import ArxivTool
-from neuron_server.tools.tts_tool import TTSTool
+from neuron_server.tools.elevenlabs_tts_tool import ElevenLabsTTSTool
+from neuron_server.config import config
+
 
 homeassistant_api = HomeAssistantAPI(token=config.homeassistant.token)
 
@@ -21,9 +22,9 @@ tools = [
     InspectImageTool(),
     # InspectWebcamTool(camera=Camera()),
     SecurityCameraTool(),
-    HomeAssistantTool(api=homeassistant_api),
-    HomeAssistantServiceTool(api=homeassistant_api),
+    # HomeAssistantTool(api=homeassistant_api),
+    # HomeAssistantServiceTool(api=homeassistant_api),
     DalleTool(),
     ArxivTool(),
-    TTSTool(),
+    ElevenLabsTTSTool(),
 ]

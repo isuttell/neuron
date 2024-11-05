@@ -1,10 +1,8 @@
-import { useState } from "react";
 import ImageForm from "../images/ImageForm";
 import { useAppSelector } from "../hooks";
 
 import { getImages } from "../slices/imagesSlice";
 import Loading from "../lib/loading";
-import { ImageModel } from "../slices/imagesSlice";
 
 export default function Image() {
   const images = useAppSelector(getImages);

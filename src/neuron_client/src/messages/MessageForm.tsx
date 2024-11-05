@@ -1,25 +1,23 @@
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { useParams } from "react-router-dom";
 import { useState } from "react";
 import { useAppSelector } from "../hooks";
 import { getSocket } from "../slices/socketSlice";
-import { CornerDownLeft, Mic, Paperclip } from "lucide-react";
+import { CornerDownLeft } from "lucide-react";
 import { getActivePersonalityId } from "../slices/personalitiesSlice";
 import { getActiveProviderId } from "../slices/providersSlice";
+import { Spinner } from "@/components/ui/spinner";
 interface MessageFormProps {
   isLoading?: boolean;
+  disabled?: boolean;
   onSubmit: (value: string) => void;
   className?: string;
 }
 
 export default function MessageForm({
+  disabled = false,
   isLoading = false,
   onSubmit,
   className = "",
@@ -36,7 +34,12 @@ export default function MessageForm({
       | React.KeyboardEvent<HTMLTextAreaElement>
   ) => {
     e.preventDefault();
-    if (!socket || value.trim().length === 0 || !activePersonalityId) {
+    if (
+      isLoading ||
+      !socket ||
+      value.trim().length === 0 ||
+      !activePersonalityId
+    ) {
       return;
     }
     onSubmit(value);
@@ -57,43 +60,33 @@ export default function MessageForm({
       <Textarea
         id="message"
         placeholder="Type your message here..."
-        className="min-h-12 bg-secondary resize-none border-0 p-3 shadow-none focus-visible:ring-0"
+        className="flex min-h-[60px] w-full rounded-md border border-input bg-transparent text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 p-4"
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        disabled={isLoading}
         onKeyDown={(e) => {
           if (e.key === "Enter" && !e.shiftKey) {
             handleSubmit(e);
           }
         }}
       />
-      <div className="flex items-center pt-1">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon">
-              <Paperclip className="size-4" />
-              <span className="sr-only">Attach file</span>
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="top">Attach File</TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon">
-              <Mic className="size-4" />
-              <span className="sr-only">Use Microphone</span>
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="top">Use Microphone</TooltipContent>
-        </Tooltip>
+      <div className="flex items-center pt-2">
         <Button
           onClick={handleSubmit}
           type="submit"
           size="sm"
           className="ml-auto gap-1.5"
+          disabled={isLoading || disabled}
         >
-          Send Message
-          <CornerDownLeft className="size-3.5" />
+          {isLoading ? (
+            <>
+              <Spinner className="size-3.5" />
+            </>
+          ) : (
+            <>
+              Send Message
+              <CornerDownLeft className="size-3.5" />
+            </>
+          )}
         </Button>
       </div>
     </form>

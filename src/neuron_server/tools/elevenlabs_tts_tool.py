@@ -4,10 +4,10 @@ from neuron_server.logger import logger
 from huggingface_hub import AsyncInferenceClient
 from uuid import uuid4
 from typing import TypedDict, List
-from openai import OpenAI
 import os
 import shutil
 import subprocess
+from elevenlabs import ElevenLabs
 
 
 class SpokenLine(TypedDict):
@@ -38,55 +38,59 @@ def parse_script(script: str) -> List[SpokenLine]:
     return parsed_lines
 
 
-class TTSTool(BaseTool):
-    name: str = "tts"
+class ElevenLabsTTSTool(BaseTool):
+    name: str = "elevenlabs_tts"
     description: str = (
         """
 This tool generates audio from a provided script. The input format should consist of speaker identifiers followed by their respective dialogues, formatted as the example below:
 
-Supported voices: alloy, echo, fable, onyx, nova, and shimmer
+Supported voices: Chris, Eric, Charlie, Jessica, River, Laura, Aria
 
 Example:
 ```
-[alloy]
+[Chris]
 Hello, how are you?
 
-[echo]
+[Jessica]
 I'm great!
 ```
 
-The tool will use OpenAI's TTS API to generate the audio and return a link to the combined audio file. Each block should be short enough to be processed in a single call to the API. Use this tool to generate audio when the users requests it. The result should be an playable <audio> tag
+The tool will use ElevenLabs' TTS API to generate the audio and return a link to the combined audio file. Each block should be short enough to be processed in a single call to the API. Use this tool to generate audio when the users requests it. The result should be an playable <audio> tag that users the src attribute to play the audio.
 """.strip()
     )
 
-    def _run(self, script: str, speed: float = 1) -> str:
+    def _run(self, script: str) -> str:
         """
         Generates audio from a provided script. In the format of:
         ```
-        [alloy]
+        [Alice]
         Hello, how are you?
 
-        [echo]
+        [Daniel]
         I'm great!
         ```
         """
         try:
-            client = OpenAI(api_key=config.openai_api_key)
+            client = ElevenLabs(api_key=config.elevenlabs_api_key)
+            response = client.voices.get_all()
+            print(response)
             id = str(uuid4())
             working_dir = config.temp_folder + "/" + id
             os.makedirs(working_dir, exist_ok=True)
-            audio_files: str = []
+            audio_files: List[str] = []
             for index, line in enumerate(parse_script(script)):
                 print(f"Generating #{index} [{line['voice']}] {line['text']}")
-                response = client.audio.speech.create(
-                    model="tts-1-hd",
+                response = client.generate(
+                    text=line["text"],
                     voice=line["voice"],
-                    input=line["text"],
-                    speed=speed,
+                    model="eleven_multilingual_v2",
                 )
                 audio_file_path = working_dir + "/" + f"line-{index}.mp3"
-                response.stream_to_file(audio_file_path)
                 audio_files.append(audio_file_path)
+                with open(audio_file_path, "wb") as file:
+                    for chunk in response:
+                        file.write(chunk)
+                print(f"Generated audio file at {audio_file_path}")
             # Concatenate all audio files using ffmpeg
             output_dir = config.static_folder + "/tts"
             if not os.path.exists(output_dir):
@@ -123,7 +127,7 @@ def main():
     args = parser.parse_args()
 
     # Call the tool to generate the audio
-    tool = TTSTool(client=AsyncInferenceClient())
+    tool = ElevenLabsTTSTool(client=AsyncInferenceClient())
     with open(args.script, "r") as f:
         script = "\n".join(f.readlines())
     results = tool._run(script)

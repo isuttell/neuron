@@ -28,6 +28,8 @@ export default function NavThreads() {
       <NewThreadButton />
       {threads
         .filter((thread) => thread.personality_id === activePersonalityId)
+        .sort((a, b) => a.updated_at.localeCompare(b.updated_at))
+        .reverse()
         .map((thread) => (
           <NavLink
             end
@@ -39,7 +41,7 @@ export default function NavThreads() {
             to={`/thread/${thread.id}`}
             key={thread.id}
           >
-            {thread.name ? (
+            {thread.status === "idle" ? (
               <MessageCircle className="size-4 min-w-[20px]" />
             ) : (
               <MessageCircleDashed className="size-4 min-w-[20px]" />

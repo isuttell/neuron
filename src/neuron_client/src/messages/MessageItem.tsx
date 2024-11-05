@@ -60,10 +60,14 @@ const getStatusMessage = (status: string) => {
 };
 
 const MessageItem: React.FC<MessageItemProps> = ({
-  message: { role, content, created_at, status = undefined },
+  message: { id, role, content, created_at, status = undefined },
 }) => {
   return (
-    <Card className="w-full mb-2">
+    <Card
+      className={`w-full mb-2 ${
+        role === "tool" || role === "system" ? "bg-zinc-900" : ""
+      }`}
+    >
       <CardContent className="pb-1 px-6 pt-6 text-small text-default-400 flex items-start space-x-2">
         <Tooltip>
           <TooltipTrigger asChild>
@@ -86,7 +90,7 @@ const MessageItem: React.FC<MessageItemProps> = ({
 
         {(!status || status === "streaming") && content.trim().length > 0 ? (
           <ReactMarkdown
-            className={"space-y-2 "}
+            className="space-y-2 flex-1"
             key={content}
             children={content}
             remarkPlugins={[remarkGfm]}
@@ -102,10 +106,11 @@ const MessageItem: React.FC<MessageItemProps> = ({
                   />
                 );
               },
-              img({ node, className = "", children, ...props }) {
+              img({ node, src, className = "", children, ...props }) {
                 return (
                   <img
-                    className={`${className} w-full  max-w-[512px] rounded-md`}
+                    className={`${className} m-2 float-left w-full  max-w-[512px] rounded-md`}
+                    src={src} //?.replace("http://localhost:5000/", "/")}
                     {...props}
                   />
                 );
@@ -157,8 +162,9 @@ const MessageItem: React.FC<MessageItemProps> = ({
         )}
       </CardContent>
       <CardFooter className="gap-3">
-        <div className="flex gap-1 flex-1 text-gray-500">
+        <div className="flex gap-1 flex-1 text-gray-500 space-x-2">
           <div className="flex-1" />
+          <p className="text-sm text-gray-700">{id}</p>
           <Tooltip>
             <TooltipTrigger asChild>
               <p className="text-sm hover:text-gray-700">

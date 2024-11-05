@@ -23,12 +23,12 @@ class AnthropicLLM(LLM):
         )
         title_model = ChatAnthropic(
             model=model_id,
-            temperature=0.7,
+            temperature=0.3,
             max_tokens=max_title_tokens,
         )
         memory_model = ChatAnthropic(
             model=model_id,
-            temperature=0.1,
+            temperature=0.3,
             max_tokens=max_memory_tokens,
         )
         super().__init__(model, title_model, memory_model, tools=tools)
