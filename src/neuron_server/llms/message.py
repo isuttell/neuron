@@ -91,7 +91,6 @@ async def astream_events(
         run_id: str = body["run_id"]
         if run_id not in start_times:
             start_times[run_id] = datetime.now(timezone.utc).astimezone()
-            logger.debug(f"Starting run {run_id} at {start_times[run_id].isoformat()}")
         if kind == "on_chat_model_stream":
             chunk = body["data"]["chunk"]
             if isinstance(chunk, AIMessage):

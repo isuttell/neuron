@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from uuid import UUID, uuid4
+from uuid import uuid4
 from datetime import datetime, timezone
 from typing import Self, List, Optional
 from neuron_server.database import database
@@ -7,7 +7,7 @@ from neuron_server.models.class_factory import create_model
 
 
 class ImageModel(BaseModel):
-    id: UUID = Field(default_factory=lambda: uuid4())
+    id: str = Field(default_factory=lambda: str(uuid4()))
     image: Optional[str] = Field(
         description="Either a base64 encoded image or a filename", default=None
     )
@@ -35,12 +35,27 @@ class ImageModel(BaseModel):
         )
         database.commit()
 
+    @staticmethod
+    def exists(id: str) -> bool:
+        cursor = database.cursor()
+        cursor.execute("SELECT 1 FROM images WHERE id = ?", (str(id),))
+        return cursor.fetchone() is not None
+
+    @classmethod
+    def get(cls, id: str) -> Optional[Self]:
+        cursor = database.cursor()
+        cursor.execute("SELECT * FROM images WHERE id = ?", (str(id),))
+        data = cursor.fetchone()
+        if not data:
+            return None
+        return create_model(cls, data)
+
     @classmethod
     def create(
         cls,
         prompt: str,
         image: Optional[str] = None,
-        id: Optional[UUID] = None,
+        id: Optional[str] = None,
     ) -> Self:
         cursor = database.cursor()
         cursor.execute(
@@ -59,7 +74,7 @@ class ImageModel(BaseModel):
         return record
 
     @staticmethod
-    def delete(id: UUID):
+    def delete(id: str):
         cursor = database.cursor()
         cursor.execute("DELETE FROM images WHERE id = ?", (str(id),))
         database.commit()
@@ -67,7 +82,7 @@ class ImageModel(BaseModel):
     @classmethod
     def update(
         cls,
-        id: UUID,
+        id: str,
         prompt: str,
         image: Optional[str] = None,
     ) -> Self:
@@ -87,7 +102,7 @@ class ImageModel(BaseModel):
         return self.update(self.id, image, self.prompt)
 
     @classmethod
-    def get(cls, id: UUID) -> Self:
+    def get(cls, id: str) -> Self:
         cursor = database.cursor()
         cursor.execute("SELECT * FROM images WHERE id = ?", (str(id),))
         model = cursor.fetchone()

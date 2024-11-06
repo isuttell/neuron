@@ -8,17 +8,18 @@ from typing import List
 
 class ArxivTool(BaseTool):
     name: str = "arxiv"
-    description: str = """
-Searches arXiv for research articles, returns their summaries and downloads article to be used later. Source are critical so make sure to include short ids so that the original sources can be found.
+    description: str = (
+        """
+This tool searches arXiv for research articles, and retrieves summaries. Embed short IDs in text responses to reference original sources.
 
 **arXiv API Query Guide**
 
-1. **Basic Query Structure**
-   - Use `search_query` to target fields like `title`, `author`, `abstract`, and `comments` by adding a prefix (e.g., `au:del_maestro` for author Adrian Del Maestro).
-   - For filtering by specific article IDs, use `id_list` instead of `search_query=id:xxx` to handle versions.
+1. **Query Structure**
+   - Use `search_query` with prefixes (e.g., `au:del_maestro` for author Adrian Del Maestro) to target fields like `title`, `author`, `abstract`, and `comments`.
+   - For specific IDs, use `id_list` instead of `search_query=id:xxx` to handle article versions.
 
 2. **Field Prefixes**
-   - Common prefixes include:
+   - Prefixes include:
      - `ti`: Title
      - `au`: Author
      - `abs`: Abstract
@@ -28,14 +29,14 @@ Searches arXiv for research articles, returns their summaries and downloads arti
      - `all`: All fields
 
 3. **Boolean Operators**
-   - Combine fields with `AND`, `OR`, and `ANDNOT`:
-     - Example: `au:del_maestro+AND+ti:checkerboard`
-   - Use `ANDNOT` for exclusion (e.g., `au:del_maestro+ANDNOT+ti:checkerboard`).
+   - Combine fields with `AND`, `OR`, and `ANDNOT`, e.g., `au:del_maestro+AND+ti:checkerboard`.
+   - Use `ANDNOT` for exclusions.
 
 4. **Grouping & Phrases**
-   - Group expressions using `%28` for `(` and `%29` for `)`, and use `%22` to wrap phrases.
-   - Example: `au:del_maestro+ANDNOT+%28ti:checkerboard+OR+ti:Pyrochore%29`
-    """
+   - Group with `%28` and `%29`, and wrap phrases with `%22`.
+   - Example: `au:del_maestro+ANDNOT+%28ti:checkerboard+OR+ti:Pyrochore%29`.
+    """.strip()
+    )
 
     def _run(
         self,

@@ -1,6 +1,6 @@
 from typing import Literal, Optional
 from neuron_server.event_router import OutgoingEvent, IncomingEvent
-from neuron_server.models import ImageModel
+from pydantic import BaseModel
 
 
 class GetImages(IncomingEvent):
@@ -17,6 +17,14 @@ class CreateImage(IncomingEvent):
     num_inference_steps: Optional[int] = None
 
 
+class ImageFromDisk(BaseModel):
+    id: str
+    path: str
+    image: str
+    prompt: str
+    created_at: str
+
+
 class ImageResponse(OutgoingEvent):
     type: Literal["image"] = "image"
-    image: ImageModel
+    image: ImageFromDisk

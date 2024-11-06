@@ -87,7 +87,7 @@ const MessageItem: React.FC<MessageItemProps> = ({
 
         {(!status || status === "streaming") && content.trim().length > 0 ? (
           <ReactMarkdown
-            className="space-y-2 flex-1 whitespace-pre-line"
+            className="space-y-2 flex-1"
             key={content}
             children={content}
             remarkPlugins={[remarkGfm]}

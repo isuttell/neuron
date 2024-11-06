@@ -27,11 +27,6 @@ const links = [
     Icon: Brain,
   },
   {
-    to: "/image",
-    label: "Image Generator",
-    Icon: ImageIcon,
-  },
-  {
     to: "/gallery",
     label: "Gallery",
     Icon: GalleryThumbnails,
