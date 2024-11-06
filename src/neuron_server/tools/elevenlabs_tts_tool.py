@@ -53,12 +53,14 @@ class ElevenLabsTTSTool(BaseTool):
     name: str = "elevenlabs_tts"
     description: str = (
         """
-This tool generates audio from a provided script. The input format should consist of speaker identifiers followed by their respective dialogues, formatted as the example below:
+This tool generates audio from a provided script.
 
 Supported Voices:
     Conversational: Chris, Eric, Charlie, Jessica, River, Laura, Aria
     Narrator: Bill, Brian, Lily, Matilda
     Character: Callum
+
+The input script format should consist of speaker identifiers followed by their respective dialogues, formatted as the example below:
 
 Example:
 ```
@@ -69,7 +71,7 @@ Hello, how are you?
 I'm great!
 ```
 
-The tool will use ElevenLabs' TTS API to generate the audio and return a link to the combined audio file. Each block should be short enough to be processed in a single call to the API. Use this tool to generate audio when the users requests it. The result should be an playable <audio> tag that users the src attribute to play the audio.
+The tool will use ElevenLabs' TTS API to generate the audio and return a link to the final audio file. Each script block should be short enough to be processed in a single call to the API. Use this tool to generate audio when the users requests it. The result should always include a playable <audio> tag that users the src attribute to link the audio file. Do not include the filename in the response.
 """.strip()
     )
 
@@ -107,7 +109,7 @@ The tool will use ElevenLabs' TTS API to generate the audio and return a link to
             if not os.path.exists(output_dir):
                 os.makedirs(output_dir, exist_ok=True)
             filename = f"{id}.mp3"
-            output = output_dir + "/" + filename
+            output = os.path.abspath(output_dir + "/" + filename)
             ffmpeg_command = [
                 "ffmpeg",
                 "-hide_banner",
@@ -129,7 +131,10 @@ The tool will use ElevenLabs' TTS API to generate the audio and return a link to
             )
             url = config.static_content_url + "/tts/" + filename
             logger.info(f"Generated audio file saved to {output} <{url}>")
-            return url
+            return f"""
+URL: <{url}>
+Filename: {output}
+""".strip()
         except Exception as e:
             logger.exception(e)
             return f"Error generating audio: {str(e)}"
