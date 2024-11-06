@@ -1,5 +1,5 @@
 import React, { memo } from "react";
-import { Bot, User } from "lucide-react";
+import { Bot, User, Hammer } from "lucide-react";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -12,15 +12,8 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-
-interface Message {
-  id: string;
-  role: string;
-  content: string;
-  created_at: string;
-  status?: string;
-}
-
+import AudioPlayer from "./AudioPlayer";
+import { Message } from "@/slices/messagesSlice";
 interface MessageItemProps {
   message: Message;
 }
@@ -78,9 +71,13 @@ const MessageItem: React.FC<MessageItemProps> = ({
             >
               {role === "human" ? (
                 <User className="text-white" size={20} />
-              ) : (
+              ) : null}
+              {role === "ai" || role === "system" ? (
                 <Bot className="text-black" size={20} />
-              )}
+              ) : null}
+              {role === "tool" ? (
+                <Hammer className="text-black" size={20} />
+              ) : null}
             </div>
           </TooltipTrigger>
           <TooltipContent side="right">
@@ -90,19 +87,37 @@ const MessageItem: React.FC<MessageItemProps> = ({
 
         {(!status || status === "streaming") && content.trim().length > 0 ? (
           <ReactMarkdown
-            className="space-y-2 flex-1"
+            className="space-y-2 flex-1 whitespace-pre-line"
             key={content}
             children={content}
             remarkPlugins={[remarkGfm]}
             rehypePlugins={[rehypeRaw]}
             components={{
-              audio({ node, className = "", ...props }) {
-                props.controls = true;
-                props.autoPlay = false;
+              audio({ node }) {
+                let src = node?.properties?.src;
+                if (!src && node?.children) {
+                  for (const child of node.children) {
+                    if (child.type === "element" && child.properties?.src) {
+                      src = child.properties.src;
+                      break;
+                    }
+                  }
+                }
+                src =
+                  typeof src === "string"
+                    ? src.replace(
+                        "http://localhost:5000/",
+                        "http://192.168.1.211:5000/"
+                      )
+                    : undefined;
+                if (!src) {
+                  return null;
+                }
+
                 return (
-                  <audio
-                    className={`${className} w-full rounded-md`}
-                    {...props}
+                  <AudioPlayer
+                    preload={status === "streaming" ? "none" : "auto"}
+                    src={src.toString()}
                   />
                 );
               },
@@ -110,7 +125,7 @@ const MessageItem: React.FC<MessageItemProps> = ({
                 return (
                   <img
                     className={`${className} m-2 float-left w-full  max-w-[512px] rounded-md`}
-                    src={src} //?.replace("http://localhost:5000/", "/")}
+                    src={src?.replace("http://localhost:5000/", "/")}
                     {...props}
                   />
                 );
@@ -119,8 +134,8 @@ const MessageItem: React.FC<MessageItemProps> = ({
                 const match = /language-(\w+)/.exec(className || "");
                 if (match && match[1] === "thinking") {
                   return (
-                    <div className="italic relative bg-accent pt-8 font-sans whitespace-pre-line text-gray-400 p-6 rounded-md">
-                      <div className="absolute bg-gray-900 text-xs px-2 py-1 top-0 left-0 rounded-tl-md rounded-br-md">
+                    <div className="italic relative bg-zinc-900 pt-8 font-sans whitespace-pre-line text-gray-400 p-6 rounded-md">
+                      <div className="absolute bg-accent text-xs px-2 py-1 top-0 left-0 rounded-tl-md rounded-br-md">
                         Thoughts
                       </div>
                       {typeof children === "string"
@@ -168,7 +183,7 @@ const MessageItem: React.FC<MessageItemProps> = ({
           <Tooltip>
             <TooltipTrigger asChild>
               <p className="text-sm hover:text-gray-700">
-                {getFuzzyTime(new Date(created_at + "Z"))}
+                {getFuzzyTime(new Date(created_at))}
               </p>
             </TooltipTrigger>
             <TooltipContent side="right">

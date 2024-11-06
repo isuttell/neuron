@@ -47,9 +47,9 @@ Searches arXiv for research articles, returns their summaries and downloads arti
     ) -> str:
         try:
             if isinstance(sort_by, str):
-                sort_by = arxiv.SortCriterion[sort_by]
+                sort_by = arxiv.SortCriterion(sort_by)
             if isinstance(sort_order, str):
-                sort_order = arxiv.SortOrder[sort_order]
+                sort_order = arxiv.SortOrder(sort_order)
             if not query and not id_list:
                 raise ValueError("query or id_list is required")
             logger.debug(f"Searching arXiv with: query={query}, id_list={id_list}")
@@ -80,7 +80,9 @@ Primary Category: {result.primary_category}
 Categories: {", ".join(result.categories)}
 Comment: {result.comment}
 Links: {", ".join([link.href for link in result.links])}
-Summary: {result.summary}
+
+Summary:
+{result.summary}
 """.strip()
                 )
                 pdf_filename = result._get_default_filename()

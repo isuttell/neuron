@@ -34,12 +34,7 @@ export default function MessageForm({
       | React.KeyboardEvent<HTMLTextAreaElement>
   ) => {
     e.preventDefault();
-    if (
-      isLoading ||
-      !socket ||
-      value.trim().length === 0 ||
-      !activePersonalityId
-    ) {
+    if (!socket || value.trim().length === 0 || !activePersonalityId) {
       return;
     }
     onSubmit(value);
@@ -62,6 +57,7 @@ export default function MessageForm({
         placeholder="Type your message here..."
         className="flex min-h-[60px] w-full rounded-md border border-input bg-transparent text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 p-4"
         value={value}
+        disabled={disabled}
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === "Enter" && !e.shiftKey) {
@@ -75,7 +71,7 @@ export default function MessageForm({
           type="submit"
           size="sm"
           className="ml-auto gap-1.5"
-          disabled={isLoading || disabled}
+          disabled={disabled}
         >
           {isLoading ? (
             <>

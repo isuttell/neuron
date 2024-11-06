@@ -11,24 +11,23 @@ class AnthropicLLM(LLM):
     def __init__(
         self,
         model_id: Optional[str] = "claude-3-opus-20240229",
-        max_tokens: int = 4096,
-        max_title_tokens: int = 32,
-        max_memory_tokens: int = 1024,
     ):
         model = ChatAnthropic(
             model=model_id,
             temperature=0.7,
             streaming=True,
-            max_tokens=max_tokens,
+            max_tokens=4096,
         )
         title_model = ChatAnthropic(
             model=model_id,
             temperature=0.3,
-            max_tokens=max_title_tokens,
+            max_tokens=32,
         )
         memory_model = ChatAnthropic(
             model=model_id,
             temperature=0.3,
-            max_tokens=max_memory_tokens,
+            max_tokens=1024,
         )
-        super().__init__(model, title_model, memory_model, tools=tools)
+        super().__init__(
+            model, title_model, memory_model, tools=tools, max_input_tokens=15000
+        )

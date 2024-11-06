@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 from uuid import UUID, uuid4
-from datetime import datetime
+from datetime import datetime, timezone
 from neuron_server.database import database
 from typing import Self, Optional
 from neuron_server.models.class_factory import create_model
@@ -8,8 +8,12 @@ from neuron_server.models.class_factory import create_model
 
 class AgentModel(BaseModel):
     id: UUID = Field(default_factory=lambda: uuid4())
-    created_at: datetime = Field(default_factory=lambda: datetime.now())
-    updated_at: datetime = Field(default_factory=lambda: datetime.now())
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc).astimezone()
+    )
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc).astimezone()
+    )
     name: str = Field(description="The name of the agent")
     context: str = Field(
         description="Information supplied by the user for additional context"

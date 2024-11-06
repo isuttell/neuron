@@ -11,24 +11,23 @@ class OpenAILLM(LLM):
     def __init__(
         self,
         model_id: Optional[str] = "gpt-4o",
-        max_tokens: int = 4096,
-        max_title_tokens: int = 32,
-        max_memory_tokens: int = 1024,
     ):
         model = ChatOpenAI(
             model=model_id,
             temperature=0.7,
             streaming=True,
-            max_tokens=max_tokens,
+            max_tokens=4096,
         )
         title_model = ChatOpenAI(
             model=model_id,
             temperature=0.7,
-            max_tokens=max_title_tokens,
+            max_tokens=32,
         )
         memory_model = ChatOpenAI(
             model=model_id,
             temperature=0.1,
-            max_tokens=max_memory_tokens,
+            max_tokens=1000,
         )
-        super().__init__(model, title_model, memory_model, tools=tools)
+        super().__init__(
+            model, title_model, memory_model, tools=tools, max_input_tokens=32000
+        )

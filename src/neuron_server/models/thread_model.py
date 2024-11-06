@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 from uuid import UUID, uuid4
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Self, List, Optional
 from neuron_server.database import database
 from neuron_server.models.class_factory import create_model
@@ -25,8 +25,12 @@ class ThreadModel(BaseModel):
     personality_id: UUID = Field(
         description="The personality ID associated with the thread"
     )
-    created_at: datetime = Field(default_factory=lambda: datetime.now())
-    updated_at: datetime = Field(default_factory=lambda: datetime.now())
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc).astimezone()
+    )
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc).astimezone()
+    )
 
     def get_context_prompt(self) -> str:
         if not self.context or len(self.context.strip()) == 0:

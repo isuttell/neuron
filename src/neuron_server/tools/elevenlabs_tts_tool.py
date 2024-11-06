@@ -8,6 +8,7 @@ import os
 import shutil
 import subprocess
 from elevenlabs import ElevenLabs
+from neuron_server.logger import logger
 
 
 class SpokenLine(TypedDict):
@@ -28,13 +29,23 @@ def parse_script(script: str) -> List[SpokenLine]:
     lines = script.strip().split("\n")
     parsed_lines = []
     current_voice = None
+    current_text = []
 
     for line in lines:
         line = line.strip()
         if line.startswith("[") and line.endswith("]"):
+            if current_voice and current_text:
+                parsed_lines.append(
+                    {"voice": current_voice, "text": "\n".join(current_text)}
+                )
             current_voice = line[1:-1]
+            current_text = []
         elif current_voice and len(line.strip()) > 0:
-            parsed_lines.append({"voice": current_voice, "text": line})
+            current_text.append(line)
+
+    if current_voice and current_text:
+        parsed_lines.append({"voice": current_voice, "text": "\n".join(current_text)})
+
     return parsed_lines
 
 
@@ -44,7 +55,10 @@ class ElevenLabsTTSTool(BaseTool):
         """
 This tool generates audio from a provided script. The input format should consist of speaker identifiers followed by their respective dialogues, formatted as the example below:
 
-Supported voices: Chris, Eric, Charlie, Jessica, River, Laura, Aria
+Supported Voices:
+    Conversational: Chris, Eric, Charlie, Jessica, River, Laura, Aria
+    Narrator: Bill, Brian, Lily, Matilda
+    Character: Callum
 
 Example:
 ```
@@ -72,14 +86,11 @@ The tool will use ElevenLabs' TTS API to generate the audio and return a link to
         """
         try:
             client = ElevenLabs(api_key=config.elevenlabs_api_key)
-            response = client.voices.get_all()
-            print(response)
             id = str(uuid4())
             working_dir = config.temp_folder + "/" + id
             os.makedirs(working_dir, exist_ok=True)
             audio_files: List[str] = []
             for index, line in enumerate(parse_script(script)):
-                print(f"Generating #{index} [{line['voice']}] {line['text']}")
                 response = client.generate(
                     text=line["text"],
                     voice=line["voice"],
@@ -90,7 +101,7 @@ The tool will use ElevenLabs' TTS API to generate the audio and return a link to
                 with open(audio_file_path, "wb") as file:
                     for chunk in response:
                         file.write(chunk)
-                print(f"Generated audio file at {audio_file_path}")
+                logger.debug(f"Saved generated audio chunk at {audio_file_path}")
             # Concatenate all audio files using ffmpeg
             output_dir = config.static_folder + "/tts"
             if not os.path.exists(output_dir):
@@ -99,6 +110,10 @@ The tool will use ElevenLabs' TTS API to generate the audio and return a link to
             output = output_dir + "/" + filename
             ffmpeg_command = [
                 "ffmpeg",
+                "-hide_banner",
+                "-nostats",
+                "-loglevel",
+                "error",
                 "-y",
                 "-i",
                 "concat:" + "|".join(audio_files),
@@ -106,9 +121,14 @@ The tool will use ElevenLabs' TTS API to generate the audio and return a link to
                 "copy",
                 output,
             ]
-            subprocess.run(ffmpeg_command, check=True)
+            subprocess.run(
+                ffmpeg_command,
+                check=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
             url = config.static_content_url + "/tts/" + filename
-            logger.info(f"Generated audio file at {output} <{url}>")
+            logger.info(f"Generated audio file saved to {output} <{url}>")
             return url
         except Exception as e:
             logger.exception(e)

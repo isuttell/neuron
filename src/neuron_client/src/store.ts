@@ -7,9 +7,10 @@ import socket from "./slices/socketSlice";
 import providers from "./slices/providersSlice";
 import personalities from "./slices/personalitiesSlice";
 import images from "./slices/imagesSlice";
-
+import app from "./slices/appSlice";
 export const store = configureStore({
   reducer: {
+    app,
     messages,
     threads,
     socket,

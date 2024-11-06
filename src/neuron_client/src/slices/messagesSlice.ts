@@ -2,22 +2,28 @@ import { createSlice } from "@reduxjs/toolkit";
 import type { PayloadAction } from "@reduxjs/toolkit";
 import type { RootState } from "../store";
 
-interface Message {
+export interface Message {
   id: string;
   role: string;
   content: string;
-  created_at: string;
+  created_at: number;
+  updated_at: number;
   thread_id: string;
   status?: string;
 }
 
-interface IncomingPartialMessage extends Message {
+interface IncomingMessage extends Omit<Message, "created_at" | "updated_at"> {
+  created_at: string;
+  updated_at: string;
+}
+
+interface IncomingPartialMessage extends IncomingMessage {
   index: number;
   status: string;
 }
 
 interface IncomingMessageEvent {
-  message: Message;
+  message: IncomingMessage;
 }
 
 interface IncomingPartialMessageEvent {
@@ -34,6 +40,19 @@ const initialState: MessageState = {
   messages: [],
 };
 
+/**
+ * Parses an incoming message dates and returns a Message object
+ * @param message - The incoming message
+ * @returns A Message object
+ */
+function parseIncomingMessage(message: IncomingMessage): Message {
+  return {
+    ...message,
+    created_at: new Date(message.created_at).getTime(),
+    updated_at: new Date(message.updated_at).getTime(),
+  };
+}
+
 export const messagesSlice = createSlice({
   name: "messages",
   initialState,
@@ -42,7 +61,7 @@ export const messagesSlice = createSlice({
       const existingMessageIndex = state.messages.findIndex(
         (msg) => msg.id === action.payload.message.id
       );
-      const message: Message = action.payload.message;
+      const message = parseIncomingMessage(action.payload.message);
       if (existingMessageIndex !== -1) {
         state.messages[existingMessageIndex] = message;
       } else {
@@ -56,7 +75,7 @@ export const messagesSlice = createSlice({
       const existingMessageIndex = state.messages.findIndex(
         (msg) => msg.id === action.payload.message.id
       );
-      const message: Message = action.payload.message;
+      const message = parseIncomingMessage(action.payload.message);
       if (existingMessageIndex !== -1) {
         state.messages[existingMessageIndex].status = message.status;
         state.messages[existingMessageIndex].content += message.content;

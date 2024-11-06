@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 from uuid import UUID, uuid4
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Self, List, Optional
 from neuron_server.database import database
 from neuron_server.models.class_factory import create_model
@@ -12,8 +12,12 @@ class ImageModel(BaseModel):
         description="Either a base64 encoded image or a filename", default=None
     )
     prompt: str = Field(description="The prompt used to generate the image")
-    created_at: datetime = Field(default_factory=lambda: datetime.now())
-    updated_at: datetime = Field(default_factory=lambda: datetime.now())
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc).astimezone()
+    )
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc).astimezone()
+    )
 
     @staticmethod
     def create_table_if_not_exists():

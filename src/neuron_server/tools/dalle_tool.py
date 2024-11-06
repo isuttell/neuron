@@ -2,12 +2,9 @@ from langchain.tools import BaseTool
 import requests
 from PIL import Image, PngImagePlugin
 from io import BytesIO
-import time
-from datetime import datetime
+from datetime import datetime, timezone
 from neuron_server.config import config
 from neuron_server.logger import logger
-from enum import Enum
-import base64
 from openai import OpenAI
 from typing import Literal
 
@@ -15,7 +12,7 @@ from typing import Literal
 class DalleTool(BaseTool):
     name: str = "dalle"
     description: str = (
-        "A tool that generates images based on a given prompt using OpenAI's DALL-E 3.  DALL-E is suited for generating highly detailed, standalone images with precise attributes, especially in realistic or semi-realistic styles. Use this when the user asks for an image. When generating DALL-E prompts, include specific visual details, such as colors, textures, and object placements, to guide the model toward a precise result. Mention the desired style (e.g., photorealistic, cartoonish, or abstract) and add context, like background elements or lighting, for more cohesive images. Focus on clarity and conciseness in each prompt to avoid ambiguity and ensure reproducible results. Returns the url to the generated image which should be displayed using markdown."
+        "A tool that generates images based on a given prompt using OpenAI's DALL-E 3.  DALL-E is suited for generating highly detailed, standalone images with precise attributes, especially in realistic or semi-realistic styles. Use this when the user asks for an image. When generating DALL-E prompts, include specific visual details, such as colors, textures, and object placements, to guide the model toward a precise result. Mention the desired style (e.g., photorealistic, cartoonish, or abstract) and add context, like background elements or lighting, for more cohesive images. Focus on clarity and conciseness in each prompt to avoid ambiguity and ensure reproducible results. Returns the url to the generated image which must be displayed using markdown."
     )
 
     def generate_image(
@@ -66,13 +63,14 @@ class DalleTool(BaseTool):
                 prompt=prompt,
                 style=style,
             )
-            timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+            now = datetime.now(timezone.utc).astimezone()
+            timestamp = now.strftime("%Y%m%d%H%M%S")
             filename = f"dalle_generated_image_{timestamp}.png"
             pnginfo = PngImagePlugin.PngInfo()
             pnginfo.add_text("Description", prompt)
             pnginfo.add_text(
                 "DateTimeOriginal",
-                datetime.now().isoformat(timespec="seconds"),
+                now.isoformat(timespec="seconds"),
             )
             file_path = f"{config.static_folder}/images/{filename}"
             image.save(
@@ -80,7 +78,7 @@ class DalleTool(BaseTool):
                 format="png",
                 pnginfo=pnginfo,
             )
-            url = f"http://localhost:5000/static/images/{filename}"
+            url = f"{config.static_content_url}/images/{filename}"
             logger.debug(f"Saved generated image to {file_path} <{url}>")
             return url
         except Exception as e:

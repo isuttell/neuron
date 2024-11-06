@@ -18,7 +18,7 @@ from langchain_core.messages import (
     HumanMessage,
     ToolMessage,
 )
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Set, Dict
 import re
 from neuron_server.llms.llm import LLM
@@ -75,7 +75,9 @@ async def astream_events(
     async for body in provider.executor.astream_events(
         {
             "messages": messages,
-            "now": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "now": datetime.now(timezone.utc)
+            .astimezone()
+            .strftime("%Y-%m-%d %H:%M:%S"),
         },
         {
             "run_name": "chat",
@@ -88,7 +90,8 @@ async def astream_events(
         kind: str = body["event"]
         run_id: str = body["run_id"]
         if run_id not in start_times:
-            start_times[run_id] = datetime.now()
+            start_times[run_id] = datetime.now(timezone.utc).astimezone()
+            logger.debug(f"Starting run {run_id} at {start_times[run_id].isoformat()}")
         if kind == "on_chat_model_stream":
             chunk = body["data"]["chunk"]
             if isinstance(chunk, AIMessage):
@@ -122,8 +125,10 @@ async def astream_events(
                 thread_id=thread.id,
                 tool_calls=output.tool_calls,
                 usage_metadata=output.usage_metadata,
+                created_at=start_times[run_id].isoformat(),
             )
             await websocket.send(MessageEvent(message=record).model_dump_json())
+            await update_thread_status(thread, "thinking")
         elif kind == "on_tool_start":
             await update_thread_status(thread, "tools")
             logger.debug(
@@ -206,6 +211,9 @@ async def ainvoke(
                 role="human",
                 content=prompt,
             )
+            logger.debug(
+                f"Sending user message {user_message.id} at {user_message.created_at.isoformat()}"
+            )
             # Don't need to wait for this to send
             await websocket.send(
                 MessageEvent(
@@ -226,7 +234,7 @@ async def ainvoke(
         new_messages = messages[initial_messages_length:]
 
         # Add the tool calls to the preceding AI message
-        updated_messages: Set[AIMessage] = {}
+        updated_messages: Set[AIMessage] = set()
         for message in new_messages:
             if isinstance(message, ToolMessage):
                 # Find the preceding AI message

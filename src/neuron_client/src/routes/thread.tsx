@@ -43,7 +43,9 @@ export default function Thread() {
     (state) => selectMessages(state, threadId),
     shallowEqual
   );
+
   useEffect(() => {
+    // Get the thread and its messages any time the id changes
     dispatch({
       type: "socket/GetThread",
       thread_id: threadId,
@@ -55,16 +57,18 @@ export default function Thread() {
   }, [threadId]);
 
   useEffect(() => {
+    // If no personality is selected, redirect to the personalities page as its required
+    if (!activePersonalityId) {
+      navigate("/");
+    }
+  }, [activePersonalityId]);
+
+  useEffect(() => {
+    // Scroll to the bottom of the messages when they change
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
-  }, [messages, messagesEndRef, thread?.status]);
-
-  useEffect(() => {
-    if (!activePersonalityId) {
-      navigate("/personalities");
-    }
-  }, [activePersonalityId]);
+  }, [messages, messagesEndRef.current, thread?.status]);
 
   if (!thread) {
     return <Loading />;
@@ -73,14 +77,14 @@ export default function Thread() {
   return (
     <div className="flex flex-1 p-4 flex-col flex-nowrap max-h-screen overflow-auto">
       <div className="flex justify-between mb-2 border-b pb-2">
-        <h1 className="text-2xl font-bold">{thread?.name || "Hello"}</h1>
+        <h1 className="text-2xl font-bold">{thread.name}</h1>
         <div className="flex-1" />
-        {thread && <EditThreadDialog thread={thread} />}
+        <EditThreadDialog thread={thread} />
         <Button
           variant="ghost"
           size="icon"
           onClick={() => {
-            dispatch({ type: "socket/DeleteThread", thread_id: threadId });
+            dispatch({ type: "socket/DeleteThread", thread_id: thread.id });
             navigate("/");
           }}
         >
@@ -91,16 +95,14 @@ export default function Thread() {
       <ScrollArea className="flex-1 overflow-y-auto">
         <div className="flex flex-col flex-nowrap max-w-[1170px] mx-auto">
           {messages
-            .filter((message) => message.role !== "system")
+            .sort((a, b) => (a.created_at > b.created_at ? 1 : -1))
             .map((message) => (
               <MessageItem key={message.id} message={message} />
             ))}
-
-          {thread && thread.message_count === 0 && messages.length === 0 ? (
+          {thread.message_count === 0 && messages.length === 0 ? (
             <div>No messages</div>
           ) : null}
-          {(!thread || !messages) && <div>Loading...</div>}
-          {thread && ["thinking", "tools"].includes(thread.status) && (
+          {thread.status !== "idle" && (
             <div className="text-sm text-gray-500 my-2">
               {getStatusMessage(thread.status)}
             </div>

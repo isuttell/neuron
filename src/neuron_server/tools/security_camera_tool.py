@@ -4,13 +4,11 @@ import cv2
 import numpy as np
 from PIL import Image
 import time
-from typing import List
-import os
 import asyncio
 from neuron_server.logger import logger
 from neuron_server.config import config
 import PIL.PngImagePlugin as PngImagePlugin
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 class CameraName(Enum):
@@ -74,7 +72,6 @@ class SecurityCameraTool(BaseTool):
                 raise Exception("Unable to read valid frame within 10s timeout")
             time.sleep(0.1)
         cap.release()
-        end_time = time.perf_counter()
         frame = cv2.resize(frame.astype(np.uint8), (1024, 1024))
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         image = Image.fromarray(frame)
@@ -87,11 +84,11 @@ class SecurityCameraTool(BaseTool):
         )
         pnginfo.add_text(
             "DateTimeOriginal",
-            datetime.now().isoformat(timespec="seconds"),
+            datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds"),
         )
         file_path = f"{config.static_folder}/images/{filename}"
         image.save(file_path, format="png", pnginfo=pnginfo)
-        url = f"http://localhost:5000/static/images/{filename}"
+        url = f"{config.static_content_url}/images/{filename}"
         logger.debug(f"Saved camera image to {file_path} available at <{url}>")
         return url
 
@@ -108,13 +105,13 @@ async def main():
     parser.add_argument(
         "--camera",
         type=str,
-        choices=[camera.value for camera in Camera],
+        choices=[camera.value for camera in CameraName],
         help="The camera to use.",
     )
 
     args = parser.parse_args()
 
-    camera_tool = CameraTool()
+    camera_tool = SecurityCameraTool()
 
     result = await camera_tool.run(prompt=args.prompt, camera=args.camera)
     print(result.content[0].text)

@@ -9,6 +9,7 @@ import {
 } from "../slices/personalitiesSlice";
 import { upsertImage, deleteImage } from "../slices/imagesSlice";
 import { upsertProviders } from "../slices/providersSlice";
+import { updateTokenStats } from "../slices/appSlice";
 interface DeleteThreadAction extends Action {
   type: "DeleteThread";
   thread_id: string;
@@ -68,6 +69,9 @@ const websocketMiddleware =
         });
         socket.on("providers", (event) => {
           dispatch(upsertProviders(event));
+        });
+        socket.on("token_stats", (event) => {
+          dispatch(updateTokenStats(event));
         });
 
         socket.on("error", (event) => {

@@ -2,9 +2,8 @@ from langchain.tools import BaseTool
 import requests
 from PIL import Image
 from io import BytesIO
-import base64
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from neuron_server.config import config
 from neuron_server.logger import logger
 
@@ -75,16 +74,12 @@ class HuggingFaceImageGenerationTool(BaseTool):
         image = self.generate_image(
             prompt, guidance_scale, num_inference_steps=num_inference_steps
         )
-        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        timestamp = datetime.now(timezone.utc).astimezone().strftime("%Y%m%d%H%M%S")
         filename = f"generated_image_{timestamp}.png"
         file_path = f"{config.static_folder}/images/{filename}"
         image.save(file_path, format="png")
         logger.debug(f"Saved image to {file_path}")
-        return f"http://localhost:5000/static/images/{filename}"
-        # buffered = BytesIO()
-        # image.save(buffered, format="png")
-        # img_str = base64.b64encode(buffered.getvalue()).decode()
-        # return f"data:image/png;base64,{img_str}"
+        return f"{config.static_content_url}/images/{filename}"
 
 
 flux_tool = HuggingFaceImageGenerationTool(

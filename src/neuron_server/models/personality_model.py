@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 from uuid import UUID, uuid4
-from datetime import datetime
+from datetime import datetime, timezone
 from neuron_server.database import database
 from typing import Self, Optional, List
 from neuron_server.models.class_factory import create_model
@@ -15,8 +15,12 @@ class PersonalityModel(BaseModel):
     memory: str = Field(
         description="Information about the personality's preferences and history"
     )
-    created_at: datetime = Field(default_factory=lambda: datetime.now())
-    updated_at: datetime = Field(default_factory=lambda: datetime.now())
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc).astimezone()
+    )
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc).astimezone()
+    )
 
     def get_context_prompt(self) -> str:
         return f"""\
@@ -105,6 +109,12 @@ Based on past conversations you have determined the following about the personal
         cursor = database.cursor()
         cursor.execute(
             "UPDATE personalities SET name = ?, context = ?, memory = ?, updated_at = ? WHERE id = ?",
-            (self.name, self.context, self.memory, datetime.now(), str(self.id)),
+            (
+                self.name,
+                self.context,
+                self.memory,
+                datetime.now(timezone.utc).astimezone(),
+                str(self.id),
+            ),
         )
         database.commit()

@@ -22,12 +22,12 @@ class LLM:
         model: Runnable,
         title_model: Optional[Runnable] = None,
         memory_model: Optional[Runnable] = None,
-        max_tokens: int = 4096,
+        max_input_tokens: int = 4096,
         tools: Optional[List[BaseTool]] = None,
     ):
         self.model = model
         self.message_trimmer = trim_messages(
-            max_tokens=max_tokens,
+            max_tokens=max_input_tokens,
             strategy="last",
             token_counter=model,
             include_system=True,

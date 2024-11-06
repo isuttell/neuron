@@ -12,6 +12,7 @@ import ErrorPage from "./error-page.tsx";
 import Image from "./routes/image.tsx";
 import Gallery from "./routes/gallery.tsx";
 import Providers from "./routes/providers.tsx";
+import Stats from "./routes/stats.tsx";
 import { socketManager } from "./WebSocketManager";
 import "./index.css";
 
@@ -39,7 +40,7 @@ const router = createBrowserRouter([
         },
       },
       {
-        path: "personalities",
+        path: "/",
         element: <Personalities />,
         loader: async () => {
           socketManager.ready().then(() => {
@@ -85,6 +86,10 @@ const router = createBrowserRouter([
           });
           return null;
         },
+      },
+      {
+        path: "stats",
+        element: <Stats />,
       },
     ],
   },

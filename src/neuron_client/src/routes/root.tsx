@@ -1,10 +1,10 @@
 import {
   CircleUser,
-  Home,
   Package2,
   Brain,
   Image as ImageIcon,
   GalleryThumbnails,
+  ChartBar,
 } from "lucide-react";
 import { useEffect } from "react";
 import { Outlet, Link, NavLink } from "react-router-dom";
@@ -13,22 +13,18 @@ import { getConnectionStatus, getSocket } from "../slices/socketSlice";
 import { Spinner } from "@/components/ui/spinner";
 import { useAppDispatch } from "../hooks";
 import NavThreads from "../threads/NavThreads";
+import TotalTokenCount from "../stats/TotalTokenCount";
 
 const links = [
   {
     to: "/",
-    label: "Dashboard",
-    Icon: Home,
+    label: "Personalities",
+    Icon: CircleUser,
   },
   {
     to: "/providers",
     label: "Providers",
     Icon: Brain,
-  },
-  {
-    to: "/personalities",
-    label: "Personalities",
-    Icon: CircleUser,
   },
   {
     to: "/image",
@@ -40,6 +36,11 @@ const links = [
     label: "Gallery",
     Icon: GalleryThumbnails,
   },
+  {
+    to: "/stats",
+    label: "Stats",
+    Icon: ChartBar,
+  },
 ];
 
 export default function Root() {
@@ -47,7 +48,6 @@ export default function Root() {
   const socket = useAppSelector(getSocket);
   const dispatch = useAppDispatch();
   useEffect(() => {
-    console.log("connecting");
     dispatch({ type: "socket/connect" });
   }, []);
 
@@ -64,7 +64,7 @@ export default function Root() {
               <span className="">Neuron</span>
             </Link>
           </div>
-          <div className="flex-1">
+          <div className="flex-1 flex flex-col overflow-y-auto">
             <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
               {links.map((link) => (
                 <NavLink
@@ -95,7 +95,6 @@ export default function Root() {
           <div className="flex flex-1 items-center justify-center h-full">
             <div className="flex flex-col items-center gap-2">
               <Spinner />
-              <span>Connecting to server...</span>
             </div>
           </div>
         )}

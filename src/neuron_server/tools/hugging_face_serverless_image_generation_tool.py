@@ -3,11 +3,10 @@ import requests
 from PIL import Image, PngImagePlugin
 from io import BytesIO
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from neuron_server.config import config
 from neuron_server.logger import logger
 from enum import Enum
-import base64
 
 
 class HuggingFaceRepoId(Enum):
@@ -19,7 +18,7 @@ class HuggingFaceRepoId(Enum):
 class HuggingFaceServerlessImageGenerationTool(BaseTool):
     name: str = "hfs_image_generation"
     description: str = (
-        "A tool that generates images based on a given prompt using diffusion models from HuggingFace. Always use the default values for guidance_scale and num_inference_steps unless the user specifies otherwise. Use this when the user asks for an image. Flux1.d is best for storytelling or projects requiring consistent character and scene continuity across multiple images, with more stylistic flexibility and dynamic visual variety. Stable Diffusion 3, however, shines in creating detailed, high-quality images based closely on explicit prompts, making it ideal for realistic scenes or when precise control over each image's look is required. Use Flux1.d for narrative sequences and Stable Diffusion 3 for fine-tuned, standalone imagery. The prompt should be a detailed description of what to generate. Make sure to include all relevant details such as location, time of day, art style, etc. Returns the url to the generated image which should be displayed using markdown."
+        "A tool that generates images based on a given prompt using diffusion models from HuggingFace. Always use the default values for guidance_scale and num_inference_steps unless the user specifies otherwise. Use this when the user asks for an image. flux.1-dev is best for storytelling or projects requiring consistent character and scene continuity across multiple images, with more stylistic flexibility and dynamic visual variety. Stable Diffusion 3.5, however, shines in creating detailed, high-quality images based closely on explicit prompts, making it ideal for realistic scenes or when precise control over each image's look is required. Use flux.1-dev for narrative sequences and Stable Diffusion 3.5 for fine-tuned, standalone imagery. The prompt should be a detailed description of what to generate. Make sure to include all relevant details such as location, time of day, art style, etc. Returns the url to the generated image which must be displayed using markdown."
     )
     base_api_url: str = "https://api-inference.huggingface.co/models"
 
@@ -95,7 +94,8 @@ class HuggingFaceServerlessImageGenerationTool(BaseTool):
                 guidance_scale=guidance_scale,
                 num_inference_steps=num_inference_steps,
             )
-            timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+            now = datetime.now(timezone.utc).astimezone()
+            timestamp = now.strftime("%Y%m%d%H%M%S")
             filename = f"generated_image_{timestamp}.png"
             pnginfo = PngImagePlugin.PngInfo()
             pnginfo.add_text("Description", prompt)
@@ -106,11 +106,11 @@ class HuggingFaceServerlessImageGenerationTool(BaseTool):
             )
             pnginfo.add_text(
                 "DateTimeOriginal",
-                datetime.now().isoformat(timespec="seconds"),
+                now.isoformat(timespec="seconds"),
             )
             file_path = f"{config.static_folder}/images/{filename}"
             image.save(file_path, format="png", pnginfo=pnginfo)
-            url = f"http://localhost:5000/static/images/{filename}"
+            url = f"{config.static_content_url}/images/{filename}"
             logger.debug(f"Saved generated image to {file_path} <{url}>")
             return url
         except Exception as e:

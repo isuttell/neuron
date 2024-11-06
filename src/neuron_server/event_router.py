@@ -1,6 +1,6 @@
 from typing import Dict, Tuple, Callable, Any, Coroutine
 from pydantic import BaseModel, Field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Self, Literal, Optional
 from quart import websocket
 from neuron_server.logger import logger
@@ -19,7 +19,9 @@ class IncomingLLMEvent(IncomingEvent):
 
 
 class OutgoingEvent(Event):
-    created_at: datetime = Field(default_factory=lambda: datetime.now())
+    created_at: str = Field(
+        default_factory=lambda: datetime.now(timezone.utc).astimezone().isoformat()
+    )
 
 
 class ErrorEvent(Event):
