@@ -19,16 +19,6 @@ const selectThread = (state: RootState, threadId?: string) =>
 const selectMessages = (state: RootState, threadId?: string) =>
   state.messages.messages.filter((message) => message.thread_id === threadId);
 
-const getStatusMessage = (status: string) => {
-  if (status === "thinking") {
-    return "Thinking...";
-  } else if (status === "tools") {
-    return "Working...";
-  } else {
-    return "Idle";
-  }
-};
-
 export default function Thread() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
@@ -68,7 +58,12 @@ export default function Thread() {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
-  }, [messages, messagesEndRef.current, thread?.status]);
+  }, [
+    messages.length,
+    messages.length > 0 && messages[messages.length - 1].content,
+    messagesEndRef.current,
+    thread?.status,
+  ]);
 
   if (!thread) {
     return <Loading />;
@@ -102,17 +97,13 @@ export default function Thread() {
           {thread.message_count === 0 && messages.length === 0 ? (
             <div>No messages</div>
           ) : null}
-          <div className="flex-1" />
           <div ref={messagesEndRef} />
-          <div className="text-sm text-gray-500 my-2 pb-2">
-            {getStatusMessage(thread.status)}
-          </div>
         </div>
       </ScrollArea>
       <div className="bottom-0">
         <MessageForm
+          status={thread.status}
           className="max-w-[1170px] mx-auto"
-          isLoading={thread.status !== "idle"}
           onSubmit={() => {}}
         />
       </div>

@@ -35,6 +35,6 @@ class LLM:
             start_on="human",
         )
         self.chat = chat_prompt | model
-        self.title = title_prompt | (title_model or model)
-        self.memory = memory_prompt | (memory_model or model)
+        self.title = title_prompt | (title_model or model).bind_tools(tools)
+        self.memory = memory_prompt | (memory_model or model).bind_tools(tools)
         self.executor = create_react_agent(tools=tools, model=model)

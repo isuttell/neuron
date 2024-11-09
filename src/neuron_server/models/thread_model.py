@@ -5,7 +5,7 @@ from sqlalchemy import select, func
 from pydantic import BaseModel, Field
 from uuid import uuid4
 from datetime import datetime, timezone
-from typing import Literal, Self
+from typing import Literal, Self, Any
 
 
 def get_context_prompt(context: str) -> str:
@@ -152,3 +152,14 @@ class ThreadModel(BaseModel):
             thread.memory = self.memory
             thread.status = self.status
             await session.commit()
+
+    @classmethod
+    async def set(cls, id: UUID, key: str, value: Any) -> Self:
+        async with get_session() as session:
+            thread = await session.get(Thread, id)
+            if not thread:
+                raise ValueError("Thread not found")
+            setattr(thread, key, value)
+            session.add(thread)
+            await session.commit()
+            return cls(**sthread.__dict__)

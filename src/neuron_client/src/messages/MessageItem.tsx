@@ -121,11 +121,10 @@ const MessageItem: React.FC<MessageItemProps> = ({
                   />
                 );
               },
-              img({ node, src, className = "", children, ...props }) {
+              img({ node, className = "", children, ...props }) {
                 return (
                   <img
-                    className={`${className} m-2 float-left w-full  max-w-[512px] rounded-md`}
-                    src={src?.replace("http://localhost:5000/", "/")}
+                    className={`${className} m-2 float-left w-full max-w-[512px] rounded-md`}
                     {...props}
                   />
                 );

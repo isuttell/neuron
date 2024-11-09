@@ -14,20 +14,23 @@ from neuron_server.tools.elevenlabs_tts_tool import ElevenLabsTTSTool
 from neuron_server.config import config
 from neuron_server.tools.elevenlabs_soundeffects_tool import ElevenLabsSoundEffectsTool
 from neuron_server.tools.ffmpeg_tool import FFmpegTool
+from neuron_server.tools.arxiv_summary_tool import ArxivSummaryTool
+
 
 homeassistant_api = HomeAssistantAPI(token=config.homeassistant.token)
 
 tools = [
     TavilySearchResults(max_results=3),
     ArxivTool(),
-    HuggingFaceServerlessImageGenerationTool(),
+    ArxivSummaryTool(),
+    # HuggingFaceServerlessImageGenerationTool(),
     InspectImageTool(),
     # InspectWebcamTool(camera=Camera()),
     SecurityCameraTool(),
     HomeAssistantTool(api=homeassistant_api),
     # HomeAssistantServiceTool(api=homeassistant_api),
-    # DalleTool(),
+    DalleTool(),
     ElevenLabsTTSTool(),
-    ElevenLabsSoundEffectsTool(),
+    # ElevenLabsSoundEffectsTool(),
     FFmpegTool(),
 ]

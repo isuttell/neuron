@@ -69,7 +69,9 @@ Example args for adding a sound effect 5000ms into the main audio:
             return f"""
 { '<video src="{url}" controls></video>' if extension == "mp4" else '<audio src="{url}"></audio>' }
 Filename: {output}
-""".strip()
+""".strip().format(
+                url=url
+            )
         except Exception as e:
             logger.exception(e)
             stderr_output = process.stderr.decode("utf-8") if process else "None"

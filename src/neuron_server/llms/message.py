@@ -18,7 +18,7 @@ from langchain_core.messages import (
     ToolMessage,
 )
 from datetime import datetime, timezone, timedelta
-from typing import List, Dict
+from typing import List, Dict, Set
 import re
 from neuron_server.llms.llm import LLM
 from uuid import UUID
@@ -66,6 +66,8 @@ async def astream_events(
 ):
     index = -1
     start_times: Dict[str, datetime] = {}
+    current_tool_calls: List[ToolCall] = []
+    current_run_id: str | None = None
     async for body in provider.executor.astream_events(
         {
             "messages": messages,
@@ -85,7 +87,17 @@ async def astream_events(
         run_id: str = body["run_id"]
         if run_id not in start_times:
             start_times[run_id] = datetime.now(timezone.utc).astimezone()
-        if kind == "on_chat_model_stream":
+
+        if kind == "on_chat_model_start":
+            if current_run_id and len(current_tool_calls) > 0:
+                await MessageModel.set(
+                    id=current_run_id,
+                    key="tool_calls",
+                    value=json.dumps(current_tool_calls),
+                )
+            current_run_id = run_id
+            current_tool_calls = []
+        elif kind == "on_chat_model_stream":
             chunk = body["data"]["chunk"]
             if isinstance(chunk, AIMessage):
                 content = get_message_content(chunk)
@@ -117,7 +129,7 @@ async def astream_events(
                 content=content,
                 role="ai",
                 thread_id=thread.id,
-                tool_calls=output.tool_calls,
+                tool_calls=current_tool_calls,
                 usage_metadata=output.usage_metadata,
                 created_at=start_times[run_id],
             )
@@ -149,7 +161,20 @@ async def astream_events(
                 tool_call_id=output.tool_call_id,
                 created_at=created_at,
             )
+            current_tool_calls.append(
+                {
+                    "id": output.tool_call_id,
+                    "name": output.name,
+                    "args": {},
+                }
+            )
             await websocket.send(MessageEvent(message=record).model_dump_json())
+    if current_run_id and len(current_tool_calls) > 0:
+        await MessageModel.set(
+            id=current_run_id,
+            key="tool_calls",
+            value=json.dumps(current_tool_calls),
+        )
     return messages
 
 
@@ -179,13 +204,66 @@ async def get_trimmed_messages(
     )
 
 
+async def update_title(thread: ThreadModel, provider: LLM, messages: List[BaseMessage]):
+    response = await provider.title.ainvoke(
+        {
+            "messages": [
+                *messages,
+                HumanMessage(
+                    content="Please update the title of our conversation so I can easily find it later"
+                ),
+            ],
+            "last_title": thread.name or "No title yet",
+        },
+        {"run_name": "title", "metadata": {"thread_id": thread.id}},
+    )
+    summary = get_message_content(response)
+    if not isinstance(summary, str) or len(summary.strip()) == 0:
+        return
+    thread.name = re.sub(
+        r'^([`*"]){0,3}|([`*"]){0,3}$',
+        "",
+        summary,
+    )
+    await thread.save()
+    thread.message_count = await thread.count_messages()
+    await websocket.send(GetThreadResponse(thread=thread).model_dump_json())
+
+
+async def update_memory(
+    thread: ThreadModel, provider: LLM, messages: List[BaseMessage]
+):
+    response = await provider.memory.ainvoke(
+        {
+            "messages": [
+                *messages,
+                *(
+                    [
+                        HumanMessage(
+                            content="Please update the memory of our conversation"
+                        )
+                    ]
+                    if provider.provider != "openai"
+                    else []
+                ),
+            ],
+            "memory": thread.memory or "No memory yet",
+        },
+        {"run_name": "update_memory", "metadata": {"thread_id": thread.id}},
+    )
+    memory = get_message_content(response)
+    if isinstance(memory, str) and len(memory.strip()) > 0 and memory != thread.memory:
+        thread.memory = memory
+        await thread.save()
+        logger.debug(f"Updated memory for thread {thread.id}:\n{thread.memory}")
+
+
 async def ainvoke(
     thread_id: UUID,
     prompt: str,
     personality_id: UUID | None = None,
     provider_id: UUID | None = None,
     save_user_message: bool = True,
-    update_memory: bool = False,
 ):
     thread = await ThreadModel.get(thread_id)
     if not thread:
@@ -193,6 +271,22 @@ async def ainvoke(
         return
 
     try:
+        if save_user_message:
+            user_message: MessageModel = await MessageModel.create(
+                thread_id=thread.id,
+                role="human",
+                content=prompt,
+            )
+            logger.debug(
+                f"Sending user message {user_message.id} at {user_message.created_at.isoformat()}"
+            )
+            # Don't need to wait for this to send
+            await websocket.send(
+                MessageEvent(
+                    message=user_message,
+                ).model_dump_json()
+            )
+
         await update_thread_status(thread, "thinking")
 
         personality = (
@@ -211,22 +305,6 @@ async def ainvoke(
 
         provider = get_provider(provider_id)
 
-        if save_user_message:
-            user_message: MessageModel = await MessageModel.create(
-                thread_id=thread.id,
-                role="human",
-                content=prompt,
-            )
-            logger.debug(
-                f"Sending user message {user_message.id} at {user_message.created_at.isoformat()}"
-            )
-            # Don't need to wait for this to send
-            await websocket.send(
-                MessageEvent(
-                    message=user_message,
-                ).model_dump_json()
-            )
-
         messages = await get_trimmed_messages(
             thread=thread,
             llm=provider,
@@ -235,104 +313,24 @@ async def ainvoke(
             # so we need to add it here if it's not saved
             messages=[HumanMessage(content=prompt)] if not save_user_message else [],
         )
-        initial_messages_length = len(messages)
+
         messages = await astream_events(provider, messages, thread)
-        new_messages = messages[initial_messages_length:]
 
-        # Add the tool calls to the preceding AI message
-        updated_messages: List[AIMessage] = []
-        for message in new_messages:
-            if isinstance(message, ToolMessage):
-                # Find the preceding AI message
-                preceding_ai_message = next(
-                    (
-                        msg
-                        for msg in reversed(new_messages[: new_messages.index(message)])
-                        if isinstance(msg, AIMessage)
-                    ),
-                    None,
-                )
-                if not preceding_ai_message:
-                    raise ValueError("No preceding AI message found")
+        # Main response is done, update the status
+        await update_thread_status(thread, "idle")
 
-                tool_call: ToolCall = {
-                    "id": message.tool_call_id,
-                    "name": message.name,
-                    "args": {},
-                }
-                if tool_call["id"] not in (
-                    tc["id"] for tc in preceding_ai_message.tool_calls
-                ):
-                    updated_messages.append(preceding_ai_message)
-                    preceding_ai_message.tool_calls.append(tool_call)
-
-        # Ensure the tool calls are saved in the db correctly
-        for message in updated_messages:
-            await MessageModel.set(
-                id=message.id.replace("run-", ""),
-                key="tool_calls",
-                value=json.dumps(message.tool_calls),
-            )
-
-        await update_thread_status(thread, "thinking")
-        # Update the trimmed messages to include the new messages but exclude
-        # the tools calls
+        # Update the trimmed messages to include and ensure the right message order
         messages = await get_trimmed_messages(
             thread=thread,
             llm=provider,
             system_prompts=system_prompts,
-            remove_tools=True,
         )
 
-        summary_response = await provider.title.ainvoke(
-            {
-                "messages": [
-                    *messages,
-                    HumanMessage(
-                        content="Please update the title of our conversation so I can easily find it later"
-                    ),
-                ],
-                "last_title": thread.name or "No title yet",
-            },
-            {"run_name": "title", "metadata": {"thread_id": thread.id}},
-        )
-        summary = get_message_content(summary_response)
-        if isinstance(summary, str) and len(summary.strip()) > 0:
-            thread.name = re.sub(
-                r'^([`*"]){0,3}|([`*"]){0,3}$',
-                "",
-                clean_eos_tokens(summary),
-            )
-            await thread.save()
+        # Update the title
+        await update_title(thread, provider, messages)
 
-        thread.message_count = await thread.count_messages()
-        await websocket.send(GetThreadResponse(thread=thread).model_dump_json())
+        # Update the memory
+        await update_memory(thread, provider, messages)
 
-        if update_memory:
-            memory_response = await provider.memory.ainvoke(
-                {
-                    "messages": [
-                        *messages,
-                        *(
-                            [
-                                HumanMessage(
-                                    content="Please update the memory of our conversation"
-                                )
-                            ]
-                            if provider.provider != "openai"
-                            else []
-                        ),
-                    ],
-                    "memory": thread.memory or "No memory yet",
-                },
-                {"run_name": "memory", "metadata": {"thread_id": thread.id}},
-            )
-            memory = get_message_content(memory_response)
-            if isinstance(memory, str) and len(memory.strip()) > 0:
-                thread.memory = memory
-                await thread.save()
-                logger.debug(
-                    f"Updated memory for thread {thread.id}: \n{thread.memory}"
-                )
     finally:
         await update_thread_status(thread, "idle")

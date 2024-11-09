@@ -42,7 +42,7 @@ memory_prompt = ChatPromptTemplate.from_messages(
         (
             "system",
             """
-You are helping another LLM. You not having a conversation but reviewing a previous one so do not ask follow up questions. Given the conversation history and previous memory, extract important information that should be used outside of this conversation to improve future responses with the user. Do not remember the user asking you to remember things. Only update the memory with information that is relevant for future interactions. Do not assume anything. Do not include the exact conversation history in the memory. The memory will be included in future system prompts and in an instructional format. Only return the updated memory. Store it as a JSON object. Do not include any other text, headers, etc., or ask follow up questions.
+You are helping another LLM. You not having a conversation but reviewing a previous one so do not ask follow up questions. Given the conversation history and previous memory, extract important information that should kept to improve future responses with the user. Do not remember the user asking you to remember things. Only update the memory with information that is relevant for future interactions. Do not assume anything. Do not include the exact conversation history in the memory. The memory will be included in future system prompts and in an instructional format. Only return the updated memory. Store it as a JSON object. Do not include any other text, headers, etc., or ask follow up questions.
 
 Previous memory:
 \"\"\"
@@ -70,4 +70,39 @@ Prompt:
 \"\"\"
 """.strip(),
     input_variables=["context", "prompt"],
+)
+
+document_summarize_page_prompt = PromptTemplate(
+    template="""
+You are a researcher and an expert document summarizer. You are writing a report on a document and are reading each page one at a time in order. Write a detailed summary of the current page to later be used to answer questions about the document. Use the last page summary to help you write the current page summary. Do ask any questions or explain anything. Use markdown formatting for the report.
+
+Last Page Summary:
+\"\"\"
+{last_page}
+\"\"\"
+
+Document Page {page_number} of {total_pages}:
+\"\"\"
+{page}
+\"\"\"
+""".strip(),
+    input_variables=["last_page", "page", "page_number", "total_pages"],
+)
+
+
+document_summarize_prompt = PromptTemplate(
+    template="""
+You are a researcher and an expert document summarizer. You are given the metadata for an arxiv paper and the summaries of each page. Combine the metadata and page summaries to create a detailed summary of the entire paper. Use the metadata to help you write the summary. Do not ask any questions or explain anything. Use markdown formatting.
+
+arxiv metadata:
+\"\"\"
+{metadata}
+\"\"\"
+
+Page Summaries:
+\"\"\"
+{pages}
+\"\"\"
+""".strip(),
+    input_variables=["pages", "metadata"],
 )

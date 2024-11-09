@@ -29,5 +29,9 @@ class AnthropicLLM(LLM):
             max_tokens=1024,
         )
         super().__init__(
-            model, title_model, memory_model, tools=tools, max_input_tokens=15000
+            model=model,
+            title_model=title_model,
+            memory_model=memory_model,
+            tools=tools,
+            max_input_tokens=15000,
         )

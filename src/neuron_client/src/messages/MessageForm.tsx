@@ -9,16 +9,29 @@ import { CornerDownLeft } from "lucide-react";
 import { getActivePersonalityId } from "../slices/personalitiesSlice";
 import { getActiveProviderId } from "../slices/providersSlice";
 import { Spinner } from "@/components/ui/spinner";
+
 interface MessageFormProps {
-  isLoading?: boolean;
+  status: string;
   disabled?: boolean;
   onSubmit: (value: string) => void;
   className?: string;
 }
 
+const getStatusMessage = (status: string) => {
+  if (status === "thinking") {
+    return "Thinking...";
+  } else if (status === "tools") {
+    return "Working...";
+  } else if (status === "streaming") {
+    return "Streaming...";
+  } else {
+    return "Idle";
+  }
+};
+
 export default function MessageForm({
   disabled = false,
-  isLoading = false,
+  status,
   onSubmit,
   className = "",
 }: MessageFormProps) {
@@ -66,6 +79,8 @@ export default function MessageForm({
         }}
       />
       <div className="flex items-center pt-2">
+        <div className="text-sm text-gray-500">{getStatusMessage(status)}</div>
+        <div className="flex-1" />
         <Button
           onClick={handleSubmit}
           type="submit"
@@ -73,7 +88,7 @@ export default function MessageForm({
           className="ml-auto gap-1.5"
           disabled={disabled}
         >
-          {isLoading ? (
+          {status !== "idle" ? (
             <>
               <Spinner className="size-3.5" />
             </>

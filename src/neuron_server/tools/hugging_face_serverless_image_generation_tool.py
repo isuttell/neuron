@@ -18,7 +18,7 @@ class HuggingFaceRepoId(Enum):
 class HuggingFaceServerlessImageGenerationTool(BaseTool):
     name: str = "hfs_image_generation"
     description: str = (
-        "A tool that generates images based on a given prompt using diffusion models from HuggingFace. Always use the default values for guidance_scale and num_inference_steps unless the user specifies otherwise. Use this when the user asks for an image. flux.1-dev is best for storytelling or projects requiring consistent character and scene continuity across multiple images, with more stylistic flexibility and dynamic visual variety. Stable Diffusion 3.5, however, shines in creating detailed, high-quality images based closely on explicit prompts, making it ideal for realistic scenes or when precise control over each image's look is required. Use flux.1-dev for narrative sequences and Stable Diffusion 3.5 for fine-tuned, standalone imagery. The prompt should be a detailed description of what to generate. Make sure to include all relevant details such as location, time of day, art style, etc. Returns the url to the generated image which must be displayed using markdown."
+        "A tool that generates an image based on a given prompt using diffusion models from HuggingFace and returns it in markdown format. Always use the default values for guidance_scale and num_inference_steps unless the user specifies otherwise. Use this when the user asks for an image. flux.1-dev is best for storytelling or projects requiring consistent character and scene continuity across multiple images, with more stylistic flexibility and dynamic visual variety. Stable Diffusion 3.5, however, shines in creating detailed, high-quality images based closely on explicit prompts, making it ideal for realistic scenes or when precise control over each image's look is required. The prompt should be a detailed description of what to generate. Make sure to include all relevant details such as location, time of day, art style, etc. to ensure better consistency and quality."
     )
     base_api_url: str = "https://api-inference.huggingface.co/models"
 
@@ -27,7 +27,7 @@ class HuggingFaceServerlessImageGenerationTool(BaseTool):
         prompt: str,
         repo_id: str,
         guidance_scale: float = 3.5,
-        num_inference_steps: int = 20,
+        num_inference_steps: int = 25,
     ) -> Image.Image:
         """
         Generate an image based on the given prompt using diffusion models from HuggingFace.
@@ -36,7 +36,7 @@ class HuggingFaceServerlessImageGenerationTool(BaseTool):
             prompt (str): The prompt to generate the image from.
             repo_id (HuggingFaceRepoId): The repository ID of the model to use for image generation.
             guidance_scale (float, optional): The guidance scale for the image generation. Defaults to 3.5.
-            num_inference_steps (int, optional): The number of inference steps for the image generation. Defaults to 10.
+            num_inference_steps (int, optional): The number of inference steps for the image generation. Defaults to 25.
 
         Returns:
             Image.ImageFile: The generated image.
@@ -70,7 +70,7 @@ class HuggingFaceServerlessImageGenerationTool(BaseTool):
         prompt: str,
         repo_id: HuggingFaceRepoId = HuggingFaceRepoId.FLUX_1_DEV,
         guidance_scale: float = 3.5,
-        num_inference_steps: int = 20,
+        num_inference_steps: int = 25,
     ) -> str:
         """
         Run the tool to generate an image based on the given prompt.
@@ -78,7 +78,7 @@ class HuggingFaceServerlessImageGenerationTool(BaseTool):
             prompt (str): The prompt to generate the image from.
             repo_id (HuggingFaceRepoId, optional): The repository ID of the model to use for image generation. Defaults to FLUX_1_DEV.
             guidance_scale (float, optional): The guidance scale for the image generation. Defaults to 3.5.
-            num_inference_steps (int, optional): The number of inference steps for the image generation. Defaults to 10.
+            num_inference_steps (int, optional): The number of inference steps for the image generation. Defaults to 25.
 
         Returns:
             str: The URL or path to the generated image.

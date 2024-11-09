@@ -53,14 +53,7 @@ class ElevenLabsTTSTool(BaseTool):
     name: str = "elevenlabs_tts"
     description: str = (
         """
-This tool generates audio from a provided script.
-
-Supported Voices:
-    Conversational: Chris, Eric, Charlie, Jessica, River, Laura, Aria
-    Narrator: Bill, Brian, Lily, Matilda
-    Character: Callum
-
-The input script format should consist of speaker identifiers followed by their respective dialogues, formatted as the example below:
+This tool generates audio from a provided script. The input script format should consist of speaker identifiers followed by their respective dialogues, formatted as the example below:
 
 Example:
 ```
@@ -70,6 +63,31 @@ Hello, how are you?
 [Jessica]
 I'm great!
 ```
+
+Use one of the following voices for the speaker:
+
+Conversational Voices:
+Aria
+Charlie
+Chris
+Eric
+Jessica
+Laura
+River
+
+Narrator Voices:
+Bill
+Brian
+Lily
+Matilda
+
+News Voices:
+Sarah
+Daniel
+
+Character Voices:
+Callum
+Charlotte
 
 The tool will use ElevenLabs' TTS API to generate the audio and return a link to the final audio file. Each script block should be short enough to be processed in a single call to the API. Use this tool to generate audio when the users requests it. The result should always include a playable <audio> tag that users the src attribute to link the audio file. Do not include the filename in the response.
 """.strip()
@@ -96,7 +114,7 @@ The tool will use ElevenLabs' TTS API to generate the audio and return a link to
                 response = client.generate(
                     text=line["text"],
                     voice=line["voice"],
-                    model="eleven_multilingual_v2",
+                    # model="eleven_multilingual_v2",
                 )
                 audio_file_path = working_dir + "/" + f"line-{index}.mp3"
                 audio_files.append(audio_file_path)

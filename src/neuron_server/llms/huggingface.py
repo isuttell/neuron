@@ -12,7 +12,7 @@ class HuggingFaceLLM(LLM):
     def __init__(
         self,
         repo_id: str,
-        max_tokens: int = 1024,
+        max_tokens: int = 4096,
     ):
         llm = HuggingFaceEndpoint(
             repo_id=repo_id,

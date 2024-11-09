@@ -22,10 +22,17 @@ langsmith = "*"
 aiohttp = "*"
 arxiv = "*"
 pymupdf4llm = "*"
-faiss-cpu = "*"
 elevenlabs = "*"
 asyncpg = "*"
 sqlalchemy = { version = "*", extras = ["asyncio"] }
+sentence-transformers = "*"
+torch = { version = "*", source = "pytorch" }
+langchain_postgres = "*"
+
+[[tool.poetry.source]]
+name = "pytorch"
+url = "https://download.pytorch.org/whl/cu124"
+default = false
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

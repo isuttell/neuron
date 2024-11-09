@@ -9,41 +9,41 @@ from openai import OpenAI
 from typing import Literal
 
 
+def generate_image(
+    prompt: str,
+    style: Literal["natural", "vivid"] = "vivid",
+) -> Image.Image:
+    """
+    Generate an image based on the given prompt dalle
+
+    Args:
+        prompt (str): The prompt to generate the image from.
+
+    Returns:
+        Image.ImageFile: The generated image.
+    """
+
+    client = OpenAI(api_key=config.openai_api_key)
+    response = client.images.generate(
+        model="dall-e-3",
+        prompt=prompt,
+        size="1024x1024",
+        quality="hd",
+        style=style,
+        n=1,
+    )
+    # Download the image so we can save it long term
+    image_url = response.data[0].url
+    image = response = requests.get(image_url)
+    image.raise_for_status()
+    return Image.open(BytesIO(image.content))
+
+
 class DalleTool(BaseTool):
     name: str = "dalle"
     description: str = (
-        "A tool that generates images based on a given prompt using OpenAI's DALL-E 3.  DALL-E is suited for generating highly detailed, standalone images with precise attributes, especially in realistic or semi-realistic styles. Use this when the user asks for an image. When generating DALL-E prompts, include specific visual details, such as colors, textures, and object placements, to guide the model toward a precise result. Mention the desired style (e.g., photorealistic, cartoonish, or abstract) and add context, like background elements or lighting, for more cohesive images. Focus on clarity and conciseness in each prompt to avoid ambiguity and ensure reproducible results. Returns the url to the generated image which must be displayed using markdown."
+        "A tool that generates an image based on a given prompt using OpenAI's DALL-E 3 and returns it in markdown format. DALL-E is suited for generating highly detailed, standalone images with precise attributes, especially in realistic or semi-realistic styles. Use this when the user asks for an image. When generating DALL-E prompts, include specific visual details, such as colors, textures, and object placements, to guide the model toward a precise result. Mention the desired style (e.g., photorealistic, cartoonish, or abstract) and add context, like background elements or lighting, for more cohesive images. Focus on clarity and conciseness in each prompt to avoid ambiguity and ensure reproducible results. Returns the url to the generated image which must be displayed using markdown."
     )
-
-    def generate_image(
-        self,
-        prompt: str,
-        style: Literal["natural", "vivid"] = "vivid",
-    ) -> Image.Image:
-        """
-        Generate an image based on the given prompt dalle
-
-        Args:
-            prompt (str): The prompt to generate the image from.
-
-        Returns:
-            Image.ImageFile: The generated image.
-        """
-
-        client = OpenAI(api_key=config.openai_api_key)
-        response = client.images.generate(
-            model="dall-e-3",
-            prompt=prompt,
-            size="1024x1024",
-            quality="hd",
-            style=style,
-            n=1,
-        )
-        # Download the image so we can save it long term
-        image_url = response.data[0].url
-        image = response = requests.get(image_url)
-        image.raise_for_status()
-        return Image.open(BytesIO(image.content))
 
     def _run(
         self,
@@ -51,15 +51,16 @@ class DalleTool(BaseTool):
         style: Literal["natural", "vivid"] = "vivid",
     ) -> str:
         """
-        Run the tool to generate an image based on the given prompt.
+        Runs the tool to generate an image based on the given prompt.
         Args:
             prompt (str): The prompt to generate the image from.
+            style (Literal["natural", "vivid"]): The style of the image to generate.
 
         Returns:
-            str: The URL or path to the generated image.
+            str: A markdown string containing the generated image.
         """
         try:
-            image = self.generate_image(
+            image = generate_image(
                 prompt=prompt,
                 style=style,
             )

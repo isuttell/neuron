@@ -7,6 +7,7 @@ from neuron_server.controllers.events.message_events import (
     PostMessage,
 )
 from neuron_server.llms.message import ainvoke
+from neuron_server.logger import logger
 
 router = EventRouter()
 
@@ -23,6 +24,7 @@ async def get_thread_messages(event: GetThreadMessages):
         for message in await MessageModel.list(thread.id)
         if isinstance(message.content, str) and len(message.content) > 0
     ]
+
     for message in messages:
         await websocket.send(MessageEvent(message=message).model_dump_json())
 
