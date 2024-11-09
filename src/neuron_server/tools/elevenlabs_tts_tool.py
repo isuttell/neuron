@@ -132,7 +132,7 @@ The tool will use ElevenLabs' TTS API to generate the audio and return a link to
             url = config.static_content_url + "/tts/" + filename
             logger.info(f"Generated audio file saved to {output} <{url}>")
             return f"""
-URL: <{url}>
+<audio src="{url}"></audio>
 Filename: {output}
 """.strip()
         except Exception as e:

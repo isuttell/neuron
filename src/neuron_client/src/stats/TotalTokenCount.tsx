@@ -24,10 +24,10 @@ function formatNumber(num: number): string {
   if (num < 1000) {
     return num.toString();
   }
-  const units = ["k", "m ", "b", "t"];
+  const units = ["k", "M ", "B", "T"];
   const order = Math.floor(Math.log10(num) / 3);
   const unitName = units[order - 1];
-  const shortNum = Math.round(num / Math.pow(1000, order));
+  const shortNum = parseFloat((num / Math.pow(1000, order)).toFixed(1));
   return `${shortNum}${unitName}`;
 }
 

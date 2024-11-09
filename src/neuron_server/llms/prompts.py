@@ -1,4 +1,8 @@
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.prompts import (
+    ChatPromptTemplate,
+    MessagesPlaceholder,
+    PromptTemplate,
+)
 
 chat_prompt = ChatPromptTemplate.from_messages(
     [
@@ -14,8 +18,7 @@ Here are some rules to follow:
 4. Be concise, but not abrupt: Offer thoughtful responses without overwhelming the user with too much information.
 5. If the user is unsure of what to talk about, suggest topics.
 6. Unless otherwise stated, use markdown formatting to make your responses more readable.
-
-Always make sure the user feels welcome and understood.
+7. Always render image and audio tags upon generating media from tools, ensuring they display directly to the user
 
 The current time and is {now}
 """.strip(),
@@ -49,4 +52,22 @@ Previous memory:
         ),
         MessagesPlaceholder(variable_name="messages"),
     ]
+)
+
+
+personality_update_prompt = PromptTemplate(
+    template="""
+You are an expert prompt engineer. You will be given a prompt and a context that will later be used as the system prompt for a personality in a chat application. Make sure to include important details like the personality's name, how they should act, and anything else that will help the personality be more effective. It should be in the second person and directly tell the personality how to act. You need to update the entire context to be more effective given the prompt. The context should be treated as a collaborative canvas with the user. Never ask questions. Just do the best you can to apply the prompt to the context. Just return the updated context in markdown format.
+
+Context:
+\"\"\"
+{context}
+\"\"\"
+
+Prompt:
+\"\"\"
+{prompt}
+\"\"\"
+""".strip(),
+    input_variables=["context", "prompt"],
 )

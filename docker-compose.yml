@@ -1,0 +1,11 @@
+services:
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+  db:
+    image: pgvector/pgvector:pg17
+    environment:
+      - POSTGRES_DB=neuron
+      - POSTGRES_USER=neuron

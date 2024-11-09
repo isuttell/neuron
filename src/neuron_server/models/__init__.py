@@ -1,4 +1,3 @@
 from neuron_server.models.personality_model import PersonalityModel
 from neuron_server.models.thread_model import ThreadModel
 from neuron_server.models.message_model import MessageModel
-from neuron_server.models.image_model import ImageModel

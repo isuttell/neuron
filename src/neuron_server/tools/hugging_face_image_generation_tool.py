@@ -34,9 +34,6 @@ class HuggingFaceImageGenerationTool(BaseTool):
         """
         start_time = time.perf_counter()
         try:
-            logger.debug(
-                f'Generating image of "{prompt}" using {self.api_url} with guidance_scale={guidance_scale} and num_inference_steps={num_inference_steps}'
-            )
             headers = {
                 "Authorization": f"Bearer {config.hf_token}",
                 "Accept": "image/png",

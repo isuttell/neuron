@@ -32,7 +32,7 @@ def get_message_content(message: BaseMessage):
 class InspectImageTool(BaseTool):
     name: str = "inspect_image"
     description: str = (
-        "This tool uses a OpenAI GPT-4o multi-modal vision capabilities to inspect an image and return a description of the image. Images are downloaded from the provided URL. The prompt should be a question about what is in the image. Use this tool to when you need to answer a question about an image."
+        "This tool uses a OpenAI GPT-4o multi-modal vision capabilities to inspect an image and return a description of the image. Images are downloaded from the provided URL. The prompt should be a detailed question about what is in the image. Use this tool to when you need to answer a question about an image."
     )
 
     def _run(self, image_url: str, prompt: str, max_tokens: int = 300) -> str:

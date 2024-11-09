@@ -2,7 +2,6 @@ import {
   CircleUser,
   Package2,
   Brain,
-  Image as ImageIcon,
   GalleryThumbnails,
   ChartBar,
 } from "lucide-react";
@@ -13,7 +12,6 @@ import { getConnectionStatus, getSocket } from "../slices/socketSlice";
 import { Spinner } from "@/components/ui/spinner";
 import { useAppDispatch } from "../hooks";
 import NavThreads from "../threads/NavThreads";
-import TotalTokenCount from "../stats/TotalTokenCount";
 
 const links = [
   {

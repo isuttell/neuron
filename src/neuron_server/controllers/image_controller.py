@@ -4,9 +4,7 @@ from neuron_server.controllers.events.image_events import (
     ImageFromDisk,
     ImageResponse,
     GetImages,
-    DeleteImage,
 )
-from neuron_server.models import ImageModel
 import os
 from PIL import Image
 from neuron_server.config import config

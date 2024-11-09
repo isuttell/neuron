@@ -15,7 +15,7 @@ import {
   getActivePersonality,
 } from "@/slices/personalitiesSlice";
 import { cn } from "@/lib/utils";
-
+import { Link } from "react-router-dom";
 interface PersonalityItemProps {
   personality: Personality;
   className?: string;
@@ -53,7 +53,10 @@ const PersonalityItem: React.FC<PersonalityItemProps> = ({
           </span>
         </div>
       </CardContent>
-      <CardFooter>
+      <CardFooter className="flex gap-2">
+        <Button className="w-full" variant="secondary" asChild>
+          <Link to={`/personality/${personality.id}`}>Edit</Link>
+        </Button>
         <Button
           className="w-full"
           variant={isActive ? "default" : "secondary"}

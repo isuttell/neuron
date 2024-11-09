@@ -25,7 +25,7 @@ const getStatusMessage = (status: string) => {
   } else if (status === "tools") {
     return "Working...";
   } else {
-    return "";
+    return "Idle";
   }
 };
 
@@ -93,7 +93,7 @@ export default function Thread() {
         </Button>
       </div>
       <ScrollArea className="flex-1 overflow-y-auto">
-        <div className="flex flex-col flex-nowrap max-w-[1170px] mx-auto">
+        <div className="flex flex-1 flex-col flex-nowrap max-w-[1170px] mx-auto">
           {messages
             .sort((a, b) => (a.created_at > b.created_at ? 1 : -1))
             .map((message) => (
@@ -102,12 +102,11 @@ export default function Thread() {
           {thread.message_count === 0 && messages.length === 0 ? (
             <div>No messages</div>
           ) : null}
-          {thread.status !== "idle" && (
-            <div className="text-sm text-gray-500 my-2">
-              {getStatusMessage(thread.status)}
-            </div>
-          )}
+          <div className="flex-1" />
           <div ref={messagesEndRef} />
+          <div className="text-sm text-gray-500 my-2 pb-2">
+            {getStatusMessage(thread.status)}
+          </div>
         </div>
       </ScrollArea>
       <div className="bottom-0">

@@ -1,10 +1,31 @@
+from uuid import UUID
+from typing import List, Optional
+from neuron_server.database import get_session, Thread, Message
+from sqlalchemy import select, func
 from pydantic import BaseModel, Field
-from uuid import UUID, uuid4
+from uuid import uuid4
 from datetime import datetime, timezone
-from typing import Self, List, Optional
-from neuron_server.database import database
-from neuron_server.models.class_factory import create_model
-from typing import Literal
+from typing import Literal, Self
+
+
+def get_context_prompt(context: str) -> str:
+    if not context or len(context.strip()) == 0:
+        return ""
+    return f"""\
+The user has provided the following custom instructions for this specific conversation. Use them to guide your response:
+\"\"\"
+{context}
+\"\"\"""".strip()
+
+
+def get_memory_prompt(memory: str) -> str:
+    if not memory or len(memory.strip()) == 0:
+        return ""
+    return f"""\
+Based on past conversations you determined the following was important to remember:
+\"\"\"
+{memory}
+\"\"\"""".strip()
 
 
 class ThreadModel(BaseModel):
@@ -25,6 +46,10 @@ class ThreadModel(BaseModel):
     personality_id: UUID = Field(
         description="The personality ID associated with the thread"
     )
+    message_count: int = Field(
+        description="The number of messages in the thread",
+        default=0,
+    )
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc).astimezone()
     )
@@ -36,41 +61,22 @@ class ThreadModel(BaseModel):
         if not self.context or len(self.context.strip()) == 0:
             return ""
         return f"""\
-The user has provided the following custom instructions for this specific conversation. Use them to guide your response:
-\"\"\"
-{self.context}
-\"\"\"""".strip()
+    The user has provided the following custom instructions for this specific conversation. Use them to guide your response:
+    \"\"\"
+    {self.context}
+    \"\"\"""".strip()
 
     def get_memory_prompt(self) -> str:
         if not self.memory or len(self.memory.strip()) == 0:
             return ""
         return f"""\
-Based on past conversations you determined the following was important to remember:
-\"\"\"
-{self.memory}
-\"\"\"""".strip()
-
-    @staticmethod
-    def create_table_if_not_exists():
-        cursor = database.cursor()
-        cursor.execute(
-            """
-            CREATE TABLE IF NOT EXISTS threads (
-                id TEXT PRIMARY KEY,
-                name TEXT DEFAULT '',
-                context TEXT DEFAULT '',
-                memory TEXT DEFAULT '',
-                status TEXT DEFAULT 'idle',
-                personality_id TEXT REFERENCES personalities(id) NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """
-        )
-        database.commit()
+    Based on past conversations you determined the following was important to remember:
+    \"\"\"
+    {self.memory}
+    \"\"\"""".strip()
 
     @classmethod
-    def create(
+    async def create(
         cls,
         personality_id: UUID,
         name: Optional[str] = "",
@@ -79,76 +85,70 @@ Based on past conversations you determined the following was important to rememb
         status: Optional[str] = "idle",
         id: Optional[UUID] = None,
     ) -> Self:
-        cursor = database.cursor()
-        cursor.execute(
-            "INSERT INTO threads (id, name, context, memory, status, personality_id) VALUES (?, ?, ?, ?, ?, ?) RETURNING *",
-            (
-                str(id) if id else str(uuid4()),
-                name or "",
-                context or "",
-                memory or "",
-                status or "idle",
-                str(personality_id),
-            ),
-        )
-        data = cursor.fetchone()
-        if not data:
-            raise ValueError("Thread not created")
-        record = create_model(cls, data)
-        database.commit()
-        return record
+        async with get_session() as session:
+            thread = Thread(
+                id=id,
+                name=name,
+                context=context,
+                memory=memory,
+                status=status,
+                personality_id=personality_id,
+            )
+            session.add(thread)
+            await session.commit()
+            return cls(**thread.__dict__)
 
     @staticmethod
-    def delete(id: UUID):
-        cursor = database.cursor()
-        cursor.execute("DELETE FROM threads WHERE id = ?", (str(id),))
-        database.commit()
+    async def delete(id: UUID) -> None:
+        async with get_session() as session:
+            await session.delete(await session.get(Thread, id))
+            await session.commit()
 
     @classmethod
-    def update(
+    async def update(
         cls, id: UUID, name: str, context: str, memory: str, status: str
     ) -> Self:
-        cursor = database.cursor()
-        cursor.execute(
-            "UPDATE threads SET name = ?, context = ?, memory = ?, status = ? WHERE id = ? RETURNING *",
-            (name, context, memory, status, str(id)),
-        )
-        data = cursor.fetchone()
-        if not data:
-            raise ValueError("Thread not updated")
-        record = create_model(cls, data)
-        database.commit()
-        return record
+        async with get_session() as session:
+            thread = await session.get(Thread, id)
+            thread.name = name
+            thread.context = context
+            thread.memory = memory
+            thread.status = status
+            await session.commit()
+            return cls(**thread.__dict__)
 
     @classmethod
-    def get(cls, id: UUID) -> Self:
-        cursor = database.cursor()
-        cursor.execute("SELECT * FROM threads WHERE id = ?", (str(id),))
-        model = cursor.fetchone()
-        if not model:
+    async def get(cls, id: UUID) -> Optional[Self]:
+        async with get_session() as session:
+            data = await session.get(Thread, id)
+            if data:
+                return cls(**data.__dict__)
             return None
-        return create_model(cls, model)
 
     @classmethod
-    def list(cls, personality_id: UUID) -> List[Self]:
-        cursor = database.cursor()
-        cursor.execute(
-            "SELECT * FROM threads WHERE personality_id = ?", (str(personality_id),)
-        )
-        return [create_model(cls, row) for row in cursor.fetchall()]
+    async def list(cls, personality_id: UUID) -> List[Self]:
+        async with get_session() as session:
+            results = await session.execute(
+                select(Thread).where(Thread.personality_id == personality_id)
+            )
+            return [cls(**thread.__dict__) for thread in results.scalars().all()]
 
-    def save(self):
-        cursor = database.cursor()
-        cursor.execute(
-            "UPDATE threads SET name = ?, context = ?, memory = ?, status = ? WHERE id = ?",
-            (self.name, self.context, self.memory, self.status, str(self.id)),
-        )
-        database.commit()
+    async def count_messages(self) -> int:
+        async with get_session() as session:
+            results = await session.execute(
+                select(func.count()).where(
+                    Message.thread_id == self.id, Message.role != "system"
+                )
+            )
+            return results.scalar()
 
-    def count_messages(self) -> int:
-        cursor = database.cursor()
-        cursor.execute(
-            "SELECT COUNT(*) FROM messages WHERE thread_id = ? AND role != 'system'",
-            (str(self.id),),
-        )
-        return cursor.fetchone()[0]
+    async def save(
+        self,
+    ) -> None:
+        async with get_session() as session:
+            thread = await session.get(Thread, self.id)
+            thread.name = self.name
+            thread.context = self.context
+            thread.memory = self.memory
+            thread.status = self.status
+            await session.commit()

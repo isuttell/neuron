@@ -13,6 +13,7 @@ import Image from "./routes/image.tsx";
 import Gallery from "./routes/gallery.tsx";
 import Providers from "./routes/providers.tsx";
 import Stats from "./routes/stats.tsx";
+import Personality from "./routes/personality.tsx";
 import { socketManager } from "./WebSocketManager";
 import "./index.css";
 
@@ -46,6 +47,19 @@ const router = createBrowserRouter([
           socketManager.ready().then(() => {
             store.dispatch({
               type: "socket/GetPersonalities",
+            });
+          });
+          return null;
+        },
+      },
+      {
+        path: "/personality/:personalityId",
+        element: <Personality />,
+        loader: async ({ params: { personalityId } }) => {
+          socketManager.ready().then(() => {
+            store.dispatch({
+              type: "socket/GetPersonality",
+              personality_id: personalityId,
             });
           });
           return null;

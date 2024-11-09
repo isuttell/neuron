@@ -9,7 +9,6 @@ from neuron_server.controllers.events.message_events import (
 )
 from neuron_server.controllers.events.thread_events import (
     GetThreadResponse,
-    ThreadExtended,
 )
 from langchain_core.messages import (
     BaseMessage,
@@ -18,8 +17,8 @@ from langchain_core.messages import (
     HumanMessage,
     ToolMessage,
 )
-from datetime import datetime, timezone
-from typing import List, Set, Dict
+from datetime import datetime, timezone, timedelta
+from typing import List, Dict
 import re
 from neuron_server.llms.llm import LLM
 from uuid import UUID
@@ -33,14 +32,9 @@ async def update_thread_status(thread: ThreadModel, status: str):
     if thread.status != status:
         logger.debug(f"Updating thread {thread.id} status to {status}")
         thread.status = status
-        thread.save()
-        await websocket.send(
-            GetThreadResponse(
-                thread=ThreadExtended(
-                    **thread.model_dump(), message_count=thread.count_messages()
-                )
-            ).model_dump_json()
-        )
+        await thread.save()
+        thread.message_count = await thread.count_messages()
+        await websocket.send(GetThreadResponse(thread=thread).model_dump_json())
 
 
 def get_message_content(message: BaseMessage):
@@ -108,7 +102,7 @@ async def astream_events(
                                 index=index,
                                 status="streaming",
                                 # Use a stable start time and don't create a new one per event
-                                created_at=start_times[run_id].isoformat(),
+                                created_at=start_times[run_id],
                             )
                         ).model_dump_json()
                     )
@@ -117,16 +111,18 @@ async def astream_events(
             output: AIMessage = body["data"]["output"]
             assert isinstance(output, AIMessage)
             messages.append(output)
-            record = MessageModel.upsert(
+            content = get_message_content(output) or ""
+            record = await MessageModel.upsert(
                 id=output.id.replace("run-", ""),
-                content=get_message_content(output) or "",
+                content=content,
                 role="ai",
                 thread_id=thread.id,
                 tool_calls=output.tool_calls,
                 usage_metadata=output.usage_metadata,
-                created_at=start_times[run_id].isoformat(),
+                created_at=start_times[run_id],
             )
-            await websocket.send(MessageEvent(message=record).model_dump_json())
+            if len(content) > 0:
+                await websocket.send(MessageEvent(message=record).model_dump_json())
             await update_thread_status(thread, "thinking")
         elif kind == "on_tool_start":
             await update_thread_status(thread, "tools")
@@ -136,26 +132,35 @@ async def astream_events(
         elif kind == "on_tool_end":
             output: ToolMessage = body["data"]["output"]
             assert isinstance(output, ToolMessage)
+            preceding_ai_message = next(
+                (msg for msg in reversed(messages) if isinstance(msg, AIMessage)),
+            )
+            # Add a tiny bit of time to the created at so it's more highly likely
+            # to be after the preceding AI message which is required for the API
+            created_at = start_times[
+                preceding_ai_message.id.replace("run-", "")
+            ] + timedelta(milliseconds=1)
             messages.append(output)
-            record = MessageModel.upsert(
+            record = await MessageModel.upsert(
                 id=run_id,
                 content=(get_message_content(output) or ""),
                 role="tool",
                 thread_id=thread.id,
                 tool_call_id=output.tool_call_id,
+                created_at=created_at,
             )
             await websocket.send(MessageEvent(message=record).model_dump_json())
     return messages
 
 
-def get_trimmed_messages(
+async def get_trimmed_messages(
     thread: ThreadModel,
     llm: LLM,
     system_prompts: List[str] = [],
     messages: List[BaseMessage] = [],
     remove_tools: bool = False,
 ) -> List[BaseMessage]:
-    records: List[MessageModel] = MessageModel.list(thread.id)
+    records: List[MessageModel] = await MessageModel.list(thread.id)
     messages: List[BaseMessage] = [
         SystemMessage(content="\n\n".join(system_prompts)),
         *[record.to_message() for record in records],
@@ -169,7 +174,7 @@ def get_trimmed_messages(
         for message in messages:
             if isinstance(message, AIMessage):
                 message.tool_calls = []
-    return llm.message_trimmer.invoke(
+    return await llm.message_trimmer.ainvoke(
         messages, {"run_name": "trim", "metadata": {"thread_id": thread.id}}
     )
 
@@ -182,7 +187,7 @@ async def ainvoke(
     save_user_message: bool = True,
     update_memory: bool = False,
 ):
-    thread = ThreadModel.get(thread_id)
+    thread = await ThreadModel.get(thread_id)
     if not thread:
         await websocket.send(ErrorEvent(message="Thread not found").model_dump_json())
         return
@@ -190,7 +195,9 @@ async def ainvoke(
     try:
         await update_thread_status(thread, "thinking")
 
-        personality = PersonalityModel.get(personality_id) if personality_id else None
+        personality = (
+            await PersonalityModel.get(personality_id) if personality_id else None
+        )
 
         system_prompts = [
             prompt
@@ -205,7 +212,7 @@ async def ainvoke(
         provider = get_provider(provider_id)
 
         if save_user_message:
-            user_message: MessageModel = MessageModel.create(
+            user_message: MessageModel = await MessageModel.create(
                 thread_id=thread.id,
                 role="human",
                 content=prompt,
@@ -220,7 +227,7 @@ async def ainvoke(
                 ).model_dump_json()
             )
 
-        messages = get_trimmed_messages(
+        messages = await get_trimmed_messages(
             thread=thread,
             llm=provider,
             system_prompts=system_prompts,
@@ -233,7 +240,7 @@ async def ainvoke(
         new_messages = messages[initial_messages_length:]
 
         # Add the tool calls to the preceding AI message
-        updated_messages: Set[AIMessage] = set()
+        updated_messages: List[AIMessage] = []
         for message in new_messages:
             if isinstance(message, ToolMessage):
                 # Find the preceding AI message
@@ -256,12 +263,12 @@ async def ainvoke(
                 if tool_call["id"] not in (
                     tc["id"] for tc in preceding_ai_message.tool_calls
                 ):
-                    updated_messages.add(preceding_ai_message)
+                    updated_messages.append(preceding_ai_message)
                     preceding_ai_message.tool_calls.append(tool_call)
 
         # Ensure the tool calls are saved in the db correctly
         for message in updated_messages:
-            MessageModel.set(
+            await MessageModel.set(
                 id=message.id.replace("run-", ""),
                 key="tool_calls",
                 value=json.dumps(message.tool_calls),
@@ -270,7 +277,7 @@ async def ainvoke(
         await update_thread_status(thread, "thinking")
         # Update the trimmed messages to include the new messages but exclude
         # the tools calls
-        messages = get_trimmed_messages(
+        messages = await get_trimmed_messages(
             thread=thread,
             llm=provider,
             system_prompts=system_prompts,
@@ -296,15 +303,10 @@ async def ainvoke(
                 "",
                 clean_eos_tokens(summary),
             )
-            thread.save()
+            await thread.save()
 
-        await websocket.send(
-            GetThreadResponse(
-                thread=ThreadExtended(
-                    **thread.model_dump(), message_count=thread.count_messages()
-                )
-            ).model_dump_json()
-        )
+        thread.message_count = await thread.count_messages()
+        await websocket.send(GetThreadResponse(thread=thread).model_dump_json())
 
         if update_memory:
             memory_response = await provider.memory.ainvoke(
@@ -328,7 +330,7 @@ async def ainvoke(
             memory = get_message_content(memory_response)
             if isinstance(memory, str) and len(memory.strip()) > 0:
                 thread.memory = memory
-                thread.save()
+                await thread.save()
                 logger.debug(
                     f"Updated memory for thread {thread.id}: \n{thread.memory}"
                 )

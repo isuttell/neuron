@@ -80,7 +80,7 @@ class DalleTool(BaseTool):
             )
             url = f"{config.static_content_url}/images/{filename}"
             logger.debug(f"Saved generated image to {file_path} <{url}>")
-            return url
+            return f"![{prompt}]({url})"
         except Exception as e:
             logger.exception(e)
             return f"Error generating image: {str(e)}"

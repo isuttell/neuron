@@ -3,3 +3,4 @@
 !poetry.lock
 !src/neuron_server/
 !image/
+!initdb.d/

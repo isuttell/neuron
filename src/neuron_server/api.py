@@ -2,7 +2,6 @@ from quart import Quart, websocket, send_from_directory
 from neuron_server.logger import logger
 import json
 from neuron_server.config import config
-from neuron_server.models import PersonalityModel, ThreadModel, MessageModel, ImageModel
 from neuron_server.event_router import EventRouter, ErrorEvent
 from neuron_server.controllers.thread_controller import router as thread_router
 from neuron_server.controllers.message_controller import router as message_router
@@ -10,14 +9,11 @@ from neuron_server.controllers.personality_controller import router as user_rout
 from neuron_server.controllers.image_controller import router as image_router
 from neuron_server.controllers.provider_controller import router as provider_router
 from neuron_server.controllers.stats_controller import router as stats_router
+from neuron_server.database import engine
 from typing import Optional
 from functools import wraps
 from quart import Response
 
-PersonalityModel.create_table_if_not_exists()
-ThreadModel.create_table_if_not_exists()
-MessageModel.create_table_if_not_exists()
-ImageModel.create_table_if_not_exists()
 
 router = EventRouter()
 
@@ -95,6 +91,7 @@ def cache_control(
 @app.get("/")
 @app.get("/thread/<thread_id>")
 @app.get("/personalities")
+@app.get("/personality/<personality_id>")
 @app.get("/image")
 @app.get("/gallery")
 @app.get("/stats")
@@ -119,4 +116,3 @@ async def ws():
             await router.dispatch(body)
         except Exception as e:
             logger.exception(e)
-            await websocket.send(ErrorEvent(message=str(e)).model_dump_json())

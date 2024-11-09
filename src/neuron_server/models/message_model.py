@@ -1,21 +1,14 @@
-from pydantic import BaseModel, Field, field_validator
 from uuid import UUID, uuid4
 from datetime import datetime, timezone
-from typing import Literal, Self, Optional, List
-from neuron_server.database import database
-from neuron_server.models.class_factory import create_model
-from langchain_core.messages import (
-    BaseMessage,
-    AIMessage,
-    HumanMessage,
-    ToolMessage,
-)
-from langchain_core.messages.tool import (
-    ToolCall,
-)
+from typing import Literal, Optional, List, Dict, Any, Tuple, Self
+from sqlalchemy import select, delete, func
+from langchain_core.messages import BaseMessage, AIMessage, HumanMessage, ToolMessage
+from langchain_core.messages.tool import ToolCall
+from neuron_server.database import get_session, Message
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 import json
-from typing import Dict, Any, Tuple, Optional
 from typing_extensions import TypedDict
+from pydantic import BaseModel, Field, field_validator
 
 Role = Literal["human", "ai", "system", "tool"]
 
@@ -28,7 +21,7 @@ class UsageMetadata(TypedDict):
 
 
 class MessageModel(BaseModel):
-    id: str = Field(default_factory=lambda: str(uuid4()))
+    id: UUID = Field(default_factory=lambda: uuid4())
     thread_id: UUID = Field(description="The ID of the thread the message belongs to")
     content: str = Field(description="The content of the message")
     role: Role = Field(description="The role of the message sender")
@@ -67,37 +60,18 @@ class MessageModel(BaseModel):
         return value
 
     @classmethod
-    def create_table_if_not_exists(cls):
-        cursor = database.cursor()
-        cursor.execute(
-            """
-            CREATE TABLE IF NOT EXISTS messages (
-                id TEXT PRIMARY KEY,
-                thread_id uuid REFERENCES threads(id) NOT NULL,
-                content TEXT NOT NULL DEFAULT '',
-                role TEXT NOT NULL,
-                tool_call_id TEXT,
-                tool_calls TEXT NOT NULL DEFAULT '[]',
-                usage_metadata TEXT NOT NULL DEFAULT '{}',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """
-        )
-        database.commit()
+    async def set(cls, id: UUID, key: str, value: Any) -> Self:
+        async with get_session() as session:
+            message = await session.get(Message, id)
+            if not message:
+                raise ValueError("Message not found")
+            setattr(message, key, value)
+            session.add(message)
+            await session.commit()
+            return cls(**message.__dict__)
 
     @classmethod
-    def set(cls, id: str, key: str, value: Any) -> Self:
-        cursor = database.cursor()
-        cursor.execute(
-            "UPDATE messages SET ? = ?, updated_at = ? WHERE id = ? RETURNING *",
-            (key, value, datetime.now(timezone.utc).astimezone().isoformat(), str(id)),
-        )
-        database.commit()
-        return create_model(cls, cursor.fetchone())
-
-    @classmethod
-    def create(
+    async def create(
         cls,
         role: Role,
         thread_id: UUID,
@@ -105,30 +79,24 @@ class MessageModel(BaseModel):
         tool_call_id: Optional[str] = None,
         tool_calls: Optional[List[ToolCall]] = None,
         usage_metadata: Optional[Dict[str, Any]] = None,
-        id: Optional[str] = None,
+        id: Optional[UUID] = None,
     ) -> Self:
-        cursor = database.cursor()
-        cursor.execute(
-            "INSERT INTO messages (id, thread_id, content, role, tool_call_id, tool_calls, usage_metadata, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *",
-            (
-                str(id) if id else str(uuid4()),
-                str(thread_id),
-                content,
-                role,
-                tool_call_id,
-                json.dumps(tool_calls or []),
-                json.dumps(usage_metadata or {}),
-                datetime.now(timezone.utc).astimezone().isoformat(),
-                datetime.now(timezone.utc).astimezone().isoformat(),
-            ),
-        )
-        data = cursor.fetchone()
-        record = create_model(cls, data)
-        database.commit()
-        return record
+        async with get_session() as session:
+            new_message = Message(
+                id=id,
+                thread_id=thread_id,
+                content=content,
+                role=role,
+                tool_call_id=tool_call_id,
+                tool_calls=json.dumps(tool_calls or []),
+                usage_metadata=json.dumps(usage_metadata or {}),
+            )
+            session.add(new_message)
+            await session.commit()
+            return cls(**new_message.__dict__)
 
     @classmethod
-    def upsert(
+    async def upsert(
         cls,
         content: str,
         role: Role,
@@ -136,160 +104,115 @@ class MessageModel(BaseModel):
         tool_call_id: Optional[str] = None,
         tool_calls: Optional[List[ToolCall]] = None,
         usage_metadata: Optional[Dict[str, Any]] = None,
-        id: Optional[str] = None,
+        id: Optional[UUID] = None,
         created_at: Optional[str] = None,
     ) -> Self:
-        cursor = database.cursor()
-        cursor.execute("SELECT tool_calls FROM messages WHERE id = ?", (str(id),))
-        existing_tool_calls = cursor.fetchone()
-        existing_tool_calls_list = (
-            json.loads(existing_tool_calls[0]) if existing_tool_calls else []
-        )
-
-        # Merge existing tool calls with new ones, avoiding duplicates
-        merged_tool_calls = list(
-            {
-                tool_call["id"]: tool_call
-                for tool_call in existing_tool_calls_list + (tool_calls or [])
-            }.values()
-        )
-
-        cursor.execute(
-            "INSERT INTO messages (id, thread_id, content, role, tool_call_id, tool_calls, usage_metadata, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) "
-            "ON CONFLICT (id) DO UPDATE SET content = ?, role = ?, tool_call_id = ?, tool_calls = ?, usage_metadata = ?, updated_at = ? RETURNING *",
-            (
-                str(id) if id else str(uuid4()),
-                str(thread_id),
-                content,
-                role,
-                tool_call_id,
-                json.dumps(merged_tool_calls),
-                json.dumps(usage_metadata or {}),
-                created_at or datetime.now(timezone.utc).astimezone().isoformat(),
-                datetime.now(timezone.utc).astimezone().isoformat(),
-                content,
-                role,
-                tool_call_id,
-                json.dumps(merged_tool_calls),
-                json.dumps(usage_metadata or {}),
-                datetime.now(timezone.utc).astimezone().isoformat(),
-            ),
-        )
-        data = cursor.fetchone()
-        record = create_model(cls, data)
-        database.commit()
-        return record
+        async with get_session() as session:
+            stmt = (
+                pg_insert(Message)
+                .values(
+                    id=id,
+                    thread_id=thread_id,
+                    content=content,
+                    role=role,
+                    tool_call_id=tool_call_id,
+                    tool_calls=json.dumps(tool_calls or []),
+                    usage_metadata=json.dumps(usage_metadata or {}),
+                    created_at=created_at,
+                )
+                .on_conflict_do_update(
+                    index_elements=["id"],
+                    set_={
+                        "content": content,
+                        "role": role,
+                        "tool_call_id": tool_call_id,
+                        "tool_calls": json.dumps(tool_calls or []),
+                        "usage_metadata": json.dumps(usage_metadata or {}),
+                    },
+                )
+                .returning(Message)
+            )
+            result = await session.execute(stmt)
+            await session.commit()
+            return cls(**result.scalar_one().__dict__)
 
     @classmethod
-    def append_content(cls, id: str, chunk: str, role: str, thread_id: UUID) -> Self:
-        cursor = database.cursor()
-        cursor.execute("SELECT * FROM messages WHERE id = ?", (str(id),))
-        record = cursor.fetchone()
-        if record:
-            message: Self = create_model(cls, record)
-            cursor.execute(
-                "UPDATE messages SET content = ?, updated_at = ? WHERE id = ? RETURNING *",
-                (
-                    message.content + chunk,
-                    datetime.now(timezone.utc).astimezone().isoformat(),
-                    str(id),
-                ),
-            )
-        else:
-            cursor.execute(
-                "INSERT INTO messages (id, thread_id, content, role, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?) RETURNING *",
-                (
-                    str(id) if id else str(uuid4()),
-                    str(thread_id),
-                    chunk,
-                    role,
-                    datetime.now(timezone.utc).astimezone().isoformat(),
-                    datetime.now(timezone.utc).astimezone().isoformat(),
-                ),
-            )
-        return create_model(cls, cursor.fetchone())
+    async def append_content(cls, message: Message, chunk: str) -> Self:
+        async with get_session() as session:
+            message.content += chunk
+            session.add(message)
+            await session.commit()
+            return cls(**message.__dict__)
 
     @classmethod
-    def count_tokens(cls) -> Tuple[int, int]:
-        cursor = database.cursor()
-        cursor.execute("SELECT count(id) FROM messages")
-        count = cursor.fetchone()[0]
-        offset = 0
-        input_tokens = 0
-        output_tokens = 0
-        while offset < count:
-            cursor.execute(
-                "SELECT usage_metadata FROM messages ORDER BY created_at ASC LIMIT ? OFFSET ?",
-                (100, offset),
-            )
-            rows = cursor.fetchall()
-            offset += len(rows)
+    async def count_tokens(cls) -> Tuple[int, int]:
+        async with get_session() as session:
+            stmt = select(Message.usage_metadata)
+            result = await session.execute(stmt)
+            rows = result.scalars().all()
+            input_tokens = 0
+            output_tokens = 0
             for row in rows:
-                usage_metadata: UsageMetadata = json.loads(row[0])
-                assert isinstance(usage_metadata, dict)
+                usage_metadata: UsageMetadata = json.loads(row)
                 if isinstance(usage_metadata.get("input_tokens"), int):
                     input_tokens += usage_metadata["input_tokens"]
                 if isinstance(usage_metadata.get("output_tokens"), int):
                     output_tokens += usage_metadata["output_tokens"]
-        return input_tokens, output_tokens
+            return input_tokens, output_tokens
 
     @classmethod
-    def list(cls, thread_id: UUID) -> List[Self]:
-        cursor = database.cursor()
-        cursor.execute(
-            "SELECT * FROM messages WHERE thread_id = ? ORDER BY created_at ASC",
-            (str(thread_id),),
-        )
-        records = cursor.fetchall()
-        return [create_model(cls, row) for row in records]
+    async def list(cls, thread_id: UUID) -> List[Self]:
+        async with get_session() as session:
+            result = await session.execute(
+                select(Message)
+                .where(Message.thread_id == thread_id)
+                .order_by(Message.created_at.asc())
+            )
+            return [cls(**message.__dict__) for message in result.scalars().all()]
+
+    @staticmethod
+    async def count(thread_id: UUID) -> int:
+        async with get_session() as session:
+            async with session.begin():
+                stmt = select(func.count(Message.id)).where(
+                    Message.thread_id == thread_id
+                )
+                result = await session.execute(stmt)
+                return result.scalar()
+
+    @staticmethod
+    async def delete(id: UUID) -> None:
+        async with get_session() as session:
+            await session.execute(delete(Message).where(Message.id == id))
 
     @classmethod
-    def count(cls, thread_id: UUID) -> int:
-        cursor = database.cursor()
-        cursor.execute(
-            "SELECT COUNT(*) FROM messages WHERE thread_id = ?", (str(thread_id),)
-        )
-        return cursor.fetchone()[0]
+    async def get(cls, id: UUID) -> Optional[Self]:
+        async with get_session() as session:
+            data = await session.get(Message, id)
+            if data:
+                return cls(**data.__dict__)
+            return None
 
     @classmethod
-    def delete(cls, id: str):
-        cursor = database.cursor()
-        cursor.execute("DELETE FROM messages WHERE id = ?", (str(id),))
-        database.commit()
-
-    @classmethod
-    def get(cls, id: str) -> Self:
-        cursor = database.cursor()
-        cursor.execute("SELECT * FROM messages WHERE id = ?", (str(id),))
-        return create_model(cls, cursor.fetchone())
-
-    @classmethod
-    def update(
+    async def update(
         cls,
-        id: str,
+        id: UUID,
         content: str,
         tool_call_id: Optional[str] = None,
         tool_calls: Optional[List[ToolCall]] = None,
         usage_metadata: Optional[Dict[str, Any]] = None,
-    ) -> Self:
-        cursor = database.cursor()
-        cursor.execute(
-            "UPDATE messages SET content = ?, tool_call_id = ?, tool_calls = ?, usage_metadata = ?, updated_at = ? WHERE id = ? RETURNING *",
-            (
-                content,
-                tool_call_id,
-                json.dumps(tool_calls or []),
-                json.dumps(usage_metadata or {}),
-                datetime.now(timezone.utc).astimezone().isoformat(),
-                str(id),
-            ),
-        )
-        data = cursor.fetchone()
-        if not data:
-            raise ValueError("Message not found")
-        record = create_model(cls, data)
-        database.commit()
-        return record
+    ) -> Message:
+        async with get_session() as session:
+            message = await session.get(Message, id)
+            if not message:
+                raise ValueError("Message not found")
+            message.content = content
+            message.tool_call_id = tool_call_id
+            message.tool_calls = json.dumps(tool_calls or [])
+            message.usage_metadata = json.dumps(usage_metadata or {})
+            session.add(message)
+            await session.commit()
+            return cls(**message.__dict__)
 
     def to_message(self) -> BaseMessage:
         if self.role == "human":
@@ -303,7 +226,7 @@ class MessageModel(BaseModel):
             )
         elif self.role == "tool":
             if not self.tool_call_id:
-                raise ValueError("Tool call ID is required for tool messages")
+                raise ValueError("Tool call ID is required for tool selfs")
             return ToolMessage(content=self.content, tool_call_id=self.tool_call_id)
         else:
             raise ValueError(f"Invalid role: {self.role}")

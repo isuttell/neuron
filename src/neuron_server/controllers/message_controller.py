@@ -13,12 +13,16 @@ router = EventRouter()
 
 @router.on(GetThreadMessages)
 async def get_thread_messages(event: GetThreadMessages):
-    thread = ThreadModel.get(event.thread_id)
+    thread = await ThreadModel.get(event.thread_id)
     if not thread:
         await websocket.send(ErrorEvent(message="Thread not found").model_dump_json())
         return
 
-    messages = MessageModel.list(thread.id)
+    messages = [
+        message
+        for message in await MessageModel.list(thread.id)
+        if isinstance(message.content, str) and len(message.content) > 0
+    ]
     for message in messages:
         await websocket.send(MessageEvent(message=message).model_dump_json())
 

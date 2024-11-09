@@ -85,9 +85,6 @@ class HuggingFaceServerlessImageGenerationTool(BaseTool):
         """
         repo_id: str = repo_id if isinstance(repo_id, str) else repo_id.value
         try:
-            logger.debug(
-                f'Generating image of "{prompt}" using {repo_id} with guidance_scale={guidance_scale} and num_inference_steps={num_inference_steps}'
-            )
             image = self.generate_image(
                 prompt=prompt,
                 repo_id=repo_id,
@@ -112,7 +109,7 @@ class HuggingFaceServerlessImageGenerationTool(BaseTool):
             image.save(file_path, format="png", pnginfo=pnginfo)
             url = f"{config.static_content_url}/images/{filename}"
             logger.debug(f"Saved generated image to {file_path} <{url}>")
-            return url
+            return f"![{prompt}]({url})"
         except Exception as e:
             logger.exception(e)
             return f"Error generating image: {str(e)}"

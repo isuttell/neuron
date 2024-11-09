@@ -68,6 +68,9 @@ export const personalitiesSlice = createSlice({
 export const { upsertPersonality, deletePersonality, setActivePersonality } =
   personalitiesSlice.actions;
 
+export const getPersonality = (state: RootState, id: string) =>
+  state.personalities.personalities.find((per) => per.id === id);
+
 export const getPersonalities = (state: RootState) =>
   state.personalities.personalities;
 

@@ -1,9 +1,28 @@
+from uuid import UUID
+from neuron_server.database import get_session, Personality
+from typing import Optional, List, Self
+from sqlalchemy import select
 from pydantic import BaseModel, Field
-from uuid import UUID, uuid4
+from uuid import uuid4
 from datetime import datetime, timezone
-from neuron_server.database import database
-from typing import Self, Optional, List
-from neuron_server.models.class_factory import create_model
+
+
+def get_context_prompt(name: str, context: str) -> str:
+    return f"""\
+You the assistant are called {name}. Use the following custom instructions to guide your responses:
+\"\"\"
+{context}
+\"\"\"""".strip()
+
+
+def get_memory_prompt(memory: Optional[str] = None) -> str:
+    if not memory or len(memory.strip()) == 0:
+        return ""
+    return f"""\
+Based on past conversations you have determined the following about the personality:
+\"\"\"
+{memory}
+\"\"\"""".strip()
 
 
 class PersonalityModel(BaseModel):
@@ -24,97 +43,58 @@ class PersonalityModel(BaseModel):
 
     def get_context_prompt(self) -> str:
         return f"""\
-You the assistant are called {self.name}. Use the following custom instructions to guide your responses:
-\"\"\"
-{self.context}
-\"\"\"""".strip()
+    You the assistant are called {self.name}. Use the following custom instructions to guide your responses:
+    \"\"\"
+    {self.context}
+    \"\"\"""".strip()
 
     def get_memory_prompt(self) -> str:
         if not self.memory or len(self.memory.strip()) == 0:
             return ""
         return f"""\
-Based on past conversations you have determined the following about the personality:
-\"\"\"
-{self.memory}
-\"\"\"""".strip()
+    Based on past conversations you have determined the following about the personality:
+    \"\"\"
+    {self.memory}
+    \"\"\"""".strip()
 
     @classmethod
-    def create_table_if_not_exists(cls):
-        cursor = database.cursor()
-        cursor.execute(
-            """
-            CREATE TABLE IF NOT EXISTS personalities (
-                id TEXT PRIMARY KEY,
-                name TEXT,
-                context TEXT DEFAULT '',
-                memory TEXT DEFAULT '',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """
-        )
-        database.commit()
-
-    @classmethod
-    def create(
+    async def create(
         cls, name: str, context: str, memory: str, id: Optional[UUID] = None
     ) -> Self:
-        cursor = database.cursor()
-        cursor.execute(
-            "INSERT INTO personalities (id, name, context, memory) VALUES (?, ?, ?, ?) RETURNING *",
-            (str(id) if id else str(uuid4()), name, context, memory),
-        )
-        data = cursor.fetchone()
-        if not data:
-            raise ValueError("Personality not created")
-        record = create_model(cls, data)
-        database.commit()
-        return record
+        async with get_session() as session:
+            personality = Personality(id=id, name=name, context=context, memory=memory)
+            session.add(personality)
+            await session.commit()
+            return cls(**personality.__dict__)
+
+    @staticmethod
+    async def delete(id: UUID) -> None:
+        async with get_session() as session:
+            await session.delete(await session.get(Personality, id))
+            await session.commit()
 
     @classmethod
-    def delete(cls, id: UUID):
-        cursor = database.cursor()
-        cursor.execute("DELETE FROM personalities WHERE id = ?", (str(id),))
-        database.commit()
+    async def update(cls, id: UUID, name: str, context: str, memory: str) -> Self:
+        async with get_session() as session:
+            personality = await session.get(Personality, id)
+            personality.name = name
+            personality.context = context
+            personality.memory = memory
+            session.add(personality)
+            await session.commit()
+            return cls(**personality.__dict__)
 
     @classmethod
-    def update(cls, id: UUID, name: str, context: str, memory: str) -> Self:
-        cursor = database.cursor()
-        cursor.execute(
-            "UPDATE personalities SET name = ?, context = ?, memory = ? WHERE id = ? RETURNING *",
-            (name, context, memory, str(id)),
-        )
-        data = cursor.fetchone()
-        if not data:
-            raise ValueError("Personality not updated")
-        record = create_model(cls, data)
-        database.commit()
-        return record
+    async def list(cls) -> List[Self]:
+        async with get_session() as session:
+            results = await session.execute(select(Personality))
+            records = results.scalars().all()
+            return [cls(**personality.__dict__) for personality in records]
 
     @classmethod
-    def list(cls) -> List[Self]:
-        cursor = database.cursor()
-        cursor.execute("SELECT * FROM personalities")
-        data = cursor.fetchall()
-        return [create_model(cls, row) for row in data]
-
-    @classmethod
-    def get(cls, id: UUID) -> Self:
-        cursor = database.cursor()
-        cursor.execute("SELECT * FROM personalities WHERE id = ?", (str(id),))
-        data = cursor.fetchone()
-        return create_model(cls, data) if data else None
-
-    def save(self):
-        cursor = database.cursor()
-        cursor.execute(
-            "UPDATE personalities SET name = ?, context = ?, memory = ?, updated_at = ? WHERE id = ?",
-            (
-                self.name,
-                self.context,
-                self.memory,
-                datetime.now(timezone.utc).astimezone(),
-                str(self.id),
-            ),
-        )
-        database.commit()
+    async def get(cls, id: UUID) -> Optional[Self]:
+        async with get_session() as session:
+            data = await session.get(Personality, id)
+            if data:
+                return cls(**data.__dict__)
+            return None

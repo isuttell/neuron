@@ -12,7 +12,7 @@ router = EventRouter()
 
 @router.on(GetTokenStats)
 async def get_token_counts(event: GetTokenStats):
-    input_tokens, output_tokens = MessageModel.count_tokens()
+    input_tokens, output_tokens = await MessageModel.count_tokens()
     await websocket.send(
         TokenStatsResponse(
             input_tokens=input_tokens, output_tokens=output_tokens

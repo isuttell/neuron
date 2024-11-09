@@ -9,6 +9,27 @@ import os
 load_dotenv()
 
 
+class DatabaseConfig(BaseModel):
+    host: str = Field(
+        default=os.environ.get("POSTGRES_HOST", "localhost"),
+        description="Database host",
+    )
+    port: int = Field(
+        default=int(os.environ.get("POSTGRES_PORT", 5432)), description="Database port"
+    )
+    user: str = Field(
+        default=os.environ.get("POSTGRES_USER", "neuron"), description="Database user"
+    )
+    password: str = Field(
+        default=os.environ.get("POSTGRES_PASSWORD"),
+        description="Database password",
+    )
+    database: str = Field(
+        default=os.environ.get("POSTGRES_DB", "neuron"),
+        description="Database database",
+    )
+
+
 class HomeAssistantConfig(BaseModel):
     server: str = Field(
         default=os.environ.get("HOMEASSISTANT_SERVER", "http://localhost:8123"),
@@ -66,6 +87,7 @@ class Config(BaseModel):
         default=os.environ.get("TEMP_FOLDER", "./tmp"),
         description="Temp folder",
     )
+    database: DatabaseConfig = DatabaseConfig()
 
 
 config = Config()

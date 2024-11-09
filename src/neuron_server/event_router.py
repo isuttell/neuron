@@ -54,9 +54,5 @@ class EventRouter:
         if not event_type in self.routes:
             raise ValueError(f"No route for event type: {event_type}")
         model, func = self.routes[event_type]
-        try:
-            logger.debug(f"incoming={event_type}")
-            return await func(model(**event))
-        except Exception as e:
-            await websocket.send(ErrorEvent(message=str(e)).model_dump_json())
-            raise e
+        logger.debug(f"incoming={event_type}")
+        return await func(model(**event))

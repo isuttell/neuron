@@ -9,6 +9,7 @@ from neuron_server.logger import logger
 from neuron_server.config import config
 import PIL.PngImagePlugin as PngImagePlugin
 from datetime import datetime, timezone
+from neuron_server.util.image_utilities import resize_with_padding
 
 
 class CameraName(Enum):
@@ -64,6 +65,7 @@ class SecurityCameraTool(BaseTool):
 
         start_time = time.perf_counter()
         frame = np.zeros((1, 1, 3), dtype=np.uint8)
+        # Wait for the camera to warm up and capture a valid frame
         while np.mean(frame) < 10:
             ret, frame = cap.read()
             if not ret:
@@ -72,9 +74,10 @@ class SecurityCameraTool(BaseTool):
                 raise Exception("Unable to read valid frame within 10s timeout")
             time.sleep(0.1)
         cap.release()
-        frame = cv2.resize(frame.astype(np.uint8), (1024, 1024))
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        frame = cv2.cvtColor(frame.astype(np.uint8), cv2.COLOR_BGR2RGB)
         image = Image.fromarray(frame)
+        # Resize to fit the support size and add padding to make the image square
+        image = resize_with_padding(image, (1024, 1024))
         filename = f"{camera}_capture_{int(time.time())}.png"
         pnginfo = PngImagePlugin.PngInfo()
         pnginfo.add_text("Description", device_descriptions[camera])
@@ -90,7 +93,7 @@ class SecurityCameraTool(BaseTool):
         image.save(file_path, format="png", pnginfo=pnginfo)
         url = f"{config.static_content_url}/images/{filename}"
         logger.debug(f"Saved camera image to {file_path} available at <{url}>")
-        return url
+        return f"![{device_descriptions[camera]}]({url})"
 
 
 async def main():

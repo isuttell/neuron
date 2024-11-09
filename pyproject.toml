@@ -2,7 +2,7 @@
 name = "neuron_server"
 version = "0.1.0"
 description = ""
-authors = ["Your Name <you@example.com>"]
+authors = ["Isaac Suttell <isaac@isaacsuttell.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.11"
@@ -24,10 +24,8 @@ arxiv = "*"
 pymupdf4llm = "*"
 faiss-cpu = "*"
 elevenlabs = "*"
-
-[[tool.poetry.source]]
-name = "pytorch"
-url = "https://download.pytorch.org/whl/cu121"
+asyncpg = "*"
+sqlalchemy = { version = "*", extras = ["asyncio"] }
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

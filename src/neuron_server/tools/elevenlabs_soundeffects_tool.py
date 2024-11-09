@@ -39,8 +39,8 @@ duration_seconds: The duration of the sound which will be generated in seconds. 
             logger.debug(f"Saved generated audio to {audio_file_path} <{url}>")
 
             return f"""
+<audio src="{url}"></audio>
 Filename: {audio_file_path}
-URL: <{url}>
 """.strip()
         except Exception as e:
             logger.exception(e)

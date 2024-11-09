@@ -67,7 +67,7 @@ Example args for adding a sound effect 5000ms into the main audio:
             url = config.static_content_url + "/ffmpeg/" + filename
             logger.info(f"File saved to {output} <{url}>")
             return f"""
-URL: <{url}>
+{ '<video src="{url}" controls></video>' if extension == "mp4" else '<audio src="{url}"></audio>' }
 Filename: {output}
 """.strip()
         except Exception as e:
