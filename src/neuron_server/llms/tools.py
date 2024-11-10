@@ -14,6 +14,7 @@ from neuron_server.tools.elevenlabs_tts_tool import ElevenLabsTTSTool
 from neuron_server.config import config
 from neuron_server.tools.elevenlabs_soundeffects_tool import ElevenLabsSoundEffectsTool
 from neuron_server.tools.ffmpeg_tool import FFmpegTool
+from neuron_server.tools.ffprobe_tool import FFProbeTool
 from neuron_server.tools.arxiv_summary_tool import ArxivSummaryTool
 
 
@@ -26,11 +27,12 @@ tools = [
     # HuggingFaceServerlessImageGenerationTool(),
     InspectImageTool(),
     # InspectWebcamTool(camera=Camera()),
-    SecurityCameraTool(),
-    HomeAssistantTool(api=homeassistant_api),
+    # SecurityCameraTool(),
+    # HomeAssistantTool(api=homeassistant_api),
     # HomeAssistantServiceTool(api=homeassistant_api),
     DalleTool(),
     ElevenLabsTTSTool(),
     # ElevenLabsSoundEffectsTool(),
     FFmpegTool(),
+    FFProbeTool(),
 ]
