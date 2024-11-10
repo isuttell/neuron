@@ -84,7 +84,7 @@ const websocketMiddleware =
       if (action.type === "DeleteThread") {
         const deleteAction = action as DeleteThreadAction;
         dispatch(deleteThread(deleteAction.thread_id));
-      } else if (action.type === "DeleteUser") {
+      } else if (action.type === "DeletePersonality") {
         const deleteAction = action as DeletePersonalityAction;
         dispatch(deletePersonality(deleteAction.personality_id));
       } else if (action.type === "DeleteImage") {

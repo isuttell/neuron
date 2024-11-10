@@ -1,6 +1,7 @@
 import React, { memo } from "react";
 
 interface AudioPlayerProps {
+  className?: string;
   src: string;
   autoPlay?: boolean;
   preload?: string;
@@ -8,6 +9,7 @@ interface AudioPlayerProps {
 }
 
 const AudioPlayer: React.FC<AudioPlayerProps> = ({
+  className,
   src,
   preload = "auto",
   autoPlay = false,
@@ -19,7 +21,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
       autoPlay={autoPlay}
       loop={loop}
       preload={preload}
-      className=""
+      className={className}
     >
       <source src={src} type="audio/mpeg" />
       Your browser does not support the audio element.

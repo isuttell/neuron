@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import EditThreadDialog from "../threads/EditThreadDialog";
 import Loading from "@/lib/loading";
 import { getActivePersonalityId } from "../slices/personalitiesSlice";
-
+import MediaList from "../messages/MediaList";
 const selectThread = (state: RootState, threadId?: string) =>
   state.threads.threads.find((thread) => thread.id === threadId);
 
@@ -68,9 +68,8 @@ export default function Thread() {
   if (!thread) {
     return <Loading />;
   }
-
   return (
-    <div className="flex flex-1 p-4 flex-col flex-nowrap max-h-screen overflow-auto">
+    <div className="flex flex-1 p-4 flex-col flex-nowrap max-h-screen">
       <div className="flex justify-between mb-2 border-b pb-2">
         <h1 className="text-2xl font-bold">{thread.name}</h1>
         <div className="flex-1" />
@@ -87,24 +86,35 @@ export default function Thread() {
           <span className="sr-only">Delete</span>
         </Button>
       </div>
-      <ScrollArea className="flex-1 overflow-y-auto">
-        <div className="flex flex-1 flex-col flex-nowrap max-w-[1170px] mx-auto">
-          {messages
-            .sort((a, b) => (a.created_at > b.created_at ? 1 : -1))
-            .map((message) => (
-              <MessageItem key={message.id} message={message} />
-            ))}
-          {thread.message_count === 0 && messages.length === 0 ? (
-            <div>No messages</div>
-          ) : null}
-          <div ref={messagesEndRef} />
+      <div className="flex flex-row flex-1">
+        <div className="flex flex-col flex-1">
+          <div className="flex-1 overflow-y-auto relative">
+            <div className="absolute top-0 left-0 right-0 bottom-0 flex flex-1 flex-col flex-nowrap max-h-full mx-auto overflow-y-auto">
+              <div className="max-w-[1170px] w-full mx-auto">
+                {messages
+                  .filter((message) => message.role !== "tool")
+                  .sort((a, b) => (a.created_at > b.created_at ? 1 : -1))
+                  .map((message) => (
+                    <MessageItem key={message.id} message={message} />
+                  ))}
+                {thread.message_count === 0 && messages.length === 0 ? (
+                  <div>No messages</div>
+                ) : null}
+                <div ref={messagesEndRef} />
+              </div>
+            </div>
+          </div>
+          <div className="bottom-0">
+            <MessageForm
+              status={thread.status}
+              className="max-w-[1170px] w-full mx-auto"
+              onSubmit={() => {}}
+            />
+          </div>
         </div>
-      </ScrollArea>
-      <div className="bottom-0">
-        <MessageForm
-          status={thread.status}
-          className="max-w-[1170px] mx-auto"
-          onSubmit={() => {}}
+        <MediaList
+          className="max-w-[512px] ml-4 w-full flex-shrink-0 border-l"
+          messages={messages}
         />
       </div>
     </div>

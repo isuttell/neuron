@@ -12,7 +12,7 @@ from neuron_server.config import config
 router = EventRouter()
 
 
-def extract_prompts_from_directory(directory: str):
+def extract_prompts_from_directory(directory: str, max_images: int = 100):
     images = [
         (filename, os.stat(os.path.join(directory, filename)))
         for filename in os.listdir(directory)
@@ -20,7 +20,7 @@ def extract_prompts_from_directory(directory: str):
     ]
     # Sort by creation time so the newest images are at the top
     images.sort(key=lambda x: x[1].st_ctime, reverse=True)
-    for filename, _ in images:
+    for filename, _ in images[:max_images]:
         file_path = os.path.abspath(os.path.join(directory, filename))
         with Image.open(file_path) as img:
             png_info = img.info

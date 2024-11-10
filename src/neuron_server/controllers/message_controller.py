@@ -22,7 +22,7 @@ async def get_thread_messages(event: GetThreadMessages):
     messages = [
         message
         for message in await MessageModel.list(thread.id)
-        if isinstance(message.content, str) and len(message.content) > 0
+        if isinstance(message.content, str) and len(message.content.strip()) > 0
     ]
 
     for message in messages:

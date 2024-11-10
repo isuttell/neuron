@@ -21,7 +21,7 @@ class AnthropicLLM(LLM):
         title_model = ChatAnthropic(
             model=model_id,
             temperature=0.3,
-            max_tokens=32,
+            max_tokens=42,
         )
         memory_model = ChatAnthropic(
             model=model_id,

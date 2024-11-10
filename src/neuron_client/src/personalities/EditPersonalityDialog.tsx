@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { UserPen, UserPlus } from "lucide-react";
-import { useAppDispatch } from "../hooks";
+import { useAppDispatch, useAppSelector } from "../hooks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,6 +14,9 @@ import {
   DialogTitle,
   DialogClose,
 } from "@/components/ui/dialog";
+import { getActiveProviderId } from "../slices/providersSlice";
+import { getSocket } from "../slices/socketSlice";
+import { useNavigate } from "react-router-dom";
 
 interface EditPersonalityDialogProps {
   personality?: Personality;
@@ -23,12 +26,20 @@ const EditPersonalityDialog: React.FC<EditPersonalityDialogProps> = ({
   personality,
 }) => {
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(personality?.name || "");
   const [context, setContext] = useState(personality?.context || "");
   const [memory, setMemory] = useState(personality?.memory || "");
+  const [loading, setLoading] = useState(false);
+  const socket = useAppSelector(getSocket);
+  const activeProviderId = useAppSelector(getActiveProviderId);
   const handleSubmit = (e: React.FormEvent) => {
+    if (!activeProviderId || !socket || loading) {
+      return;
+    }
     e.preventDefault();
+    setLoading(true);
     dispatch({
       type: personality
         ? "socket/UpdatePersonality"
@@ -37,8 +48,17 @@ const EditPersonalityDialog: React.FC<EditPersonalityDialogProps> = ({
       name,
       context,
       memory,
+      provider_id: activeProviderId,
     });
-    setOpen(false);
+    if (!personality) {
+      socket.once("personality", ({ personality }) => {
+        setLoading(false);
+        setOpen(false);
+        navigate(`/personality/${personality.id}`);
+      });
+    } else {
+      setOpen(false);
+    }
   };
   const handleDelete = (e: React.FormEvent) => {
     e.preventDefault();
@@ -112,8 +132,13 @@ const EditPersonalityDialog: React.FC<EditPersonalityDialogProps> = ({
                 Cancel
               </Button>
             </DialogClose>
-            <Button onClick={handleSubmit} type="submit" className="ml-2">
-              Save
+            <Button
+              onClick={handleSubmit}
+              type="submit"
+              disabled={loading}
+              className="ml-2"
+            >
+              {loading ? "Saving..." : "Save"}
             </Button>
           </DialogFooter>
         </form>

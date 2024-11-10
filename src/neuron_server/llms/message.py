@@ -18,7 +18,7 @@ from langchain_core.messages import (
     ToolMessage,
 )
 from datetime import datetime, timezone, timedelta
-from typing import List, Dict, Set
+from typing import List, Dict
 import re
 from neuron_server.llms.llm import LLM
 from uuid import UUID
@@ -123,7 +123,7 @@ async def astream_events(
             output: AIMessage = body["data"]["output"]
             assert isinstance(output, AIMessage)
             messages.append(output)
-            content = get_message_content(output) or ""
+            content = (get_message_content(output) or "").strip()
             record = await MessageModel.upsert(
                 id=output.id.replace("run-", ""),
                 content=content,

@@ -37,6 +37,7 @@ class CreatePersonality(IncomingEvent):
     name: str
     context: str
     memory: str
+    provider_id: str
 
 
 class UpdatePersonality(IncomingEvent):
