@@ -8,6 +8,8 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.messages import BaseMessage
 from neuron_server.llms.clean_eos_tokens import clean_eos_tokens
 from langchain_openai import ChatOpenAI
+from pydantic import BaseModel, Field
+from typing import Type
 
 
 def get_message_content(message: BaseMessage):
@@ -29,11 +31,23 @@ def get_message_content(message: BaseMessage):
     return clean_eos_tokens(message.content)
 
 
+class InspectImageToolArgs(BaseModel):
+    image_url: str = Field(description="The URL of the image to inspect.")
+    prompt: str = Field(
+        description="This should be a prompt with detailed and specific question(s) to be answered about the image."
+    )
+    max_tokens: int = Field(
+        description="The maximum number of tokens to generate in the response.",
+        default=300,
+    )
+
+
 class InspectImageTool(BaseTool):
     name: str = "inspect_image"
     description: str = (
-        "This tool uses a OpenAI GPT-4o multi-modal vision capabilities to inspect an image and return a description of the image. Images are downloaded from the provided URL. The prompt should be a detailed question about what is in the image. Use this tool to when you need to answer a question about an image."
+        "This tool uses a OpenAI GPT-4o multi-modal vision capabilities to inspect an image and return a description of the image.  Use this tool to when you need to answer a question about an image."
     )
+    args_schema: Type[InspectImageToolArgs] = InspectImageToolArgs
 
     def _run(self, image_url: str, prompt: str, max_tokens: int = 300) -> str:
         """
@@ -58,8 +72,7 @@ class InspectImageTool(BaseTool):
             image_base64 = base64.b64encode(response.content).decode("utf-8")
             model = ChatOpenAI(
                 model="gpt-4o",
-                temperature=0.7,
-                streaming=True,
+                temperature=0.3,
                 max_tokens=max_tokens,
             )
             message = model.invoke(

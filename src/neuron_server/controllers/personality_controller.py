@@ -11,17 +11,17 @@ from neuron_server.controllers.events.personality_events import (
     PostPersonalityPrompt,
     PersonalityPromptResponse,
 )
-from neuron_server.llms.providers import get_provider
+from neuron_server.models.provider_model import ProviderModelModel
 from neuron_server.llms.prompts import personality_update_prompt
 from langchain_core.messages import AIMessage
 import re
-from neuron_server.llms.providers import LLM
+from neuron_server.llms.llm import LLM
 
 router = EventRouter()
 
 
-async def apply_personality_prompt(provider: LLM, context: str, prompt: str) -> str:
-    chain = personality_update_prompt | provider.model
+async def apply_personality_prompt(llm: LLM, context: str, prompt: str) -> str:
+    chain = personality_update_prompt | llm.model
     message: AIMessage = await chain.ainvoke({"context": context, "prompt": prompt})
     return re.sub(r"```(?:\w+)?\s*|\s*```", "", message.content.strip()).strip()
 
@@ -46,11 +46,12 @@ async def get_personalities(event: GetPersonalities):
 
 @router.on(CreatePersonality)
 async def create_personality(event: CreatePersonality):
-    provider = get_provider(event.provider_id)
+    provider = await ProviderModelModel.get(event.provider_id)
+    if not provider:
+        raise ValueError(f"Provider with id {event.provider_id} not found")
     # Apply the personality prompt to the context to get the initial context
-    context = await apply_personality_prompt(
-        provider=provider, context="", prompt=event.context
-    )
+    llm = provider.to_llm()
+    context = await apply_personality_prompt(llm=llm, context="", prompt=event.context)
     personality = await PersonalityModel.create(
         name=event.name, context=context, memory=event.memory
     )
@@ -76,7 +77,9 @@ async def delete_personality(event: DeletePersonality):
 
 @router.on(PostPersonalityPrompt)
 async def post_personality_prompt(event: PostPersonalityPrompt):
-    provider = get_provider(event.provider_id)
+    provider = await ProviderModelModel.get(event.provider_id)
+    if not provider:
+        raise ValueError(f"Provider with id {event.provider_id} not found")
     content = await apply_personality_prompt(
         provider=provider, context=event.context, prompt=event.prompt
     )

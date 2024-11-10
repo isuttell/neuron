@@ -33,6 +33,16 @@ class HomeAssistantAPI(BaseModel):
         res.raise_for_status()
         return SensorState(**res.json())
 
+    def get_sensor_states(self) -> List[SensorState]:
+        url = f"{self.server}/api/states"
+        logger.debug(f"GET {url}")
+        res = requests.get(
+            url,
+            headers={"Authorization": f"Bearer {self.token}"},
+        )
+        res.raise_for_status()
+        return [SensorState(**state) for state in res.json()]
+
     def call_service(self, domain: str, service: str, entity_id: str) -> List[State]:
         url = f"{self.server}/api/services/{domain}/{service}"
         logger.debug(f"POST {url}")

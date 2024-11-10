@@ -8,6 +8,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import Content from "./Content";
+import ImageContent from "./ImageContent";
 
 interface MediaListProps {
   className?: string;
@@ -72,23 +73,12 @@ export function MediaList({ className, messages }: MediaListProps) {
           {mediaItems.map((item) => (
             <div key={item.messageId} className="mb-4">
               {item.type === "image" ? (
-                <Tooltip delayDuration={0}>
-                  <TooltipTrigger>
-                    <img
-                      className="w-full rounded-lg"
-                      src={item.url}
-                      alt={item.alt}
-                      width={1024}
-                      height={1024}
-                    />
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-[512px] p-4">
-                    <div className="flex flex-col">
-                      <div className="text-sm font-semibold">Prompt</div>
-                      <div className="text-sm text-gray-500">{item.alt}</div>
-                    </div>
-                  </TooltipContent>
-                </Tooltip>
+                <ImageContent
+                  url={item.url}
+                  alt={item.alt}
+                  width={1024}
+                  height={1024}
+                />
               ) : null}
               {item.type === "audio" ? (
                 <Tooltip delayDuration={0}>

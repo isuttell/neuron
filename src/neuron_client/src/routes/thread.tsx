@@ -4,7 +4,6 @@ import { useParams, useNavigate } from "react-router-dom";
 import MessageForm from "../messages/MessageForm";
 import MessageItem from "../messages/MessageItem";
 import { useAppSelector, useAppDispatch } from "../hooks";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 import { shallowEqual } from "react-redux";
 import { RootState } from "../store";
@@ -71,7 +70,7 @@ export default function Thread() {
   return (
     <div className="flex flex-1 p-4 flex-col flex-nowrap max-h-screen">
       <div className="flex justify-between mb-2 border-b pb-2">
-        <h1 className="text-2xl font-bold">{thread.name}</h1>
+        <h1 className="text-2xl font-bold">{thread.name || "Welcome..."}</h1>
         <div className="flex-1" />
         <EditThreadDialog thread={thread} />
         <Button

@@ -3,12 +3,33 @@ from neuron_server.config import config
 from neuron_server.logger import logger
 from huggingface_hub import AsyncInferenceClient
 from uuid import uuid4
-from typing import TypedDict, List
+from typing import TypedDict, List, Type
 import os
 import shutil
 import subprocess
 from elevenlabs import ElevenLabs
 from neuron_server.logger import logger
+
+from pydantic import BaseModel, Field
+
+
+script_prompt_example = """
+The input script format should consist of speaker identifiers followed by their respective dialogues, formatted as the example below:
+
+Example:
+```
+[Chris]
+Hello, how are you?
+
+[Jessica]
+I'm great!
+""".strip()
+
+
+class ElevenLabsTTSToolArgs(BaseModel):
+    script: str = Field(
+        description="The script to generate audio from.\n\n{script_prompt_example}"
+    )
 
 
 class SpokenLine(TypedDict):
@@ -53,16 +74,7 @@ class ElevenLabsTTSTool(BaseTool):
     name: str = "elevenlabs_tts"
     description: str = (
         """
-This tool generates audio from a provided script. The input script format should consist of speaker identifiers followed by their respective dialogues, formatted as the example below:
-
-Example:
-```
-[Chris]
-Hello, how are you?
-
-[Jessica]
-I'm great!
-```
+This tool generates audio from a provided script.
 
 Use one of the following voices for the speaker:
 
@@ -81,7 +93,7 @@ Brian
 Lily
 Matilda
 
-News Voices:
+News Presenter Voices:
 Sarah
 Daniel
 
@@ -92,18 +104,9 @@ Charlotte
 The tool will use ElevenLabs' TTS API to generate the audio and return a link to the final audio file. Each script block should be short enough to be processed in a single call to the API. Use this tool to generate audio when the users requests it. The result should always include a playable <audio> tag that users the src attribute to link the audio file. Do not include the filename in the response.
 """.strip()
     )
+    args_schema: Type[ElevenLabsTTSToolArgs] = ElevenLabsTTSToolArgs
 
     def _run(self, script: str) -> str:
-        """
-        Generates audio from a provided script. In the format of:
-        ```
-        [Alice]
-        Hello, how are you?
-
-        [Daniel]
-        I'm great!
-        ```
-        """
         try:
             client = ElevenLabs(api_key=config.elevenlabs_api_key)
             id = str(uuid4())

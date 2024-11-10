@@ -32,5 +32,8 @@ async def get_thread_messages(event: GetThreadMessages):
 @router.on(PostMessage)
 async def post_message(event: PostMessage):
     return await ainvoke(
-        event.thread_id, event.prompt, event.personality_id, event.provider_id
+        thread_id=event.thread_id,
+        prompt=event.prompt,
+        personality_id=event.personality_id,
+        provider_id=event.provider_id,
     )

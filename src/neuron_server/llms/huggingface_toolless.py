@@ -1,14 +1,13 @@
 from langchain_huggingface import HuggingFaceEndpoint, ChatHuggingFace
 from neuron_server.config import config
 from neuron_server.llms.llm import LLM
-from typing import Optional
-from neuron_server.models.provider_model import Provider
+from typing import Literal
 from neuron_server.llms.prompts import chat_prompt
 from langchain_core.runnables import Runnable
 
 
 class HuggingFaceToollessLLM(LLM):
-    provider: Provider = "huggingface"
+    provider: Literal["huggingface"] = "huggingface"
     executor: Runnable
 
     def __init__(

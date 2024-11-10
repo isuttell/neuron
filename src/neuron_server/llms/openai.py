@@ -1,12 +1,11 @@
 from langchain_openai import ChatOpenAI
 from neuron_server.llms.llm import LLM
-from typing import Optional
-from neuron_server.models.provider_model import Provider
+from typing import Optional, Literal
 from neuron_server.llms.tools import tools
 
 
 class OpenAILLM(LLM):
-    provider: Provider = "openai"
+    provider: Literal["openai"] = "openai"
 
     def __init__(
         self,
@@ -20,13 +19,13 @@ class OpenAILLM(LLM):
         )
         title_model = ChatOpenAI(
             model=model_id,
-            temperature=0.7,
-            max_tokens=32,
+            temperature=0.6,
+            max_tokens=42,
         )
         memory_model = ChatOpenAI(
             model=model_id,
-            temperature=0.1,
-            max_tokens=1000,
+            temperature=0.3,
+            max_tokens=4096,
         )
         super().__init__(
             model, title_model, memory_model, tools=tools, max_input_tokens=32000

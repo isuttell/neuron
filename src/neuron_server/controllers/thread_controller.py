@@ -15,8 +15,8 @@ from neuron_server.controllers.events.message_events import (
     PartialMessage,
 )
 from langchain_core.messages import SystemMessage, HumanMessage
-from neuron_server.llms.providers import get_provider
 from neuron_server.llms.clean_eos_tokens import clean_eos_tokens
+from neuron_server.models.provider_model import ProviderModelModel
 
 router = EventRouter()
 
@@ -70,8 +70,11 @@ async def create_thread(event: CreateThread):
             )
         ).model_dump_json()
     )
-    provider = get_provider(event.provider_id)
-    greeting = await provider.model.ainvoke(
+    provider = await ProviderModelModel.get(event.provider_id)
+    if not provider:
+        raise ValueError(f"Provider with id {event.provider_id} not found")
+    llm = provider.to_llm()
+    greeting = await llm.model.ainvoke(
         [
             SystemMessage(content=system_prompt),
             HumanMessage(

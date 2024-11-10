@@ -5,7 +5,7 @@ from typing import Dict, Any, List
 from enum import Enum
 from neuron_server.config import config
 from neuron_server.logger import logger
-from neuron_server.tools.homeassistant_apy import HomeAssistantAPI, parse_sensor_state
+from neuron_server.tools.homeassistant_api import HomeAssistantAPI, parse_sensor_state
 
 
 class ServiceCallParameters(BaseModel):

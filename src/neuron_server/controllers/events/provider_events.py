@@ -1,6 +1,6 @@
 from typing import Literal, List
 from neuron_server.event_router import OutgoingEvent, IncomingEvent
-from neuron_server.models.provider_model import ProviderModel
+from neuron_server.models.provider_model import ProviderModelModel
 
 
 class GetProviders(IncomingEvent):
@@ -9,4 +9,4 @@ class GetProviders(IncomingEvent):
 
 class GetProvidersResponse(OutgoingEvent):
     type: Literal["providers"] = "providers"
-    providers: List[ProviderModel]
+    providers: List[ProviderModelModel]

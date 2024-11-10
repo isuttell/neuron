@@ -3,22 +3,13 @@ from neuron_server.config import config
 from neuron_server.logger import logger
 import arxiv
 import os
-from typing import List
+from typing import List, Type
+from pydantic import BaseModel, Field
 
+arxiv_search_info = """
+Query Guide:
 
-class ArxivTool(BaseTool):
-    name: str = "arxiv"
-    description: str = (
-        """
-This tool searches arXiv for research articles, and retrieves summaries. Embed short IDs in text responses to reference original sources.
-
-**arXiv API Query Guide**
-
-1. **Query Structure**
-   - Use `search_query` with prefixes (e.g., `au:del_maestro` for author Adrian Del Maestro) to target fields like `title`, `author`, `abstract`, and `comments`.
-   - For specific IDs, use `id_list` instead of `search_query=id:xxx` to handle article versions.
-
-2. **Field Prefixes**
+1. **Field Prefixes**
    - Prefixes include:
      - `ti`: Title
      - `au`: Author
@@ -28,15 +19,48 @@ This tool searches arXiv for research articles, and retrieves summaries. Embed s
      - `cat`: Category
      - `all`: All fields
 
-3. **Boolean Operators**
+2. **Boolean Operators**
    - Combine fields with `AND`, `OR`, and `ANDNOT`, e.g., `au:del_maestro+AND+ti:checkerboard`.
    - Use `ANDNOT` for exclusions.
 
-4. **Grouping & Phrases**
+3. **Grouping & Phrases**
    - Group with `%28` and `%29`, and wrap phrases with `%22`.
    - Example: `au:del_maestro+ANDNOT+%28ti:checkerboard+OR+ti:Pyrochore%29`.
-    """.strip()
+
+""".strip()
+
+
+class ArxivToolArgs(BaseModel):
+    query: str = Field(description=f"The search query for arXiv.\n{arxiv_search_info}")
+    id_list: List[str] | None = Field(
+        description="The list of article IDs to search for."
     )
+    max_results: int = Field(
+        description="The maximum number of results to return.", default=10
+    )
+    sort_by: arxiv.SortCriterion = Field(
+        description="The field to sort the results by.",
+        default=arxiv.SortCriterion.SubmittedDate,
+    )
+    sort_order: arxiv.SortOrder = Field(
+        description="The order to sort the results in.",
+        default=arxiv.SortOrder.Descending,
+    )
+
+
+class ArxivTool(BaseTool):
+    name: str = "arxiv"
+    description: str = (
+        """
+This tool searches arXiv for research articles, and retrieves short summaries. Embed short IDs in text responses to reference original sources.
+
+*arXiv API Query Guide**
+
+- Use `query` with prefixes (e.g., `au:del_maestro` for author Adrian Del Maestro) to target fields like `title`, `author`, `abstract`, and `comments`.
+- For specific IDs, use `id_list` instead of `search_query=id:xxx` to handle article versions.
+""".strip()
+    )
+    args_schema: Type[ArxivToolArgs] = ArxivToolArgs
 
     def _run(
         self,
@@ -71,19 +95,19 @@ This tool searches arXiv for research articles, and retrieves summaries. Embed s
                 if not os.path.exists(article_directory):
                     os.makedirs(article_directory)
                 articles.append(
-                    f"""
-Title: {result.title}
-Short ID: {result.get_short_id()}
-Link: {result.entry_id}
-Authors: {", ".join([author.name for author in result.authors])}
-Published: {result.published}
-Primary Category: {result.primary_category}
-Categories: {", ".join(result.categories)}
-Comment: {result.comment}
-Links: {", ".join([link.href for link in result.links])}
-
-Summary:
-{result.summary}
+                    metadata=f"""
+| Field              | Description |
+|--------------------|-|
+| Title              | {result.title} |
+| Short ID           | {result.get_short_id()} |
+| Link               | {result.entry_id} |
+| Authors            | {", ".join([author.name for author in result.authors])} |
+| Published          | {result.published} |
+| Primary Category   | {result.primary_category} |
+| Categories         | {", ".join(result.categories)} |
+| Comment            | {result.comment} |
+| Links              | {", ".join([link.href for link in result.links])} |
+| Summary            | {result.summary} |
 """.strip()
                 )
                 pdf_filename = result._get_default_filename()

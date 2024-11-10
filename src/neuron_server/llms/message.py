@@ -18,23 +18,33 @@ from langchain_core.messages import (
     ToolMessage,
 )
 from datetime import datetime, timezone, timedelta
-from typing import List, Dict
+from typing import List, Dict, Any
 import re
 from neuron_server.llms.llm import LLM
 from uuid import UUID
-from neuron_server.llms.providers import get_provider
+from neuron_server.models.provider_model import ProviderModelModel
 from neuron_server.llms.clean_eos_tokens import clean_eos_tokens
 from langchain_core.messages.tool import ToolCall
 import json
+from pydantic import BaseModel
+import asyncio
+
+
+async def send_message(message: BaseModel):
+    asyncio.create_task(websocket.send(message.model_dump_json()))
 
 
 async def update_thread_status(thread: ThreadModel, status: str):
     if thread.status != status:
-        logger.debug(f"Updating thread {thread.id} status to {status}")
-        thread.status = status
-        await thread.save()
-        thread.message_count = await thread.count_messages()
-        await websocket.send(GetThreadResponse(thread=thread).model_dump_json())
+
+        async def task():
+            logger.debug(f"Updating thread {thread.id} status to {status}")
+            thread.status = status
+            await thread.save()
+            thread.message_count = await thread.count_messages()
+            await send_message(GetThreadResponse(thread=thread))
+
+        asyncio.create_task(task())
 
 
 def get_message_content(message: BaseMessage):
@@ -104,7 +114,7 @@ async def astream_events(
                 if isinstance(content, str) and len(content) > 0:
                     await update_thread_status(thread, "streaming")
                     index += 1
-                    await websocket.send(
+                    await send_message(
                         PartialMessageEvent(
                             message=PartialMessage(
                                 id=run_id,
@@ -116,7 +126,7 @@ async def astream_events(
                                 # Use a stable start time and don't create a new one per event
                                 created_at=start_times[run_id],
                             )
-                        ).model_dump_json()
+                        )
                     )
 
         elif kind == "on_chat_model_end":
@@ -134,7 +144,7 @@ async def astream_events(
                 created_at=start_times[run_id],
             )
             if len(content) > 0:
-                await websocket.send(MessageEvent(message=record).model_dump_json())
+                await send_message(MessageEvent(message=record))
             await update_thread_status(thread, "thinking")
         elif kind == "on_tool_start":
             await update_thread_status(thread, "tools")
@@ -168,7 +178,7 @@ async def astream_events(
                     "args": {},
                 }
             )
-            await websocket.send(MessageEvent(message=record).model_dump_json())
+            await send_message(MessageEvent(message=record))
     if current_run_id and len(current_tool_calls) > 0:
         await MessageModel.set(
             id=current_run_id,
@@ -204,8 +214,8 @@ async def get_trimmed_messages(
     )
 
 
-async def update_title(thread: ThreadModel, provider: LLM, messages: List[BaseMessage]):
-    response = await provider.title.ainvoke(
+async def update_title(thread: ThreadModel, llm: LLM, messages: List[BaseMessage]):
+    response = await llm.title.ainvoke(
         {
             "messages": [
                 *messages,
@@ -214,6 +224,9 @@ async def update_title(thread: ThreadModel, provider: LLM, messages: List[BaseMe
                 ),
             ],
             "last_title": thread.name or "No title yet",
+            "now": datetime.now(timezone.utc)
+            .astimezone()
+            .strftime("%Y-%m-%d %H:%M:%S"),
         },
         {"run_name": "title", "metadata": {"thread_id": thread.id}},
     )
@@ -230,10 +243,8 @@ async def update_title(thread: ThreadModel, provider: LLM, messages: List[BaseMe
     await websocket.send(GetThreadResponse(thread=thread).model_dump_json())
 
 
-async def update_memory(
-    thread: ThreadModel, provider: LLM, messages: List[BaseMessage]
-):
-    response = await provider.memory.ainvoke(
+async def update_memory(thread: ThreadModel, llm: LLM, messages: List[BaseMessage]):
+    response = await llm.memory.ainvoke(
         {
             "messages": [
                 *messages,
@@ -243,11 +254,14 @@ async def update_memory(
                             content="Please update the memory of our conversation"
                         )
                     ]
-                    if provider.provider != "openai"
+                    if llm.provider != "openai"
                     else []
                 ),
             ],
             "memory": thread.memory or "No memory yet",
+            "now": datetime.now(timezone.utc)
+            .astimezone()
+            .strftime("%Y-%m-%d %H:%M:%S"),
         },
         {"run_name": "update_memory", "metadata": {"thread_id": thread.id}},
     )
@@ -261,8 +275,8 @@ async def update_memory(
 async def ainvoke(
     thread_id: UUID,
     prompt: str,
-    personality_id: UUID | None = None,
-    provider_id: UUID | None = None,
+    provider_id: UUID,
+    personality_id: UUID,
     save_user_message: bool = True,
 ):
     thread = await ThreadModel.get(thread_id)
@@ -280,18 +294,13 @@ async def ainvoke(
             logger.debug(
                 f"Sending user message {user_message.id} at {user_message.created_at.isoformat()}"
             )
-            # Don't need to wait for this to send
-            await websocket.send(
-                MessageEvent(
-                    message=user_message,
-                ).model_dump_json()
-            )
+            await send_message(MessageEvent(message=user_message))
 
         await update_thread_status(thread, "thinking")
 
-        personality = (
-            await PersonalityModel.get(personality_id) if personality_id else None
-        )
+        personality = await PersonalityModel.get(personality_id)
+        if not personality:
+            raise ValueError(f"Personality with id {str(personality_id)} not found")
 
         system_prompts = [
             prompt
@@ -303,18 +312,22 @@ async def ainvoke(
             if prompt
         ]
 
-        provider = get_provider(provider_id)
+        provider = await ProviderModelModel.get(provider_id)
+        if not provider:
+            raise ValueError(f"Provider with id {str(provider_id)} not found")
+        logger.debug(f"Using {provider.provider}/{provider.model_id}")
+        llm = provider.to_llm()
 
         messages = await get_trimmed_messages(
             thread=thread,
-            llm=provider,
+            llm=llm,
             system_prompts=system_prompts,
             # Only add the user message if we're not saving it as get trimmed pulls from the db
             # so we need to add it here if it's not saved
             messages=[HumanMessage(content=prompt)] if not save_user_message else [],
         )
 
-        messages = await astream_events(provider, messages, thread)
+        messages = await astream_events(llm, messages, thread)
 
         # Main response is done, update the status
         await update_thread_status(thread, "idle")
@@ -322,15 +335,15 @@ async def ainvoke(
         # Update the trimmed messages to include and ensure the right message order
         messages = await get_trimmed_messages(
             thread=thread,
-            llm=provider,
+            llm=llm,
             system_prompts=system_prompts,
         )
 
         # Update the title
-        await update_title(thread, provider, messages)
+        await update_title(thread, llm, messages)
 
         # Update the memory
-        await update_memory(thread, provider, messages)
+        await update_memory(thread, llm, messages)
 
     finally:
         await update_thread_status(thread, "idle")

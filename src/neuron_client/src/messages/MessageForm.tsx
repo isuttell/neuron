@@ -47,7 +47,12 @@ export default function MessageForm({
       | React.KeyboardEvent<HTMLTextAreaElement>
   ) => {
     e.preventDefault();
-    if (!socket || value.trim().length === 0 || !activePersonalityId) {
+    if (
+      !socket ||
+      value.trim().length === 0 ||
+      !activePersonalityId ||
+      !activeProviderId
+    ) {
       return;
     }
     onSubmit(value);

@@ -15,7 +15,7 @@ class IncomingEvent(Event):
 
 
 class IncomingLLMEvent(IncomingEvent):
-    provider_id: Optional[str] = None
+    provider_id: str
 
 
 class OutgoingEvent(Event):

@@ -26,4 +26,4 @@ class PartialMessageEvent(OutgoingEvent):
 class PostMessage(IncomingLLMEvent):
     thread_id: UUID
     prompt: str
-    personality_id: Optional[UUID]
+    personality_id: UUID

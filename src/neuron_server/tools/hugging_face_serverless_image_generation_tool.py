@@ -7,6 +7,8 @@ from datetime import datetime, timezone
 from neuron_server.config import config
 from neuron_server.logger import logger
 from enum import Enum
+from pydantic import BaseModel, Field
+from typing import Type
 
 
 class HuggingFaceRepoId(Enum):
@@ -15,10 +17,28 @@ class HuggingFaceRepoId(Enum):
     # STABLE_DIFFUSION_3_5_LARGE_TURBO = "stabilityai/stable-diffusion-3.5-large-turbo"
 
 
+class HuggingFaceServerlessImageGenerationToolArgs(BaseModel):
+    prompt: str = Field(description="The prompt to generate the image from.")
+    repo_id: HuggingFaceRepoId = Field(
+        description="The repository ID of the model to use for image generation."
+    )
+    guidance_scale: float = Field(
+        description="Guidance Scale controls how closely the generated image should adhere to the prompt. A higher guidance scale makes the image more literal or faithful to the prompt, while a lower scale allows for more creativity or 'freestyle' in the output. Adjusting this can help fine-tune the balance between fidelity and variation. The default value works for most cases.",
+        default=3.5,
+    )
+    num_inference_steps: int = Field(
+        description="Minimum Inference Steps refers to the number of iterations or steps the model uses to create the image. More steps generally improve image quality and detail, but also increase computation time. Fewer steps lead to faster results with potentially less detail or accuracy. The default value works for most cases.",
+        default=25,
+    )
+
+
 class HuggingFaceServerlessImageGenerationTool(BaseTool):
     name: str = "hfs_image_generation"
     description: str = (
-        "A tool that generates an image based on a given prompt using diffusion models from HuggingFace and returns it in markdown format. Always use the default values for guidance_scale and num_inference_steps unless the user specifies otherwise. Use this when the user asks for an image. flux.1-dev is best for storytelling or projects requiring consistent character and scene continuity across multiple images, with more stylistic flexibility and dynamic visual variety. Stable Diffusion 3.5, however, shines in creating detailed, high-quality images based closely on explicit prompts, making it ideal for realistic scenes or when precise control over each image's look is required. The prompt should be a detailed description of what to generate. Make sure to include all relevant details such as location, time of day, art style, etc. to ensure better consistency and quality."
+        "A tool that generates an image based on a given prompt using diffusion models from HuggingFace and returns it in markdown format. Use this when the user asks for an image. flux.1-dev is best for storytelling or projects requiring consistent character and scene continuity across multiple images, with more stylistic flexibility and dynamic visual variety. Stable Diffusion 3.5, however, shines in creating detailed, high-quality images based closely on explicit prompts, making it ideal for realistic scenes or when precise control over each image's look is required. The prompt should be a detailed description of what to generate. Make sure to include all relevant details such as location, time of day, art style, etc. to ensure better consistency and quality. Unless you are trying to maintain a specific style or look add random modern styles to ensure variety. Image generation times make take up to a minute."
+    )
+    args_schema: Type[HuggingFaceServerlessImageGenerationToolArgs] = (
+        HuggingFaceServerlessImageGenerationToolArgs
     )
     base_api_url: str = "https://api-inference.huggingface.co/models"
 

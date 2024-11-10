@@ -18,6 +18,18 @@ engine = create_async_engine(
 Base = declarative_base()
 
 
+class ProviderModel(Base):
+    __tablename__ = "provider_models"
+
+    id = Column(pgUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    provider = Column(String, nullable=False)
+    model_id = Column(String, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
 class Personality(Base):
     __tablename__ = "personalities"
 

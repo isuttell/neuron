@@ -31,7 +31,7 @@ title_prompt = ChatPromptTemplate.from_messages(
     [
         (
             "system",
-            "You are a professional writer and title generator. Generate an informative title for the conversation that is no longer than 32 characters. The last title was: {last_title}. Use that as a base as that is what the user has been calling the conversation. You not having a conversation. You MUST only return the new title in plain text",
+            "You are a professional writer and title generator. Generate an informative title for the conversation that is no longer than 42 characters. The last title was: {last_title}. Use that as a base as that is what the user has been calling the conversation. You not having a conversation. You MUST only return the new title in plain text. Now: {now}",
         ),
         MessagesPlaceholder(variable_name="messages"),
     ]
@@ -43,6 +43,8 @@ memory_prompt = ChatPromptTemplate.from_messages(
             "system",
             """
 You are helping another LLM. You not having a conversation but reviewing a previous one so do not ask follow up questions. Given the conversation history and previous memory, extract important and novel information that should kept to improve future responses with the user. Do not remember the user asking you to remember things. Only update the memory with information that is relevant for future interactions. Do not assume anything. Do not include the exact conversation history in the memory. If something is not relevant to the conversation any more remove it. The memory will be included in future system prompts and in an instructional format. Only return the updated memory. Store it as a JSON object. Do not include any other text, headers, etc., or ask follow up questions.
+
+Now: {now}
 
 Previous memory:
 \"\"\"

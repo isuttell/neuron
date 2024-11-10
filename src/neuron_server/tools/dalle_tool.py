@@ -6,7 +6,8 @@ from datetime import datetime, timezone
 from neuron_server.config import config
 from neuron_server.logger import logger
 from openai import OpenAI
-from typing import Literal
+from typing import Literal, Type
+from pydantic import BaseModel, Field
 
 
 def generate_image(
@@ -39,11 +40,19 @@ def generate_image(
     return Image.open(BytesIO(image.content))
 
 
+class DalleArgs(BaseModel):
+    prompt: str = Field(description="The prompt to generate the image from.")
+    style: Literal["natural", "vivid"] = Field(
+        description="The style of the image to generate.", default="vivid"
+    )
+
+
 class DalleTool(BaseTool):
     name: str = "dalle"
     description: str = (
-        "A tool that generates an image based on a given prompt using OpenAI's DALL-E 3 and returns it in markdown format. DALL-E is suited for generating highly detailed, standalone images with precise attributes, especially in realistic or semi-realistic styles. Use this when the user asks for an image. When generating DALL-E prompts, include specific visual details, such as colors, textures, and object placements, to guide the model toward a precise result. Mention the desired style (e.g., photorealistic, cartoonish, or abstract) and add context, like background elements or lighting, for more cohesive images. Focus on clarity and conciseness in each prompt to avoid ambiguity and ensure reproducible results. Returns the url to the generated image which must be displayed using markdown."
+        "A tool that generates an image based on a given prompt using OpenAI's DALL-E 3. DALL-E is suited for generating highly detailed, standalone images with precise attributes, especially in realistic or semi-realistic styles. Use this when the user asks for an image. When generating DALL-E prompts, include specific visual details, such as colors, textures, and object placements, to guide the model toward a precise result. Mention the desired style (e.g., photorealistic, cartoonish, or abstract) and add context, like background elements or lighting, for more cohesive images. Focus on clarity and conciseness in each prompt to avoid ambiguity and ensure reproducible results. Unless you are trying to maintain a specific style or look add random modern styles to ensure variety. Do not use to generate charts. Returns the url to the generated image which must be displayed using markdown."
     )
+    args_schema: Type[DalleArgs] = DalleArgs
 
     def _run(
         self,

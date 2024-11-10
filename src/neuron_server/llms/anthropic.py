@@ -1,12 +1,11 @@
 from langchain_anthropic import ChatAnthropic
-from typing import Optional
+from typing import Optional, Literal
 from neuron_server.llms.llm import LLM
-from neuron_server.models.provider_model import Provider
 from neuron_server.llms.tools import tools
 
 
 class AnthropicLLM(LLM):
-    provider: Provider = "anthropic"
+    provider: Literal["anthropic"] = "anthropic"
 
     def __init__(
         self,
@@ -20,13 +19,13 @@ class AnthropicLLM(LLM):
         )
         title_model = ChatAnthropic(
             model=model_id,
-            temperature=0.3,
+            temperature=0.6,
             max_tokens=42,
         )
         memory_model = ChatAnthropic(
             model=model_id,
             temperature=0.3,
-            max_tokens=1024,
+            max_tokens=4096,
         )
         super().__init__(
             model=model,

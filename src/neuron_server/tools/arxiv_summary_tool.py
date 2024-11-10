@@ -5,6 +5,10 @@ import arxiv
 import os
 from neuron_server.util.pdf import summarize_pages, summarize_document
 from langchain_anthropic import ChatAnthropic
+from datetime import datetime
+from pydantic import BaseModel, Field
+from typing import Type
+
 
 model = ChatAnthropic(
     model="claude-3-5-sonnet-20241022",
@@ -13,15 +17,28 @@ model = ChatAnthropic(
 )
 
 
+class ArxivSummaryArgs(BaseModel):
+    id: str = Field(description="The ID of the article to inspect.")
+    force_resummarize: bool = Field(
+        description="Whether to force the tool to re-summarize the article even if a cached version is available.",
+        default=False,
+    )
+
+
 class ArxivSummaryTool(BaseTool):
     name: str = "arxiv_summary"
     description: str = (
         """
-This tool summarizes research articles by their arXiv short IDs. This generates a detailed summary page by page so it can take a while the first time it is run but afterwards it saves the result to a file. The force_resummarize flag can be used to force the tool to re-summarize the article even if the summary already exists if there is a problem.
+This tool provides detailed, page-by-page summaries of research articles by their arXiv short IDs. The initial run may take some time as it downloads and processes the article, but a cached summary is saved for faster access on future requests.
 """.strip()
     )
+    args_schema: Type[ArxivSummaryArgs] = ArxivSummaryArgs
 
-    def _run(self, id: str, force_resummarize: bool = False) -> str:
+    def _run(
+        self,
+        id: str,
+        force_resummarize: bool = False,
+    ) -> str:
         try:
 
             logger.debug(f"Searching arXiv with: id_list=[{id}]")
@@ -36,7 +53,6 @@ This tool summarizes research articles by their arXiv short IDs. This generates 
             article_directory = f"{config.static_folder}/arxiv/{article.get_short_id()}"
             if not os.path.exists(article_directory):
                 os.makedirs(article_directory)
-
             metadata = f"""
 | Field              | Description |
 |--------------------|-|
@@ -49,7 +65,7 @@ This tool summarizes research articles by their arXiv short IDs. This generates 
 | Categories         | {", ".join(article.categories)} |
 | Comment            | {article.comment} |
 | Links              | {", ".join([link.href for link in article.links])} |
-| Summary            | {article.summary} |
+| arxiv Summary      | {article.summary} |
 """.strip()
 
             pdf_filename = article._get_default_filename()
@@ -73,7 +89,7 @@ This tool summarizes research articles by their arXiv short IDs. This generates 
                 f"## Page {i+1} Summary:\n{result}\n\n"
                 for i, result in enumerate(page_summaries)
             )
-            report = f"# {article.title}\n\n## arxiv metadata\n\n{metadata}\n\n## AI Summary:\n{summary}\n\n{page_summaries}"
+            report = f"# {article.title}\n\nGenerated on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n## arxiv metadata\n\n{metadata}\n\n## AI Summary:\n{summary}\n\n{page_summaries}"
             with open(summary_file_path, "w", encoding="utf-8") as file:
                 file.write(report)
             logger.debug(f"Summary saved to {summary_file_path}")

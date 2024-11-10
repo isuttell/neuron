@@ -5,20 +5,35 @@ from uuid import uuid4
 import os
 from elevenlabs import ElevenLabs
 from neuron_server.logger import logger
-from typing import Optional
+from typing import Optional, Type
+from pydantic import Field, BaseModel
+
+tool_promp_types = """
+Prompt Tips:
+
+Simple: Short prompts (e.g., "footsteps on gravel") yield single sounds. Descriptors like "high-quality, Foley" improve detail.
+Audio Terms: Use terms like Foley (realistic effects), Whoosh (movement sounds), Impact (collisions), Drone (atmosphere), and onomatopoeias (e.g., "meow").
+""".strip()
+
+
+class ElevenLabsSoundEffectsToolArgs(BaseModel):
+    text: str = Field(
+        description="The text used to generate the sound effect.\n\n{tool_promp_types}"
+    )
+    duration_seconds: Optional[float] = Field(
+        description="The duration of the sound which will be generated in seconds. Must be at least 0.5 and at most 22. If set to None we will guess the optimal duration using the prompt.",
+        default=None,
+    )
 
 
 class ElevenLabsSoundEffectsTool(BaseTool):
     name: str = "elevenlabs_soundeffects"
     description: str = (
         """
-This tool generates sound effects using the Eleven Labs sound effect API. Users provide a simple text prompt, and the tool produces a corresponding sound effect, returning a filename for each sound file. These filenames can then be combined with other audio or video elements using ffmpeg, enabling seamless integration with your media projects. Simple prompts, like 'footsteps on gravel,' generate single, distinct effects, while more descriptive prompts enhance audio detail and quality. Do not show the output filename to the user as they can't directly access it. If you want to show the user make sure to use an <audio> tag and the src attribute to point to the URL.
-
-Args:
-Text: The text prompt to generate sound effects from
-duration_seconds: The duration of the sound which will be generated in seconds. Must be at least 0.5 and at most 22. If set to None we will guess the optimal duration using the prompt. Defaults to None.
+This tool generates sound effects using the Eleven Labs sound effect API from text prompts. Users provide a prompt, and the tool returns a sound file with an <audio> tag for playback. Complex sequences (e.g., "a man walks through a hallway, then falls") should ideally be created with individual effects and later combined using ffmpeg for optimal quality.
 """.strip()
     )
+    args_schema: Type[ElevenLabsSoundEffectsToolArgs] = ElevenLabsSoundEffectsToolArgs
 
     def _run(self, text: str, duration_seconds: Optional[float] = None) -> str:
         try:
