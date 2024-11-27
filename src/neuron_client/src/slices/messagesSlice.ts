@@ -2,12 +2,16 @@ import { createSlice } from "@reduxjs/toolkit";
 import type { PayloadAction } from "@reduxjs/toolkit";
 import type { RootState } from "../store";
 
+interface Content {
+  text: string;
+  type: string;
+  index: number;
+}
+
 export interface Message {
   id: string;
-  role: string;
-  content: string;
-  created_at: number;
-  updated_at: number;
+  type: string;
+  content: Content[] | string;
   thread_id: string;
   status?: string;
 }
@@ -48,8 +52,8 @@ const initialState: MessageState = {
 function parseIncomingMessage(message: IncomingMessage): Message {
   return {
     ...message,
-    created_at: new Date(message.created_at).getTime(),
-    updated_at: new Date(message.updated_at).getTime(),
+    // created_at: new Date(message.created_at).getTime(),
+    // updated_at: new Date(message.updated_at).getTime(),
   };
 }
 
@@ -61,7 +65,7 @@ export const messagesSlice = createSlice({
       const existingMessageIndex = state.messages.findIndex(
         (msg) => msg.id === action.payload.message.id
       );
-      const message = parseIncomingMessage(action.payload.message);
+      const message = action.payload.message;
       if (existingMessageIndex !== -1) {
         state.messages[existingMessageIndex] = message;
       } else {
@@ -78,7 +82,9 @@ export const messagesSlice = createSlice({
       const message = parseIncomingMessage(action.payload.message);
       if (existingMessageIndex !== -1) {
         state.messages[existingMessageIndex].status = message.status;
-        state.messages[existingMessageIndex].content += message.content;
+        if (typeof message.content === "string") {
+          state.messages[existingMessageIndex].content += message.content;
+        }
       } else {
         state.messages.push(message);
       }

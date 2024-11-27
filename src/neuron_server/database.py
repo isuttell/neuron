@@ -1,5 +1,5 @@
 from typing import List
-from sqlalchemy import Column, String, Text, DateTime, ForeignKey, JSON, func
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, JSON, func
 from sqlalchemy.dialects.postgresql import UUID as pgUUID
 from sqlalchemy.orm import relationship, Mapped, sessionmaker
 import uuid
@@ -8,12 +8,18 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.ext.hybrid import hybrid_property
 from neuron_server.config import config
 from sqlalchemy.pool import NullPool
+from psycopg_pool import AsyncConnectionPool
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+from neuron_server.logger import logger
+import asyncio
+
+DB_URI = f"{config.database.user}:{config.database.password}@{config.database.host}:{config.database.port}/{config.database.database}"
+
 
 engine = create_async_engine(
-    f"postgresql+asyncpg://{config.database.user}:{config.database.password}@{config.database.host}:{config.database.port}/{config.database.database}",
+    f"postgresql+asyncpg://{DB_URI}",
     poolclass=NullPool,  # require until we sort out the event loop
 )
-
 
 Base = declarative_base()
 
@@ -55,6 +61,7 @@ class Thread(Base):
     context = Column(Text, default="")
     memory = Column(Text, default="")
     status = Column(String, default="idle")
+    message_count = Column(Integer, default=0)
     personality_id = Column(
         pgUUID(as_uuid=True),
         ForeignKey("personalities.id", ondelete="CASCADE"),
@@ -64,15 +71,7 @@ class Thread(Base):
     updated_at = Column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
-
-    messages: Mapped[List["Message"]] = relationship(
-        back_populates="thread", cascade="all, delete-orphan"
-    )
     personality: Mapped["Personality"] = relationship(back_populates="threads")
-
-    @hybrid_property
-    def message_count(self) -> int:
-        return len(self.messages)
 
 
 class Message(Base):
@@ -93,16 +92,29 @@ class Message(Base):
     updated_at = Column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
-    thread: Mapped["Thread"] = relationship(back_populates="messages")
 
 
 # Create async session maker
 get_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 
+pool = AsyncConnectionPool(
+    conninfo=f"postgresql://{DB_URI}",
+    kwargs={
+        "autocommit": True,
+        "prepare_threshold": 0,
+    },
+    open=False,
+)
+
+
 async def create_tables():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+    await pool.open()
+    checkpointer = AsyncPostgresSaver(pool)
+    await checkpointer.setup()
+    await pool.check()
 
 
 async def test_database():

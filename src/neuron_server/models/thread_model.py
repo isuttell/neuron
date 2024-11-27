@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 from uuid import uuid4
 from datetime import datetime, timezone
 from typing import Literal, Self, Any
+from pydantic import field_serializer
 
 
 def get_context_prompt(context: str) -> str:
@@ -22,7 +23,7 @@ def get_memory_prompt(memory: str) -> str:
     if not memory or len(memory.strip()) == 0:
         return ""
     return f"""\
-Based on past conversations you determined the following was important to remember:
+Based this thread's conversation, you determined the following was important to remember:
 \"\"\"
 {memory}
 \"\"\"""".strip()
@@ -56,6 +57,10 @@ class ThreadModel(BaseModel):
     updated_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc).astimezone()
     )
+
+    @field_serializer("created_at", "updated_at")
+    def parse_date(self, v: datetime) -> str:
+        return v.astimezone().isoformat()
 
     def get_context_prompt(self) -> str:
         if not self.context or len(self.context.strip()) == 0:
@@ -106,7 +111,13 @@ class ThreadModel(BaseModel):
 
     @classmethod
     async def update(
-        cls, id: UUID, name: str, context: str, memory: str, status: str
+        cls,
+        id: UUID,
+        name: str,
+        context: str,
+        memory: str,
+        status: str,
+        message_count: int,
     ) -> Self:
         async with get_session() as session:
             thread = await session.get(Thread, id)
@@ -114,6 +125,7 @@ class ThreadModel(BaseModel):
             thread.context = context
             thread.memory = memory
             thread.status = status
+            thread.message_count = message_count
             await session.commit()
             return cls(**thread.__dict__)
 
@@ -133,15 +145,6 @@ class ThreadModel(BaseModel):
             )
             return [cls(**thread.__dict__) for thread in results.scalars().all()]
 
-    async def count_messages(self) -> int:
-        async with get_session() as session:
-            results = await session.execute(
-                select(func.count()).where(
-                    Message.thread_id == self.id, Message.role != "system"
-                )
-            )
-            return results.scalar()
-
     async def save(
         self,
     ) -> None:
@@ -151,6 +154,7 @@ class ThreadModel(BaseModel):
             thread.context = self.context
             thread.memory = self.memory
             thread.status = self.status
+            thread.message_count = self.message_count
             await session.commit()
 
     @classmethod
@@ -162,4 +166,4 @@ class ThreadModel(BaseModel):
             setattr(thread, key, value)
             session.add(thread)
             await session.commit()
-            return cls(**sthread.__dict__)
+            return cls(**thread.__dict__)

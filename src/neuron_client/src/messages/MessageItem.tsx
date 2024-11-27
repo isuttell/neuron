@@ -1,6 +1,6 @@
 import React, { memo } from "react";
 import { Bot, User, Hammer } from "lucide-react";
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Tooltip,
@@ -13,27 +13,27 @@ interface MessageItemProps {
   message: Message;
 }
 
-const getFuzzyTime = (date: Date) => {
-  const now = new Date();
-  const secondsPast = Math.floor((now.getTime() - date.getTime()) / 1000);
+// const getFuzzyTime = (date: Date) => {
+//   const now = new Date();
+//   const secondsPast = Math.floor((now.getTime() - date.getTime()) / 1000);
 
-  if (secondsPast < 60) {
-    return "Just now";
-  }
-  if (secondsPast < 3600) {
-    return `${Math.floor(secondsPast / 60)}m`;
-  }
-  if (secondsPast <= 86400) {
-    return `${Math.floor(secondsPast / 3600)}h`;
-  }
-  if (secondsPast <= 2592000) {
-    return `${Math.floor(secondsPast / 86400)}d`;
-  }
-  if (secondsPast <= 31536000) {
-    return `${Math.floor(secondsPast / 2592000)}mo`;
-  }
-  return `${Math.floor(secondsPast / 31536000)}y`;
-};
+//   if (secondsPast < 60) {
+//     return "Just now";
+//   }
+//   if (secondsPast < 3600) {
+//     return `${Math.floor(secondsPast / 60)}m`;
+//   }
+//   if (secondsPast <= 86400) {
+//     return `${Math.floor(secondsPast / 3600)}h`;
+//   }
+//   if (secondsPast <= 2592000) {
+//     return `${Math.floor(secondsPast / 86400)}d`;
+//   }
+//   if (secondsPast <= 31536000) {
+//     return `${Math.floor(secondsPast / 2592000)}mo`;
+//   }
+//   return `${Math.floor(secondsPast / 31536000)}y`;
+// };
 
 const getStatusMessage = (status: string) => {
   if (status === "thinking") {
@@ -48,15 +48,22 @@ const getStatusMessage = (status: string) => {
 };
 
 const MessageItem: React.FC<MessageItemProps> = ({
-  message: { role, content, created_at, status = undefined },
+  message: { type: role, content, status = undefined },
 }) => {
+  const body = Array.isArray(content)
+    ? content
+        .filter((item) => item.type === "text")
+        .map((item) => item.text)
+        .join("\n")
+    : content;
+
   return (
     <Card
       className={`w-full mb-2 ${
         role === "tool" || role === "system" ? "bg-zinc-900" : ""
       }`}
     >
-      <CardContent className="pb-1 px-6 pt-6 text-small text-default-400 flex items-start space-x-2">
+      <CardContent className="px-6 py-4 text-small text-default-400 flex items-start space-x-2">
         <Tooltip>
           <TooltipTrigger asChild>
             <div
@@ -80,9 +87,9 @@ const MessageItem: React.FC<MessageItemProps> = ({
           </TooltipContent>
         </Tooltip>
 
-        {(!status || status === "streaming") && content.trim().length > 0 ? (
+        {body.trim().length > 0 ? (
           <Content
-            content={content}
+            content={body}
             preload={status === "streaming" ? "none" : "auto"}
           />
         ) : (
@@ -97,21 +104,6 @@ const MessageItem: React.FC<MessageItemProps> = ({
           </div>
         )}
       </CardContent>
-      <CardFooter className="gap-3">
-        <div className="flex gap-1 flex-1 text-gray-500 space-x-2">
-          <div className="flex-1" />
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <p className="text-sm hover:text-gray-700">
-                {getFuzzyTime(new Date(created_at))}
-              </p>
-            </TooltipTrigger>
-            <TooltipContent side="right">
-              {new Date(created_at).toLocaleString()}
-            </TooltipContent>
-          </Tooltip>
-        </div>
-      </CardFooter>
     </Card>
   );
 };

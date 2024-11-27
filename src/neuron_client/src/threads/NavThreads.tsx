@@ -4,23 +4,23 @@ import { NavLink } from "react-router-dom";
 import { useAppSelector } from "../hooks";
 import { useAppDispatch } from "../hooks";
 import NewThreadButton from "../threads/NewThreadButton";
-import { getThreads } from "../slices/threadsSlice";
+import { getThreads, upsertThreads } from "../slices/threadsSlice";
 import { getActivePersonalityId } from "../slices/personalitiesSlice";
-import { socketManager } from "@/WebSocketManager";
+import superagent from "superagent";
 
 export default function NavThreads() {
   const threads = useAppSelector(getThreads);
   const dispatch = useAppDispatch();
   const activePersonalityId = useAppSelector(getActivePersonalityId);
   useEffect(() => {
-    socketManager.ready().then(() => {
-      if (activePersonalityId) {
-        dispatch({
-          type: "socket/GetThreads",
-          personality_id: activePersonalityId,
-        });
-      }
-    });
+    if (!activePersonalityId) {
+      return;
+    }
+    superagent
+      .get(`/api/threads/personality/${activePersonalityId}`)
+      .then(({ body }) => {
+        dispatch(upsertThreads(body));
+      });
   }, [activePersonalityId]);
 
   return (

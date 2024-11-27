@@ -78,10 +78,10 @@ export default function Personality() {
       provider_id: activeProviderId,
     });
     setIsLoading(true);
-    setPrompt("");
     socket.once("personality_prompt_response", (data) => {
       setUpdatedContext(data.context);
       setIsLoading(false);
+      setPrompt("");
     });
   };
 

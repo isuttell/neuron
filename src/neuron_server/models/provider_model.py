@@ -4,7 +4,7 @@ from uuid import UUID
 from typing import List, Optional
 from neuron_server.database import get_session, ProviderModel
 from sqlalchemy import select
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_serializer
 from uuid import uuid4
 from datetime import datetime, timezone
 from typing import Literal, Self
@@ -29,6 +29,10 @@ class ProviderModelModel(BaseModel):
     )
 
     model_config = {"protected_namespaces": ()}
+
+    @field_serializer("created_at", "updated_at")
+    def parse_date(self, v: datetime) -> str:
+        return v.astimezone().isoformat()
 
     @classmethod
     async def get(cls, id: UUID) -> Optional[Self]:

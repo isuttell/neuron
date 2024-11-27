@@ -9,6 +9,15 @@ import os
 load_dotenv()
 
 
+class PushoverConfig(BaseModel):
+    token: str = Field(
+        default=os.environ.get("PUSHOVER_API_TOKEN"), description="Pushover API token"
+    )
+    user: str = Field(
+        default=os.environ.get("PUSHOVER_USER_KEY"), description="Pushover user key"
+    )
+
+
 class DatabaseConfig(BaseModel):
     host: str = Field(
         default=os.environ.get("POSTGRES_HOST", "localhost"),
@@ -43,7 +52,8 @@ class HomeAssistantConfig(BaseModel):
 
 class Config(BaseModel):
     debug: bool = Field(
-        default=os.environ.get("DEBUG", False), description="Debug mode"
+        default=os.environ.get("DEBUG", "False").lower() == "true",
+        description="Debug mode",
     )
     hf_token: str = Field(
         default=os.environ.get("HF_TOKEN"), description="Hugging Face token"
@@ -62,17 +72,9 @@ class Config(BaseModel):
     )
     host: str = Field(default=os.environ.get("HOST", "0.0.0.0"), description="Host")
     port: int = Field(default=int(os.environ.get("PORT", 5000)), description="Port")
-    database_path: str = Field(
-        default=os.environ.get("DATABASE_PATH", "neuron_server.sqlite3"),
-        description="Database path",
-    )
     client_assets_folder: str = Field(
         default=os.environ.get("STATIC_FOLDER", "../neuron_client/dist"),
         description="Static folder",
-    )
-    images_folder: str = Field(
-        default=os.environ.get("IMAGE_OUTPUT_FOLDER", "./images"),
-        description="Image output folder",
     )
     static_folder: str = Field(
         default=os.environ.get("OUTPUT_FOLDER", "./static"),
@@ -88,6 +90,8 @@ class Config(BaseModel):
         description="Temp folder",
     )
     database: DatabaseConfig = DatabaseConfig()
+
+    pushover: PushoverConfig = PushoverConfig()
 
 
 config = Config()

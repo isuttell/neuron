@@ -13,23 +13,8 @@ from neuron_server.logger import logger
 from pydantic import BaseModel, Field
 
 
-script_prompt_example = """
-The input script format should consist of speaker identifiers followed by their respective dialogues, formatted as the example below:
-
-Example:
-```
-[Chris]
-Hello, how are you?
-
-[Jessica]
-I'm great!
-""".strip()
-
-
 class ElevenLabsTTSToolArgs(BaseModel):
-    script: str = Field(
-        description="The script to generate audio from.\n\n{script_prompt_example}"
-    )
+    script: str = Field(description="The script to generate audio from.")
 
 
 class SpokenLine(TypedDict):
@@ -74,9 +59,18 @@ class ElevenLabsTTSTool(BaseTool):
     name: str = "elevenlabs_tts"
     description: str = (
         """
-This tool generates audio from a provided script.
+This tool generates audio from a provided script. The input script format should consist of speaker identifiers followed by their respective dialogues, formatted as the example below:
 
-Use one of the following voices for the speaker:
+Example:
+```
+[Chris]
+Hello, how are you?
+
+[Jessica]
+I'm great!
+```
+
+Use one of the following voices for the speaker. Exclude (voice description):
 
 Conversational Voices:
 Aria
@@ -98,8 +92,9 @@ Sarah
 Daniel
 
 Character Voices:
-Callum
-Charlotte
+Callum (male, middle-aged, intense)
+Charlotte (female, Swedish)
+
 
 The tool will use ElevenLabs' TTS API to generate the audio and return a link to the final audio file. Each script block should be short enough to be processed in a single call to the API. Use this tool to generate audio when the users requests it. The result should always include a playable <audio> tag that users the src attribute to link the audio file. Do not include the filename in the response.
 """.strip()
@@ -117,7 +112,7 @@ The tool will use ElevenLabs' TTS API to generate the audio and return a link to
                 response = client.generate(
                     text=line["text"],
                     voice=line["voice"],
-                    # model="eleven_multilingual_v2",
+                    model="eleven_multilingual_v2",
                 )
                 audio_file_path = working_dir + "/" + f"line-{index}.mp3"
                 audio_files.append(audio_file_path)

@@ -10,6 +10,7 @@ from neuron_server.llms.clean_eos_tokens import clean_eos_tokens
 from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field
 from typing import Type
+import aiohttp
 
 
 def get_message_content(message: BaseMessage):
@@ -42,6 +43,13 @@ class InspectImageToolArgs(BaseModel):
     )
 
 
+async def get_image_base64(image_url: str) -> str:
+    async with aiohttp.ClientSession() as session:
+        async with session.get(image_url) as response:
+            response.raise_for_status()
+            return base64.b64encode(await response.content.read()).decode("utf-8")
+
+
 class InspectImageTool(BaseTool):
     name: str = "inspect_image"
     description: str = (
@@ -50,6 +58,9 @@ class InspectImageTool(BaseTool):
     args_schema: Type[InspectImageToolArgs] = InspectImageToolArgs
 
     def _run(self, image_url: str, prompt: str, max_tokens: int = 300) -> str:
+        return asyncio.run(self._arun(image_url, prompt, max_tokens))
+
+    async def _arun(self, image_url: str, prompt: str, max_tokens: int = 300) -> str:
         """
         Inspect an image using OpenAI's GPT-4o multi-modal vision capabilities.
 
@@ -65,17 +76,13 @@ class InspectImageTool(BaseTool):
             start_time = time.perf_counter()
             logger.debug(f"Inspecting image: {image_url} with prompt: {prompt}")
             # Download the image
-            response = requests.get(image_url)
-            response.raise_for_status()
-
-            # Convert the image to base64
-            image_base64 = base64.b64encode(response.content).decode("utf-8")
+            image_base64 = await get_image_base64(image_url)
             model = ChatOpenAI(
                 model="gpt-4o",
-                temperature=0.3,
+                temperature=0.7,
                 max_tokens=max_tokens,
             )
-            message = model.invoke(
+            message = await model.ainvoke(
                 [
                     SystemMessage(
                         content="You are a tool that inspects images and returns a description of the image based on a given prompt. Be descriptive and detailed. Just return the description, no other text. Do not ask for clarification."

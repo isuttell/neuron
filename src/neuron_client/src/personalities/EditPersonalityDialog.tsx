@@ -35,10 +35,10 @@ const EditPersonalityDialog: React.FC<EditPersonalityDialogProps> = ({
   const socket = useAppSelector(getSocket);
   const activeProviderId = useAppSelector(getActiveProviderId);
   const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
     if (!activeProviderId || !socket || loading) {
       return;
     }
-    e.preventDefault();
     setLoading(true);
     dispatch({
       type: personality

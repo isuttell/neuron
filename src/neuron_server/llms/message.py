@@ -41,7 +41,6 @@ async def update_thread_status(thread: ThreadModel, status: str):
             logger.debug(f"Updating thread {thread.id} status to {status}")
             thread.status = status
             await thread.save()
-            thread.message_count = await thread.count_messages()
             await send_message(GetThreadResponse(thread=thread))
 
         asyncio.create_task(task())
@@ -78,7 +77,8 @@ async def astream_events(
     start_times: Dict[str, datetime] = {}
     current_tool_calls: List[ToolCall] = []
     current_run_id: str | None = None
-    async for body in provider.executor.astream_events(
+    graph = await provider.compile()
+    async for body in graph.astream_events(
         {
             "messages": messages,
             "now": datetime.now(timezone.utc)
@@ -239,7 +239,6 @@ async def update_title(thread: ThreadModel, llm: LLM, messages: List[BaseMessage
         summary,
     )
     await thread.save()
-    thread.message_count = await thread.count_messages()
     await websocket.send(GetThreadResponse(thread=thread).model_dump_json())
 
 
@@ -306,10 +305,11 @@ async def ainvoke(
             prompt
             for prompt in [
                 personality.get_context_prompt(),
+                personality.get_memory_prompt(),
                 thread.get_context_prompt(),
                 thread.get_memory_prompt(),
             ]
-            if prompt
+            if isinstance(prompt, str) and len(prompt.strip()) > 0
         ]
 
         provider = await ProviderModelModel.get(provider_id)

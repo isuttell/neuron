@@ -18,6 +18,10 @@ interface IncomingThreadEvent {
   thread: Thread;
 }
 
+interface IncomingThreadsEvent {
+  threads: Thread[];
+}
+
 // Define a type for the slice state
 interface ThreadState {
   threads: Thread[];
@@ -32,6 +36,18 @@ export const threadsSlice = createSlice({
   name: "threads",
   initialState,
   reducers: {
+    upsertThreads: (state, action: PayloadAction<IncomingThreadsEvent>) => {
+      for (const thread of action.payload.threads) {
+        const existingThreadIndex = state.threads.findIndex(
+          (item) => item.id === thread.id
+        );
+        if (existingThreadIndex !== -1) {
+          state.threads[existingThreadIndex] = thread;
+        } else {
+          state.threads.push(thread);
+        }
+      }
+    },
     upsertThread: (state, action: PayloadAction<IncomingThreadEvent>) => {
       const existingThreadIndex = state.threads.findIndex(
         (thread) => thread.id === action.payload.thread.id
@@ -51,7 +67,8 @@ export const threadsSlice = createSlice({
   },
 });
 
-export const { upsertThread, deleteThread } = threadsSlice.actions;
+export const { upsertThread, upsertThreads, deleteThread } =
+  threadsSlice.actions;
 
 export const getThreads = (state: RootState) => state.threads.threads;
 

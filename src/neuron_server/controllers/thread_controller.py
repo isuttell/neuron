@@ -1,5 +1,5 @@
 from neuron_server.models import ThreadModel, MessageModel, PersonalityModel
-from quart import websocket
+from quart import websocket, Blueprint, request
 from neuron_server.event_router import EventRouter, ErrorEvent
 from neuron_server.controllers.events.thread_events import (
     GetThread,
@@ -17,12 +17,16 @@ from neuron_server.controllers.events.message_events import (
 from langchain_core.messages import SystemMessage, HumanMessage
 from neuron_server.llms.clean_eos_tokens import clean_eos_tokens
 from neuron_server.models.provider_model import ProviderModelModel
+from uuid import UUID
+from neuron_server.controllers.message_controller import aget_state
+
 
 router = EventRouter()
+blueprint = Blueprint("thread", __name__)
 
 
 @router.on(GetThread)
-async def get_thread(event: GetThread):
+async def handle_get_thread(event: GetThread):
     thread = await ThreadModel.get(event.thread_id)
     if not thread:
         await websocket.send(ErrorEvent(message="Thread not found").model_dump_json())
@@ -33,62 +37,47 @@ async def get_thread(event: GetThread):
     await websocket.send(GetThreadResponse(thread=thread).model_dump_json())
 
 
+@blueprint.get("/<uuid:thread_id>")
+async def get_thread(thread_id: UUID):
+    thread = await ThreadModel.get(thread_id)
+    if not thread:
+        raise ValueError("Thread not found")
+    return {
+        "thread": thread.model_dump(),
+    }
+
+
 @router.on(GetThreads)
-async def get_threads(event: GetThreads):
+async def handle_get_threads(event: GetThreads):
     for thread in await ThreadModel.list(personality_id=event.personality_id):
-        thread.message_count = await MessageModel.count(thread_id=thread.id)
         await websocket.send(GetThreadResponse(thread=thread).model_dump_json())
 
 
-@router.on(CreateThread)
-async def create_thread(event: CreateThread):
-    personality = await PersonalityModel.get(event.personality_id)
+@blueprint.get("/personality/<uuid:personality_id>")
+async def get_threads(personality_id: UUID):
+    threads = await ThreadModel.list(personality_id=personality_id)
+    return {
+        "threads": [thread.model_dump() for thread in threads],
+    }
+
+
+@blueprint.post("/")
+async def post_create_thread():
+    data = await request.get_json()
+    body = CreateThread(**data)
+    personality = await PersonalityModel.get(body.personality_id)
+    if not personality:
+        raise ValueError("Personality not found")
+
     thread = await ThreadModel.create(
         personality_id=personality.id,
-        name=event.name,
-        context=event.context,
-        status="thinking",
+        name=body.name,
+        context=body.context,
     )
-    await websocket.send(GetThreadResponse(thread=thread).model_dump_json())
 
-    system_prompts = [
-        prompt
-        for prompt in [personality.get_context_prompt(), thread.get_context_prompt()]
-        if prompt
-    ]
-    system_prompt = "\n".join(system_prompts) if system_prompts else None
-    message = await MessageModel.create(thread_id=thread.id, role="ai", content="")
-    await websocket.send(
-        PartialMessageEvent(
-            message=PartialMessage(
-                id=message.id,
-                index=0,
-                role=message.role,
-                content=message.content,
-                thread_id=thread.id,
-                status="streaming",
-            )
-        ).model_dump_json()
-    )
-    provider = await ProviderModelModel.get(event.provider_id)
-    if not provider:
-        raise ValueError(f"Provider with id {event.provider_id} not found")
-    llm = provider.to_llm()
-    greeting = await llm.model.ainvoke(
-        [
-            SystemMessage(content=system_prompt),
-            HumanMessage(
-                content="Write a couple sentences greeting the user to start the conversation off and prompt next steps."
-            ),
-        ],
-        {"run_name": "greeting", "metadata": {"thread_id": thread.id}},
-    )
-    await MessageModel.update(id=message.id, content=clean_eos_tokens(greeting.content))
-    await websocket.send(MessageEvent(message=message).model_dump_json())
-    thread.status = "idle"
-    await thread.save()
-    thread.message_count = await MessageModel.count(thread_id=thread.id)
-    await websocket.send(GetThreadResponse(thread=thread).model_dump_json())
+    return {
+        "thread": thread.model_dump(),
+    }
 
 
 @router.on(DeleteThread)

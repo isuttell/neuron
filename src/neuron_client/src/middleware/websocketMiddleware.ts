@@ -92,7 +92,6 @@ const websocketMiddleware =
         dispatch(deleteImage(deleteAction));
       }
     }
-
     return next(action);
   };
 

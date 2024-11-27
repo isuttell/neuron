@@ -13,9 +13,10 @@ import ImageContent from "./ImageContent";
 interface MediaListProps {
   className?: string;
   messages: Message[];
+  threadId: string;
 }
 
-export function MediaList({ className, messages }: MediaListProps) {
+export function MediaList({ className, messages, threadId }: MediaListProps) {
   const endRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -27,25 +28,33 @@ export function MediaList({ className, messages }: MediaListProps) {
     messages.length,
     messages.length > 0 && messages[messages.length - 1].content,
     endRef.current,
+    threadId,
   ]);
 
   // Extract media URLs from markdown image syntax and HTML audio/video tags
   const mediaItems = messages.flatMap((message) => {
     const items = [];
 
+    const body = Array.isArray(message.content)
+      ? message.content
+          .filter((item) => item.type === "text")
+          .map((item) => item.text)
+          .join("\n")
+      : message.content;
+
     // Find markdown image tags ![alt](url)
-    const imageMatches = message.content.matchAll(/!\[([^\]]*)\]\(([^)]+)\)/g);
+    const imageMatches = body.matchAll(/!\[([^\]]*)\]\(([^)]+)\)/g);
     for (const match of imageMatches) {
       items.push({
         type: "image",
         alt: match[1],
         url: match[2],
         messageId: message.id,
-        timestamp: message.created_at,
+        // timestamp: message.created_at,
       });
     }
     // Find HTML audio/video tags with direct src or nested source tags
-    const mediaMatches = message.content.matchAll(
+    const mediaMatches = body.matchAll(
       /<(audio|video)(?:[^>]*src="([^"]+)"[^>]*>|[^>]*>(?:[^<]*<source[^>]*src="([^"]+)"[^>]*>)?)/g
     );
     for (const match of mediaMatches) {
@@ -57,7 +66,6 @@ export function MediaList({ className, messages }: MediaListProps) {
           type,
           url: directSrc || sourceSrc,
           messageId: message.id,
-          timestamp: message.created_at,
           content: message.content,
         });
       }
@@ -90,7 +98,14 @@ export function MediaList({ className, messages }: MediaListProps) {
                     />
                   </TooltipTrigger>
                   <TooltipContent className="max-w-[512px] p-4">
-                    <Content content={item.content || ""} preload="none" />
+                    <Content
+                      content={
+                        Array.isArray(item.content)
+                          ? item.content[0].text
+                          : item.content || ""
+                      }
+                      preload="none"
+                    />
                   </TooltipContent>
                 </Tooltip>
               ) : null}

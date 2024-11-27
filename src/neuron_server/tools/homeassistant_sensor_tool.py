@@ -18,132 +18,27 @@ Tool to return the latest sensor states from Home Assistant. Use only entity_ids
 
 Supported Sensors:
 [
-    {
-        "entity_id": "sensor.weather_station_inside_temperature",
-        "room": "Living Room",
-        "description": "Temperature",
-    },
-    {
-        "entity_id": "sensor.weather_station_humidity_indoor",
-        "room": "Living Room",
-        "description": "Humidity",
-    },
-    {
-        "entity_id": "light.living_room",
-        "room": "Living Room",
-        "description": "All lights in the living room",
-    },
-    {
-        "entity_id": "media_player.sony_xbr_65a1e",
-        "room": "Living Room",
-        "description": "Living Room TV",
-    },
-    {
-        "entity_id": "climate.t6_pro_z_wave_programmable_thermostat",
-        "room": "Living Room",
-        "description": "Living Room Thermostat",
-    },
-    {
-        "entity_id": "sensor.weather_station_feels_like",
-        "room": "Backyard",
-        "description": "Feels like temperature",
-    },
-    {
-        "entity_id": "sensor.weather_station_event_rain",
-        "room": "Backyard",
-        "description": "Rain right now",
-    },
-    {
-        "entity_id": "sensor.weather_station_wind_average_10_minutes",
-        "room": "Backyard",
-        "description": "Wind speed",
-    },
-    {
-        "entity_id": "sensor.weather_station_wind_direction_average_10_minutes",
-        "room": "Backyard",
-        "description": "Wind direction",
-    },
-    {
-        "entity_id": "sensor.weather_station_yearly_rain",
-        "room": "Backyard",
-        "description": "Yearly rain",
-    },
-    {
-        "entity_id": "sensor.weather_station_temperature_2",
-        "room": "Kitty Corner",
-        "description": "Temperature",
-    },
-    {
-        "entity_id": "sensor.feeder_bot_food_level",
-        "room": "Kitty Corner",
-        "description": "Food level",
-    },
-    {
-        "entity_id": "sensor.litter_robot_4_litter_level",
-        "room": "Kitty Corner",
-        "description": "Litter level",
-    },
-    {
-        "entity_id": "sensor.litter_robot_4_waste_drawer",
-        "room": "Kitty Corner",
-        "description": "Waste drawer level",
-    },
-    {
-        "entity_id": "binary_sensor.motion_light_switch_motion_detection",
-        "room": "Master Bathroom",
-        "description": "Motion detection",
-    },
-    {
-        "entity_id": "binary_sensor.in_wall_motion_switch_500s_motion_detection",
-        "room": "Guest Bathroom",
-        "description": "Motion detection",
-    },
-    {
-        "entity_id": "light.office",
-        "room": "Office",
-        "description": "All lights in the office",
-    },
-    {
-        "entity_id": "light.bedroom",
-        "room": "Master Bedroom",
-        "description": "All lights in the master bedroom",
-    },
-    {
-        "entity_id": "sensor.weather_station_temperature_2",
-        "room": "Master Bedroom",
-        "description": "Temperature",
-    },
-    {
-        "entity_id": "sensor.weather_station_humidity_2",
-        "room": "Master Bedroom",
-        "description": "Humidity",
-    },
-    {
-        "entity_id": "sensor.ss324336n_laundry_sub_cycle",
-        "room": "Laundry Room",
-        "description": "Washer Machine Sub Cycle",
-    },
-    {
-        "entity_id": "sensor.vs915325g_laundry_sub_cycle",
-        "room": "Laundry Room",
-        "description": "Dryer Machine Sub Cycle",
-    },
-    {
-        "entity_id": "person.isaac_suttell",
-        "description": "Isaac Suttell's Presence",
-    },
-    {
-        "entity_id": "person.heidi_la_bash",
-        "description": "Heidi La Bash's Presence",
-    },
-    {
-        "entity_id": "media_player.spotify_isuttell",
-        "description": "Spotify Now Playing (Isaac Suttell)",
-    },
-    {
-        "entity_id": "sensor.date_time",
-        "description": "Current date and time on the Home Assistant server",
-    },
+    {"entity_id": "sensor.weather_station_inside_temperature", "room": "Living Room", "description": "Temperature"},
+    {"entity_id": "light.living_room", "room": "Living Room", "description": "All lights in the living room"},
+    {"entity_id": "media_player.sony_xbr_65a1e", "room": "Living Room", "description": "Living Room TV"},
+    {"entity_id": "climate.t6_pro_z_wave_programmable_thermostat", "room": "Living Room", "description": "Living Room Thermostat"},
+    {"entity_id": "sensor.weather_station_feels_like", "room": "Backyard", "description": "Feels like temperature"},
+    {"entity_id": "sensor.weather_station_event_rain", "room": "Backyard", "description": "Rain right now"},
+    {"entity_id": "sensor.weather_station_wind_average_10_minutes", "room": "Backyard", "description": "Wind speed"},
+    {"entity_id": "sensor.weather_station_wind_direction_average_10_minutes", "room": "Backyard", "description": "Wind direction"},
+    {"entity_id": "sensor.weather_station_yearly_rain", "room": "Backyard", "description": "Yearly rain"},
+    {"entity_id": "sensor.weather_station_temperature_2", "room": "Kitty Corner", "description": "Temperature"},
+    {"entity_id": "sensor.feeder_bot_food_level", "room": "Kitty Corner", "description": "Food level"},
+    {"entity_id": "sensor.litter_robot_4_litter_level", "room": "Kitty Corner", "description": "Litter level"},
+    {"entity_id": "sensor.litter_robot_4_waste_drawer", "room": "Kitty Corner", "description": "Waste drawer level"},
+    {"entity_id": "binary_sensor.motion_light_switch_motion_detection", "room": "Master Bathroom", "description": "Motion detection"},
+    {"entity_id": "binary_sensor.in_wall_motion_switch_500s_motion_detection", "room": "Guest Bathroom", "description": "Motion detection"},
+    {"entity_id": "light.office", "room": "Office", "description": "All lights in the office"},
+    {"entity_id": "light.bedroom", "room": "Master Bedroom", "description": "All lights in the master bedroom"},
+    {"entity_id": "sensor.weather_station_temperature_2", "room": "Master Bedroom", "description": "Temperature"},
+    {"entity_id": "person.isaac_suttell", "description": "Isaac Suttell's Presence"},
+    {"entity_id": "person.heidi_la_bash", "description": "Heidi La Bash's Presence"},
+    {"entity_id": "sensor.date_time", "description": "Current date and time on the Home Assistant server"},
 ]
         """.strip()
     )

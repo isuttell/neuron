@@ -94,8 +94,12 @@ This tool searches arXiv for research articles, and retrieves short summaries. E
                 )
                 if not os.path.exists(article_directory):
                     os.makedirs(article_directory)
+                summary = result.summary.strip().replace("\n", "<br />")
+                comment = (
+                    result.comment.strip().replace("\n", "<br />") if comment else ""
+                )
                 articles.append(
-                    metadata=f"""
+                    f"""
 | Field              | Description |
 |--------------------|-|
 | Title              | {result.title} |
@@ -105,9 +109,9 @@ This tool searches arXiv for research articles, and retrieves short summaries. E
 | Published          | {result.published} |
 | Primary Category   | {result.primary_category} |
 | Categories         | {", ".join(result.categories)} |
-| Comment            | {result.comment} |
+| Comment            | {comment} |
 | Links              | {", ".join([link.href for link in result.links])} |
-| Summary            | {result.summary} |
+| Summary            | {summary} |
 """.strip()
                 )
                 pdf_filename = result._get_default_filename()

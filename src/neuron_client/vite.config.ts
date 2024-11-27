@@ -5,7 +5,7 @@ import path from "path";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
-  base: "/",
+  base: "/neuron",
   plugins: [react(), nodePolyfills()],
   build: {
     sourcemap: mode === "development" ? "inline" : true,
@@ -13,6 +13,18 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+    },
+  },
+  server: {
+    proxy: {
+      "/api": {
+        target: "http://localhost:5001",
+      },
+      "/neuron/ws": {
+        target: "ws://localhost:5001/",
+        ws: true,
+        rewriteWsOrigin: true,
+      },
     },
   },
 }));

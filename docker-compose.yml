@@ -1,8 +1,7 @@
 services:
   server:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: 192.168.1.160:5000/neuron-server:latest
+    build: .
 
   db:
     image: pgvector/pgvector:pg17

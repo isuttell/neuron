@@ -2,7 +2,7 @@ from uuid import UUID
 from neuron_server.database import get_session, Personality
 from typing import Optional, List, Self
 from sqlalchemy import select
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_serializer
 from uuid import uuid4
 from datetime import datetime, timezone
 
@@ -41,6 +41,10 @@ class PersonalityModel(BaseModel):
         default_factory=lambda: datetime.now(timezone.utc).astimezone()
     )
 
+    @field_serializer("created_at", "updated_at")
+    def parse_date(self, v: datetime) -> str:
+        return v.astimezone().isoformat()
+
     def get_context_prompt(self) -> str:
         return f"""\
     You the assistant are called {self.name}. Use the following custom instructions to guide your responses:
@@ -52,7 +56,7 @@ class PersonalityModel(BaseModel):
         if not self.memory or len(self.memory.strip()) == 0:
             return ""
         return f"""\
-    Based on past conversations you have determined the following about the personality:
+    Personality memory across threads:
     \"\"\"
     {self.memory}
     \"\"\"""".strip()
@@ -98,3 +102,13 @@ class PersonalityModel(BaseModel):
             if data:
                 return cls(**data.__dict__)
             return None
+
+    async def save(
+        self,
+    ) -> None:
+        async with get_session() as session:
+            personality = await session.get(Personality, self.id)
+            personality.name = self.name
+            personality.context = self.context
+            personality.memory = self.memory
+            await session.commit()

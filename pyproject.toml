@@ -12,12 +12,15 @@ opencv-python-headless = "*"
 pillow = "*"
 pydantic = "*"
 quart = "*"
+hypercorn = "*"
 langchain = "*"
 langgraph = "*"
 langchain_huggingface = "*"
 langchain_openai = "*"
 langchain_community = "*"
 langchain_anthropic = "*"
+langchain_postgres = "*"
+langgraph-checkpoint-postgres = "*"
 langsmith = "*"
 aiohttp = "*"
 arxiv = "*"
@@ -25,14 +28,9 @@ pymupdf4llm = "*"
 elevenlabs = "*"
 asyncpg = "*"
 sqlalchemy = { version = "*", extras = ["asyncio"] }
-sentence-transformers = "*"
-torch = { version = "*", source = "pytorch" }
-langchain_postgres = "*"
+psycopg = { version = "*", extras = ["binary"] }
+psycopg-pool = "*"
 
-[[tool.poetry.source]]
-name = "pytorch"
-url = "https://download.pytorch.org/whl/cu124"
-default = false
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

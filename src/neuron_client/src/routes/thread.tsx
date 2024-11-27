@@ -11,7 +11,12 @@ import { Button } from "@/components/ui/button";
 import EditThreadDialog from "../threads/EditThreadDialog";
 import Loading from "@/lib/loading";
 import { getActivePersonalityId } from "../slices/personalitiesSlice";
+import { getActiveProviderId } from "../slices/providersSlice";
 import MediaList from "../messages/MediaList";
+import superagent from "superagent";
+import { upsertThread } from "../slices/threadsSlice";
+import { Skeleton } from "@/components/ui/skeleton";
+
 const selectThread = (state: RootState, threadId?: string) =>
   state.threads.threads.find((thread) => thread.id === threadId);
 
@@ -22,6 +27,7 @@ export default function Thread() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const activePersonalityId = useAppSelector(getActivePersonalityId);
+  const activeProviderId = useAppSelector(getActiveProviderId);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const { threadId } = useParams();
   const thread = useAppSelector(
@@ -34,14 +40,15 @@ export default function Thread() {
   );
 
   useEffect(() => {
-    // Get the thread and its messages any time the id changes
-    dispatch({
-      type: "socket/GetThread",
-      thread_id: threadId,
-    });
+    if (threadId) {
+      superagent.get(`/api/threads/${threadId}`).then(({ body }) => {
+        dispatch(upsertThread(body));
+      });
+    }
     dispatch({
       type: "socket/GetThreadMessages",
       thread_id: threadId,
+      provider_id: activeProviderId,
     });
   }, [threadId]);
 
@@ -64,9 +71,10 @@ export default function Thread() {
     thread?.status,
   ]);
 
-  if (!thread) {
+  if (!thread || (thread.message_count > 0 && messages.length === 0)) {
     return <Loading />;
   }
+
   return (
     <div className="flex flex-1 p-4 flex-col flex-nowrap max-h-screen">
       <div className="flex justify-between mb-2 border-b pb-2">
@@ -91,13 +99,18 @@ export default function Thread() {
             <div className="absolute top-0 left-0 right-0 bottom-0 flex flex-1 flex-col flex-nowrap max-h-full mx-auto overflow-y-auto">
               <div className="max-w-[1170px] w-full mx-auto">
                 {messages
-                  .filter((message) => message.role !== "tool")
-                  .sort((a, b) => (a.created_at > b.created_at ? 1 : -1))
+                  // .filter((message) => message.type !== "tool")
                   .map((message) => (
                     <MessageItem key={message.id} message={message} />
                   ))}
                 {thread.message_count === 0 && messages.length === 0 ? (
                   <div>No messages</div>
+                ) : null}
+                {thread.status !== "idle" ? (
+                  <div className="m-4 pl-[70px] space-y-2 flex-1">
+                    <Skeleton className="h-4 w-[250px]" />
+                    <Skeleton className="h-4 w-[200px]" />
+                  </div>
                 ) : null}
                 <div ref={messagesEndRef} />
               </div>
@@ -112,7 +125,9 @@ export default function Thread() {
           </div>
         </div>
         <MediaList
+          key={thread.id}
           className="max-w-[512px] ml-4 w-full flex-shrink-0 border-l"
+          threadId={thread.id}
           messages={messages}
         />
       </div>

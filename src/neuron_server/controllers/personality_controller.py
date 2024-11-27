@@ -80,7 +80,8 @@ async def post_personality_prompt(event: PostPersonalityPrompt):
     provider = await ProviderModelModel.get(event.provider_id)
     if not provider:
         raise ValueError(f"Provider with id {event.provider_id} not found")
+    llm = provider.to_llm()
     content = await apply_personality_prompt(
-        provider=provider, context=event.context, prompt=event.prompt
+        llm=llm, context=event.context, prompt=event.prompt
     )
     await websocket.send(PersonalityPromptResponse(context=content).model_dump_json())

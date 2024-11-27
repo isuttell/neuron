@@ -4,7 +4,7 @@
 *.sqlite3*
 
 # Environments
-.env
+.env*
 .venv
 env/
 venv/
