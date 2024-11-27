@@ -1,9 +1,10 @@
 from langchain.tools import BaseTool
 from typing import Type, Optional
 from pydantic import BaseModel, Field
-import requests
 from neuron_server.config import config
 import time
+import aiohttp
+import asyncio
 
 
 class SendNotificationToolArgs(BaseModel):
@@ -40,7 +41,10 @@ Send a notification to the user's phone.
 
     args_schema: Type[SendNotificationToolArgs] = SendNotificationToolArgs
 
-    def _run(
+    def _run(self, *args, **kwargs):
+        return asyncio.run(self._arun(*args, **kwargs))
+
+    async def _arun(
         self,
         title: str,
         message: str,
@@ -48,18 +52,19 @@ Send a notification to the user's phone.
         url_title: Optional[str] = None,
         sound: Optional[str] = None,
     ) -> str:
-        response = requests.post(
-            "https://api.pushover.net/1/messages.json",
-            json={
-                "token": config.pushover.token,
-                "user": config.pushover.user,
-                "title": title,
-                "message": message,
-                "timestamp": int(time.time()),
-                "url": url,
-                "url_title": url_title,
-                "sound": sound,
-            },
-        )
-        response.raise_for_status()
-        return "Message sent"
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                "https://api.pushover.net/1/messages.json",
+                json={
+                    "token": config.pushover.token,
+                    "user": config.pushover.user,
+                    "title": title,
+                    "message": message,
+                    "timestamp": int(time.time()),
+                    "url": url,
+                    "url_title": url_title,
+                    "sound": sound,
+                },
+            ) as response:
+                response.raise_for_status()
+                return "Message sent"

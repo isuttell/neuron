@@ -3,6 +3,7 @@ from pydantic import BaseModel, Field
 from datetime import datetime, timezone
 from typing import Self, Literal
 from neuron_server.logger import logger
+import asyncio
 
 
 class Event(BaseModel):
@@ -50,4 +51,4 @@ class EventRouter:
             raise ValueError(f"No route for event type: {event_type}")
         model, func = self.routes[event_type]
         logger.debug(f"incoming={event_type}")
-        return await func(model(**event))
+        asyncio.create_task(func(model(**event)))

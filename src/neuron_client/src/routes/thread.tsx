@@ -1,10 +1,14 @@
-import { useEffect, useRef } from "react";
-import { Trash } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Trash, Bot } from "lucide-react";
 import { useParams, useNavigate } from "react-router-dom";
 import MessageForm from "../messages/MessageForm";
 import MessageItem from "../messages/MessageItem";
 import { useAppSelector, useAppDispatch } from "../hooks";
-
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { shallowEqual } from "react-redux";
 import { RootState } from "../store";
 import { Button } from "@/components/ui/button";
@@ -36,6 +40,7 @@ export default function Thread() {
     (state) => selectMessages(state, threadId),
     shallowEqual
   );
+  const [showTools, setShowTools] = useState(false);
 
   useEffect(() => {
     if (!threadId) {
@@ -73,6 +78,24 @@ export default function Thread() {
       <div className="flex justify-between mb-2 border-b pb-2">
         <h1 className="text-2xl font-bold">{thread.name || "Welcome..."}</h1>
         <div className="flex-1" />
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant={showTools ? "default" : "ghost"}
+              size="icon"
+              onClick={() => {
+                setShowTools(!showTools);
+              }}
+            >
+              <Bot className="size-4" />
+              <span className="sr-only">Toggle Tools</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">
+            {showTools ? "Hide" : "Show"} Tools
+          </TooltipContent>
+        </Tooltip>
         <EditThreadDialog thread={thread} />
         <Button
           variant="ghost"
@@ -92,7 +115,9 @@ export default function Thread() {
             <div className="absolute top-0 left-0 right-0 bottom-0 flex flex-1 flex-col flex-nowrap max-h-full mx-auto overflow-y-auto">
               <div className="max-w-[1170px] w-full mx-auto">
                 {messages
-                  // .filter((message) => message.type !== "tool")
+                  .filter((message) =>
+                    !showTools ? message.type !== "tool" : true
+                  )
                   .map((message) => (
                     <MessageItem key={message.id} message={message} />
                   ))}

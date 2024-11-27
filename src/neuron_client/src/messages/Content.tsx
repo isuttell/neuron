@@ -21,7 +21,7 @@ const Content: React.FC<ContentProps> = ({
 }) => {
   return (
     <ReactMarkdown
-      className={cn("space-y-2 flex-1 whitespace-pre-line content", className)}
+      className={cn("flex-1 content", className)}
       key={content}
       children={content}
       remarkPlugins={[remarkGfm]}

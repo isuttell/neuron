@@ -1,15 +1,14 @@
 from langchain.tools import BaseTool
 from neuron_server.config import config
 from neuron_server.logger import logger
-from huggingface_hub import AsyncInferenceClient
 from uuid import uuid4
 from typing import TypedDict, List, Type
 import os
 import shutil
 import subprocess
-from elevenlabs import ElevenLabs
+from elevenlabs import AsyncElevenLabs
 from neuron_server.logger import logger
-
+import asyncio
 from pydantic import BaseModel, Field
 
 
@@ -102,14 +101,17 @@ The tool will use ElevenLabs' TTS API to generate the audio and return a link to
     args_schema: Type[ElevenLabsTTSToolArgs] = ElevenLabsTTSToolArgs
 
     def _run(self, script: str) -> str:
+        return asyncio.run(self._arun(script))
+
+    async def _arun(self, script: str) -> str:
         try:
-            client = ElevenLabs(api_key=config.elevenlabs_api_key)
+            client = AsyncElevenLabs(api_key=config.elevenlabs_api_key)
             id = str(uuid4())
             working_dir = config.temp_folder + "/" + id
             os.makedirs(working_dir, exist_ok=True)
             audio_files: List[str] = []
             for index, line in enumerate(parse_script(script)):
-                response = client.generate(
+                response = await client.generate(
                     text=line["text"],
                     voice=line["voice"],
                     model="eleven_multilingual_v2",
@@ -117,7 +119,7 @@ The tool will use ElevenLabs' TTS API to generate the audio and return a link to
                 audio_file_path = working_dir + "/" + f"line-{index}.mp3"
                 audio_files.append(audio_file_path)
                 with open(audio_file_path, "wb") as file:
-                    for chunk in response:
+                    async for chunk in response:
                         file.write(chunk)
                 logger.debug(f"Saved generated audio chunk at {audio_file_path}")
             # Concatenate all audio files using ffmpeg
@@ -168,7 +170,7 @@ def main():
     args = parser.parse_args()
 
     # Call the tool to generate the audio
-    tool = ElevenLabsTTSTool(client=AsyncInferenceClient())
+    tool = ElevenLabsTTSTool()
     with open(args.script, "r") as f:
         script = "\n".join(f.readlines())
     results = tool._run(script)
