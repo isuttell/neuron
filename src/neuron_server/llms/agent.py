@@ -10,6 +10,7 @@ from neuron_server.llms.message import get_message_content
 from langchain.tools import BaseTool
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from neuron_server.database import pool
+from neuron_server.llms.llm import LLM
 
 connection_kwargs = {
     "autocommit": True,
@@ -29,18 +30,13 @@ class AgentConfig(TypedDict):
 async def execute_agent(
     prompt: str,
     config: AgentConfig,
-    provider_id: UUID,
     personality_id: UUID,
     tools: List[BaseTool],
 ) -> str:
 
     checkpointer = AsyncPostgresSaver(pool)
     await checkpointer.setup()
-
-    provider = await ProviderModelModel.get(provider_id)
-    if provider is None:
-        raise Exception("Provider not found")
-    llm = provider.to_llm()
+    llm: LLM = ProviderModelModel.get_llm()
     personality = await PersonalityModel.get(personality_id)
     if personality is None:
         raise Exception("Personality not found")
@@ -66,12 +62,10 @@ async def execute_agent(
     return content
 
 
-async def aget_state(thread_id: UUID, provider_id: UUID):
+async def aget_state(thread_id: UUID):
+    await pool.open(wait=True)
     checkpointer = AsyncPostgresSaver(pool)
-    provider = await ProviderModelModel.get(provider_id)
-    if provider is None:
-        raise Exception("Provider not found")
-    llm = provider.to_llm()
+    llm: LLM = ProviderModelModel.get_llm()
     return await llm.aget_state(
         {"configurable": {"thread_id": str(thread_id)}}, checkpointer=checkpointer
     )

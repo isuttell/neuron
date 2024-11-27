@@ -312,11 +312,7 @@ async def ainvoke(
             if isinstance(prompt, str) and len(prompt.strip()) > 0
         ]
 
-        provider = await ProviderModelModel.get(provider_id)
-        if not provider:
-            raise ValueError(f"Provider with id {str(provider_id)} not found")
-        logger.debug(f"Using {provider.provider}/{provider.model_id}")
-        llm = provider.to_llm()
+        llm: LLM = ProviderModelModel.get_llm()
 
         messages = await get_trimmed_messages(
             thread=thread,

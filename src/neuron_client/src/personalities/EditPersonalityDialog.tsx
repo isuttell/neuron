@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { UserPen, UserPlus } from "lucide-react";
-import { useAppDispatch, useAppSelector } from "../hooks";
+import { useAppDispatch } from "../hooks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,10 +14,12 @@ import {
   DialogTitle,
   DialogClose,
 } from "@/components/ui/dialog";
-import { getActiveProviderId } from "../slices/providersSlice";
-import { getSocket } from "../slices/socketSlice";
 import { useNavigate } from "react-router-dom";
-
+import {
+  createPersonality,
+  updatePersonality,
+  deletePersonality,
+} from "../actions/personalityActions";
 interface EditPersonalityDialogProps {
   personality?: Personality;
 }
@@ -32,42 +34,38 @@ const EditPersonalityDialog: React.FC<EditPersonalityDialogProps> = ({
   const [context, setContext] = useState(personality?.context || "");
   const [memory, setMemory] = useState(personality?.memory || "");
   const [loading, setLoading] = useState(false);
-  const socket = useAppSelector(getSocket);
-  const activeProviderId = useAppSelector(getActiveProviderId);
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!activeProviderId || !socket || loading) {
+    if (loading) {
       return;
     }
     setLoading(true);
-    dispatch({
-      type: personality
-        ? "socket/UpdatePersonality"
-        : "socket/CreatePersonality",
-      id: personality?.id,
-      name,
-      context,
-      memory,
-      provider_id: activeProviderId,
-    });
-    if (!personality) {
-      socket.once("personality", ({ personality }) => {
-        setLoading(false);
+    try {
+      if (personality) {
+        await dispatch(
+          updatePersonality({ id: personality.id, name, context, memory })
+        ).unwrap();
+      } else {
+        const body = await dispatch(
+          createPersonality({ name, context, memory })
+        ).unwrap();
         setOpen(false);
-        navigate(`/personality/${personality.id}`);
-      });
-    } else {
-      setOpen(false);
+        navigate(`/personality/${body.payload.personality.id}`);
+      }
+    } finally {
+      setLoading(false);
     }
   };
-  const handleDelete = (e: React.FormEvent) => {
+
+  const handleDelete = async (e: React.FormEvent) => {
+    if (!personality) {
+      return;
+    }
     e.preventDefault();
-    dispatch({
-      type: "socket/DeletePersonality",
-      personality_id: personality?.id,
-    });
+    await dispatch(deletePersonality(personality.id));
     setOpen(false);
   };
+
   useEffect(() => {
     setName(personality?.name || "");
     setContext(personality?.context || "");

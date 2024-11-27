@@ -11,14 +11,11 @@ import {
 } from "@/components/ui/dialog";
 import { ImageModel } from "../slices/imagesSlice";
 import Loading from "../lib/loading";
-import { useAppDispatch } from "../hooks";
-
 interface ImageCardProps {
   image: ImageModel;
 }
 
 const ImageCard: React.FC<ImageCardProps> = ({ image }) => {
-  const dispatch = useAppDispatch();
   const [open, setOpen] = useState(false);
 
   return (
@@ -54,15 +51,6 @@ const ImageCard: React.FC<ImageCardProps> = ({ image }) => {
         </div>
 
         <DialogFooter className="flex justify-end">
-          <Button
-            type="button"
-            variant="destructive"
-            onClick={() => {
-              dispatch({ type: "socket/DeleteImage", image_id: image.id });
-            }}
-          >
-            Delete
-          </Button>
           <DialogClose asChild>
             <Button type="button" variant="ghost">
               Close

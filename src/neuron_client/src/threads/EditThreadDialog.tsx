@@ -14,6 +14,7 @@ import {
   DialogTitle,
   DialogClose,
 } from "@/components/ui/dialog";
+import { updateThread } from "../actions/threadActions";
 
 interface EditThreadFormProps {
   thread: Thread;
@@ -24,6 +25,7 @@ const EditThreadDialog: React.FC<EditThreadFormProps> = ({ thread }) => {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(thread.name);
   const [context, setContext] = useState(thread.context);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     setName(thread.name);
@@ -32,13 +34,10 @@ const EditThreadDialog: React.FC<EditThreadFormProps> = ({ thread }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    dispatch({
-      type: "socket/UpdateThread",
-      thread_id: thread.id,
-      name,
-      context,
-    });
+    setLoading(true);
+    await dispatch(updateThread({ id: thread.id, name, context }));
     setOpen(false);
+    setLoading(false);
   };
 
   return (
@@ -75,8 +74,13 @@ const EditThreadDialog: React.FC<EditThreadFormProps> = ({ thread }) => {
                 Cancel
               </Button>
             </DialogClose>
-            <Button onClick={handleSubmit} type="submit" className="ml-2">
-              Save
+            <Button
+              onClick={handleSubmit}
+              type="submit"
+              className="ml-2"
+              disabled={loading}
+            >
+              {loading ? "Saving..." : "Save"}
             </Button>
           </DialogFooter>
         </form>

@@ -30,7 +30,7 @@ asyncpg = "*"
 sqlalchemy = { version = "*", extras = ["asyncio"] }
 psycopg = { version = "*", extras = ["binary"] }
 psycopg-pool = "*"
-
+redis = { version = "*", extras = ["hiredis"] }
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

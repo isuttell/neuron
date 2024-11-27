@@ -1,6 +1,7 @@
 import { createSlice } from "@reduxjs/toolkit";
 import type { PayloadAction } from "@reduxjs/toolkit";
 import type { RootState } from "../store";
+import * as actions from "../actions/imageActions";
 
 export interface ImageModel {
   id: string;
@@ -28,25 +29,36 @@ const initialState: ImageState = {
   images: [],
 };
 
+function upsert(state: ImageState, image: ImageModel) {
+  const existingImageIndex = state.images.findIndex(
+    (img) => img.id === image.id
+  );
+  if (existingImageIndex !== -1) {
+    state.images[existingImageIndex] = image;
+  } else {
+    state.images.push(image);
+  }
+}
+
 export const imagesSlice = createSlice({
   name: "images",
   initialState,
   reducers: {
     upsertImage: (state, action: PayloadAction<UpdateImagePayload>) => {
-      const existingImageIndex = state.images.findIndex(
-        (img) => img.id === action.payload.image.id
-      );
-      if (existingImageIndex !== -1) {
-        state.images[existingImageIndex] = action.payload.image;
-      } else {
-        state.images.push(action.payload.image);
-      }
+      upsert(state, action.payload.image);
     },
     deleteImage: (state, action: PayloadAction<DeleteImagePayload>) => {
       state.images = state.images.filter(
         (img) => img.id !== action.payload.image_id
       );
     },
+  },
+  extraReducers: (builder) => {
+    builder.addCase(actions.fetchImages.fulfilled, (state, action) => {
+      for (const image of action.payload) {
+        upsert(state, image);
+      }
+    });
   },
 });
 

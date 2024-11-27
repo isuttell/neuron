@@ -4,6 +4,7 @@ from pydantic import (
 )
 from dotenv import load_dotenv
 import os
+from uuid import UUID
 
 # Load environment variables from a .env file
 load_dotenv()
@@ -39,6 +40,19 @@ class DatabaseConfig(BaseModel):
     )
 
 
+class RedisConfig(BaseModel):
+    host: str = Field(
+        default=os.environ.get("REDIS_HOST", "localhost"),
+        description="Redis host",
+    )
+    port: int = Field(
+        default=int(os.environ.get("REDIS_PORT", 6379)), description="Redis port"
+    )
+    db: int = Field(
+        default=int(os.environ.get("REDIS_DB", 0)), description="Redis database"
+    )
+
+
 class HomeAssistantConfig(BaseModel):
     server: str = Field(
         default=os.environ.get("HOMEASSISTANT_SERVER", "http://localhost:8123"),
@@ -70,6 +84,9 @@ class Config(BaseModel):
     log_level: str = Field(
         default=os.environ.get("LOG_LEVEL", "DEBUG"), description="Log level"
     )
+    provider_id: UUID = Field(
+        default=UUID(os.environ.get("PROVIDER_ID")), description="Provider ID"
+    )
     host: str = Field(default=os.environ.get("HOST", "0.0.0.0"), description="Host")
     port: int = Field(default=int(os.environ.get("PORT", 5000)), description="Port")
     client_assets_folder: str = Field(
@@ -90,7 +107,7 @@ class Config(BaseModel):
         description="Temp folder",
     )
     database: DatabaseConfig = DatabaseConfig()
-
+    redis: RedisConfig = RedisConfig()
     pushover: PushoverConfig = PushoverConfig()
 
 

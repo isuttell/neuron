@@ -16,6 +16,8 @@ import {
 } from "@/slices/personalitiesSlice";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
+import { fetchThreadsByPersonality } from "../actions/threadActions";
+
 interface PersonalityItemProps {
   personality: Personality;
   className?: string;
@@ -40,16 +42,8 @@ const PersonalityItem: React.FC<PersonalityItemProps> = ({
           <span className="font-semibold">Context: </span>
           <span>
             {personality.context.trim().length > 0
-              ? personality.context.slice(0, 200)
+              ? `${personality.context.slice(0, 200)}...`
               : "No user instructions"}
-          </span>
-        </div>
-        <div className="">
-          <span className="font-semibold">Memory: </span>
-          <span>
-            {personality.memory.trim().length > 0
-              ? personality.memory
-              : "No memories"}
           </span>
         </div>
       </CardContent>
@@ -64,12 +58,6 @@ const PersonalityItem: React.FC<PersonalityItemProps> = ({
             dispatch(
               setActivePersonality(isActive ? undefined : personality.id)
             );
-            if (!isActive) {
-              dispatch({
-                type: "socket/GetThreads",
-                personality_id: personality.id,
-              });
-            }
           }}
         >
           {isActive ? "Deactivate" : "Activate"}

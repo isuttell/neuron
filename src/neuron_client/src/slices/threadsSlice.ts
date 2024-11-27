@@ -1,7 +1,7 @@
 import { createSlice } from "@reduxjs/toolkit";
 import type { PayloadAction } from "@reduxjs/toolkit";
 import type { RootState } from "../store";
-
+import * as actions from "../actions/threadActions";
 export interface Thread {
   id: string;
   name: string;
@@ -32,38 +32,71 @@ const initialState: ThreadState = {
   threads: [],
 };
 
+function upsert(state: ThreadState, thread: Thread) {
+  const existingThreadIndex = state.threads.findIndex(
+    (item) => item.id === thread.id
+  );
+  if (existingThreadIndex !== -1) {
+    state.threads[existingThreadIndex] = thread;
+  } else {
+    state.threads.push(thread);
+  }
+}
+
 export const threadsSlice = createSlice({
   name: "threads",
   initialState,
   reducers: {
     upsertThreads: (state, action: PayloadAction<IncomingThreadsEvent>) => {
       for (const thread of action.payload.threads) {
-        const existingThreadIndex = state.threads.findIndex(
-          (item) => item.id === thread.id
-        );
-        if (existingThreadIndex !== -1) {
-          state.threads[existingThreadIndex] = thread;
-        } else {
-          state.threads.push(thread);
-        }
+        upsert(state, thread);
       }
     },
     upsertThread: (state, action: PayloadAction<IncomingThreadEvent>) => {
-      const existingThreadIndex = state.threads.findIndex(
-        (thread) => thread.id === action.payload.thread.id
-      );
-      const thread: Thread = action.payload.thread;
-      if (existingThreadIndex !== -1) {
-        state.threads[existingThreadIndex] = thread;
-      } else {
-        state.threads.push(thread);
-      }
+      upsert(state, action.payload.thread);
     },
     deleteThread: (state, action: PayloadAction<string>) => {
       state.threads = state.threads.filter(
         (thread) => thread.id !== action.payload
       );
     },
+  },
+  extraReducers: (builder) => {
+    builder
+      .addCase(
+        actions.fetchThread.fulfilled,
+        (state, action: PayloadAction<IncomingThreadEvent>) => {
+          upsert(state, action.payload.thread);
+        }
+      )
+      .addCase(
+        actions.fetchThreadsByPersonality.fulfilled,
+        (state, action: PayloadAction<IncomingThreadsEvent>) => {
+          for (const thread of action.payload.threads) {
+            upsert(state, thread);
+          }
+        }
+      )
+      .addCase(
+        actions.createThread.fulfilled,
+        (state, action: PayloadAction<IncomingThreadEvent>) => {
+          upsert(state, action.payload.thread);
+        }
+      )
+      .addCase(
+        actions.updateThread.fulfilled,
+        (state, action: PayloadAction<IncomingThreadEvent>) => {
+          upsert(state, action.payload.thread);
+        }
+      )
+      .addCase(
+        actions.deleteThread.fulfilled,
+        (state, action: PayloadAction<string>) => {
+          state.threads = state.threads.filter(
+            (thread) => thread.id !== action.payload
+          );
+        }
+      );
   },
 });
 

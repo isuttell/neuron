@@ -1,10 +1,4 @@
-import {
-  CircleUser,
-  Package2,
-  Brain,
-  GalleryThumbnails,
-  ChartBar,
-} from "lucide-react";
+import { CircleUser, Package2, GalleryThumbnails } from "lucide-react";
 import { useEffect } from "react";
 import { Outlet, Link, NavLink } from "react-router-dom";
 import { useAppSelector } from "../hooks";
@@ -20,19 +14,9 @@ const links = [
     Icon: CircleUser,
   },
   {
-    to: "/providers",
-    label: "Providers",
-    Icon: Brain,
-  },
-  {
     to: "/gallery",
     label: "Gallery",
     Icon: GalleryThumbnails,
-  },
-  {
-    to: "/stats",
-    label: "Stats",
-    Icon: ChartBar,
   },
 ];
 

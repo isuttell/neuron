@@ -1,4 +1,4 @@
-from quart import websocket, request, Blueprint
+from quart import Blueprint
 from neuron_server.event_router import EventRouter, ErrorEvent
 from neuron_server.models import ThreadModel
 from neuron_server.controllers.events.message_events import (
@@ -29,6 +29,10 @@ from neuron_server.controllers.events.message_events import (
 )
 from uuid import UUID, uuid4
 from neuron_server.llms.agent import aget_state
+from werkzeug.exceptions import NotFound, BadRequest
+from neuron_server.config import config
+from neuron_server.pubsub import client
+from neuron_server.llms.llm import LLM
 
 router = EventRouter()
 
@@ -36,43 +40,24 @@ blueprint = Blueprint("message", __name__)
 
 
 async def send_message(message: BaseModel):
-    asyncio.create_task(websocket.send(message.model_dump_json()))
-
-
-@router.on(GetThreadMessages)
-async def handle_get_thread_messages(event: GetThreadMessages):
-    thread = await ThreadModel.get(event.thread_id)
-    if not thread:
-        await websocket.send(ErrorEvent(message="Thread not found").model_dump_json())
-        return
-
-    state = await aget_state(thread_id=event.thread_id, provider_id=event.provider_id)
-
-    messages = [
-        ThreadMessage(**message.model_dump(), thread_id=thread.id)
-        for message in (state.values.get("messages", []))
-        if message.type != "system"
-    ]
-    for message in messages:
-        await send_message(MessageEvent(message=message))
+    await client.publish("app", message.model_dump_json())
 
 
 @blueprint.get("/thread/<uuid:thread_id>")
-async def get_thread_messages(event: GetThreadMessages):
-    thread = await ThreadModel.get(event.thread_id)
+async def get_thread_messages(thread_id: UUID):
+    thread = await ThreadModel.get(thread_id)
     if not thread:
-        await websocket.send(ErrorEvent(message="Thread not found").model_dump_json())
-        return
+        raise NotFound("Thread not found")
 
-    state = await aget_state(thread_id=event.thread_id, provider_id=event.provider_id)
-
+    state = await aget_state(thread_id=thread.id)
     messages = [
         ThreadMessage(**message.model_dump(), thread_id=thread.id)
         for message in (state.values.get("messages", []))
         if message.type != "system"
     ]
-    for message in messages:
-        await send_message(MessageEvent(message=message))
+    return {
+        "messages": [message.model_dump() for message in messages],
+    }
 
 
 async def save_thread(thread: ThreadModel):
@@ -93,20 +78,17 @@ async def update_thread_status(thread: ThreadModel, status: str):
 async def post_message(event: PostMessage) -> None:
     start_time = datetime.now(timezone.utc).astimezone()
     try:
-
+        await pool.open(wait=True)
         thread = await ThreadModel.get(event.thread_id)
         if not thread:
             raise Exception("Thread not found")
         await update_thread_status(thread, "thinking")
 
-        provider = await ProviderModelModel.get(event.provider_id)
-        if provider is None:
-            raise Exception("Provider not found")
-        llm = provider.to_llm()
         personality = await PersonalityModel.get(event.personality_id)
         if personality is None:
             raise Exception("Personality not found")
 
+        llm: LLM = ProviderModelModel.get_llm()
         llm.executor.checkpointer = AsyncPostgresSaver(pool)
 
         human_message = HumanMessage(content=event.prompt, id=str(uuid4()))
@@ -206,11 +188,9 @@ async def post_message(event: PostMessage) -> None:
         await update_thread_status(thread, "idle")
     except Exception as e:
         logger.exception(e)
-        await websocket.send(ErrorEvent(message=str(e)).model_dump_json())
+        await send_message(ErrorEvent(message=str(e)))
     finally:
-        state = await aget_state(
-            thread_id=event.thread_id, provider_id=event.provider_id
-        )
+        state = await aget_state(thread_id=event.thread_id)
         thread.message_count = len(state.values.get("messages", []))
         thread.status = "idle"
         await save_thread(thread)

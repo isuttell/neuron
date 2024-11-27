@@ -6,6 +6,7 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import AudioPlayer from "./AudioPlayer";
 import { cn } from "@/lib/utils";
+import "./Content.css";
 
 interface ContentProps {
   className?: string;
@@ -20,7 +21,7 @@ const Content: React.FC<ContentProps> = ({
 }) => {
   return (
     <ReactMarkdown
-      className={cn("space-y-2 flex-1", className)}
+      className={cn("space-y-2 flex-1 whitespace-pre-line content", className)}
       key={content}
       children={content}
       remarkPlugins={[remarkGfm]}

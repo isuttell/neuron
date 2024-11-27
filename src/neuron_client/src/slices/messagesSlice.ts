@@ -1,6 +1,7 @@
 import { createSlice } from "@reduxjs/toolkit";
 import type { PayloadAction } from "@reduxjs/toolkit";
 import type { RootState } from "../store";
+import { fetchMessagesByThread } from "../actions/messageActions";
 
 interface Content {
   text: string;
@@ -30,6 +31,10 @@ interface IncomingMessageEvent {
   message: IncomingMessage;
 }
 
+interface IncomingMessagesEvent {
+  messages: IncomingMessage[];
+}
+
 interface IncomingPartialMessageEvent {
   message: IncomingPartialMessage;
 }
@@ -57,19 +62,27 @@ function parseIncomingMessage(message: IncomingMessage): Message {
   };
 }
 
+function upsert(state: MessageState, message: Message) {
+  const existingMessageIndex = state.messages.findIndex(
+    (msg) => msg.id === message.id
+  );
+  if (existingMessageIndex !== -1) {
+    state.messages[existingMessageIndex] = message;
+  } else {
+    state.messages.push(message);
+  }
+}
+
 export const messagesSlice = createSlice({
   name: "messages",
   initialState,
   reducers: {
     upsertMessage: (state, action: PayloadAction<IncomingMessageEvent>) => {
-      const existingMessageIndex = state.messages.findIndex(
-        (msg) => msg.id === action.payload.message.id
-      );
-      const message = action.payload.message;
-      if (existingMessageIndex !== -1) {
-        state.messages[existingMessageIndex] = message;
-      } else {
-        state.messages.push(message);
+      upsert(state, action.payload.message);
+    },
+    upsertMessages: (state, action: PayloadAction<IncomingMessagesEvent>) => {
+      for (const message of action.payload.messages) {
+        upsert(state, message);
       }
     },
     partialMessage: (
@@ -90,9 +103,20 @@ export const messagesSlice = createSlice({
       }
     },
   },
+  extraReducers: (builder) => {
+    builder.addCase(
+      fetchMessagesByThread.fulfilled,
+      (state, action: PayloadAction<IncomingMessagesEvent>) => {
+        for (const message of action.payload.messages) {
+          upsert(state, message);
+        }
+      }
+    );
+  },
 });
 
-export const { upsertMessage, partialMessage } = messagesSlice.actions;
+export const { upsertMessage, upsertMessages, partialMessage } =
+  messagesSlice.actions;
 
 export const getMessages = (state: RootState) => state.messages.messages;
 

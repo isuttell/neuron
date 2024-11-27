@@ -1,9 +1,17 @@
 import { useAppSelector } from "../hooks";
 import { getImages } from "../slices/imagesSlice";
 import ImageCard from "../images/ImageCard";
+import { useEffect } from "react";
+import { useAppDispatch } from "../hooks";
+import { fetchImages } from "../actions/imageActions";
 
 export default function Gallery() {
   const images = useAppSelector(getImages);
+  const dispatch = useAppDispatch();
+
+  useEffect(() => {
+    dispatch(fetchImages());
+  }, []);
 
   const sortedImages = [...images].sort((a, b) =>
     a.created_at > b.created_at ? -1 : 1

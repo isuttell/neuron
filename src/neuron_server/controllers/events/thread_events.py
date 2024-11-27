@@ -1,5 +1,5 @@
 from typing import Literal, Optional
-from neuron_server.event_router import OutgoingEvent, IncomingEvent, IncomingLLMEvent
+from neuron_server.event_router import OutgoingEvent, IncomingEvent
 from neuron_server.models.thread_model import ThreadModel
 from uuid import UUID
 from pydantic import BaseModel
@@ -22,7 +22,6 @@ class CreateThread(BaseModel):
     name: Optional[str] = None
     context: Optional[str] = None
     personality_id: UUID
-    provider_id: UUID
 
 
 class DeleteThread(IncomingEvent):

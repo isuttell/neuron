@@ -17,7 +17,6 @@ blueprint = Blueprint(
 class UpdateThreadRequest(BaseModel):
     thread_id: Optional[UUID]
     personality_id: UUID
-    provider_id: UUID
 
 
 @blueprint.post("/check_front_door")
@@ -32,7 +31,6 @@ async def check_front_door():
             "run_name": "check_front_door",
             "configurable": {"thread_id": str(payload.thread_id)},
         },
-        provider_id=payload.provider_id,
         personality_id=payload.personality_id,
         tools=homeassistant_tools,
     )
@@ -52,7 +50,6 @@ async def home_status():
             "run_name": "home_status",
             "configurable": {"thread_id": str(payload.thread_id)},
         },
-        provider_id=payload.provider_id,
         personality_id=payload.personality_id,
         tools=homeassistant_tools,
     )
@@ -65,7 +62,6 @@ class PromptRequest(BaseModel):
     run_name: Optional[str] = None
     prompt: str
     personality_id: UUID
-    provider_id: UUID
 
 
 @blueprint.post("/home_prompt")
@@ -86,16 +82,13 @@ async def prompt():
                 "run_name": payload.run_name or "home_prompt",
                 "configurable": {"thread_id": str(thread.id)},
             },
-            provider_id=payload.provider_id,
             personality_id=payload.personality_id,
             tools=homeassistant_tools,
         )
         logger.info(f"home_prompt={content}")
         return {"status": "success", "content": content}
     finally:
-        state = await aget_state(
-            thread_id=payload.thread_id, provider_id=payload.provider_id
-        )
+        state = await aget_state(thread_id=payload.thread_id)
         thread.message_count = len(state.values.get("messages", []))
         thread.status = "idle"
         await thread.save()

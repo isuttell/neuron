@@ -7,7 +7,6 @@ from neuron_server.models.personality_model import PersonalityModel
 class PostPersonalityPrompt(IncomingEvent):
     context: str
     prompt: str
-    provider_id: str
 
 
 class PersonalityPromptResponse(OutgoingEvent):
@@ -31,21 +30,3 @@ class GetPersonalityResponse(OutgoingEvent):
 class GetPersonalitiesResponse(OutgoingEvent):
     type: Literal["personalities"] = "personalities"
     personalities: List[PersonalityModel]
-
-
-class CreatePersonality(IncomingEvent):
-    name: str
-    context: str
-    memory: str
-    provider_id: str
-
-
-class UpdatePersonality(IncomingEvent):
-    id: UUID
-    name: str
-    context: str
-    memory: str
-
-
-class DeletePersonality(IncomingEvent):
-    personality_id: UUID

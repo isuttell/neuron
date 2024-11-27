@@ -4,7 +4,6 @@ import threads from "./slices/threadsSlice";
 import websocketMiddleware from "./middleware/websocketMiddleware";
 import { socketManager } from "./WebSocketManager";
 import socket from "./slices/socketSlice";
-import providers from "./slices/providersSlice";
 import personalities from "./slices/personalitiesSlice";
 import images from "./slices/imagesSlice";
 import app from "./slices/appSlice";
@@ -16,7 +15,6 @@ export const store = configureStore({
     socket,
     personalities,
     images,
-    providers,
   },
   // @ts-ignore
   middleware: (getDefaultMiddleware) =>

@@ -1,8 +1,7 @@
 from typing import Dict, Tuple, Callable, Any, Coroutine
 from pydantic import BaseModel, Field
 from datetime import datetime, timezone
-from typing import Self, Literal, Optional
-from quart import websocket
+from typing import Self, Literal
 from neuron_server.logger import logger
 
 
@@ -12,10 +11,6 @@ class Event(BaseModel):
 
 class IncomingEvent(Event):
     pass
-
-
-class IncomingLLMEvent(IncomingEvent):
-    provider_id: str
 
 
 class OutgoingEvent(Event):

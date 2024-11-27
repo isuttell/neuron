@@ -2,14 +2,10 @@ import WebSocketManager from "../WebSocketManager";
 import { MiddlewareAPI, Dispatch, Action } from "redux";
 import { connect, disconnect } from "../slices/socketSlice";
 import { upsertMessage, partialMessage } from "../slices/messagesSlice";
-import { upsertThread, deleteThread } from "../slices/threadsSlice";
-import {
-  deletePersonality,
-  upsertPersonality,
-} from "../slices/personalitiesSlice";
-import { upsertImage, deleteImage } from "../slices/imagesSlice";
-import { upsertProviders } from "../slices/providersSlice";
-import { updateTokenStats } from "../slices/appSlice";
+import { upsertThread } from "../slices/threadsSlice";
+import { upsertPersonality } from "../slices/personalitiesSlice";
+import { upsertImage } from "../slices/imagesSlice";
+
 interface DeleteThreadAction extends Action {
   type: "DeleteThread";
   thread_id: string;
@@ -67,13 +63,6 @@ const websocketMiddleware =
         socket.on("image", (event) => {
           dispatch(upsertImage(event));
         });
-        socket.on("providers", (event) => {
-          dispatch(upsertProviders(event));
-        });
-        socket.on("token_stats", (event) => {
-          dispatch(updateTokenStats(event));
-        });
-
         socket.on("error", (event) => {
           console.error(event);
         });
@@ -81,16 +70,6 @@ const websocketMiddleware =
     } else if (socket.connected && action.type.indexOf("socket/") === 0) {
       action.type = action.type.replace("socket/", "");
       socket.sendMessage(action);
-      if (action.type === "DeleteThread") {
-        const deleteAction = action as DeleteThreadAction;
-        dispatch(deleteThread(deleteAction.thread_id));
-      } else if (action.type === "DeletePersonality") {
-        const deleteAction = action as DeletePersonalityAction;
-        dispatch(deletePersonality(deleteAction.personality_id));
-      } else if (action.type === "DeleteImage") {
-        const deleteAction = action as DeleteImageAction;
-        dispatch(deleteImage(deleteAction));
-      }
     }
     return next(action);
   };

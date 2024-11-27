@@ -17,22 +17,23 @@ import asyncio
 from neuron_server.api import app
 from neuron_server.config import config
 from neuron_server.logger import logger
-from neuron_server.database import create_tables, pool
+from neuron_server.database import create_tables
+from neuron_server.models.provider_model import ProviderModelModel
 from hypercorn.config import Config
 from hypercorn.asyncio import serve
 
 
 async def start_database():
-    logger.debug("Starting database")
+    logger.debug("Starting database...")
     await create_tables()
-    logger.info("Database started")
+    await ProviderModelModel.setup()
+    logger.debug("Database started")
 
 
 if sys.platform.startswith("win"):
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 if __name__ == "__main__":
-    logger.debug("Starting server...")
     asyncio.run(start_database())
 
     if config.debug:

@@ -1,6 +1,5 @@
-from typing import Literal, Optional
-from neuron_server.event_router import OutgoingEvent, IncomingEvent, IncomingLLMEvent
-from neuron_server.models import MessageModel
+from typing import Literal
+from neuron_server.event_router import OutgoingEvent, IncomingEvent
 from uuid import UUID
 from langchain_core.messages import BaseMessage
 
@@ -11,7 +10,6 @@ class ThreadMessage(BaseMessage):
 
 class GetThreadMessages(IncomingEvent):
     thread_id: UUID
-    provider_id: UUID
 
 
 class MessageEvent(OutgoingEvent):
@@ -29,7 +27,7 @@ class PartialMessageEvent(OutgoingEvent):
     message: PartialMessage
 
 
-class PostMessage(IncomingLLMEvent):
+class PostMessage(IncomingEvent):
     thread_id: UUID
     prompt: str
     personality_id: UUID

@@ -11,11 +11,10 @@ import { Button } from "@/components/ui/button";
 import EditThreadDialog from "../threads/EditThreadDialog";
 import Loading from "@/lib/loading";
 import { getActivePersonalityId } from "../slices/personalitiesSlice";
-import { getActiveProviderId } from "../slices/providersSlice";
 import MediaList from "../messages/MediaList";
-import superagent from "superagent";
-import { upsertThread } from "../slices/threadsSlice";
 import { Skeleton } from "@/components/ui/skeleton";
+import { fetchThread, deleteThread } from "../actions/threadActions";
+import { fetchMessagesByThread } from "../actions/messageActions";
 
 const selectThread = (state: RootState, threadId?: string) =>
   state.threads.threads.find((thread) => thread.id === threadId);
@@ -27,7 +26,6 @@ export default function Thread() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const activePersonalityId = useAppSelector(getActivePersonalityId);
-  const activeProviderId = useAppSelector(getActiveProviderId);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const { threadId } = useParams();
   const thread = useAppSelector(
@@ -40,16 +38,11 @@ export default function Thread() {
   );
 
   useEffect(() => {
-    if (threadId) {
-      superagent.get(`/api/threads/${threadId}`).then(({ body }) => {
-        dispatch(upsertThread(body));
-      });
+    if (!threadId) {
+      return;
     }
-    dispatch({
-      type: "socket/GetThreadMessages",
-      thread_id: threadId,
-      provider_id: activeProviderId,
-    });
+    dispatch(fetchThread(threadId));
+    dispatch(fetchMessagesByThread(threadId));
   }, [threadId]);
 
   useEffect(() => {
@@ -62,7 +55,7 @@ export default function Thread() {
   useEffect(() => {
     // Scroll to the bottom of the messages when they change
     if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+      messagesEndRef.current.scrollIntoView({ behavior: "instant" });
     }
   }, [
     messages.length,
@@ -85,8 +78,8 @@ export default function Thread() {
           variant="ghost"
           size="icon"
           onClick={() => {
-            dispatch({ type: "socket/DeleteThread", thread_id: thread.id });
             navigate("/");
+            dispatch(deleteThread(thread.id));
           }}
         >
           <Trash className="size-4" />
@@ -104,7 +97,9 @@ export default function Thread() {
                     <MessageItem key={message.id} message={message} />
                   ))}
                 {thread.message_count === 0 && messages.length === 0 ? (
-                  <div>No messages</div>
+                  <div className="m-4 text-center text-muted-foreground">
+                    No messages
+                  </div>
                 ) : null}
                 {thread.status !== "idle" ? (
                   <div className="m-4 pl-[70px] space-y-2 flex-1">

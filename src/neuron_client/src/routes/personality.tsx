@@ -11,18 +11,21 @@ import { getActivePersonalityId } from "../slices/personalitiesSlice";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { getSocket } from "../slices/socketSlice";
-import { getActiveProviderId } from "../slices/providersSlice";
 import { Spinner } from "@/components/ui/spinner";
 import { Input } from "@/components/ui/input";
 import { setActivePersonality } from "../slices/personalitiesSlice";
-
+import {
+  fetchPersonality,
+  updatePersonality,
+  deletePersonality,
+} from "../actions/personalityActions";
+import { fetchThreadsByPersonality } from "../actions/threadActions";
 const selectPersonality = (state: RootState, personalityId?: string) =>
   state.personalities.personalities.find((per) => per.id === personalityId);
 
 export default function Personality() {
   const socket = useAppSelector(getSocket);
   const [updatedContext, setUpdatedContext] = useState("");
-  const activeProviderId = useAppSelector(getActiveProviderId);
   const [updatedName, setUpdatedName] = useState("");
   const [prompt, setPrompt] = useState("");
   const dispatch = useAppDispatch();
@@ -34,6 +37,14 @@ export default function Personality() {
     (state) => selectPersonality(state, personalityId),
     shallowEqual
   );
+
+  useEffect(() => {
+    if (!personalityId) {
+      return;
+    }
+    dispatch(fetchPersonality(personalityId));
+  }, [personalityId]);
+
   useEffect(() => {
     if (!personality) {
       return;
@@ -47,13 +58,15 @@ export default function Personality() {
       return;
     }
     e.preventDefault();
-    dispatch({
-      type: "socket/UpdatePersonality",
-      id: personality.id,
-      name: updatedName,
-      context: updatedContext,
-      memory: personality.memory,
-    });
+
+    dispatch(
+      updatePersonality({
+        id: personality.id,
+        name: updatedName,
+        context: updatedContext,
+        memory: personality.memory,
+      })
+    );
   };
 
   const handleSubmitPrompt = (
@@ -63,19 +76,13 @@ export default function Personality() {
       | React.KeyboardEvent<HTMLTextAreaElement>
   ) => {
     e.preventDefault();
-    if (
-      !socket ||
-      prompt.trim().length === 0 ||
-      !personality?.id ||
-      !activeProviderId
-    ) {
+    if (!socket || prompt.trim().length === 0 || !personality?.id) {
       return;
     }
     socket.sendMessage({
       type: "PostPersonalityPrompt",
       context: updatedContext,
       prompt,
-      provider_id: activeProviderId,
     });
     setIsLoading(true);
     socket.once("personality_prompt_response", (data) => {
@@ -107,11 +114,8 @@ export default function Personality() {
           variant="ghost"
           size="icon"
           onClick={() => {
-            dispatch({
-              type: "socket/DeletePersonality",
-              personality_id: personality.id,
-            });
             navigate("/");
+            dispatch(deletePersonality(personality.id));
           }}
         >
           <Trash className="size-4" />
@@ -176,12 +180,6 @@ export default function Personality() {
                 dispatch(
                   setActivePersonality(isActive ? undefined : personality.id)
                 );
-                if (!isActive) {
-                  dispatch({
-                    type: "socket/GetThreads",
-                    personality_id: personality.id,
-                  });
-                }
               }}
             >
               {isActive ? "Deactivate" : "Activate"}
@@ -191,9 +189,7 @@ export default function Personality() {
               onClick={handleSubmitPrompt}
               type="submit"
               size="sm"
-              disabled={
-                isLoading || !activeProviderId || prompt.trim().length === 0
-              }
+              disabled={isLoading || prompt.trim().length === 0}
               className="ml-auto gap-1.5"
             >
               {isLoading ? (

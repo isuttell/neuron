@@ -7,7 +7,6 @@ import { useAppSelector } from "../hooks";
 import { getSocket } from "../slices/socketSlice";
 import { CornerDownLeft } from "lucide-react";
 import { getActivePersonalityId } from "../slices/personalitiesSlice";
-import { getActiveProviderId } from "../slices/providersSlice";
 import { Spinner } from "@/components/ui/spinner";
 
 interface MessageFormProps {
@@ -37,7 +36,6 @@ export default function MessageForm({
 }: MessageFormProps) {
   const socket = useAppSelector(getSocket);
   const activePersonalityId = useAppSelector(getActivePersonalityId);
-  const activeProviderId = useAppSelector(getActiveProviderId);
   const [value, setValue] = useState("");
   const { threadId } = useParams();
   const handleSubmit = (
@@ -47,12 +45,7 @@ export default function MessageForm({
       | React.KeyboardEvent<HTMLTextAreaElement>
   ) => {
     e.preventDefault();
-    if (
-      !socket ||
-      value.trim().length === 0 ||
-      !activePersonalityId ||
-      !activeProviderId
-    ) {
+    if (!socket || value.trim().length === 0 || !activePersonalityId) {
       return;
     }
     onSubmit(value);
@@ -61,7 +54,6 @@ export default function MessageForm({
       thread_id: threadId,
       prompt: value,
       personality_id: activePersonalityId,
-      provider_id: activeProviderId,
     });
     setValue("");
   };

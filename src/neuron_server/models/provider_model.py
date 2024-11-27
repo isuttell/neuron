@@ -13,6 +13,7 @@ from neuron_server.llms.openai import OpenAILLM
 from neuron_server.llms.anthropic import AnthropicLLM
 from neuron_server.llms.huggingface import HuggingFaceLLM
 from neuron_server.llms.huggingface_toolless import HuggingFaceToollessLLM
+from neuron_server.config import config
 
 Provider = Literal["openai", "anthropic", "huggingface"]
 
@@ -70,3 +71,16 @@ class ProviderModelModel(BaseModel):
             return OpenAILLM(model_id=self.model_id)
         else:
             raise ValueError(f"Unknown provider: {self.provider}")
+
+    @classmethod
+    async def setup(cls):
+        provider = await cls.get(config.provider_id)
+        if not provider:
+            raise ValueError("Provider not found")
+        cls.llm = provider.to_llm()
+
+    @classmethod
+    def get_llm(cls) -> LLM:
+        if not cls.llm:
+            raise ValueError("LLM not initialized")
+        return cls.llm

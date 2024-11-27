@@ -1,7 +1,7 @@
 import { createSlice } from "@reduxjs/toolkit";
 import type { PayloadAction } from "@reduxjs/toolkit";
 import type { RootState } from "../store";
-
+import * as actions from "../actions/personalityActions";
 export interface Personality {
   id: string;
   name: string;
@@ -13,6 +13,10 @@ export interface Personality {
 
 interface IncomingPersonalityEvent {
   personality: Personality;
+}
+
+interface IncomingPersonalitiesEvent {
+  personalities: Personality[];
 }
 
 // Define a type for the slice state
@@ -27,6 +31,18 @@ const initialState: PersonalityState = {
     sessionStorage.getItem("activePersonalityId") || undefined,
   personalities: [],
 };
+
+function upsert(state: PersonalityState, personality: Personality) {
+  const existingPersonalityIndex = state.personalities.findIndex(
+    (per) => per.id === personality.id
+  );
+  const per: Personality = personality;
+  if (existingPersonalityIndex !== -1) {
+    state.personalities[existingPersonalityIndex] = per;
+  } else {
+    state.personalities.push(per);
+  }
+}
 
 export const personalitiesSlice = createSlice({
   name: "personalities",
@@ -47,15 +63,13 @@ export const personalitiesSlice = createSlice({
       state,
       action: PayloadAction<IncomingPersonalityEvent>
     ) => {
-      const existingPersonalityIndex = state.personalities.findIndex(
-        (per) => per.id === action.payload.personality.id
-      );
-      const per: Personality = action.payload.personality;
-      if (existingPersonalityIndex !== -1) {
-        state.personalities[existingPersonalityIndex] = per;
-      } else {
-        state.personalities.push(per);
-      }
+      upsert(state, action.payload.personality);
+    },
+    upsertPersonalities: (
+      state,
+      action: PayloadAction<IncomingPersonalitiesEvent>
+    ) => {
+      state.personalities = action.payload.personalities;
     },
     deletePersonality: (state, action: PayloadAction<string>) => {
       state.personalities = state.personalities.filter(
@@ -63,10 +77,49 @@ export const personalitiesSlice = createSlice({
       );
     },
   },
+  extraReducers: (builder) => {
+    builder
+      .addCase(
+        actions.fetchPersonality.fulfilled,
+        (state, action: PayloadAction<IncomingPersonalityEvent>) => {
+          upsert(state, action.payload.personality);
+        }
+      )
+      .addCase(
+        actions.fetchPersonalities.fulfilled,
+        (state, action: PayloadAction<IncomingPersonalitiesEvent>) => {
+          state.personalities = action.payload.personalities;
+        }
+      )
+      .addCase(
+        actions.createPersonality.fulfilled,
+        (state, action: PayloadAction<IncomingPersonalityEvent>) => {
+          upsert(state, action.payload.personality);
+        }
+      )
+      .addCase(
+        actions.updatePersonality.fulfilled,
+        (state, action: PayloadAction<IncomingPersonalityEvent>) => {
+          upsert(state, action.payload.personality);
+        }
+      )
+      .addCase(
+        actions.deletePersonality.fulfilled,
+        (state, action: PayloadAction<string>) => {
+          state.personalities = state.personalities.filter(
+            (per) => per.id !== action.payload
+          );
+        }
+      );
+  },
 });
 
-export const { upsertPersonality, deletePersonality, setActivePersonality } =
-  personalitiesSlice.actions;
+export const {
+  upsertPersonality,
+  upsertPersonalities,
+  deletePersonality,
+  setActivePersonality,
+} = personalitiesSlice.actions;
 
 export const getPersonality = (state: RootState, id: string) =>
   state.personalities.personalities.find((per) => per.id === id);

@@ -7,29 +7,32 @@ from neuron_server.controllers.thread_controller import (
     router as thread_router,
     blueprint as thread_blueprint,
 )
-from neuron_server.controllers.message_controller import router as message_router
-from neuron_server.controllers.personality_controller import router as user_router
-from neuron_server.controllers.image_controller import router as image_router
-from neuron_server.controllers.provider_controller import router as provider_router
-from neuron_server.controllers.stats_controller import router as stats_router
+from neuron_server.controllers.message_controller import (
+    router as message_router,
+    blueprint as message_blueprint,
+)
+from neuron_server.controllers.personality_controller import (
+    router as personality_router,
+    blueprint as personality_blueprint,
+)
+from neuron_server.controllers.image_controller import (
+    router as image_router,
+    blueprint as image_blueprint,
+)
 from neuron_server.controllers.webhook_controller import blueprint as webhook_blueprint
 from functools import wraps
 from quart import Response
-from uuid import UUID
-from neuron_server.llms.tools import homeassistant_tools
-from neuron_server.llms.agent import execute_agent
 from typing import Optional
-
-from neuron_server.database import DB_URI
+import asyncio
+from neuron_server.database import pool
+from neuron_server.pubsub import client
 
 router = EventRouter()
 
 router.register_controller(thread_router)
 router.register_controller(message_router)
-router.register_controller(user_router)
+router.register_controller(personality_router)
 router.register_controller(image_router)
-router.register_controller(provider_router)
-router.register_controller(stats_router)
 
 
 app = Quart(
@@ -38,8 +41,6 @@ app = Quart(
     static_folder=config.client_assets_folder,
     root_path="/",
 )
-
-app.register_blueprint(thread_blueprint, url_prefix="/api/threads")
 
 
 def cors(
@@ -116,7 +117,6 @@ blueprint = Blueprint(
 @blueprint.get("/thread/<thread_id>")
 @blueprint.get("/personalities")
 @blueprint.get("/personality/<personality_id>")
-@blueprint.get("/image")
 @blueprint.get("/gallery")
 @blueprint.get("/stats")
 async def index(**kwargs):
@@ -131,8 +131,18 @@ async def get_static(path):
     return await send_from_directory(config.static_folder, path)
 
 
-@blueprint.websocket("/ws")
-async def ws():
+async def sending():
+    async with client.pubsub() as pubsub:
+        await pubsub.subscribe("app")
+        while True:
+            message = await pubsub.get_message(
+                ignore_subscribe_messages=True, timeout=None
+            )
+            if message is not None:
+                await websocket.send(message["data"].decode("utf-8"))
+
+
+async def receiving():
     while True:
         try:
             data = await websocket.receive()
@@ -142,10 +152,24 @@ async def ws():
             logger.exception(e)
 
 
+@blueprint.websocket("/ws")
+async def ws():
+    producer = asyncio.create_task(sending())
+    consumer = asyncio.create_task(receiving())
+    await asyncio.gather(producer, consumer)
+
+
 @app.get("/")
+@app.get("/status")
 async def health():
+    await client.ping()
+    await pool.check()
     return {"server": "neuron", "status": "healthy"}
 
 
 app.register_blueprint(blueprint, url_prefix="/neuron")
 app.register_blueprint(webhook_blueprint, url_prefix="/neuron/webhooks")
+app.register_blueprint(thread_blueprint, url_prefix="/neuron/api/threads")
+app.register_blueprint(message_blueprint, url_prefix="/neuron/api/messages")
+app.register_blueprint(personality_blueprint, url_prefix="/neuron/api/personalities")
+app.register_blueprint(image_blueprint, url_prefix="/neuron/api/images")

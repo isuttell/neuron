@@ -1,34 +1,36 @@
-import React from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ListPlus } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "../hooks";
 import { getActivePersonalityId } from "../slices/personalitiesSlice";
-import { getActiveProviderId } from "../slices/providersSlice";
-import { upsertThread } from "../slices/threadsSlice";
-import superagent from "superagent";
+import { createThread } from "../actions/threadActions";
 import { useNavigate } from "react-router-dom";
+
 const NewThreadButton: React.FC = () => {
+  const [loading, setLoading] = useState(false);
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const activePersonalityId = useAppSelector(getActivePersonalityId);
-  const activeProviderId = useAppSelector(getActiveProviderId);
+
   return (
     <Button
       variant="secondary"
       className="w-full mb-4"
       onClick={() => {
-        superagent
-          .post("/api/threads")
-          .send({
-            personality_id: activePersonalityId,
-            provider_id: activeProviderId,
+        if (!activePersonalityId) {
+          return;
+        }
+        setLoading(true);
+        dispatch(createThread(activePersonalityId))
+          .unwrap()
+          .then(({ thread }) => {
+            navigate(`/thread/${thread.id}`);
           })
-          .then(({ body }) => {
-            dispatch(upsertThread(body));
-            navigate(`/thread/${body.thread.id}`);
+          .finally(() => {
+            setLoading(false);
           });
       }}
-      disabled={!activePersonalityId || !activeProviderId}
+      disabled={!activePersonalityId || loading}
     >
       <ListPlus className="mr-2 h-4 w-4" />
       New Thread
