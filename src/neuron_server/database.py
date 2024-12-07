@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.ext.hybrid import hybrid_property
 from neuron_server.config import config
 from sqlalchemy.pool import NullPool
-from psycopg_pool import AsyncConnectionPool
+from psycopg_pool import AsyncConnectionPool, AsyncNullConnectionPool
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from neuron_server.logger import logger
 import asyncio
@@ -98,7 +98,7 @@ class Message(Base):
 get_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 
-pool = AsyncConnectionPool(
+pool = AsyncNullConnectionPool(
     conninfo=f"postgresql://{DB_URI}",
     kwargs={
         "autocommit": True,
@@ -108,13 +108,12 @@ pool = AsyncConnectionPool(
 )
 
 
-async def create_tables():
+async def start():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    await pool.open()
+    await pool.open(wait=True)
     checkpointer = AsyncPostgresSaver(pool)
     await checkpointer.setup()
-    await pool.check()
 
 
 async def test_database():

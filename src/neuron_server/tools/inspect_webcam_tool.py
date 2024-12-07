@@ -5,9 +5,18 @@ import time
 from threading import Thread
 from neuron_server.logger import logger
 from langchain.tools import BaseTool
-from openai import OpenAI
 import base64
 from io import BytesIO
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.messages import SystemMessage, HumanMessage
+import asyncio
+from cv2.typing import MatLike
+from typing import Tuple, List, Type
+from pydantic import BaseModel, Field
+from datetime import datetime
+from typing import Literal
+from langchain_anthropic import ChatAnthropic
+from langchain_openai import ChatOpenAI
 
 
 class Camera:
@@ -32,11 +41,34 @@ class Camera:
         self.capture.release()
 
 
+def convert_frame_to_base64(
+    frame: MatLike, dimensions: Tuple[int, int] = (1024, 1024)
+) -> str:
+    frame = cv2.resize(frame.astype(np.uint8), dimensions)
+    frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    image = Image.fromarray(frame)
+    image_byte_array = BytesIO()
+    image.save(image_byte_array, format="JPEG")
+    return base64.b64encode(image_byte_array.getvalue()).decode("utf-8")
+
+
+class InspectWebcamToolArgs(BaseModel):
+    prompt: str = Field(
+        description="A question or prompt that guides the inspection of the image."
+    )
+    frame_count: int = Field(description="The number of frames to inspect.", default=2)
+    fps: float = Field(
+        description="The frames per second of the webcam feed.", default=0.5
+    )
+
+
 class InspectWebcamTool(BaseTool):
     name: str = "inspect_webcam"
     description: str = (
         "Answer live questions about is happening in a webcam showing the user using OpenAI GPT-4o multi-modal vision capabilities. The prompt must include any relevant context that helps the model understand the question."
     )
+
+    args_schema: Type[InspectWebcamToolArgs] = InspectWebcamToolArgs
 
     camera: Camera
 
@@ -44,61 +76,84 @@ class InspectWebcamTool(BaseTool):
         arbitrary_types_allowed = True
 
     def _run(self, prompt: str, max_tokens: int = 300) -> str:
-        """
-        Inspect an image from a webcam using OpenAI's GPT-4o multi-modal vision capabilities.
+        return asyncio.run(self._arun(prompt, max_tokens))
 
-        Args:
-            prompt (str): A question or prompt that guides the inspection of the image.
-            max_tokens (int, optional): The maximum number of tokens to generate in the response. Defaults to 300.
+    async def wait_for_frame(self) -> None:
+        start_time = time.perf_counter()
+        while True:
+            if time.perf_counter() - start_time > 10:
+                raise Exception("Timeout: No frame found after 10 seconds")
+            status, frame = self.camera.get_frame()
+            if not status:
+                time.sleep(0.25)
+                continue
+            if np.mean(frame) > 10:
+                return
+            await asyncio.sleep(0.1)
 
-        Returns:
-            str: A description of the image based on the provided prompt.
-        """
+    async def get_frames(self, count: int, fps: float) -> List[MatLike]:
+        logger.debug(f"Waiting for frames to be available...")
+        await self.wait_for_frame()
+        logger.debug(f"Frames are available, getting {count} frames...")
+        frames = []
+        while len(frames) < count:
+            status, frame = self.camera.get_frame()
+            if not status:
+                raise Exception("Camera disconnected")
+            frames.append(frame)
+            await asyncio.sleep(1 / fps)
+        logger.debug(f"Got {len(frames)} frames")
+        return frames
+
+    async def _arun(
+        self,
+        prompt: str,
+        frame_count: int,
+        fps: float,
+        max_tokens: int = 1000,
+        provider: Literal["openai", "anthropic"] = "anthropic",
+    ) -> str:
         try:
             start_time = time.perf_counter()
-            while True:
-                if time.perf_counter() - start_time > 10:
-                    raise Exception("Timeout: No frame found after 10 seconds")
-                status, frame = self.camera.get_frame()
-                if not status:
-                    time.sleep(0.25)
-                    continue
-                if np.mean(frame) > 10:
-                    break
-                time.sleep(0.1)
-            logger.debug(f"Captured frame")
-            frame = cv2.resize(frame.astype(np.uint8), (1024, 1024))
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            image = Image.fromarray(frame)
-            image_byte_array = BytesIO()
-            image.save(image_byte_array, format="JPEG")
-            image_base64 = base64.b64encode(image_byte_array.getvalue()).decode("utf-8")
-
-            client: OpenAI = OpenAI()
-            response = client.chat.completions.create(
-                model="gpt-4o",
-                temperature=0.7,
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "You are a tool that inspects a live webcam feed of the user and returns a description of the image based on a given prompt. Be descriptive and detailed. Just return the description, no other text. Do not ask for clarification.",
-                    },
-                    {
-                        "role": "user",
-                        "content": [
+            frames = await self.get_frames(count=frame_count, fps=fps)
+            image_base64s = [convert_frame_to_base64(frame) for frame in frames]
+            model = (
+                ChatAnthropic(
+                    model="claude-3-5-sonnet-20241022",
+                    temperature=0.7,
+                )
+                if provider == "anthropic"
+                else ChatOpenAI(
+                    model="gpt-4o",
+                    temperature=0.7,
+                )
+            )
+            chain = model | StrOutputParser()
+            content: str = await chain.ainvoke(
+                [
+                    SystemMessage(
+                        content=f"You are a tool that inspects a series of sequential images of a live webcam feed taken at {round(fps, 3)} fps. First give a general description of the scene in detail to provide context and then return a detailed response based on the given prompt. Be descriptive and detailed and include novel and related information another tool might need to know. Just return the description, no other text. Do not ask for clarification. The time is {datetime.now().astimezone().isoformat(timespec='seconds')}"
+                    ),
+                    HumanMessage(
+                        content=[
                             {"type": "text", "text": prompt},
-                            {
-                                "type": "image_url",
-                                "image_url": {
-                                    "url": f"data:image/jpeg;base64,{image_base64}"
-                                },
-                            },
+                            *[
+                                {
+                                    "type": "image_url",
+                                    "image_url": {
+                                        "url": f"data:image/jpeg;base64,{image_base64}"
+                                    },
+                                }
+                                for image_base64 in image_base64s
+                            ],
                         ],
-                    },
+                    ),
                 ],
+                {
+                    "run_name": "inspect_webcam",
+                },
                 max_tokens=max_tokens,
             )
-            content = response.choices[0].message.content
             logger.debug(
                 f"Response: {content} - {round(time.perf_counter() - start_time, 2)}s"
             )

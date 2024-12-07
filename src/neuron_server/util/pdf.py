@@ -11,6 +11,7 @@ from neuron_server.llms.prompts import (
 from langchain_core.messages import AIMessage
 from neuron_server.logger import logger
 import re
+from langchain_core.runnables import Runnable
 
 markdown_splitter = MarkdownTextSplitter(chunk_size=1000, chunk_overlap=200)
 
@@ -26,7 +27,7 @@ def convert_to_documents(
     )
 
 
-def summarize_pages(model, pdf_path: str) -> List[str]:
+async def summarize_pages(model: Runnable, pdf_path: str) -> List[str]:
     pages = pymupdf4llm.to_markdown(pdf_path, page_chunks=True)
     chain = document_summarize_page_prompt | model
     last_page: Optional[str] = None
@@ -34,7 +35,7 @@ def summarize_pages(model, pdf_path: str) -> List[str]:
     # iterate over each page adding to the summary
     results: List[str] = []
     for i, page in enumerate(pages):
-        message: AIMessage = chain.invoke(
+        message: AIMessage = await chain.ainvoke(
             {
                 "last_page": last_page or "",
                 "page": page,
@@ -52,9 +53,11 @@ def summarize_pages(model, pdf_path: str) -> List[str]:
     return results
 
 
-def summarize_document(model, metadata: str, summaries: List[str]) -> str:
+async def summarize_document(
+    model: Runnable, metadata: str, summaries: List[str]
+) -> str:
     chain = document_summarize_prompt | model
-    message: AIMessage = chain.invoke(
+    message: AIMessage = await chain.ainvoke(
         {
             "pages": [
                 f"Page {i+1} Summary:\n{summary}\n\n---\n\n"
@@ -65,26 +68,3 @@ def summarize_document(model, metadata: str, summaries: List[str]) -> str:
         {"run_name": "summarize_document"},
     )
     return re.sub(r"```(?:\w+)?\s*|\s*```", "", message.content.strip()).strip()
-
-
-async def main():
-    import argparse
-    from neuron_server.llms.providers import get_provider
-
-    parser = argparse.ArgumentParser(description="Convert a PDF file to documents.")
-    parser.add_argument("filename", type=str, help="Path to the PDF file")
-
-    args = parser.parse_args()
-    provider = get_provider("c9eb1f3e-1b2e-4c3b-8c1e-1c1e1c1e1c3")
-    pages = await summarize_pages(provider, args.filename)
-    summary = await summarize_document(provider, pages)
-    print(summary)
-    print("")
-    for page in pages:
-        print(page)
-
-
-if __name__ == "__main__":
-    import asyncio
-
-    asyncio.run(main())

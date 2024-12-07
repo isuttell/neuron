@@ -50,7 +50,7 @@ const EditPersonalityDialog: React.FC<EditPersonalityDialogProps> = ({
           createPersonality({ name, context, memory })
         ).unwrap();
         setOpen(false);
-        navigate(`/personality/${body.payload.personality.id}`);
+        navigate(`/personality/${body.personality.id}`);
       }
     } finally {
       setLoading(false);

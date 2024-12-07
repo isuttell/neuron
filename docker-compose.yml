@@ -1,13 +1,16 @@
 services:
   server:
+    restart: unless-stopped
     image: 192.168.1.160:5000/neuron-server:latest
     build: .
 
   db:
+    restart: unless-stopped
     image: pgvector/pgvector:pg17
     environment:
       - POSTGRES_DB=neuron
       - POSTGRES_USER=neuron
 
   redis:
+    restart: unless-stopped
     image: redis:7.4-alpine

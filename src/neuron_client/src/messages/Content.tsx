@@ -2,12 +2,14 @@ import React, { memo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import AudioPlayer from "./AudioPlayer";
 import { cn } from "@/lib/utils";
 import "./Content.css";
-
+import "katex/dist/katex.min.css";
 interface ContentProps {
   className?: string;
   content: string;
@@ -24,8 +26,8 @@ const Content: React.FC<ContentProps> = ({
       className={cn("flex-1 content", className)}
       key={content}
       children={content}
-      remarkPlugins={[remarkGfm]}
-      rehypePlugins={[rehypeRaw]}
+      remarkPlugins={[remarkGfm, remarkMath]}
+      rehypePlugins={[rehypeRaw, rehypeKatex]}
       components={{
         audio({ node }) {
           let src = node?.properties?.src;
@@ -37,13 +39,6 @@ const Content: React.FC<ContentProps> = ({
               }
             }
           }
-          src =
-            typeof src === "string"
-              ? src.replace(
-                  "http://localhost:5000/",
-                  "http://192.168.1.211:5000/"
-                )
-              : undefined;
           if (!src) {
             return null;
           }
@@ -53,7 +48,7 @@ const Content: React.FC<ContentProps> = ({
         img({ node, className = "", children, ...props }) {
           return (
             <img
-              className={`${className} m-2 float-left w-full max-w-[512px] rounded-md`}
+              className={`${className} my-2 w-full max-w-[512px] rounded-md`}
               {...props}
             />
           );

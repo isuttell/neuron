@@ -96,7 +96,9 @@ This tool searches arXiv for research articles, and retrieves short summaries. E
                     os.makedirs(article_directory)
                 summary = result.summary.strip().replace("\n", "<br />")
                 comment = (
-                    result.comment.strip().replace("\n", "<br />") if comment else ""
+                    result.comment.strip().replace("\n", "<br />")
+                    if result.comment
+                    else ""
                 )
                 articles.append(
                     f"""
@@ -114,16 +116,6 @@ This tool searches arXiv for research articles, and retrieves short summaries. E
 | Summary            | {summary} |
 """.strip()
                 )
-                pdf_filename = result._get_default_filename()
-                pdf_full_path = f"{article_directory}/{pdf_filename}"
-                if not os.path.exists(pdf_full_path):
-                    logger.debug(
-                        f"Downloading PDF for {result.title} to {pdf_full_path}"
-                    )
-                    result.download_pdf(
-                        dirpath=article_directory, filename=pdf_filename
-                    )
-
             return "\n\n--------------\n\n".join(articles)
         except Exception as e:
             logger.exception(e)

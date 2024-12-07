@@ -40,6 +40,7 @@ class AgentState(TypedDict):
 
 class LLM:
     model: Runnable
+    model_with_tools: Runnable
     provider: Literal["openai", "anthropic", "huggingface"]
     chat: Runnable
     title: Runnable
@@ -82,8 +83,8 @@ class LLM:
             "agent",
             self.should_call_tools,
             {
-                "continue": "tools",
-                "end": "update_title",
+                "tools": "tools",
+                "continue": "update_title",
             },
         )
         self.workflow.add_edge("tools", "agent")
@@ -122,7 +123,7 @@ class LLM:
                 "memory": state["memory"],
                 "now": datetime.now(timezone.utc)
                 .astimezone()
-                .strftime("%Y-%m-%d %H:%M:%S"),
+                .strftime("%Y-%m-%d %H:%M:%S %Z"),
             },
             config,
         )
@@ -135,7 +136,7 @@ class LLM:
         config: RunnableConfig,
     ):
         message_trimmer: Runnable = trim_messages(
-            max_tokens=1000,
+            max_tokens=2048,
             strategy="last",
             token_counter=self.title_model,
             include_system=True,
@@ -151,16 +152,17 @@ class LLM:
             ],
             {**config, "run_name": "trim_messages"},
         )
-        response = await self.title.ainvoke(
+        response: str = await self.title.ainvoke(
             {
                 "messages": messages,
                 "last_title": state.get("title", ""),
                 "now": datetime.now(timezone.utc)
                 .astimezone()
-                .strftime("%Y-%m-%d %H:%M:%S"),
+                .strftime("%Y-%m-%d %H:%M:%S %Z"),
             },
             {**config, "run_name": "update_title"},
         )
+        response = response.strip('"')
         return {"title": response}
 
     async def call_memory(
@@ -169,7 +171,7 @@ class LLM:
         config: RunnableConfig,
     ):
         message_trimmer: Runnable = trim_messages(
-            max_tokens=30000,
+            max_tokens=4096,
             strategy="last",
             token_counter=self.memory_model,
             include_system=True,
@@ -189,22 +191,23 @@ class LLM:
         response = await self.memory.ainvoke(
             {
                 "messages": messages,
+                "personality": state["personality"],
                 "memory": state.get("memory", ""),
                 "now": datetime.now(timezone.utc)
                 .astimezone()
-                .strftime("%Y-%m-%d %H:%M:%S"),
+                .strftime("%Y-%m-%d %H:%M:%S %Z"),
             },
             {**config, "run_name": "update_memory"},
         )
         return {"memory": response}
 
-    def should_call_tools(self, state: AgentState) -> Literal["end", "continue"]:
+    def should_call_tools(self, state: AgentState) -> Literal["tools", "continue"]:
         messages = state["messages"]
         last_message = messages[-1]
         assert isinstance(last_message, AIMessage)
         # If there is no function call, then we finish
-        if not last_message.tool_calls:
-            return "end"
+        if last_message.tool_calls:
+            return "tools"
         # Otherwise if there is, we continue
         else:
             return "continue"

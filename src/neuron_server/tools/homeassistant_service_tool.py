@@ -1,8 +1,5 @@
 from langchain.tools import BaseTool
 from pydantic import BaseModel, Field
-import requests
-from typing import Dict, Any, List
-from enum import Enum
 from neuron_server.config import config
 from neuron_server.logger import logger
 from neuron_server.tools.homeassistant_api import HomeAssistantAPI, parse_sensor_state
@@ -19,6 +16,12 @@ class ServiceCallParameters(BaseModel):
 
 
 calls = [
+    ServiceCallParameters(
+        entity_id="all",
+        domain="light",
+        service="turn_off",
+        description="Turn off all lights",
+    ),
     ServiceCallParameters(
         entity_id="light.office",
         domain="light",
@@ -43,6 +46,18 @@ calls = [
         service="turn_on",
         description="Turn on the living room lights",
     ),
+    ServiceCallParameters(
+        entity_id="",
+        domain="light",
+        service="turn_off",
+        description="Turn off the master bedroom lights",
+    ),
+    ServiceCallParameters(
+        entity_id="light.bedroom",
+        domain="light",
+        service="turn_on",
+        description="Turn on the master bedroom lights",
+    ),
 ]
 
 available_calls = "\n".join([str(call) for call in calls])
@@ -63,9 +78,12 @@ Available calls:
     api: HomeAssistantAPI
 
     def _run(self, entity_id: str, domain: str, service: str):
-        states = self.api.call_service(domain, service, entity_id)
-        data = "\n".join([parse_sensor_state(state) for state in states])
-        return data
+        try:
+            states = self.api.call_service(domain, service, entity_id)
+            return "\n".join([parse_sensor_state(state) for state in states])
+        except Exception as e:
+            logger.exception(e)
+            return f"Error calling service: {str(e)}"
 
 
 async def main():

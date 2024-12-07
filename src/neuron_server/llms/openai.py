@@ -13,13 +13,13 @@ class OpenAILLM(LLM):
     ):
         model = ChatOpenAI(
             model=model_id,
-            temperature=0.7,
+            temperature=1,
             streaming=True,
             max_tokens=4096,
         )
         title_model = ChatOpenAI(
-            model=model_id,
-            temperature=0.6,
+            model="gpt-4o-mini",
+            temperature=0.3,
             max_tokens=42,
         )
         memory_model = ChatOpenAI(

@@ -13,7 +13,49 @@ from pydantic import BaseModel, Field
 
 
 class ElevenLabsTTSToolArgs(BaseModel):
-    script: str = Field(description="The script to generate audio from.")
+    script: str = Field(
+        description="""
+The script format should consist of speaker identifiers followed by their respective dialogues, formatted as the example below:
+
+Example:
+```
+[Chris]
+Hello, how are you?
+
+[Jessica]
+I'm great!
+```
+
+Each script block should be short enough to be processed in a single call to the API.
+
+Do not include action identifiers or cues in the script.
+
+Use one of the following voices for the speaker. Exclude (voice description):
+
+Conversational Voices:
+Aria
+Charlie
+Chris
+Eric
+Jessica
+Laura
+River
+
+Narrator Voices:
+Bill
+Brian
+Lily
+Matilda
+
+News Presenter Voices:
+Sarah
+Daniel
+
+Character Voices:
+Callum (male, middle-aged, intense)
+Charlotte (female, Swedish)
+""".strip()
+    )
 
 
 class SpokenLine(TypedDict):
@@ -58,44 +100,7 @@ class ElevenLabsTTSTool(BaseTool):
     name: str = "elevenlabs_tts"
     description: str = (
         """
-This tool generates audio from a provided script. The input script format should consist of speaker identifiers followed by their respective dialogues, formatted as the example below:
-
-Example:
-```
-[Chris]
-Hello, how are you?
-
-[Jessica]
-I'm great!
-```
-
-Use one of the following voices for the speaker. Exclude (voice description):
-
-Conversational Voices:
-Aria
-Charlie
-Chris
-Eric
-Jessica
-Laura
-River
-
-Narrator Voices:
-Bill
-Brian
-Lily
-Matilda
-
-News Presenter Voices:
-Sarah
-Daniel
-
-Character Voices:
-Callum (male, middle-aged, intense)
-Charlotte (female, Swedish)
-
-
-The tool will use ElevenLabs' TTS API to generate the audio and return a link to the final audio file. Each script block should be short enough to be processed in a single call to the API. Use this tool to generate audio when the users requests it. The result should always include a playable <audio> tag that users the src attribute to link the audio file. Do not include the filename in the response.
+This tool generates audio from a provided script using ElevenLabs' TTS APIs and returns a link to the final audio file. Use this tool to generate audio when the users requests it. This returns an audio tag to be shown to the user so they can play it. Hide the filename as the user will not need it.
 """.strip()
     )
     args_schema: Type[ElevenLabsTTSToolArgs] = ElevenLabsTTSToolArgs

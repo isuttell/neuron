@@ -35,7 +35,7 @@ class SendNotificationTool(BaseTool):
     name: str = "send_notification"
     description: str = (
         """
-Send a notification to the user's phone.
+Immediately send a notification to the user's phone. Does not support scheduled notifications.
 """.strip()
     )
 

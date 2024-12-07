@@ -10,11 +10,8 @@ import Chat from "./routes/thread.tsx";
 import Personalities from "./routes/personalities.tsx";
 import ErrorPage from "./error-page.tsx";
 import NotFoundPage from "./not-found-page.tsx";
-import Image from "./routes/image.tsx";
 import Gallery from "./routes/gallery.tsx";
-import Stats from "./routes/stats.tsx";
 import Personality from "./routes/personality.tsx";
-import { socketManager } from "./WebSocketManager";
 import "./index.css";
 
 const router = createBrowserRouter(

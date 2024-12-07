@@ -8,7 +8,7 @@ from langchain_anthropic import ChatAnthropic
 from datetime import datetime
 from pydantic import BaseModel, Field
 from typing import Type
-
+import asyncio
 
 model = ChatAnthropic(
     model="claude-3-5-sonnet-20241022",
@@ -29,12 +29,15 @@ class ArxivSummaryTool(BaseTool):
     name: str = "arxiv_summary"
     description: str = (
         """
-This tool provides detailed, page-by-page summaries of research articles by their arXiv short IDs. The initial run may take some time as it downloads and processes the article, but a cached summary is saved for faster access on future requests.
+This tool provides detailed, page-by-page summaries of research articles by their arXiv short IDs. The initial run may take some time as it downloads and processes the article, but a cached summary is saved for faster access on future requests. Only use this tool if you can't answer the question based on the information you have as it is slower than other tools.
 """.strip()
     )
     args_schema: Type[ArxivSummaryArgs] = ArxivSummaryArgs
 
-    def _run(
+    def _run(self, id: str, force_resummarize: bool = False) -> str:
+        return asyncio.run(self._arun(id, force_resummarize))
+
+    async def _arun(
         self,
         id: str,
         force_resummarize: bool = False,
@@ -53,6 +56,8 @@ This tool provides detailed, page-by-page summaries of research articles by thei
             article_directory = f"{config.static_folder}/arxiv/{article.get_short_id()}"
             if not os.path.exists(article_directory):
                 os.makedirs(article_directory)
+            comment = article.comment.replace("\n", "<br />") if article.comment else ""
+            summary = article.summary.replace("\n", "<br />") if article.summary else ""
             metadata = f"""
 | Field              | Description |
 |--------------------|-|
@@ -63,9 +68,9 @@ This tool provides detailed, page-by-page summaries of research articles by thei
 | Published          | {article.published} |
 | Primary Category   | {article.primary_category} |
 | Categories         | {", ".join(article.categories)} |
-| Comment            | {article.comment} |
+| Comment            | {comment} |
 | Links              | {", ".join([link.href for link in article.links])} |
-| arxiv Summary      | {article.summary} |
+| arxiv Summary      | {summary} |
 """.strip()
 
             pdf_filename = article._get_default_filename()
@@ -82,8 +87,8 @@ This tool provides detailed, page-by-page summaries of research articles by thei
                 with open(summary_file_path, "r") as file:
                     return f"Summary already exists:\n{file.read()}"
 
-            page_summaries = summarize_pages(model, pdf_full_path)
-            summary = summarize_document(model, metadata, page_summaries)
+            page_summaries = await summarize_pages(model, pdf_full_path)
+            summary = await summarize_document(model, metadata, page_summaries)
 
             page_summaries = "\n\n".join(
                 f"## Page {i+1} Summary:\n{result}\n\n"

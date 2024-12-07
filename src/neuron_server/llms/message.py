@@ -83,7 +83,7 @@ async def astream_events(
             "messages": messages,
             "now": datetime.now(timezone.utc)
             .astimezone()
-            .strftime("%Y-%m-%d %H:%M:%S"),
+            .strftime("%Y-%m-%d %H:%M:%S %Z"),
         },
         {
             "run_name": "chat",
@@ -226,7 +226,7 @@ async def update_title(thread: ThreadModel, llm: LLM, messages: List[BaseMessage
             "last_title": thread.name or "No title yet",
             "now": datetime.now(timezone.utc)
             .astimezone()
-            .strftime("%Y-%m-%d %H:%M:%S"),
+            .strftime("%Y-%m-%d %H:%M:%S %Z"),
         },
         {"run_name": "title", "metadata": {"thread_id": thread.id}},
     )
@@ -260,7 +260,7 @@ async def update_memory(thread: ThreadModel, llm: LLM, messages: List[BaseMessag
             "memory": thread.memory or "No memory yet",
             "now": datetime.now(timezone.utc)
             .astimezone()
-            .strftime("%Y-%m-%d %H:%M:%S"),
+            .strftime("%Y-%m-%d %H:%M:%S %Z"),
         },
         {"run_name": "update_memory", "metadata": {"thread_id": thread.id}},
     )

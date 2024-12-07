@@ -22,17 +22,6 @@ Example concat args to join audio files:
 "-c",
 "copy"
 ]
-
-Example args for adding a sound effect 5000ms into the main audio:
-
-[
-"-i",
-"main_audio.mp3",
-"-i",
-"sound_effect.mp3",
-"-filter_complex",
-"[1:a]adelay=5000|5000[delayed];[0:a][delayed]amix=inputs=2:duration=longest",
-]
 """.strip()
     )
 

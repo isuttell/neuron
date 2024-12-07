@@ -16,7 +16,6 @@ import EditThreadDialog from "../threads/EditThreadDialog";
 import Loading from "@/lib/loading";
 import { getActivePersonalityId } from "../slices/personalitiesSlice";
 import MediaList from "../messages/MediaList";
-import { Skeleton } from "@/components/ui/skeleton";
 import { fetchThread, deleteThread } from "../actions/threadActions";
 import { fetchMessagesByThread } from "../actions/messageActions";
 
@@ -72,7 +71,6 @@ export default function Thread() {
   if (!thread || (thread.message_count > 0 && messages.length === 0)) {
     return <Loading />;
   }
-
   return (
     <div className="flex flex-1 p-4 flex-col flex-nowrap max-h-screen">
       <div className="flex justify-between mb-2 border-b pb-2">
@@ -116,7 +114,12 @@ export default function Thread() {
               <div className="max-w-[1170px] w-full mx-auto">
                 {messages
                   .filter((message) =>
-                    !showTools ? message.type !== "tool" : true
+                    [
+                      !showTools ? message.type !== "tool" : true,
+                      Array.isArray(message.tool_calls)
+                        ? message.tool_calls.length === 0
+                        : true,
+                    ].every((condition) => condition)
                   )
                   .map((message) => (
                     <MessageItem key={message.id} message={message} />
@@ -126,12 +129,6 @@ export default function Thread() {
                     No messages
                   </div>
                 ) : null}
-                {thread.status !== "idle" ? (
-                  <div className="m-4 pl-[70px] space-y-2 flex-1">
-                    <Skeleton className="h-4 w-[250px]" />
-                    <Skeleton className="h-4 w-[200px]" />
-                  </div>
-                ) : null}
                 <div ref={messagesEndRef} />
               </div>
             </div>
@@ -139,7 +136,7 @@ export default function Thread() {
           <div className="bottom-0">
             <MessageForm
               status={thread.status}
-              className="max-w-[1170px] w-full mx-auto"
+              className="max-w-[1170px] w-full mx-auto mt-2"
               onSubmit={() => {}}
             />
           </div>

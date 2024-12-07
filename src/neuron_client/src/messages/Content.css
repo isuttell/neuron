@@ -1,0 +1,79 @@
+.content ol,
+.content ul {
+  margin: 0 0 0.5em 0em;
+  padding: 0 0 0 1.5em;
+}
+
+.content ul {
+  list-style-type: disc;
+}
+
+.content ol {
+  list-style-type: decimal;
+}
+
+.content li {
+  padding: 0 0 0 0.5em;
+}
+
+.content p {
+  margin: 0 0 0.5em 0;
+}
+
+.content table {
+  margin: 0 0 0.5em 0;
+}
+
+.content th {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.content th,
+.content td {
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0.5em 1em;
+}
+
+.content th:last-child,
+.content td:last-child {
+  border-right: none;
+}
+
+.content h1,
+.content h2,
+.content h3,
+.content h4,
+.content h5,
+.content h6 {
+  margin-top: 1em;
+  margin-bottom: 0.5em;
+  padding-bottom: 0.25em;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  font-weight: 700;
+}
+
+.content h1 {
+  font-size: 1.5em;
+}
+
+.content h2 {
+  font-size: 1.3em;
+}
+
+.content h3 {
+  font-size: 1.2em;
+}
+
+.content h4,
+.content h5,
+.content h6 {
+  font-size: 1.1em;
+}
+
+.content blockquote {
+  margin: 1em 0;
+  padding-left: 1em;
+  border-left: 4px solid #ddd;
+  color: #555;
+  font-style: italic;
+}

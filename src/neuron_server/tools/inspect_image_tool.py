@@ -1,16 +1,16 @@
 from langchain.tools import BaseTool
 import asyncio
-import requests
 import base64
 from neuron_server.logger import logger
 import time
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.messages import BaseMessage
 from neuron_server.llms.clean_eos_tokens import clean_eos_tokens
-from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field
 from typing import Type
 import aiohttp
+from neuron_server.models.provider_model import ProviderModelModel
+from langchain_core.output_parsers import StrOutputParser
 
 
 def get_message_content(message: BaseMessage):
@@ -38,7 +38,7 @@ class InspectImageToolArgs(BaseModel):
         description="This should be a prompt with detailed and specific question(s) to be answered about the image."
     )
     max_tokens: int = Field(
-        description="The maximum number of tokens to generate in the response.",
+        description="The maximum number of tokens allowed in the response. A higher token count enables a more detailed answer. The maximum limit is 1000 tokens.",
         default=300,
     )
 
@@ -53,7 +53,7 @@ async def get_image_base64(image_url: str) -> str:
 class InspectImageTool(BaseTool):
     name: str = "inspect_image"
     description: str = (
-        "This tool uses a OpenAI GPT-4o multi-modal vision capabilities to inspect an image and return a description of the image.  Use this tool to when you need to answer a question about an image."
+        "This tool uses a OpenAI GPT-4o multi-modal vision capabilities to inspect an image and return a detailed description of the image. Use this tool to when you need to answer a question about an image."
     )
     args_schema: Type[InspectImageToolArgs] = InspectImageToolArgs
 
@@ -77,12 +77,9 @@ class InspectImageTool(BaseTool):
             logger.debug(f"Inspecting image: {image_url} with prompt: {prompt}")
             # Download the image
             image_base64 = await get_image_base64(image_url)
-            model = ChatOpenAI(
-                model="gpt-4o",
-                temperature=0.7,
-                max_tokens=max_tokens,
-            )
-            message = await model.ainvoke(
+            llm = ProviderModelModel.get_llm()
+            model = llm.model | StrOutputParser()
+            content: str = await model.ainvoke(
                 [
                     SystemMessage(
                         content="You are a tool that inspects images and returns a description of the image based on a given prompt. Be descriptive and detailed. Just return the description, no other text. Do not ask for clarification."
@@ -105,9 +102,6 @@ class InspectImageTool(BaseTool):
                 },
                 max_tokens=max_tokens,
             )
-            content = get_message_content(message)
-            if not content:
-                raise Exception("No content returned")
             logger.debug(
                 f"Response: {content} - {round(time.perf_counter() - start_time, 2)}s"
             )

@@ -4,14 +4,18 @@ WORKDIR /app/src/neuron_client
 
 COPY ["src/neuron_client/package*.json", "."]
 
-RUN npm ci
+RUN npm ci --no-audit --no-fund
 
 COPY ["src/neuron_client/", "."]
 
 RUN NODE_ENV=development npx vite build --mode development && \
   rm -rf src/ node_modules/
 
-FROM python:3.11.10-slim-bookworm
+FROM python:3.11.10-slim-bookworm AS server-builder
+
+ENV LANG=C.UTF-8
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
 # Install system dependencies
 RUN apt-get update && \
@@ -23,29 +27,47 @@ RUN apt-get update && \
   rm -rf /var/lib/apt/lists/*
 
 # Install Poetry
-RUN curl -sSL https://install.python-poetry.org | python3 -
+RUN curl -sSL https://install.python-poetry.org | python3 - \
+  && mv ~/.local/bin/poetry /usr/local/bin/
 
-# Add Poetry to PATH
-ENV PATH="/root/.local/bin:$PATH"
+ENV POETRY_NO_INTERACTION=true
+ENV POETRY_VIRTUALENVS_IN_PROJECT=true
 
 # Set working directory
 WORKDIR /app
 
 # Copy only the dependency files to leverage Docker cache
-COPY pyproject.toml  ./
+COPY ["pyproject.toml", "poetry.lock", "./"]
 
 # Install dependencies
-RUN mkdir -p src/neuron_server && touch src/neuron_server/__init__.py && pip install .
+RUN poetry install --no-root --no-interaction --no-ansi
 
-# Copy the rest of the application code
-COPY . .
+FROM python:3.11.10-slim-bookworm
 
-# Install the application
-RUN pip install -e .
+ENV PATH="/app/.venv/bin:$PATH"
+ENV PORT=5000
 
+RUN apt-get update && \
+  apt-get -qy upgrade && \
+  apt-get -qy install \
+  curl \
+  ffmpeg && \
+  rm -rf /var/lib/apt/lists/*
+
+# Set working directory
+WORKDIR /app
+
+COPY --from=server-builder /app/.venv /app/.venv
+COPY src/neuron_server /app/src/neuron_server
+COPY pyproject.toml /app/pyproject.toml
 COPY --from=client-builder /app/src/neuron_client/dist /app/src/neuron_client/dist
 
-ENV PORT=5000
+RUN pip install -e .
+
+RUN useradd -m neuron -d /app && \
+  chown neuron /app
+
+USER neuron
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD curl -f http://localhost:$PORT/ || exit 1

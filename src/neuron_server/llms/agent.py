@@ -21,6 +21,7 @@ from neuron_server.controllers.events.message_events import (
 )
 import asyncio
 from neuron_server.controllers.events.thread_events import GetThreadResponse
+from werkzeug.exceptions import BadRequest
 
 connection_kwargs = {
     "autocommit": True,
@@ -32,26 +33,16 @@ class ThreadConfig(TypedDict):
     thread_id: str
 
 
-class AgentConfig(TypedDict):
-    run_name: str
-    configurable: ThreadConfig
-
-
 async def execute_agent(
     prompt: str,
-    config: AgentConfig,
     personality_id: UUID,
 ) -> str:
-
-    checkpointer = AsyncPostgresSaver(pool)
-    await checkpointer.setup()
-    llm: LLM = ProviderModelModel.get_llm()
     personality = await PersonalityModel.get(personality_id)
     if personality is None:
-        raise Exception("Personality not found")
+        raise BadRequest("Personality not found")
 
-    llm.executor.checkpointer = checkpointer
-
+    llm: LLM = ProviderModelModel.get_llm()
+    llm.executor.checkpointer = None
     result: AIMessage = await llm.executor.ainvoke(
         {
             "messages": [
@@ -61,19 +52,16 @@ async def execute_agent(
             "memory": personality.memory,
             "now": datetime.now(timezone.utc)
             .astimezone()
-            .strftime("%Y-%m-%d %H:%M:%S"),
+            .strftime("%Y-%m-%d %H:%M:%S %Z"),
         },
-        config=config,
+        config={"run_name": "home_prompt"},
     )
     result: AIMessage = result["messages"][-1]
     assert isinstance(result, AIMessage)
-    content = (get_message_content(result) or "").strip()
-    logger.debug(f"Agent {config['run_name']} returned: {content}")
-    return content
+    return (get_message_content(result) or "").strip()
 
 
 async def aget_state(thread_id: UUID):
-    await pool.open(wait=True)
     checkpointer = AsyncPostgresSaver(pool)
     llm: LLM = ProviderModelModel.get_llm()
     return await llm.aget_state(
@@ -98,7 +86,6 @@ async def update_thread_status(thread: ThreadModel, status: str):
 async def astream(thread_id: UUID, personality_id: UUID, prompt: str):
     start_time = datetime.now(timezone.utc).astimezone()
     try:
-        await pool.open(wait=True)
         thread = await ThreadModel.get(thread_id)
         if not thread:
             raise Exception("Thread not found")
@@ -131,7 +118,7 @@ async def astream(thread_id: UUID, personality_id: UUID, prompt: str):
                 "personality": personality.context,
                 "memory": personality.memory or "",
                 "title": thread.name or "",
-                "now": start_time.strftime("%Y-%m-%d %H:%M:%S"),
+                "now": start_time.strftime("%Y-%m-%d %H:%M:%S %Z"),
             },
             config={
                 "run_name": "message",

@@ -32,47 +32,49 @@ export function MediaList({ className, messages, threadId }: MediaListProps) {
   ]);
 
   // Extract media URLs from markdown image syntax and HTML audio/video tags
-  const mediaItems = messages.flatMap((message) => {
-    const items = [];
+  const mediaItems = messages
+    .filter((message) => message.type === "tool")
+    .flatMap((message) => {
+      const items = [];
 
-    const body = Array.isArray(message.content)
-      ? message.content
-          .filter((item) => item.type === "text")
-          .map((item) => item.text)
-          .join("\n")
-      : message.content;
+      const body = Array.isArray(message.content)
+        ? message.content
+            .filter((item) => item.type === "text")
+            .map((item) => item.text)
+            .join("\n")
+        : message.content;
 
-    // Find markdown image tags ![alt](url)
-    const imageMatches = body.matchAll(/!\[([^\]]*)\]\(([^)]+)\)/g);
-    for (const match of imageMatches) {
-      items.push({
-        type: "image",
-        alt: match[1],
-        url: match[2],
-        messageId: message.id,
-        // timestamp: message.created_at,
-      });
-    }
-    // Find HTML audio/video tags with direct src or nested source tags
-    const mediaMatches = body.matchAll(
-      /<(audio|video)(?:[^>]*src="([^"]+)"[^>]*>|[^>]*>(?:[^<]*<source[^>]*src="([^"]+)"[^>]*>)?)/g
-    );
-    for (const match of mediaMatches) {
-      const type = match[1]; // 'audio' or 'video'
-      const directSrc = match[2];
-      const sourceSrc = match[3];
-      if (directSrc || sourceSrc) {
+      // Find markdown image tags ![alt](url)
+      const imageMatches = body.matchAll(/!\[([^\]]*)\]\(([^)]+)\)/g);
+      for (const match of imageMatches) {
         items.push({
-          type,
-          url: directSrc || sourceSrc,
+          type: "image",
+          alt: match[1],
+          url: match[2],
           messageId: message.id,
-          content: message.content,
+          // timestamp: message.created_at,
         });
       }
-    }
+      // Find HTML audio/video tags with direct src or nested source tags
+      const mediaMatches = body.matchAll(
+        /<(audio|video)(?:[^>]*src="([^"]+)"[^>]*>|[^>]*>(?:[^<]*<source[^>]*src="([^"]+)"[^>]*>)?)/g
+      );
+      for (const match of mediaMatches) {
+        const type = match[1]; // 'audio' or 'video'
+        const directSrc = match[2];
+        const sourceSrc = match[3];
+        if (directSrc || sourceSrc) {
+          items.push({
+            type,
+            url: directSrc || sourceSrc,
+            messageId: message.id,
+            content: message.content,
+          });
+        }
+      }
 
-    return items;
-  });
+      return items;
+    });
   return (
     <div className={cn("flex flex-col m-2 overflow-y-auto", className)}>
       <div className="text-lg font-semibold p-4 ">Media</div>

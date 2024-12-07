@@ -16,7 +16,6 @@ import {
 } from "@/slices/personalitiesSlice";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
-import { fetchThreadsByPersonality } from "../actions/threadActions";
 
 interface PersonalityItemProps {
   personality: Personality;

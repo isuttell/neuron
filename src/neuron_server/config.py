@@ -81,6 +81,14 @@ class Config(BaseModel):
     elevenlabs_api_key: str = Field(
         default=os.environ.get("ELEVENLABS_API_KEY"), description="ElevenLabs API key"
     )
+    openweather_api_key: str = Field(
+        default=os.environ.get("OPENWEATHER_API_KEY", ""),
+        description="OpenWeather API key",
+    )
+    astrospheric_api_key: str = Field(
+        default=os.environ.get("ASTROSPHERIC_API_KEY", ""),
+        description="Astrospheric API key",
+    )
     log_level: str = Field(
         default=os.environ.get("LOG_LEVEL", "DEBUG"), description="Log level"
     )
@@ -105,6 +113,12 @@ class Config(BaseModel):
     temp_folder: str = Field(
         default=os.environ.get("TEMP_FOLDER", "./tmp"),
         description="Temp folder",
+    )
+    tablet_image_filename: str = Field(
+        default=os.environ.get(
+            "TABLET_IMAGE_FILENAME", "./static/images/dalle_generated_image.png"
+        ),
+        description="Tablet image filename",
     )
     database: DatabaseConfig = DatabaseConfig()
     redis: RedisConfig = RedisConfig()

@@ -15,6 +15,7 @@ export interface Message {
   content: Content[] | string;
   thread_id: string;
   status?: string;
+  tool_calls?: any[];
 }
 
 interface IncomingMessage extends Omit<Message, "created_at" | "updated_at"> {

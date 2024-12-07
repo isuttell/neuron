@@ -2,7 +2,6 @@ from typing import Literal
 from pydantic import BaseModel
 from uuid import UUID
 from typing import List, Optional
-from neuron_server.database import get_session, ProviderModel
 from sqlalchemy import select
 from pydantic import BaseModel, Field, field_serializer
 from uuid import uuid4
@@ -14,6 +13,7 @@ from neuron_server.llms.anthropic import AnthropicLLM
 from neuron_server.llms.huggingface import HuggingFaceLLM
 from neuron_server.llms.huggingface_toolless import HuggingFaceToollessLLM
 from neuron_server.config import config
+from neuron_server.database import get_session, ProviderModel
 
 Provider = Literal["openai", "anthropic", "huggingface"]
 

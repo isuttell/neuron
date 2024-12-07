@@ -19,7 +19,7 @@ import {
   updatePersonality,
   deletePersonality,
 } from "../actions/personalityActions";
-import { fetchThreadsByPersonality } from "../actions/threadActions";
+
 const selectPersonality = (state: RootState, personalityId?: string) =>
   state.personalities.personalities.find((per) => per.id === personalityId);
 
@@ -54,10 +54,10 @@ export default function Personality() {
   }, [personality?.id, personality?.context, personality?.name]);
 
   const handleSave = (e: React.FormEvent) => {
-    if (!personality) {
+    e.preventDefault();
+    if (!personality || isLoading) {
       return;
     }
-    e.preventDefault();
 
     dispatch(
       updatePersonality({

@@ -8,8 +8,18 @@ import asyncio
 from neuron_server.logger import logger
 from neuron_server.config import config
 import PIL.PngImagePlugin as PngImagePlugin
-from datetime import datetime, timezone
-from neuron_server.util.image_utilities import resize_with_padding
+from datetime import datetime, timedelta
+from langchain_openai import ChatOpenAI
+from langchain_anthropic import ChatAnthropic
+from langchain_core.messages import SystemMessage, HumanMessage
+from typing import List, Type, Tuple
+from langchain_core.output_parsers import StrOutputParser
+from cv2.typing import MatLike
+import base64
+from pydantic import BaseModel, Field
+from io import BytesIO
+from langchain_core.runnables import Runnable
+from typing import Literal
 
 
 class CameraName(Enum):
@@ -34,35 +44,59 @@ device_descriptions = {
 }
 
 
-class SecurityCameraTool(BaseTool):
-    name: str = "security_camera"
-    description: str = (
-        "Returns a URL to an image captured from a security camera: front yard and door, backyard, inside the garage, and kitty cam in the master bathroom. This can either be used to show the user what is happening or to answer a question about what is happening when used with the inspect_image tool. Camera Names: front_door, backyard, garage, kitty_cam."
+async def inspect_images(
+    prompt: str,
+    model: Runnable,
+    image_urls: List[str],
+    start_time: datetime,
+    fps: float,
+    max_tokens: int = 1024,
+):
+    logger.debug(f"Inspecting {len(image_urls)} images with prompt: {prompt}")
+
+    chain = model | StrOutputParser()
+    return await chain.ainvoke(
+        [
+            SystemMessage(
+                content="You are a tool that inspects a sequential series of images and returns a general description of the images for context and then a detailed description based on a given prompt. Be descriptive and detailed as possible. Include related descriptions to the prompt and include novel or unexpected information. Just return the description, no other text. Do not ask for clarification."
+            ),
+            HumanMessage(
+                content=[
+                    {
+                        "type": "text",
+                        "text": f"""
+{prompt}
+
+Parameters:
+    Start Time: {start_time.astimezone().isoformat(timespec="seconds")}
+    FPS: {fps}
+                     """.strip(),
+                    },
+                    *[
+                        {
+                            "type": "image_url",
+                            "image_url": {"url": image_url},
+                        }
+                        for image_url in image_urls
+                    ],
+                ],
+            ),
+        ],
+        {
+            "run_name": "inspect_camera_feed",
+        },
+        max_tokens=max_tokens,
     )
 
-    def _run(
-        self,
-        camera_name: CameraName,
-    ) -> str:
-        """
-        Captures an image from the specified security camera and returns a URL to the image.
 
-        Args:
-            camera (str): The camera identifier to capture the image from. Must be one of the predefined cameras.
-
-        Returns:
-            str: The URL to the captured image.
-
-        Raises:
-            Exception: If the specified camera is not found or if there are issues opening the camera or reading frames.
-        """
-        camera: str = camera_name if isinstance(camera_name, str) else camera_name.value
-        if camera not in devices:
-            raise Exception(f"Camera {camera} not found")
-        cap = cv2.VideoCapture(devices[camera])
-        if not cap.isOpened():
-            raise Exception("Could not open webcam.")
-
+async def get_frames_from_camera(
+    camera: str, frame_count: int = 10, fps: float = 2
+) -> List[str]:
+    logger.debug(f"Getting {frame_count} frames from {camera} at {fps} FPS")
+    cap = cv2.VideoCapture(devices[camera])
+    if not cap.isOpened():
+        raise Exception("Could not open webcam.")
+    try:
         start_time = time.perf_counter()
         frame = np.zeros((1, 1, 3), dtype=np.uint8)
         # Wait for the camera to warm up and capture a valid frame
@@ -72,13 +106,43 @@ class SecurityCameraTool(BaseTool):
                 raise Exception("Could not read frame")
             if time.perf_counter() - start_time > 10:
                 raise Exception("Unable to read valid frame within 10s timeout")
-            time.sleep(0.1)
+            await asyncio.sleep(0.1)
+        tasks = []
+        while len(tasks) < frame_count:
+            ret, frame = cap.read()
+            if not ret:
+                raise Exception("Could not read frame")
+            logger.debug(f"Captured {camera} frame #{len(tasks)}")
+            tasks.append(asyncio.create_task(convert_frame_to_image_url(frame)))
+            await asyncio.sleep(1 / fps)
+        return await asyncio.gather(*tasks)
+    finally:
         cap.release()
-        frame = cv2.cvtColor(frame.astype(np.uint8), cv2.COLOR_BGR2RGB)
-        image = Image.fromarray(frame)
-        # Resize to fit the support size and add padding to make the image square
-        image = resize_with_padding(image, (1024, 1024))
-        filename = f"{camera}_capture_{int(time.time())}.png"
+
+
+async def convert_frame_to_image_url(
+    frame: MatLike, max_dimensions: Tuple[int, int] = (768, 2000)
+):
+    img = frame.astype(np.uint8)
+    height, width, _ = img.shape
+    max_height, max_width = max_dimensions
+    if height > max_height or width > max_width:
+        scaling_factor = min(max_height / height, max_width / width)
+        new_dimensions = (int(width * scaling_factor), int(height * scaling_factor))
+        img = cv2.resize(img, new_dimensions, interpolation=cv2.INTER_CUBIC)
+    _, buffer = cv2.imencode(".jpg", img)
+    image_base64 = base64.b64encode(buffer).decode("utf-8")
+    return f"data:image/jpeg;base64,{image_base64}"
+
+
+def save_images(
+    image_urls: List[str], camera: str, start_time: datetime, fps: float
+) -> List[str]:
+    results: List[str] = []
+    for i, data_url in enumerate(image_urls):
+        capture_time = start_time + timedelta(seconds=i / fps)
+        image_data = base64.b64decode(data_url.split(",")[1])
+        image = Image.open(BytesIO(image_data))
         pnginfo = PngImagePlugin.PngInfo()
         pnginfo.add_text("Description", device_descriptions[camera])
         pnginfo.add_text(
@@ -87,13 +151,102 @@ class SecurityCameraTool(BaseTool):
         )
         pnginfo.add_text(
             "DateTimeOriginal",
-            datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds"),
+            capture_time.astimezone().isoformat(timespec="seconds"),
+        )
+
+        filename = (
+            f"{camera}_capture_{capture_time.strftime('%Y-%m-%d_%H-%M-%S-%f')}.png"
         )
         file_path = f"{config.static_folder}/images/{filename}"
         image.save(file_path, format="png", pnginfo=pnginfo)
         url = f"{config.static_content_url}/images/{filename}"
-        logger.debug(f"Saved camera image to {file_path} available at <{url}>")
-        return f"![{device_descriptions[camera]}]({url})"
+        results.append(
+            f"![{camera} at {capture_time.astimezone().isoformat(timespec='milliseconds')}]({url})"
+        )
+    return results
+
+
+class SecurityCameraToolArgs(BaseModel):
+    prompt: str = Field(
+        description="This prompt that tells the AI what to look for in the images. Be descriptive and detailed as possible."
+    )
+    camera_name: CameraName = Field(
+        description="The camera to use. Must be one of: front_door, backyard, garage, kitty_cam"
+    )
+    frame_count: int = Field(
+        description="The number of frames to capture. Defaults to 3. Max is 120. If you do not neet to understand changes over time use a value of 1 here.",
+        default=3,
+    )
+    fps: float = Field(
+        description="The number of frames per second to capture. Defaults to 1.",
+        default=1,
+    )
+
+
+class SecurityCameraTool(BaseTool):
+    name: str = "security_camera"
+    description: str = (
+        "This tool captures a series of images from live security cameras and uses an AI to answer questions about them. The security cameras are located at: front yard and door, backyard, inside the garage, and kitty cam in the master bathroom. Use this tool to answer questions about what is happening outside or inside the house. For example, you can use this tool to answer questions like 'Is a package being delivered?' or 'Is anyone in the backyard?'. Show the most relevant image in your response."
+    )
+    args_schema: Type[SecurityCameraToolArgs] = SecurityCameraToolArgs
+
+    def _run(self, camera_name: CameraName) -> str:
+        return asyncio.run(self._arun(camera_name))
+
+    async def _arun(
+        self,
+        prompt: str,
+        camera_name: CameraName,
+        frame_count: int = 3,
+        fps: float = 1,
+        provider: Literal["openai", "anthropic"] = "anthropic",
+    ) -> str:
+        try:
+            camera: str = (
+                camera_name if isinstance(camera_name, str) else camera_name.value
+            )
+            if camera not in devices:
+                raise Exception(f"Camera {camera} not found")
+
+            start_time = datetime.now()
+            image_urls = await get_frames_from_camera(
+                camera, frame_count=frame_count, fps=fps
+            )
+            model = (
+                ChatAnthropic(
+                    model="claude-3-5-sonnet-20241022",
+                    temperature=0.7,
+                )
+                if provider == "anthropic"
+                else ChatOpenAI(
+                    model="gpt-4o",
+                    temperature=0.7,
+                )
+            )
+            # Ask the AI to analyze the images and save the results while we wait
+            task = asyncio.create_task(
+                inspect_images(
+                    model=model,
+                    prompt=prompt,
+                    image_urls=image_urls,
+                    start_time=start_time,
+                    fps=fps,
+                )
+            )
+            markdown_urls = save_images(
+                image_urls=image_urls, camera=camera, start_time=start_time, fps=fps
+            )
+            markdown_urls_str = "\n".join(markdown_urls)
+            content = await task
+            return f"""
+{content}
+
+Images:
+{markdown_urls_str}
+    """.strip()
+        except Exception as e:
+            logger.exception(e)
+            return f"Error capturing images from {camera}: {e}"
 
 
 async def main():
@@ -106,7 +259,7 @@ async def main():
         "prompt", type=str, help="The prompt to send to the camera tool."
     )
     parser.add_argument(
-        "--camera",
+        "--camera_name",
         type=str,
         choices=[camera.value for camera in CameraName],
         help="The camera to use.",
@@ -116,8 +269,10 @@ async def main():
 
     camera_tool = SecurityCameraTool()
 
-    result = await camera_tool.run(prompt=args.prompt, camera=args.camera)
-    print(result.content[0].text)
+    result = await camera_tool.ainvoke(
+        {"camera_name": args.camera_name, "prompt": args.prompt, "frame_count": 1},
+    )
+    print(result)
 
 
 if __name__ == "__main__":

@@ -17,7 +17,7 @@ import asyncio
 from neuron_server.api import app
 from neuron_server.config import config
 from neuron_server.logger import logger
-from neuron_server.database import create_tables
+from neuron_server.database import start
 from neuron_server.models.provider_model import ProviderModelModel
 from hypercorn.config import Config
 from hypercorn.asyncio import serve
@@ -25,7 +25,7 @@ from hypercorn.asyncio import serve
 
 async def start_database():
     logger.debug("Starting database...")
-    await create_tables()
+    await start()
     await ProviderModelModel.setup()
     logger.debug("Database started")
 

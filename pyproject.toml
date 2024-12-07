@@ -31,6 +31,16 @@ sqlalchemy = { version = "*", extras = ["asyncio"] }
 psycopg = { version = "*", extras = ["binary"] }
 psycopg-pool = "*"
 redis = { version = "*", extras = ["hiredis"] }
+skyfield = "*"
+pandas = "*"
+astroquery = "*"
+wikipedia = "*"
+astropy = "*"
+pyvo = "*"
+astroplan = "*"
+matplotlib = "*"
+tabulate = "*"
+starplot = "*"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

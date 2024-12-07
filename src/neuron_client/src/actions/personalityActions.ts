@@ -1,4 +1,3 @@
-import { Personality } from "@/slices/personalitiesSlice";
 import { createAsyncThunk } from "@reduxjs/toolkit";
 
 export const fetchPersonality = createAsyncThunk(

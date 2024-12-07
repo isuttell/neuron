@@ -1,5 +1,4 @@
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { TotalTokenCount } from "@/stats/TotalTokenCount";
 
 export default function Stats() {
   return (
@@ -8,9 +7,7 @@ export default function Stats() {
         <h1 className="text-2xl font-bold">Stats</h1>
         <div className="flex-1" />
       </div>
-      <ScrollArea className="flex-1 overflow-y-auto">
-        <TotalTokenCount />
-      </ScrollArea>
+      <ScrollArea className="flex-1 overflow-y-auto">ts</ScrollArea>
     </div>
   );
 }

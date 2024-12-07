@@ -10,6 +10,7 @@ from typing import Literal, Type
 from pydantic import BaseModel, Field
 import asyncio
 import aiohttp
+import shutil
 
 
 async def generate_image(
@@ -52,14 +53,19 @@ class DalleArgs(BaseModel):
         description="The style of the image to generate.", default="vivid"
     )
     size: Literal["1024x1024", "1792x1024", "1024x1792"] = Field(
-        description="The size of the image to generate.", default="1792x1024"
+        description="The size of the image to generate. Default to square. Use wide images for cinematic effect.",
+        default="1024x1024",
+    )
+    update_tablet: bool = Field(
+        description="Whether to update the smart home tablet dashboard with the generated image. Only use this if the user explicitly asks for it.",
+        default=False,
     )
 
 
 class DalleTool(BaseTool):
     name: str = "dalle"
     description: str = (
-        "A tool that generates an image based on a given prompt using OpenAI's DALL-E 3. DALL-E is suited for generating highly detailed, standalone images with precise attributes, especially in realistic or semi-realistic styles. Use this when the user asks for an image. Do not use to generate charts. Returns a markdown image tag."
+        "A tool that generates highly detailed, realistic or semi-realistic images based on a text prompt using OpenAI's DALL·E 3. To create the best images, prompts should be clear, specific, and include details on the subject, setting, style, composition, and atmosphere. Use descriptive adjectives, specify lighting and time of day, describe actions or interactions, and mention perspectives or camera angles for more accuracy. Including contextual references (e.g., historical periods, fictional worlds) can further refine the output. Avoid ambiguities and ensure the prompt defines relationships between elements clearly. Returns a markdown image tag for display."
     )
     args_schema: Type[DalleArgs] = DalleArgs
 
@@ -75,7 +81,8 @@ class DalleTool(BaseTool):
         self,
         prompt: str,
         style: Literal["natural", "vivid"] = "vivid",
-        size: Literal["1024x1024", "1792x1024", "1024x1792"] = "1792x1024",
+        size: Literal["1024x1024", "1792x1024", "1024x1792"] = "1024x1024",
+        update_tablet: bool = False,
     ) -> str:
         """
         Runs the tool to generate an image based on the given prompt.
@@ -109,6 +116,11 @@ class DalleTool(BaseTool):
             )
             url = f"{config.static_content_url}/images/{filename}"
             logger.debug(f"Saved generated image to {file_path} <{url}>")
+            if update_tablet:
+                shutil.copy(file_path, config.tablet_image_filename)
+                logger.debug(
+                    f"Copied generated image to {config.tablet_image_filename}"
+                )
             return f"![{prompt}]({url})"
         except Exception as e:
             logger.exception(e)
