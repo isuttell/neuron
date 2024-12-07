@@ -67,7 +67,7 @@ class HomeAssistantServiceTool(BaseTool):
     name: str = "homeassistant_service"
     description: str = (
         f"""\
-Tool to call services on Home Assistant to control lights, switches, etc.
+Tool to call services on Home Assistant to control lights, switches, etc. Only call this if the user explicitly asks you to control something.
 
 Available calls:
 \"\"\"

@@ -27,6 +27,7 @@ from neuron_server.database import DB_URI
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from langchain_core.output_parsers import StrOutputParser
 from neuron_server.logger import logger
+import re
 
 
 class AgentState(TypedDict):
@@ -152,7 +153,7 @@ class LLM:
             ],
             {**config, "run_name": "trim_messages"},
         )
-        response: str = await self.title.ainvoke(
+        title: str = await self.title.ainvoke(
             {
                 "messages": messages,
                 "last_title": state.get("title", ""),
@@ -162,8 +163,9 @@ class LLM:
             },
             {**config, "run_name": "update_title"},
         )
-        response = response.strip('"')
-        return {"title": response}
+        # Strip quotes from the title
+        title = re.sub(r'^([\'"])(.*)\1$', r"\2", title)
+        return {"title": title}
 
     async def call_memory(
         self,

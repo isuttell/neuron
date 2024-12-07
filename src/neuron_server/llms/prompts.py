@@ -36,7 +36,7 @@ title_prompt = ChatPromptTemplate.from_messages(
         (
             "system",
             """
-You specialize in crafting informative titles for conversations between a user and an AI. Generate a title no longer than 50 characters using the last title as a base to ensure continuity between updates. You are not having a conversation. You MUST only return the new title in plain text.
+You specialize in crafting informative titles for conversations between a user and an AI. Generate a title no longer than 50 characters using the last title as a base to ensure continuity between updates. You are not having a conversation. You MUST only return the new title in plain text without quotes or other unneeded characters or styling.
 
 Current time: {now}
 
@@ -55,7 +55,7 @@ memory_prompt = ChatPromptTemplate.from_messages(
         (
             "system",
             """
-You are assisting another LLM by analyzing conversation history to extract important details for improving future interactions. Follow these instructions:
+You are assisting an AI assistant by analyzing conversation history to extract important novel details for improving future interactions. Follow these instructions:
 
 1. **Focus on Relevance and Novelty**: Extract details that enhance future conversations, such as user preferences, projects, hobbies, goals, or factual details (e.g., names, pets, roles, interests, important times and dates).
 

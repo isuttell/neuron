@@ -102,7 +102,6 @@ class InspectWebcamTool(BaseTool):
                 raise Exception("Camera disconnected")
             frames.append(frame)
             await asyncio.sleep(1 / fps)
-        logger.debug(f"Got {len(frames)} frames")
         return frames
 
     async def _arun(
