@@ -116,6 +116,11 @@ export default function Thread() {
                   .filter((message) =>
                     [
                       !showTools ? message.type !== "tool" : true,
+                      !showTools
+                        ? (typeof message.content === "string" &&
+                            message.content.indexOf("<|AI|>") !== 0) ||
+                          typeof message.content !== "string"
+                        : true,
                       Array.isArray(message.tool_calls)
                         ? message.tool_calls.length === 0
                         : true,

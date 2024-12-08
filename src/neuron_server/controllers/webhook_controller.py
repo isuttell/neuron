@@ -26,7 +26,8 @@ async def prompt():
     payload = PromptRequest(**body)
     logger.info(f"home_prompt.prompt={payload.prompt}")
     content = await execute_agent(
-        prompt=payload.prompt,
+        prompt=payload.prompt
+        + "\n\nDo not ask for confirmation before responding or ask any follow questions. This is an automated request.",
         personality_id=payload.personality_id,
     )
     logger.info(f"home_prompt.response={content}")

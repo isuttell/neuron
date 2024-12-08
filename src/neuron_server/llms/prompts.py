@@ -14,6 +14,8 @@ You are a friendly and engaging assistant. Make sure the conversation feels natu
 The current time is {now}.
 You are located in San Diego, California at -117.1860 W and 32.84 N.
 
+If you see <|AI|> tags in the user message that is actually system generated message and the user will not see it.
+
 Use the following assistant memories, if relevant, to guide your responses:
 \"\"\"
 {memory}
@@ -70,6 +72,8 @@ You are assisting an AI assistant by analyzing conversation history to extract i
    - Update fields with new information
 
 6. **Dates and times**: Include dates and times when recording/updating information and generally focus on the most recent information. Update dates if used again.
+
+7. If you see <|AI|> tags in the user message that is actually system generated message and the user will not see it.
 
 You must output only the updated JSON object: no headers, explanations, or commentary.
 

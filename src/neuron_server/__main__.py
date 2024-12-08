@@ -6,11 +6,6 @@ load_dotenv()
 
 
 import sys
-import warnings
-import logging
-
-logging.getLogger("asyncio").setLevel(logging.ERROR)
-logging.getLogger("sqlalchemy").setLevel(logging.WARNING)
 
 
 import asyncio
@@ -21,13 +16,15 @@ from neuron_server.database import start
 from neuron_server.models.provider_model import ProviderModelModel
 from hypercorn.config import Config
 from hypercorn.asyncio import serve
+import time
 
 
 async def start_database():
+    start_time = time.perf_counter()
     logger.debug("Starting database...")
     await start()
     await ProviderModelModel.setup()
-    logger.debug("Database started")
+    logger.debug(f"Database started in {time.perf_counter() - start_time:.2f} seconds")
 
 
 if sys.platform.startswith("win"):

@@ -4,6 +4,8 @@ from neuron_server.event_router import EventRouter
 from typing import Optional
 from uuid import UUID
 from pydantic import BaseModel
+from neuron_server.llms.agent import astream
+import asyncio
 
 router = EventRouter()
 blueprint = Blueprint("thread", __name__)
@@ -35,6 +37,7 @@ class CreateThread(BaseModel):
 
 @blueprint.post("/")
 async def post_create_thread():
+
     data = await request.get_json()
     body = CreateThread(**data)
     personality = await PersonalityModel.get(body.personality_id)
@@ -46,7 +49,14 @@ async def post_create_thread():
         name=body.name,
         context=body.context,
     )
-
+    # Start the conversation and stream the response
+    asyncio.create_task(
+        astream(
+            prompt=f"<|AI|>Start the conversation. Don't run any tools.<|AI|>",
+            personality_id=personality.id,
+            thread_id=thread.id,
+        )
+    )
     return {
         "thread": thread.model_dump(),
     }

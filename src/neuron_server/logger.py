@@ -1,7 +1,11 @@
 import logging
 from neuron_server.config import config
 
-logging.basicConfig(level=logging.INFO)
+logging.getLogger("asyncio").setLevel(logging.ERROR)
+logging.getLogger("sqlalchemy").setLevel(logging.WARNING)
+
+
+logging.basicConfig(level=logging.INFO, encoding="utf-8")
 
 logger = logging.getLogger(__name__)
 

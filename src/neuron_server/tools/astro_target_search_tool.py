@@ -16,36 +16,29 @@ class AstroTargetSearchToolArgs(BaseModel):
     radius: float = Field(
         description="Radius to search within in degrees of the RA/Dec. Min 10, Max 90"
     )
-    limit: Optional[int] = Field(
-        description="The max number of items to return", default=50
-    )
-    min_mag: Optional[float] = Field(
+    limit: Optional[int] = Field(50, description="The max number of items to return")
+    min_flux: Optional[float] = Field(
+        6.0,
         description="The inclusive minimum relative magnitude (astronomy) to return. Values larger than 6 are too dim for the naked human eye.",
-        default=6,
     )
-    max_mag: Optional[float] = Field(
+    max_flux: Optional[float] = Field(
+        22.0,
         description="The inclusive maximum relative magnitude (astronomy) to return. Values greater than 22 are too dim for the capabilities of the imaging telescope.",
-        default=22,
     )
-    otypes: Optional[List[str]] = (
-        Field(
-            description="The types of objects to return. Defaults astrophography targets. If only one item is provided then it will also include all of it's descendants, e.g. 'G' will include galaxies, 'AGN', etc. '*' will include all stars. 'GNe' will include all nebulae. Any valid Simbad object type can be provided, e.g, Cld, GNe, RNe, MoC, DNe, glb, CGb, HVC, SNR, SN*, QSO, Bla, AGN, EmG, H2G, SBG, bCG, BH, G, *, Ce*, ISM, Cl*, EmO".strip(),
-            default=["GNe"],
-        ),
+    otypes: Optional[List[str]] = Field(
+        ["GNe"],
+        description="The types of objects to return. If only one item is provided then it will also include all of it's descendants, e.g. 'G' will include galaxies, 'AGN', etc. '*' will include all stars. 'GNe' will include all nebulae. Any valid Simbad object type can be provided, e.g, Cld, GNe, RNe, MoC, DNe, glb, CGb, HVC, SNR, SN*, QSO, Bla, AGN, EmG, H2G, SBG, bCG, BH, G, *, Ce*, ISM, Cl*, EmO.",
     )
     order_by: Optional[
         Literal["nbref", "min_flux", "galdim_majaxis", "galdim_minaxis"]
-    ] = (
-        Field(
-            description="The fields to order the results by. nbref is the number of references and means its a well known object or not. Defaults to 'nbref'. Valid fields are 'nbref', 'galdim_majaxis', 'galdim_minaxis', and 'min_flux'.",
-            default="nbref",
-        ),
+    ] = Field(
+        "nbref",
+        description="The fields to order the results by. 'nbref' is the number of references, 'min_flux' is the minimum flux, 'galdim_majaxis' is the major axis, and 'galdim_minaxis' is the minor axis.",
     )
-    order_direction: Optional[Literal["ASC", "DESC"]] = (
-        Field(
-            description="The direction to order the results by. Defaults to 'DESC'. Valid values are 'ASC' and 'DESC'.",
-            default="DESC",
-        ),
+
+    order_direction: Optional[Literal["ASC", "DESC"]] = Field(
+        "DESC",
+        description="The direction to order the results by",
     )
 
 
@@ -93,8 +86,8 @@ Queries Simbad astronomical database to find celestial objects within a specifie
         ra: float,
         dec: float,
         limit: int = 50,
-        min_mag: Optional[float] = 6.0,
-        max_mag: Optional[float] = 22.0,
+        min_flux: Optional[float] = 6.0,
+        max_flux: Optional[float] = 22.0,
         radius: float = 60,
         otypes: Optional[List[str]] = ["GNe"],
         order_by: Optional[
@@ -136,8 +129,8 @@ WHERE
     AND CONTAINS(POINT('ICRS', RA, DEC), CIRCLE('ICRS', {ra}, {dec}, {radius})) = 1
     AND (
         (
-            flux.flux <= {float(max_mag)}
-            AND flux.flux >= {float(min_mag)}
+            flux.flux <= {float(max_flux)}
+            AND flux.flux >= {float(min_flux)}
         )
         OR flux.flux IS NULL
     )
@@ -183,7 +176,7 @@ ORDER BY {order_by} {order_direction}
             )
         df = pd.DataFrame(results)
         return f"""
-Found {len(query_results)} {otypes_str} objects with magnitudes between {min_mag} and {max_mag} within a {radius} degree radius:
+Found {len(query_results)} {otypes_str} objects with flux between {min_flux} and {max_flux} within a {radius} degree radius:
 
 {df.to_markdown(index=False)}
 """.strip()

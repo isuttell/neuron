@@ -18,10 +18,10 @@ export default defineConfig(({ mode }) => ({
   server: {
     proxy: {
       "/neuron/api": {
-        target: "http://localhost:5001",
+        target: "http://localhost:5002",
       },
       "/neuron/ws": {
-        target: "ws://localhost:5001/",
+        target: "ws://localhost:5002/",
         ws: true,
         rewriteWsOrigin: true,
       },

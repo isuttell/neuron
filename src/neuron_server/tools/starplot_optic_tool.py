@@ -81,9 +81,7 @@ Generates an optic plot to visualize the given target through a camera lens. Thi
                 raise_on_below_horizon=False,
             )
             p.stars(mag=star_mag, color_fn=color_by_bv, bayer_labels=True)
-            p.dsos(mag=dso_mag)
-            p.nebula(mag=dso_mag, true_size=True)
-            p.legend()
+            p.dsos(mag=dso_mag, true_size=True)
             p.marker(
                 ra=ra,
                 dec=dec,
@@ -120,10 +118,10 @@ if __name__ == "__main__":
             {
                 "latitude": 32.84,
                 "longitude": -117.1860,
-                "time": datetime.now(timezone.utc),
-                "target_name": "M44",
-                "ra": 8.667,
-                "dec": 19.67,
+                "time": datetime.now().astimezone(),
+                "target_name": "Orion",
+                "ra": 5.583,
+                "dec": -5.383,
                 "sensor_height": 15.6,
                 "sensor_width": 23.6,
                 "lens_focal_length": 880,

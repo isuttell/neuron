@@ -31,6 +31,8 @@ from neuron_server.tools.astrophotons_recommendation_tool import (
     AstrophotonsRecommendationTool,
 )
 
+# from neuron_server.tools.starplot_optic_tool import StarplotOpticTool
+
 # from neuron_server.tools.inspect_webcam_tool import InspectWebcamTool, Camera
 
 homeassistant_api = HomeAssistantAPI(token=config.homeassistant.token)
@@ -76,6 +78,7 @@ astro_tools = [
     AstroObservabilityTool(),
     AstroFinderImageTool(),
     AstrophotonsRecommendationTool(),
+    # StarplotOpticTool(),
 ]
 
 tools = [

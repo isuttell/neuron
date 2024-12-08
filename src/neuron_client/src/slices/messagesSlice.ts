@@ -9,13 +9,18 @@ interface Content {
   index: number;
 }
 
+type MessageRole = "ai" | "user" | "tool" | "system";
+
 export interface Message {
   id: string;
-  type: string;
+  name?: string;
+  type: MessageRole;
   content: Content[] | string;
   thread_id: string;
   status?: string;
   tool_calls?: any[];
+  additional_kwargs?: any;
+  response_metadata?: any;
 }
 
 interface IncomingMessage extends Omit<Message, "created_at" | "updated_at"> {
@@ -58,15 +63,17 @@ const initialState: MessageState = {
 function parseIncomingMessage(message: IncomingMessage): Message {
   return {
     ...message,
+    id: message.id.replace("run-", ""),
     // created_at: new Date(message.created_at).getTime(),
     // updated_at: new Date(message.updated_at).getTime(),
   };
 }
 
-function upsert(state: MessageState, message: Message) {
+function upsert(state: MessageState, incomingMessage: IncomingMessage) {
   const existingMessageIndex = state.messages.findIndex(
-    (msg) => msg.id === message.id
+    (msg) => msg.id === incomingMessage.id.replace("run-", "")
   );
+  const message = parseIncomingMessage(incomingMessage);
   if (existingMessageIndex !== -1) {
     state.messages[existingMessageIndex] = message;
   } else {
@@ -91,7 +98,7 @@ export const messagesSlice = createSlice({
       action: PayloadAction<IncomingPartialMessageEvent>
     ) => {
       const existingMessageIndex = state.messages.findIndex(
-        (msg) => msg.id === action.payload.message.id
+        (msg) => msg.id === action.payload.message.id.replace("run-", "")
       );
       const message = parseIncomingMessage(action.payload.message);
       if (existingMessageIndex !== -1) {

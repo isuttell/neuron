@@ -101,12 +101,8 @@ def plot_parallactic_plot(
 
 class Target(BaseModel):
     name: str = Field(description="Target name")
-    ra: float = Field(
-        description="Target right ascension in degrees. High precision is recommended."
-    )
-    dec: float = Field(
-        description="Target declination in degrees. High precision is recommended."
-    )
+    ra: float = Field(description="Target right ascension in degrees")
+    dec: float = Field(description="Target declination in degrees")
 
 
 class AstroObservabilityToolArgs(BaseModel):
@@ -121,7 +117,7 @@ class AstroObservabilityToolArgs(BaseModel):
         description="A list of targets, each target must have a name and it's ra/dec coordinates in degrees"
     )
     time_resolution: float = Field(
-        description="Time resolution in hours", min=0.166666666, default=0.5
+        description="Time resolution in hours", min=0.1, default=0.5
     )
 
 
