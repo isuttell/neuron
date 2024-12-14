@@ -9,12 +9,20 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 from typing import Type
 import asyncio
+from neuron_server.vectorstores import arxiv_store
+import sys
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+
+if sys.platform.startswith("win"):
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 model = ChatAnthropic(
     model="claude-3-5-sonnet-20241022",
     temperature=0.3,
     max_tokens=4096,
 )
+
+text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
 
 
 class ArxivSummaryArgs(BaseModel):
@@ -29,7 +37,7 @@ class ArxivSummaryTool(BaseTool):
     name: str = "arxiv_summary"
     description: str = (
         """
-This tool provides detailed, page-by-page summaries of research articles by their arXiv short IDs. The initial run may take some time as it downloads and processes the article, but a cached summary is saved for faster access on future requests. Only use this tool if you can't answer the question based on the information you have as it is slower than other tools.
+This tool provides detailed, page-by-page summaries of research articles by their arXiv short IDs. The initial run may take some time as it downloads and processes the article, and adds it to the vector store for RAG, but a cached summary is saved for faster access on future requests. Only use this tool if you can't answer the question based on the information you have as it is slower than other tools.
 """.strip()
     )
     args_schema: Type[ArxivSummaryArgs] = ArxivSummaryArgs
@@ -87,11 +95,24 @@ This tool provides detailed, page-by-page summaries of research articles by thei
                 with open(summary_file_path, "r") as file:
                     return f"Summary already exists:\n{file.read()}"
 
-            page_summaries = await summarize_pages(model, pdf_full_path)
+            page_summaries, documents = await summarize_pages(
+                model,
+                pdf_full_path,
+                {
+                    "title": article.title,
+                    "short_id": article.get_short_id(),
+                    "entry_id": article.entry_id,
+                    "authors": [author.name for author in article.authors],
+                    "published": article.published.astimezone().isoformat(),
+                    "primary_category": article.primary_category,
+                    "categories": article.categories,
+                },
+            )
             summary = await summarize_document(model, metadata, page_summaries)
-
+            if len(documents) > 0:
+                await arxiv_store.aadd_documents(documents)
             page_summaries = "\n\n".join(
-                f"## Page {i+1} Summary:\n{result}\n\n"
+                f"# Page {i+1} AI Summary\n\n{result}"
                 for i, result in enumerate(page_summaries)
             )
             report = f"# {article.title}\n\nGenerated on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n## arxiv metadata\n\n{metadata}\n\n## AI Summary:\n{summary}\n\n{page_summaries}"
@@ -109,9 +130,10 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Search arXiv for research articles.")
     parser.add_argument(
-        "id",
+        "--id",
         type=str,
         help="The ID of the article to inspect.",
+        default="2412.04315v2",
     )
     args = parser.parse_args()
 

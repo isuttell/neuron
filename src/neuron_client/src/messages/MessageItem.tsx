@@ -43,7 +43,7 @@ const getStatusMessage = (status: string) => {
   } else if (status === "streaming") {
     return "Streaming...";
   } else {
-    return "";
+    return status;
   }
 };
 

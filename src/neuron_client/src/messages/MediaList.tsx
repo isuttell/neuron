@@ -52,6 +52,7 @@ export function MediaList({ className, messages, threadId }: MediaListProps) {
           alt: match[1],
           url: match[2],
           messageId: message.id,
+          message: message,
           // timestamp: message.created_at,
         });
       }

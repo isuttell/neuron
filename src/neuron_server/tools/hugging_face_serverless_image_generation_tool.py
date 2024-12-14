@@ -67,6 +67,7 @@ class HuggingFaceServerlessImageGenerationTool(BaseTool):
         Returns:
             Image.ImageFile: The generated image.
         """
+        logger.debug(f"Generating hugging face image for prompt: {prompt}")
         start_time = time.perf_counter()
         url = f"{self.base_api_url}/{repo_id}"
         try:

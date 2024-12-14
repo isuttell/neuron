@@ -29,7 +29,7 @@ export default function Thread() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const activePersonalityId = useAppSelector(getActivePersonalityId);
-  const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const lastMessageRef = useRef<HTMLDivElement | null>(null);
   const { threadId } = useParams();
   const thread = useAppSelector(
     (state) => selectThread(state, threadId),
@@ -58,15 +58,12 @@ export default function Thread() {
 
   useEffect(() => {
     // Scroll to the bottom of the messages when they change
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: "instant" });
-    }
-  }, [
-    messages.length,
-    messages.length > 0 && messages[messages.length - 1].content,
-    messagesEndRef.current,
-    thread?.status,
-  ]);
+    setTimeout(() => {
+      if (lastMessageRef.current) {
+        lastMessageRef.current.scrollIntoView({ behavior: "smooth" });
+      }
+    }, 0);
+  }, [lastMessageRef.current]);
 
   if (!thread || (thread.message_count > 0 && messages.length === 0)) {
     return <Loading />;
@@ -126,15 +123,20 @@ export default function Thread() {
                         : true,
                     ].every((condition) => condition)
                   )
-                  .map((message) => (
-                    <MessageItem key={message.id} message={message} />
+                  .map((message, index, arr) => (
+                    <div
+                      key={message.id}
+                      ref={index === arr.length - 1 ? lastMessageRef : null}
+                    >
+                      <MessageItem message={message} />
+                    </div>
                   ))}
                 {thread.message_count === 0 && messages.length === 0 ? (
                   <div className="m-4 text-center text-muted-foreground">
                     No messages
                   </div>
                 ) : null}
-                <div ref={messagesEndRef} />
+                <div className="h-screen" />
               </div>
             </div>
           </div>
@@ -148,7 +150,7 @@ export default function Thread() {
         </div>
         <MediaList
           key={thread.id}
-          className="max-w-[512px] ml-4 w-full flex-shrink-0 border-l"
+          className="max-w-[512px] ml-4 w-1/4 flex-shrink-0 border-l"
           threadId={thread.id}
           messages={messages}
         />

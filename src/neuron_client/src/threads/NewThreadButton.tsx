@@ -21,7 +21,7 @@ const NewThreadButton: React.FC = () => {
           return;
         }
         setLoading(true);
-        dispatch(createThread(activePersonalityId))
+        dispatch(createThread({ personalityId: activePersonalityId }))
           .unwrap()
           .then(({ thread }) => {
             navigate(`/thread/${thread.id}`);

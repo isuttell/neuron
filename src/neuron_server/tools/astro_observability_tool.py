@@ -47,7 +47,9 @@ def plot_sky_plot(targets: List[FixedTarget], time: Time, observer: Observer) ->
     ax.legend(unique_legend.values(), unique_legend.keys(), loc="best")
     filename = f"ast_sky_{uuid4().hex}.png"
     file_path = f"{config.static_folder}/images/{filename}"
-    plt.title(f"Sky Plot from {time[0].strftime('%Y-%m-%d')}")
+    plt.title(
+        f"Sky Plot from {time[0].strftime('%Y-%m-%d')} to {time[-1].strftime('%Y-%m-%d')}"
+    )
     plt.savefig(file_path)
     plt.close()
     url = f"{config.static_content_url}/images/{filename}"
@@ -63,7 +65,7 @@ def plot_airmass_plot(
         observer=observer,
         time=time,
         style_sheet=dark_style_sheet,
-        # brightness_shading=True,
+        brightness_shading=True,
         use_local_tz=True,
     )
     ax.legend(loc="best")
@@ -111,13 +113,17 @@ class AstroObservabilityToolArgs(BaseModel):
     elevation: Optional[float] = Field(
         description="Observer elevation in meters", default=0
     )
-    start_time: datetime = Field(description="Observation start time in UTC")
-    end_time: datetime = Field(description="Observation end time in UTC")
+    start_time: datetime = Field(
+        description="Observation start time in UTC. Start of night."
+    )
+    end_time: datetime = Field(description="Observation end time in UTC. End of night.")
     targets: List[Target] = Field(
         description="A list of targets, each target must have a name and it's ra/dec coordinates in degrees"
     )
     time_resolution: float = Field(
-        description="Time resolution in hours", min=0.1, default=0.5
+        description="Time resolution in hours. The default is half an hour.",
+        min=0.1,
+        default=0.5,
     )
 
 
@@ -125,7 +131,7 @@ class AstroObservabilityTool(BaseTool):
     name: str = "astro_observability"
     description: str = (
         """
-This tool accepts a list of targets and plots the observability of the targets over a given time period at a specific location. Start and end times should typically cover a full night. It returns times when the object becomes observable, and plots of the sky and airmass.
+This tool accepts a list of targets and plots the observability of the targets over a given night time period at a specific location. Start and end times should always cover a full night. It returns times when the object becomes observable, and plots of the sky and airmass.  Use this to determine if an object is observable at a specific time.
 """.strip()
     )
 
@@ -142,6 +148,9 @@ This tool accepts a list of targets and plots the observability of the targets o
         time_resolution: float = 0.5,
     ) -> str:
         try:
+            logger.debug(
+                f"Calculating observability for {', '.join(map(lambda t: t.name, targets))} on {start_time.isoformat()} to {end_time.isoformat()}..."
+            )
             min_altitude: float = 18
             airmass_constraint: float = 3.0
             constraints = [

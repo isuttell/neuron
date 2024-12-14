@@ -1,7 +1,7 @@
 from langchain_anthropic import ChatAnthropic
 from typing import Optional, Literal
 from neuron_server.llms.llm import LLM
-from neuron_server.llms.tools import tools
+from neuron_server.llms.tools import default_tools
 
 
 class AnthropicLLM(LLM):
@@ -13,7 +13,7 @@ class AnthropicLLM(LLM):
     ):
         model = ChatAnthropic(
             model=model_id,
-            temperature=0.7,
+            temperature=1,
             streaming=True,
             max_tokens=4096,
         )
@@ -31,6 +31,5 @@ class AnthropicLLM(LLM):
             model=model,
             title_model=title_model,
             memory_model=memory_model,
-            tools=tools,
-            max_input_tokens=15000,
+            tools=default_tools,
         )

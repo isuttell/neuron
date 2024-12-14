@@ -76,7 +76,9 @@ The tool will use OpenAI's TTS API to generate the audio and return a link to th
             os.makedirs(working_dir, exist_ok=True)
             audio_files: str = []
             for index, line in enumerate(parse_script(script)):
-                print(f"Generating line #{index}")
+                logger.debug(
+                    f"Generating openai audio for line: [{line['voice']}] {line['text']}"
+                )
                 response = client.audio.speech.create(
                     model="tts-1-hd",
                     voice=line["voice"],
@@ -86,6 +88,7 @@ The tool will use OpenAI's TTS API to generate the audio and return a link to th
                 audio_file_path = working_dir + "/" + f"line-{index}.mp3"
                 response.stream_to_file(audio_file_path)
                 audio_files.append(audio_file_path)
+                logger.debug(f"Saved generated audio chunk at {audio_file_path}")
             # Concatenate all audio files using ffmpeg
             output_dir = config.static_folder + "/tts"
             if not os.path.exists(output_dir):

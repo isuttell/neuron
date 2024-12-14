@@ -26,9 +26,8 @@ aiohttp = "*"
 arxiv = "*"
 pymupdf4llm = "*"
 elevenlabs = "*"
-asyncpg = "*"
 sqlalchemy = { version = "*", extras = ["asyncio"] }
-psycopg = { version = "*", extras = ["binary"] }
+psycopg = { version = "3.2.3", extras = ["binary", "pool"] }
 psycopg-pool = "*"
 redis = { version = "*", extras = ["hiredis"] }
 skyfield = "*"
@@ -41,6 +40,8 @@ astroplan = "*"
 matplotlib = "*"
 tabulate = "*"
 starplot = "*"
+wolframalpha = "*"
+RestrictedPython = "*"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

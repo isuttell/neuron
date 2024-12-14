@@ -16,16 +16,42 @@ interface MessageFormProps {
   className?: string;
 }
 
+const StatusMap = {
+  error: "Error",
+  idle: "Idle",
+  streaming: "Streaming",
+  thinking: "Thinking",
+  tools: "Tools",
+  update_memory: "Memory",
+  update_title: "Title",
+};
+
 const getStatusMessage = (status: string) => {
-  if (status === "thinking") {
-    return "Thinking...";
-  } else if (status === "tools") {
-    return "Working...";
-  } else if (status === "streaming") {
-    return "Streaming...";
-  } else {
-    return "Idle";
-  }
+  return Array.from(
+    new Set(
+      status
+        .split(",")
+        .sort((a, b) => {
+          if (a.trim() === "thinking") return -1;
+          if (b.trim() === "thinking") return 1;
+          if (a.trim() === "tools") return -1;
+          if (b.trim() === "tools") return 1;
+          return a.localeCompare(b);
+        })
+        .map((value) =>
+          typeof StatusMap[value as keyof typeof StatusMap] === "string"
+            ? StatusMap[value as keyof typeof StatusMap]
+            : value.replace(/_/g, " ").trim()
+        )
+    )
+  ).map((value) => (
+    <span
+      key={value}
+      className="text-sm text-gray-500 capitalize inline-flex items-center rounded-md bg-background px-2 py-1 font-medium ring-1 ring-inset ring-gray-100/10"
+    >
+      {value}
+    </span>
+  ));
 };
 
 export default function MessageForm({
@@ -76,7 +102,7 @@ export default function MessageForm({
         }}
       />
       <div className="flex items-center pt-2">
-        <div className="text-sm text-gray-500">{getStatusMessage(status)}</div>
+        <div className="flex gap-1 flex-row">{getStatusMessage(status)}</div>
         <div className="flex-1" />
         <Button
           onClick={handleSubmit}

@@ -1,7 +1,7 @@
 from langchain_openai import ChatOpenAI
 from neuron_server.llms.llm import LLM
 from typing import Optional, Literal
-from neuron_server.llms.tools import tools
+from neuron_server.llms.tools import default_tools
 
 
 class OpenAILLM(LLM):
@@ -19,7 +19,7 @@ class OpenAILLM(LLM):
         )
         title_model = ChatOpenAI(
             model="gpt-4o-mini",
-            temperature=0.3,
+            temperature=0.7,
             max_tokens=42,
         )
         memory_model = ChatOpenAI(
@@ -28,5 +28,8 @@ class OpenAILLM(LLM):
             max_tokens=4096,
         )
         super().__init__(
-            model, title_model, memory_model, tools=tools, max_input_tokens=32000
+            model,
+            title_model,
+            memory_model,
+            tools=default_tools,
         )

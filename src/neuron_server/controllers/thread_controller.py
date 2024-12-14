@@ -32,6 +32,8 @@ async def get_threads(personality_id: UUID):
 class CreateThread(BaseModel):
     name: Optional[str] = None
     context: Optional[str] = None
+    greeting: Optional[bool] = None
+    prompt: Optional[str] = None
     personality_id: UUID
 
 
@@ -50,13 +52,15 @@ async def post_create_thread():
         context=body.context,
     )
     # Start the conversation and stream the response
-    asyncio.create_task(
-        astream(
-            prompt=f"<|AI|>Start the conversation. Don't run any tools.<|AI|>",
-            personality_id=personality.id,
-            thread_id=thread.id,
+    if body.greeting or body.prompt:
+        asyncio.create_task(
+            astream(
+                prompt=body.prompt
+                or f"<|AI|>Start the conversation in a sentence or two. Don't run any tools.<|AI|>",
+                personality_id=personality.id,
+                thread_id=thread.id,
+            )
         )
-    )
     return {
         "thread": thread.model_dump(),
     }

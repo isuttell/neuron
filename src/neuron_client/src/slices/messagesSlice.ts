@@ -9,7 +9,7 @@ interface Content {
   index: number;
 }
 
-type MessageRole = "ai" | "user" | "tool" | "system";
+type MessageRole = "ai" | "human" | "tool" | "system";
 
 export interface Message {
   id: string;

@@ -5,8 +5,10 @@ import * as actions from "../actions/personalityActions";
 export interface Personality {
   id: string;
   name: string;
+  description: string;
   context: string;
   memory: string;
+  tool_set: string;
   created_at: string;
   updated_at: string;
 }

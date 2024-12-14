@@ -48,12 +48,14 @@ Lily
 Matilda
 
 News Presenter Voices:
+Alice
 Sarah
-Daniel
 
 Character Voices:
 Callum (male, middle-aged, intense)
 Charlotte (female, Swedish)
+Oxley - Evil Character
+Sexy Female Villain Voice
 """.strip()
     )
 
@@ -116,6 +118,9 @@ This tool generates audio from a provided script using ElevenLabs' TTS APIs and 
             os.makedirs(working_dir, exist_ok=True)
             audio_files: List[str] = []
             for index, line in enumerate(parse_script(script)):
+                logger.debug(
+                    f"Generating elevenlabs audio for line: [{line['voice']}] {line['text']}"
+                )
                 response = await client.generate(
                     text=line["text"],
                     voice=line["voice"],
@@ -160,7 +165,7 @@ Filename: {output}
 """.strip()
         except Exception as e:
             logger.exception(e)
-            return f"Error generating audio: {str(e)}"
+            raise e
         finally:
             shutil.rmtree(working_dir)
 

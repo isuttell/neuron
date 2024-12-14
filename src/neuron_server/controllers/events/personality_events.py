@@ -5,6 +5,7 @@ from neuron_server.models.personality_model import PersonalityModel
 
 
 class PostPersonalityPrompt(IncomingEvent):
+    personality_id: UUID
     context: str
     prompt: str
 

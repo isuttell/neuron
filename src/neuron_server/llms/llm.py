@@ -7,7 +7,6 @@ from neuron_server.llms.prompts import (
 from langchain_core.runnables import Runnable
 from typing import List, Optional
 from langchain_core.tools import BaseTool
-from langgraph.graph.graph import CompiledGraph
 from typing import Literal
 from typing import (
     Annotated,
@@ -16,18 +15,23 @@ from typing import (
 )
 from langchain_core.messages import BaseMessage, AIMessage, HumanMessage
 from langgraph.graph.message import add_messages
-import json
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph import StateGraph, END
 from datetime import datetime, timezone
 from langgraph.prebuilt import ToolNode
-from pydantic import BaseModel, Field
-from psycopg_pool import AsyncConnectionPool
-from neuron_server.database import DB_URI
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from langchain_core.output_parsers import StrOutputParser
-from neuron_server.logger import logger
 import re
+from langchain_core.messages.utils import get_buffer_string
+import tiktoken
+from neuron_server.tools.memory_recall_tool import MemoryRecallTool
+from neuron_server.tools.memory_store_tool import MemoryStoreTool
+from neuron_server.llms.prompts import memory_prompt
+from pydantic import BaseModel, Field
+from neuron_server.config import config
+from neuron_server.logger import logger
+
+tokenizer = tiktoken.encoding_for_model("gpt-4o")
 
 
 class AgentState(TypedDict):
@@ -37,50 +41,64 @@ class AgentState(TypedDict):
     title: str = ""
     personality: str
     memory: str = ""
+    location: str = ""
+    recall_memories: str = ""
+
+
+class MemoryResponse(BaseModel):
+    memories: List[str] = Field(
+        description="A list of memories to be saved for later recall"
+    )
 
 
 class LLM:
     model: Runnable
-    model_with_tools: Runnable
     provider: Literal["openai", "anthropic", "huggingface"]
     chat: Runnable
     title: Runnable
     memory: Runnable
+    memory_model: Runnable
     message_trimmer: Runnable
-    executor: CompiledGraph
+    tools: List[BaseTool]
 
     def __init__(
         self,
         model: Runnable,
         title_model: Optional[Runnable] = None,
         memory_model: Optional[Runnable] = None,
-        max_input_tokens: int = 4096,
         tools: Optional[List[BaseTool]] = None,
     ):
         self.model = model
-        self.model_with_tools = model.bind_tools(tools)
-        self.message_trimmer = trim_messages(
-            max_tokens=max_input_tokens,
-            strategy="last",
-            token_counter=model,
-            include_system=True,
-            allow_partial=False,
-            start_on="human",
-        )
-        self.chat = chat_prompt | self.model_with_tools
-        self.title_model = (title_model or model).bind_tools(tools)
+        self.title_model = title_model
         self.title = title_prompt | self.title_model | StrOutputParser()
-        self.memory_model = (memory_model or model).bind_tools(tools)
+        self.memory_model = memory_model
         self.memory = memory_prompt | self.memory_model | StrOutputParser()
-        self.tools = tools
+        self.tools = tools or []
 
-        self.workflow = StateGraph(AgentState)
-        self.workflow.add_node("tools", ToolNode(tools))
-        self.workflow.add_node("agent", self.call_model)
-        self.workflow.add_node("update_title", self.call_title)
-        self.workflow.add_node("update_memory", self.call_memory)
-        self.workflow.set_entry_point("agent")
-        self.workflow.add_conditional_edges(
+    def create_workflow(
+        self,
+        tools: Optional[List[BaseTool]] = None,
+    ):
+        workflow = StateGraph(AgentState)
+        if tools:
+            self.tools = tools
+
+        workflow.add_node("tools", ToolNode(self.tools))
+        workflow.add_node("agent", self.call_model)
+        workflow.add_node("update_title", self.call_title)
+
+        if config.memory_enabled:
+            workflow.add_node("update_memory", self.call_update_memory)
+            workflow.add_node("load_memory", self.load_memory)
+
+        # Entry point
+        if config.memory_enabled:
+            workflow.set_entry_point("load_memory")
+            workflow.add_edge("load_memory", "agent")
+        else:
+            workflow.set_entry_point("agent")
+
+        workflow.add_conditional_edges(
             "agent",
             self.should_call_tools,
             {
@@ -88,16 +106,58 @@ class LLM:
                 "continue": "update_title",
             },
         )
-        self.workflow.add_edge("tools", "agent")
-        self.workflow.add_edge("update_title", "update_memory")
-        self.workflow.add_edge("update_memory", END)
-        self.executor = self.workflow.compile()
+        workflow.add_edge("tools", "agent")
+
+        if config.memory_enabled:
+            workflow.add_conditional_edges(
+                "update_title",
+                self.should_call_update_memory,
+                {
+                    "update_memory": "update_memory",
+                    "continue": END,
+                },
+            )
+            workflow.add_edge("update_memory", END)
+        else:
+            workflow.add_edge("update_title", END)
+
+        return workflow.compile()
+
+    async def load_memory(
+        self,
+        state: AgentState,
+        config: RunnableConfig,
+    ):
+        message_trimmer: Runnable = trim_messages(
+            max_tokens=1024,
+            strategy="last",
+            token_counter=self.memory_model,
+            include_system=False,
+            allow_partial=True,
+            start_on="human",
+        )
+        messages: List[BaseMessage] = await message_trimmer.ainvoke(
+            state["messages"],
+            {
+                **config,
+                "run_name": "trim_messages",
+            },
+        )
+        recall_memories: str = await MemoryRecallTool().ainvoke(
+            {"query": get_buffer_string(messages), "k": 10},
+            config,
+        )
+        logger.debug(f"recall_memories:\n{recall_memories}")
+        return {
+            "recall_memories": recall_memories,
+        }
 
     async def aget_state(
         self, config: RunnableConfig, checkpointer: AsyncPostgresSaver
     ):
-        self.executor.checkpointer = checkpointer
-        return await self.executor.aget_state(config)
+        graph = self.create_workflow()
+        graph.checkpointer = checkpointer
+        return await graph.aget_state(config)
 
     # Define the node that calls the model
     async def call_model(
@@ -105,10 +165,11 @@ class LLM:
         state: AgentState,
         config: RunnableConfig,
     ):
+        model: Runnable = self.model.bind_tools(self.tools)
         message_trimmer: Runnable = trim_messages(
             max_tokens=30000,
             strategy="last",
-            token_counter=self.model_with_tools,
+            token_counter=model,
             include_system=True,
             allow_partial=False,
             start_on="human",
@@ -117,17 +178,22 @@ class LLM:
             state["messages"],
             {**config, "run_name": "trim_messages"},
         )
-        response = await self.chat.ainvoke(
+        chain = chat_prompt | model
+        response: AIMessage = await chain.ainvoke(
             {
                 "messages": messages,
                 "personality": state["personality"],
-                "memory": state["memory"],
+                "location": state["location"] or "unknown",
+                "recall_memories": (
+                    state["recall_memories"] if "recall_memories" in state else ""
+                ),
                 "now": datetime.now(timezone.utc)
                 .astimezone()
                 .strftime("%Y-%m-%d %H:%M:%S %Z"),
             },
             config,
         )
+
         # We return a list, because this will get added to the existing list
         return {"messages": [response]}
 
@@ -137,26 +203,27 @@ class LLM:
         config: RunnableConfig,
     ):
         message_trimmer: Runnable = trim_messages(
-            max_tokens=2048,
+            max_tokens=1024,
             strategy="last",
             token_counter=self.title_model,
-            include_system=True,
-            allow_partial=False,
+            include_system=False,
+            allow_partial=True,
             start_on="human",
         )
-        messages = await message_trimmer.ainvoke(
-            [
-                *state["messages"],
-                HumanMessage(
-                    content="Please update the title of our conversation so I can easily find it later"
-                ),
-            ],
+        messages: List[BaseMessage] = await message_trimmer.ainvoke(
+            state["messages"],
             {**config, "run_name": "trim_messages"},
+        )
+        messages.append(
+            HumanMessage(
+                content="Please update the title of our conversation so I can easily find it later"
+            )
         )
         title: str = await self.title.ainvoke(
             {
                 "messages": messages,
                 "last_title": state.get("title", ""),
+                "personality": state["personality"],
                 "now": datetime.now(timezone.utc)
                 .astimezone()
                 .strftime("%Y-%m-%d %H:%M:%S %Z"),
@@ -167,41 +234,60 @@ class LLM:
         title = re.sub(r'^([\'"])(.*)\1$', r"\2", title)
         return {"title": title}
 
-    async def call_memory(
+    async def call_update_memory(
         self,
         state: AgentState,
         config: RunnableConfig,
     ):
+
         message_trimmer: Runnable = trim_messages(
-            max_tokens=4096,
+            max_tokens=1024,
             strategy="last",
             token_counter=self.memory_model,
-            include_system=True,
-            allow_partial=False,
+            include_system=False,
+            allow_partial=True,
             start_on="human",
         )
-        messages = await message_trimmer.ainvoke(
-            [
-                *state["messages"],
-                HumanMessage(content="Please update the memory of our conversation"),
-            ],
+        assert isinstance(message_trimmer, Runnable)
+        messages: List[BaseMessage] = await message_trimmer.ainvoke(
+            state["messages"],
             {
                 **config,
                 "run_name": "trim_messages",
             },
         )
-        response = await self.memory.ainvoke(
+        assert isinstance(messages, list)
+        messages.append(
+            HumanMessage(
+                content="Please return all new memories to be saved. Do not duplicate information."
+            )
+        )
+        recall_memories: str = await MemoryRecallTool().ainvoke(
+            {"query": get_buffer_string(messages), "k": 50},
+            config,
+        )
+
+        model: Runnable = memory_prompt | self.memory_model.with_structured_output(
+            MemoryResponse
+        )
+
+        response: MemoryResponse = await model.ainvoke(
             {
                 "messages": messages,
-                "personality": state["personality"],
-                "memory": state.get("memory", ""),
+                "personality": "",
+                "recall_memories": recall_memories,
                 "now": datetime.now(timezone.utc)
                 .astimezone()
                 .strftime("%Y-%m-%d %H:%M:%S %Z"),
             },
             {**config, "run_name": "update_memory"},
         )
-        return {"memory": response}
+
+        if len(response.memories) > 0:
+            await MemoryStoreTool().ainvoke(
+                {"memories": response.memories},
+                config,
+            )
 
     def should_call_tools(self, state: AgentState) -> Literal["tools", "continue"]:
         messages = state["messages"]
@@ -211,5 +297,14 @@ class LLM:
         if last_message.tool_calls:
             return "tools"
         # Otherwise if there is, we continue
+        else:
+            return "continue"
+
+    def should_call_update_memory(
+        self, state: AgentState
+    ) -> Literal["update_memory", "continue"]:
+        return "continue"
+        if len(state["messages"]) > 2:
+            return "update_memory"
         else:
             return "continue"

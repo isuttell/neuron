@@ -1,9 +1,13 @@
 from neuron_server.config import config
+from typing import List, Dict
+import os
+from langchain.tools import BaseTool
 from langchain_community.tools.tavily_search import TavilySearchResults
 from neuron_server.tools.dice_tool import DiceTool
 from neuron_server.tools.hugging_face_serverless_image_generation_tool import (
     HuggingFaceServerlessImageGenerationTool,
 )
+from neuron_server.tools.automatic1111_tool import Automatic1111Tool, Automatic1111API
 from langchain_community.tools import WikipediaQueryRun
 from langchain_community.utilities import WikipediaAPIWrapper
 from neuron_server.tools.security_camera_tool import SecurityCameraTool
@@ -12,11 +16,11 @@ from neuron_server.tools.arxiv_summary_tool import ArxivSummaryTool
 from neuron_server.tools.arxiv_tool import ArxivTool
 from neuron_server.tools.dalle_tool import DalleTool
 from neuron_server.tools.elevenlabs_tts_tool import ElevenLabsTTSTool
+from neuron_server.tools.elevenlabs_soundeffects_tool import ElevenLabsSoundEffectsTool
 from neuron_server.tools.ffmpeg_tool import FFmpegTool
 from neuron_server.tools.homeassistant_sensor_tool import HomeAssistantSensorTool
 from neuron_server.tools.homeassistant_service_tool import HomeAssistantServiceTool
 from neuron_server.tools.send_notification_tool import SendNotificationTool
-from neuron_server.tools.wait_tool import WaitTool
 from neuron_server.tools.openweathermap_overview_tool import OpenWeatherMapOverviewTool
 from neuron_server.tools.openweathermap_forecast_tool import OpenWeatherMapForecastTool
 from neuron_server.tools.astrospheric_forecast_tool import AstrosphericForecastTool
@@ -30,65 +34,120 @@ from neuron_server.tools.astro_coordinates_tool import AstroCoordinatesTool
 from neuron_server.tools.astrophotons_recommendation_tool import (
     AstrophotonsRecommendationTool,
 )
-
-# from neuron_server.tools.starplot_optic_tool import StarplotOpticTool
-
-# from neuron_server.tools.inspect_webcam_tool import InspectWebcamTool, Camera
+from neuron_server.tools.memory_recall_tool import MemoryRecallTool
+from neuron_server.tools.memory_store_tool import MemoryStoreTool
+from neuron_server.tools.arxiv_recall_tool import ArxivRecallTool
+from neuron_server.tools.hd2_galactic_war_report_tool import (
+    HD2GalacticWarReportTool,
+)
+from neuron_server.tools.hd2_liberation_history_tool import HD2LiberationHistoryTool
+from langchain_community.agent_toolkits.nasa.toolkit import NasaToolkit
+from langchain_community.utilities.nasa import NasaAPIWrapper
+from langchain_community.utilities.wolfram_alpha import WolframAlphaAPIWrapper
+from langchain_community.tools import WolframAlphaQueryRun
+from neuron_server.tools.chart_tool import ChartTool
 
 homeassistant_api = HomeAssistantAPI(token=config.homeassistant.token)
 
-image_tools = [
-    DalleTool(),
-    HuggingFaceServerlessImageGenerationTool(),
-]
+nasa_toolkit = NasaToolkit.from_nasa_api_wrapper(NasaAPIWrapper())
 
-tts_tools = [
-    ElevenLabsTTSTool(),
-]
+nasa_tools = nasa_toolkit.get_tools()
+for tool in nasa_tools:
+    # Make names compatible with the rest of the tools
+    tool.name = f"nasa_{tool.mode}"
 
-search_tools = [
-    TavilySearchResults(
-        max_results=5, include_raw_content=True, search_depth="advanced"
-    ),
-    ArxivTool(),
-    ArxivSummaryTool(),
-    WikipediaQueryRun(api_wrapper=WikipediaAPIWrapper()),
-]
+tool_sets: Dict[str, List[BaseTool]] = {
+    "nasa": nasa_tools,
+    "charts": [
+        ChartTool(),
+    ],
+    "image": [
+        DalleTool(),
+        HuggingFaceServerlessImageGenerationTool(),
+        Automatic1111Tool(
+            api=Automatic1111API(
+                output_directory=os.path.join(config.static_folder, "images"),
+                endpoint=config.automatic1111_endpoint,
+            )
+        ),
+    ],
+    "tts": [
+        ElevenLabsTTSTool(),
+        ElevenLabsSoundEffectsTool(),
+        FFmpegTool(),
+    ],
+    "search": [
+        TavilySearchResults(
+            max_results=5, include_raw_content=True, search_depth="advanced"
+        ),
+        WikipediaQueryRun(api_wrapper=WikipediaAPIWrapper()),
+        WolframAlphaQueryRun(api_wrapper=WolframAlphaAPIWrapper()),
+    ],
+    "arxiv": [
+        ArxivTool(),
+        ArxivSummaryTool(),
+        ArxivRecallTool(),
+    ],
+    "homeassistant": [
+        SecurityCameraTool(),
+        HomeAssistantServiceTool(api=homeassistant_api),
+        HomeAssistantSensorTool(api=homeassistant_api),
+        SendNotificationTool(),
+    ],
+    "astro": [
+        MoonTool(),
+        SunTool(),
+        AstrosphericForecastTool(),
+        AstroCoordinatesTool(),
+        AstroTargetSearchTool(),
+        AstroObjectSearchTool(),
+        AstroObservabilityTool(),
+        AstroFinderImageTool(),
+        AstrophotonsRecommendationTool(),
+        HomeAssistantSensorTool(api=homeassistant_api),
+        OpenWeatherMapOverviewTool(),
+        OpenWeatherMapForecastTool(),
+        SendNotificationTool(),
+    ],
+    "memory": [
+        MemoryRecallTool(),
+        MemoryStoreTool(),
+    ],
+    "dice": [
+        DiceTool(),
+    ],
+    "hd2": [
+        HD2GalacticWarReportTool(),
+        HD2LiberationHistoryTool(),
+    ],
+    "weather": [
+        AstrosphericForecastTool(),
+        HomeAssistantSensorTool(api=homeassistant_api),
+        OpenWeatherMapOverviewTool(),
+        OpenWeatherMapForecastTool(),
+    ],
+    "notifications": [
+        SendNotificationTool(),
+    ],
+}
 
-ffmpeg_tools = [
-    FFmpegTool(),
-]
+default_tools: List[BaseTool] = list(
+    {
+        tool.name: tool
+        for tool in [
+            *tool_sets["image"],
+            *tool_sets["search"],
+            *tool_sets["tts"],
+            *tool_sets["homeassistant"],
+            *tool_sets["weather"],
+        ]
+    }.values()
+)
 
-homeassistant_tools = [
-    SecurityCameraTool(),
-    SendNotificationTool(),
-    HomeAssistantServiceTool(api=homeassistant_api),
-    HomeAssistantSensorTool(api=homeassistant_api),
-    OpenWeatherMapOverviewTool(),
-    OpenWeatherMapForecastTool(),
-]
 
-astro_tools = [
-    MoonTool(),
-    SunTool(),
-    AstrosphericForecastTool(),
-    AstroCoordinatesTool(),
-    AstroTargetSearchTool(),
-    AstroObjectSearchTool(),
-    AstroObservabilityTool(),
-    AstroFinderImageTool(),
-    AstrophotonsRecommendationTool(),
-    # StarplotOpticTool(),
-]
-
-tools = [
-    DiceTool(),
-    WaitTool(),
-    *image_tools,
-    *search_tools,
-    *tts_tools,
-    *ffmpeg_tools,
-    *homeassistant_tools,
-    *astro_tools,
-    # InspectWebcamTool(camera=Camera(device=0)),
-]
+def get_tools(query: str) -> List[BaseTool]:
+    ts = [tool for name in [*query.strip("+").split("+")] for tool in tool_sets[name]]
+    if config.memory_enabled:
+        # ts.append(MemoryRecallTool())
+        ts.append(MemoryStoreTool())
+    return list({tool.name: tool for tool in ts}.values())

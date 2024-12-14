@@ -3,7 +3,6 @@ import { UserPen, UserPlus } from "lucide-react";
 import { useAppDispatch } from "../hooks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Personality } from "../slices/personalitiesSlice";
 import {
   Dialog,
@@ -20,9 +19,26 @@ import {
   updatePersonality,
   deletePersonality,
 } from "../actions/personalityActions";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Textarea } from "@/components/ui/textarea";
 interface EditPersonalityDialogProps {
   personality?: Personality;
 }
+
+const ToolSetLabels = {
+  nasa: "NASA",
+  astro: "Astro",
+  arxiv: "Arxiv",
+  dice: "Dice",
+  hd2: "Hell Divers 2",
+  homeassistant: "Smart Home",
+  image: "Image Generation",
+  notifications: "Notifications",
+  search: "Search",
+  tts: "Audio Generation",
+  weather: "Weather",
+  charts: "Charts",
+};
 
 const EditPersonalityDialog: React.FC<EditPersonalityDialogProps> = ({
   personality,
@@ -31,9 +47,14 @@ const EditPersonalityDialog: React.FC<EditPersonalityDialogProps> = ({
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(personality?.name || "");
+  const [description, setDescription] = useState(
+    personality?.description || ""
+  );
   const [context, setContext] = useState(personality?.context || "");
-  const [memory, setMemory] = useState(personality?.memory || "");
   const [loading, setLoading] = useState(false);
+  const [tool_set, setToolSet] = useState(
+    (personality?.tool_set || "").split("+")
+  );
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (loading) {
@@ -43,15 +64,29 @@ const EditPersonalityDialog: React.FC<EditPersonalityDialogProps> = ({
     try {
       if (personality) {
         await dispatch(
-          updatePersonality({ id: personality.id, name, context, memory })
+          updatePersonality({
+            id: personality.id,
+            name,
+            description,
+            context,
+            memory: personality.memory,
+            tool_set: tool_set.length > 0 ? tool_set.join("+") : undefined,
+          })
         ).unwrap();
       } else {
         const body = await dispatch(
-          createPersonality({ name, context, memory })
+          createPersonality({
+            name,
+            description,
+            context,
+            memory: "",
+            tool_set: tool_set.length > 0 ? tool_set.join("+") : undefined,
+          })
         ).unwrap();
-        setOpen(false);
+
         navigate(`/personality/${body.personality.id}`);
       }
+      setOpen(false);
     } finally {
       setLoading(false);
     }
@@ -69,7 +104,8 @@ const EditPersonalityDialog: React.FC<EditPersonalityDialogProps> = ({
   useEffect(() => {
     setName(personality?.name || "");
     setContext(personality?.context || "");
-    setMemory(personality?.memory || "");
+    setToolSet((personality?.tool_set || "").split("+"));
+    setDescription(personality?.description || "");
   }, [open]);
 
   return (
@@ -103,17 +139,40 @@ const EditPersonalityDialog: React.FC<EditPersonalityDialogProps> = ({
           </div>
           <div className="mb-4">
             <Textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Description"
+            />
+          </div>
+          <div className="mb-4">
+            <Textarea
               value={context}
               onChange={(e) => setContext(e.target.value)}
               placeholder="Context"
             />
           </div>
           <div className="mb-4">
-            <Textarea
-              value={memory}
-              onChange={(e) => setMemory(e.target.value)}
-              placeholder="Memory"
-            />
+            <div className="text-sm text-muted-foreground mb-2">Toolsets</div>
+
+            <ToggleGroup
+              className="flex-wrap gap-2 justify-start"
+              type="multiple"
+              variant="outline"
+              defaultValue={tool_set}
+              onValueChange={(value) => {
+                setToolSet(value.filter((val) => val !== ""));
+              }}
+            >
+              {Object.keys(ToolSetLabels).map((option) => (
+                <ToggleGroupItem
+                  key={option}
+                  value={option}
+                  defaultChecked={tool_set.includes(option)}
+                >
+                  {ToolSetLabels[option as keyof typeof ToolSetLabels]}
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
           </div>
           <DialogFooter className="flex justify-end">
             <Button

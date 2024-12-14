@@ -1,5 +1,5 @@
 from neuron_server.logger import logger
-from typing import List, TypedDict, Optional
+from typing import List, TypedDict, Optional, Set, Dict
 from neuron_server.models.provider_model import ProviderModelModel
 from neuron_server.event_router import ErrorEvent
 from neuron_server.models.personality_model import PersonalityModel
@@ -22,6 +22,7 @@ from neuron_server.controllers.events.message_events import (
 import asyncio
 from neuron_server.controllers.events.thread_events import GetThreadResponse
 from werkzeug.exceptions import BadRequest
+from neuron_server.llms.tools import get_tools
 
 connection_kwargs = {
     "autocommit": True,
@@ -42,8 +43,10 @@ async def execute_agent(
         raise BadRequest("Personality not found")
 
     llm: LLM = ProviderModelModel.get_llm()
-    llm.executor.checkpointer = None
-    result: AIMessage = await llm.executor.ainvoke(
+    tools = get_tools(personality.tool_set) if personality.tool_set else None
+    graph = llm.create_workflow(tools)
+    graph.checkpointer = AsyncPostgresSaver(pool)
+    result: AIMessage = await graph.ainvoke(
         {
             "messages": [
                 HumanMessage(content=prompt),
@@ -80,11 +83,13 @@ async def save_thread(thread: ThreadModel):
 async def update_thread_status(thread: ThreadModel, status: str):
     if thread.status != status:
         thread.status = status
+        # logger.debug(f"Updated thread status: {thread.id} {status}")
         await save_thread(thread)
 
 
 async def astream(thread_id: UUID, personality_id: UUID, prompt: str):
     start_time = datetime.now(timezone.utc).astimezone()
+    logger.debug(f"Agent started for {thread_id}")
     try:
         thread = await ThreadModel.get(thread_id)
         if not thread:
@@ -96,7 +101,9 @@ async def astream(thread_id: UUID, personality_id: UUID, prompt: str):
             raise Exception("Personality not found")
 
         llm: LLM = ProviderModelModel.get_llm()
-        llm.executor.checkpointer = AsyncPostgresSaver(pool)
+        tools = get_tools(personality.tool_set) if personality.tool_set else None
+        graph = llm.create_workflow(tools)
+        graph.checkpointer = AsyncPostgresSaver(pool)
 
         human_message = HumanMessage(content=prompt, id=str(uuid4()))
         await pubsub.publish(
@@ -110,20 +117,22 @@ async def astream(thread_id: UUID, personality_id: UUID, prompt: str):
         )
 
         index = -1
-        async for body in llm.executor.astream_events(
+        active_runs: Dict[str, str] = {}
+        async for body in graph.astream_events(
             {
                 "messages": [
                     human_message,
                 ],
                 "personality": personality.context,
-                "memory": personality.memory or "",
                 "title": thread.name or "",
+                "location": "San Diego, California at -117.1860 W and 32.84 N.",
                 "now": start_time.strftime("%Y-%m-%d %H:%M:%S %Z"),
             },
             config={
                 "run_name": "message",
                 "configurable": {
                     "thread_id": str(thread.id),
+                    "personality_id": str(personality_id),
                 },
             },
             version="v2",
@@ -134,11 +143,38 @@ async def astream(thread_id: UUID, personality_id: UUID, prompt: str):
             run_id: str = body["run_id"]
             # logger.debug(f"Received event: {kind} {name}")
 
-            if kind == "on_chain_start" and name == "update_title":
-                await update_thread_status(thread, "idle")
-            elif kind == "on_chat_model_stream" and isinstance(
-                data["chunk"], AIMessage
-            ):
+            if kind in ["on_chain_start", "on_chain_end"] and name in [
+                "update_title",
+                "update_memory",
+            ]:
+                if kind == "on_chain_start":
+                    active_runs[run_id] = "thinking" if name == "message" else name
+                elif kind == "on_chain_end":
+                    del active_runs[run_id]
+                values = list(set(active_runs.values()))
+                await update_thread_status(
+                    thread,
+                    ", ".join(values) if len(values) > 0 else "thinking",
+                )
+
+            if kind in ["on_tool_start", "on_tool_end"]:
+                if kind == "on_tool_start":
+                    logger.debug(f"Starting tool {name}...")
+                    active_runs[run_id] = (
+                        name
+                        if name not in ["store_memory", "recall_memory"]
+                        else "update_memory"
+                    )
+                elif kind == "on_tool_end":
+                    logger.debug(f"Finished tool {name}...")
+                    del active_runs[run_id]
+                values = list(set(active_runs.values()))
+                await update_thread_status(
+                    thread,
+                    ", ".join(values) if len(values) > 0 else "thinking",
+                )
+
+            if kind == "on_chat_model_stream" and isinstance(data["chunk"], AIMessage):
                 chunk = data["chunk"]
                 content = get_message_content(chunk)
                 if (
@@ -163,12 +199,7 @@ async def astream(thread_id: UUID, personality_id: UUID, prompt: str):
                             )
                         ),
                     )
-            elif kind == "on_tool_start":
-                await update_thread_status(thread, "tools")
-                logger.debug(
-                    f"Starting tool: {body['name']} with inputs: {body['data'].get('input')}"
-                )
-            elif kind == "on_tool_end":
+            elif kind == "on_tool_end" and isinstance(data["output"], ToolMessage):
                 output: ToolMessage = data["output"]
                 message = ThreadMessage(
                     **output.model_dump(),
@@ -179,24 +210,22 @@ async def astream(thread_id: UUID, personality_id: UUID, prompt: str):
                 await pubsub.publish("app", MessageEvent(message=message))
             elif (
                 kind == "on_chain_end"
-                and name == "update_memory"
-                and isinstance(data["output"], str)
-            ):
-                personality.memory = data["output"]
-                logger.debug(f"Updated memory: {personality.memory}")
-                await personality.save()
-            elif (
-                kind == "on_chain_end"
                 and name == "update_title"
                 and isinstance(data["output"], str)
             ):
                 thread.name = data["output"]
-                logger.debug(f"Updated title: {thread.name}")
                 await thread.save()
+            elif kind == "on_chat_model_end":
+                await update_thread_status(thread, "thinking")
+            elif kind == "error":
+                logger.error(data)
 
         await update_thread_status(thread, "idle")
     except Exception as e:
         logger.exception(e)
+        logger.error(f"AgentError: {e!r}")
+        thread.status = "error"
+        await save_thread(thread)
         await pubsub.publish("app", ErrorEvent(message=str(e)))
     finally:
         state = await aget_state(thread_id=thread_id)
@@ -204,7 +233,11 @@ async def astream(thread_id: UUID, personality_id: UUID, prompt: str):
         thread.status = "idle"
         await save_thread(thread)
         logger.debug(f"Agent completed for {thread.id}")
-        last_message: Optional[AIMessage] = state.values.get("messages", [])[-1]
+        last_message: Optional[AIMessage] = (
+            state.values.get("messages", [])[-1]
+            if len(state.values.get("messages", [])) > 0
+            else None
+        )
         if not last_message:
             return None
         return get_message_content(last_message)

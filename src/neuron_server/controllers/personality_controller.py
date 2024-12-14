@@ -6,7 +6,10 @@ from neuron_server.controllers.events.personality_events import (
     PersonalityPromptResponse,
 )
 from neuron_server.models.provider_model import ProviderModelModel
-from neuron_server.llms.prompts import personality_update_prompt
+from neuron_server.llms.prompts import (
+    personality_update_prompt,
+    personality_description_prompt,
+)
 from langchain_core.messages import AIMessage
 import re
 from neuron_server.llms.llm import LLM
@@ -14,6 +17,10 @@ from neuron_server.config import config
 from uuid import UUID
 from werkzeug.exceptions import NotFound, BadRequest
 from pydantic import BaseModel
+from typing import Optional
+from neuron_server.logger import logger
+from langchain_core.output_parsers import StrOutputParser
+from neuron_server.llms.tools import get_tools, default_tools
 
 router = EventRouter()
 
@@ -22,18 +29,29 @@ blueprint = Blueprint("personality", __name__)
 
 class CreatePersonality(BaseModel):
     name: str
+    description: Optional[str] = None
     context: str
     memory: str
+    tool_set: Optional[str] = None
 
 
 class UpdatePersonality(CreatePersonality):
     pass
 
 
-async def apply_personality_prompt(llm: LLM, context: str, prompt: str) -> str:
-    chain = personality_update_prompt | llm.model
-    message: AIMessage = await chain.ainvoke({"context": context, "prompt": prompt})
-    return re.sub(r"```(?:\w+)?\s*|\s*```", "", message.content.strip()).strip()
+async def ainvoke_update_personality(
+    llm: LLM, personality: PersonalityModel, context: str, prompt: str
+) -> str:
+    tools = get_tools(personality.tool_set) if personality.tool_set else default_tools
+    chain = personality_update_prompt | llm.model.bind_tools(tools) | StrOutputParser()
+    content: str = await chain.ainvoke({"context": context, "prompt": prompt})
+    return re.sub(r"```(?:\w+)?\s*|\s*```", "", content.strip()).strip()
+
+
+async def ainvoke_description(llm: LLM, context: str) -> str:
+    chain = personality_description_prompt | llm.model | StrOutputParser()
+    content: str = await chain.ainvoke({"context": context})
+    return re.sub(r"```(?:\w+)?\s*|\s*```", "", content.strip()).strip()
 
 
 @blueprint.get("/<uuid:personality_id>")
@@ -56,13 +74,12 @@ async def get_personalities():
 async def create_personality():
     body = await request.get_json()
     payload = CreatePersonality(**body)
-    # Apply the personality prompt to the context to get the initial context
-    llm: LLM = ProviderModelModel.get_llm()
-    context = await apply_personality_prompt(
-        llm=llm, context="", prompt=payload.context
-    )
     personality = await PersonalityModel.create(
-        name=payload.name, context=context, memory=payload.memory
+        name=payload.name,
+        description=payload.description,
+        context=payload.context,
+        memory=payload.memory,
+        tool_set=payload.tool_set,
     )
     return {"personality": personality.model_dump()}
 
@@ -71,11 +88,23 @@ async def create_personality():
 async def update_personality(personality_id: UUID):
     body = await request.get_json()
     payload = UpdatePersonality(**body)
+
+    llm: LLM = ProviderModelModel.get_llm()
+
+    # If there is no description, generate one from the context
+    description = payload.description
+    if (description is None or len(description.strip()) == 0) and len(
+        payload.context
+    ) > 0:
+        description = await ainvoke_description(llm=llm, context=payload.context)
+
     personality = await PersonalityModel.update(
         id=personality_id,
         name=payload.name,
+        description=description,
         context=payload.context,
         memory=payload.memory,
+        tool_set=payload.tool_set,
     )
     return {"personality": personality.model_dump()}
 
@@ -89,7 +118,13 @@ async def delete_personality(personality_id: UUID):
 @router.on(PostPersonalityPrompt)
 async def post_personality_prompt(event: PostPersonalityPrompt):
     llm: LLM = ProviderModelModel.get_llm()
-    content = await apply_personality_prompt(
-        llm=llm, context=event.context, prompt=event.prompt
+    personality = await PersonalityModel.get(event.personality_id)
+    if personality is None:
+        raise BadRequest("Personality not found")
+    content = await ainvoke_update_personality(
+        llm=llm,
+        personality=personality,
+        context=personality.context,
+        prompt=event.prompt,
     )
     await websocket.send(PersonalityPromptResponse(context=content).model_dump_json())

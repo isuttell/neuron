@@ -1,0 +1,29 @@
+FROM python:3.12-slim
+
+RUN apt-get update && apt-get install -yqq \
+  texlive-latex-base \
+  texlive-fonts-recommended \
+  && \
+  apt-get clean && rm -rf /var/lib/apt/lists/*
+
+RUN python -m venv /venv && \
+  /venv/bin/python -m pip install \
+  numpy \
+  matplotlib \
+  pandas \
+  seaborn[stats] \
+  scipy \
+  statsmodels \
+  SciencePlots \
+  adjustText \
+  plotnine[all]
+
+WORKDIR /app
+
+RUN useradd -m code
+
+USER code
+
+ENV PATH="/venv/bin:$PATH"
+
+ENTRYPOINT [ "/venv/bin/python" ]

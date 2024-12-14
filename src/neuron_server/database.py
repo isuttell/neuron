@@ -17,7 +17,7 @@ DB_URI = f"{config.database.user}:{config.database.password}@{config.database.ho
 
 
 engine = create_async_engine(
-    f"postgresql+asyncpg://{DB_URI}",
+    f"postgresql+psycopg://{DB_URI}",
     poolclass=NullPool,  # require until we sort out the event loop
 )
 
@@ -43,6 +43,8 @@ class Personality(Base):
     name = Column(Text, nullable=False)
     context = Column(Text, nullable=False, default="")
     memory = Column(Text, nullable=False, default="")
+    tool_set = Column(Text, nullable=True, default=None)
+    description = Column(Text, nullable=False, default="")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

@@ -98,11 +98,13 @@ class Config(BaseModel):
     host: str = Field(default=os.environ.get("HOST", "0.0.0.0"), description="Host")
     port: int = Field(default=int(os.environ.get("PORT", 5000)), description="Port")
     client_assets_folder: str = Field(
-        default=os.environ.get("STATIC_FOLDER", "../neuron_client/dist"),
+        default=os.path.abspath(
+            os.environ.get("STATIC_FOLDER", "../neuron_client/dist")
+        ),
         description="Static folder",
     )
     static_folder: str = Field(
-        default=os.environ.get("OUTPUT_FOLDER", "./static"),
+        default=os.path.abspath(os.environ.get("OUTPUT_FOLDER", "./static")),
         description="Output folder for generated and downloaded files",
     )
     static_content_url: str = Field(
@@ -111,18 +113,28 @@ class Config(BaseModel):
     )
     homeassistant: HomeAssistantConfig = HomeAssistantConfig()
     temp_folder: str = Field(
-        default=os.environ.get("TEMP_FOLDER", "./tmp"),
+        default=os.path.abspath(os.environ.get("TEMP_FOLDER", "./tmp")),
         description="Temp folder",
     )
     tablet_image_filename: str = Field(
-        default=os.environ.get(
-            "TABLET_IMAGE_FILENAME", "./static/images/dalle_generated_image.png"
+        default=os.path.abspath(
+            os.environ.get(
+                "TABLET_IMAGE_FILENAME", "./static/images/dalle_generated_image.png"
+            )
         ),
         description="Tablet image filename",
     )
     database: DatabaseConfig = DatabaseConfig()
     redis: RedisConfig = RedisConfig()
     pushover: PushoverConfig = PushoverConfig()
+    memory_enabled: bool = Field(
+        default=os.environ.get("MEMORY_ENABLED", "True").lower() == "true",
+        description="Memory enabled",
+    )
+    automatic1111_endpoint: str = Field(
+        default=os.environ.get("AUTOMATIC1111_ENDPOINT", "http://192.168.1.211:7860"),
+        description="Automatic1111 API URL",
+    )
 
 
 config = Config()

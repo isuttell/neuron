@@ -64,7 +64,7 @@ const websocketMiddleware =
           dispatch(upsertImage(event));
         });
         socket.on("error", (event) => {
-          console.error(event);
+          console.error(`ServerError: ${event.message}`);
         });
       }
     } else if (socket.connected && action.type.indexOf("socket/") === 0) {

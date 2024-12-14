@@ -19,7 +19,7 @@ class MessageEvent(OutgoingEvent):
 
 class PartialMessage(ThreadMessage):
     index: int
-    status: Literal["thinking", "tools", "streaming"]
+    status: str
 
 
 class PartialMessageEvent(OutgoingEvent):

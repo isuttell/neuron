@@ -7,6 +7,7 @@ from neuron_server.cache import cache_response
 from datetime import datetime
 import asyncio
 import pandas as pd
+from neuron_server.logger import logger
 
 tap_service = pyvo.dal.TAPService("http://simbad.u-strasbg.fr/simbad/sim-tap")
 
@@ -106,7 +107,7 @@ WHERE main_id = '{query}'
     )
 
 
-# @cache_response(ttl=60 * 60)
+@cache_response(ttl=60 * 60)
 async def search_object(
     main_id: str,
 ) -> str:
@@ -183,6 +184,7 @@ Always use this tool to answer questions about an astronomical object.
         main_id: str,
     ) -> str:
         try:
+            logger.debug(f"Searching for object {main_id}")
             return await search_object(main_id)
         except Exception as e:
             return f"Error with Simbad object search: {str(e)}"

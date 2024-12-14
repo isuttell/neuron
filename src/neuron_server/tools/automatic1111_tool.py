@@ -8,6 +8,8 @@ from pydantic import BaseModel, Field
 import asyncio
 from neuron_server.tools.automatic1111_api import Automatic1111API
 import os
+from neuron_server.logger import logger
+import aiohttp
 
 Automatic1111Checkpoints = Literal[
     "sdxl\\sdxlNuclearGeneralPurposeV3Semi_v30BakedVAE",
@@ -40,6 +42,18 @@ class Automatic1111ToolArgs(BaseModel):
     adetailer_enabled: Optional[bool] = Field(
         description="Whether to enable ADetailer to improve details in faces. Enable when generating faces to improve details in faces. Defaults to False."
     )
+
+
+async def check_http_connection(url: str) -> bool:
+    try:
+        async with aiohttp.ClientSession(
+            timeout=aiohttp.ClientTimeout(total=5)
+        ) as session:
+            async with session.head(url) as response:
+                return response.status == 200
+    except Exception as e:
+        logger.error(f"Connection to {url} failed: {str(e)}")
+        return False
 
 
 class Automatic1111Tool(BaseTool):
@@ -75,6 +89,11 @@ class Automatic1111Tool(BaseTool):
             str: A markdown string containing the generated image.
         """
         try:
+            if not await check_http_connection(self.api.endpoint):
+                raise Exception(
+                    "Failed to connect to the Automatic1111 API. Ask the user to verify Automatic1111 is running."
+                )
+
             file_path = await self.api.generate(
                 prompt=prompt,
                 negative_prompt=negative_prompt,

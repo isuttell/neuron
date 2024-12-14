@@ -40,7 +40,7 @@ class ThreadModel(BaseModel):
         description="Additional context for the thread provided by the personality",
         default="",
     )
-    status: Literal["idle", "thinking", "tools", "streaming"] = Field(
+    status: str = Field(
         description="The status of the thread",
         default="idle",
     )

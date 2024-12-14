@@ -28,11 +28,17 @@ Based on past conversations you have determined the following about the personal
 class PersonalityModel(BaseModel):
     id: UUID = Field(default_factory=lambda: uuid4())
     name: str = Field(description="How the personality is referred to in the chat")
+    description: str = Field(
+        description="A short description of the personality's role and purpose"
+    )
     context: str = Field(
         description="Information supplied by the personality for additional context"
     )
     memory: str = Field(
         description="Information about the personality's preferences and history"
+    )
+    tool_set: Optional[str] = Field(
+        description="The tool set to use for the personality", default=None
     )
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc).astimezone()
@@ -63,10 +69,23 @@ class PersonalityModel(BaseModel):
 
     @classmethod
     async def create(
-        cls, name: str, context: str, memory: str, id: Optional[UUID] = None
+        cls,
+        name: str,
+        description: str,
+        context: str,
+        memory: str,
+        tool_set: Optional[str] = None,
+        id: Optional[UUID] = None,
     ) -> Self:
         async with get_session() as session:
-            personality = Personality(id=id, name=name, context=context, memory=memory)
+            personality = Personality(
+                id=id,
+                name=name,
+                description=description,
+                context=context,
+                memory=memory,
+                tool_set=tool_set,
+            )
             session.add(personality)
             await session.commit()
             return cls(**personality.__dict__)
@@ -78,12 +97,22 @@ class PersonalityModel(BaseModel):
             await session.commit()
 
     @classmethod
-    async def update(cls, id: UUID, name: str, context: str, memory: str) -> Self:
+    async def update(
+        cls,
+        id: UUID,
+        name: str,
+        description: str,
+        context: str,
+        memory: str,
+        tool_set: Optional[str] = None,
+    ) -> Self:
         async with get_session() as session:
             personality = await session.get(Personality, id)
             personality.name = name
+            personality.description = description
             personality.context = context
             personality.memory = memory
+            personality.tool_set = tool_set
             session.add(personality)
             await session.commit()
             return cls(**personality.__dict__)
@@ -109,6 +138,8 @@ class PersonalityModel(BaseModel):
         async with get_session() as session:
             personality = await session.get(Personality, self.id)
             personality.name = self.name
+            personality.description = self.description
             personality.context = self.context
             personality.memory = self.memory
+            personality.tool_set = self.tool_set
             await session.commit()

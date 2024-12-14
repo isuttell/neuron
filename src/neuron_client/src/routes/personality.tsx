@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Trash } from "lucide-react";
+import { Trash, ArrowLeft } from "lucide-react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAppSelector, useAppDispatch } from "../hooks";
 import { CornerDownLeft } from "lucide-react";
@@ -19,7 +19,7 @@ import {
   updatePersonality,
   deletePersonality,
 } from "../actions/personalityActions";
-
+import EditPersonalityDialog from "../personalities/EditPersonalityDialog";
 const selectPersonality = (state: RootState, personalityId?: string) =>
   state.personalities.personalities.find((per) => per.id === personalityId);
 
@@ -32,6 +32,7 @@ export default function Personality() {
   const navigate = useNavigate();
   const activePersonalityId = useAppSelector(getActivePersonalityId);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const { personalityId } = useParams();
   const personality = useAppSelector(
     (state) => selectPersonality(state, personalityId),
@@ -53,20 +54,23 @@ export default function Personality() {
     setUpdatedName(personality.name);
   }, [personality?.id, personality?.context, personality?.name]);
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!personality || isLoading) {
       return;
     }
-
-    dispatch(
+    setIsSaving(true);
+    await dispatch(
       updatePersonality({
         id: personality.id,
         name: updatedName,
+        description: personality.description,
         context: updatedContext,
         memory: personality.memory,
+        tool_set: personality.tool_set,
       })
     );
+    setIsSaving(false);
   };
 
   const handleSubmitPrompt = (
@@ -83,6 +87,7 @@ export default function Personality() {
       type: "PostPersonalityPrompt",
       context: updatedContext,
       prompt,
+      personality_id: personality.id,
     });
     setIsLoading(true);
     socket.once("personality_prompt_response", (data) => {
@@ -102,6 +107,14 @@ export default function Personality() {
     <div className="flex flex-1 p-4 flex-col flex-nowrap max-h-screen overflow-auto gap-2">
       <div className="flex justify-between mb-2 border-b pb-2">
         <h1 className="text-2xl font-bold">
+          <Button
+            className="mr-4"
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate(-1)}
+          >
+            <ArrowLeft className="size-4" />
+          </Button>
           {personality.name}
           {activePersonalityId === personality.id && (
             <span className="ml-2 text-xs text-muted-foreground">
@@ -110,6 +123,7 @@ export default function Personality() {
           )}
         </h1>
         <div className="flex-1" />
+        <EditPersonalityDialog personality={personality} />
         <Button
           variant="ghost"
           size="icon"
@@ -225,13 +239,20 @@ export default function Personality() {
               type="button"
               size="sm"
               disabled={
+                isSaving ||
                 isLoading ||
                 (personality?.name === updatedName &&
                   personality?.context === updatedContext)
               }
               className="ml-auto gap-1.5"
             >
-              Save
+              {isSaving ? (
+                <>
+                  <Spinner className="size-3.5" />
+                </>
+              ) : (
+                <>Save</>
+              )}
             </Button>
           </div>
         </form>

@@ -30,14 +30,20 @@ export const fetchThreadsByPersonality = createAsyncThunk(
 
 export const createThread = createAsyncThunk(
   "threads/createThread",
-  async (personalityId: string, thunkAPI) => {
+  async (
+    { personalityId, prompt }: { personalityId: string; prompt?: string },
+    thunkAPI
+  ) => {
     try {
       const response = await fetch(`/neuron/api/threads/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ personality_id: personalityId }),
+        body: JSON.stringify({
+          personality_id: personalityId,
+          prompt: prompt,
+        }),
       });
       const data = await response.json();
       return data;

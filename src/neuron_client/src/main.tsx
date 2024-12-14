@@ -12,6 +12,8 @@ import ErrorPage from "./error-page.tsx";
 import NotFoundPage from "./not-found-page.tsx";
 import Gallery from "./routes/gallery.tsx";
 import Personality from "./routes/personality.tsx";
+import Index from "./index.tsx";
+
 import "./index.css";
 
 const router = createBrowserRouter(
@@ -26,11 +28,16 @@ const router = createBrowserRouter(
       errorElement: <ErrorPage />,
       children: [
         {
+          path: "/",
+          element: <Index />,
+        },
+        {
           path: "thread/:threadId",
           element: <Chat />,
         },
+
         {
-          path: "/",
+          path: "/personalities",
           element: <Personalities />,
         },
         {

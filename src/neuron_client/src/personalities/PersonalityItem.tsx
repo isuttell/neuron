@@ -37,18 +37,11 @@ const PersonalityItem: React.FC<PersonalityItemProps> = ({
         <EditPersonalityDialog personality={personality} />
       </CardHeader>
       <CardContent>
-        <div className="mb-2">
-          <span className="font-semibold">Context: </span>
-          <span>
-            {personality.context.trim().length > 0
-              ? `${personality.context.slice(0, 200)}...`
-              : "No user instructions"}
-          </span>
-        </div>
+        <div className="mb-2">{personality.description}</div>
       </CardContent>
       <CardFooter className="flex gap-2">
         <Button className="w-full" variant="secondary" asChild>
-          <Link to={`/personality/${personality.id}`}>Edit</Link>
+          <Link to={`/personality/${personality.id}`}>Edit Context</Link>
         </Button>
         <Button
           className="w-full"

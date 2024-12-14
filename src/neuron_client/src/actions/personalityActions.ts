@@ -32,6 +32,8 @@ interface CreatePersonality {
   name: string;
   context: string;
   memory: string;
+  description: string;
+  tool_set?: string;
 }
 
 export const createPersonality = createAsyncThunk(
@@ -72,6 +74,8 @@ export const updatePersonality = createAsyncThunk(
             name: personality.name,
             context: personality.context,
             memory: personality.memory,
+            tool_set: personality.tool_set,
+            description: personality.description,
           }),
         }
       );

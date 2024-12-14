@@ -47,7 +47,13 @@ async def generate_image(
 
 class DalleArgs(BaseModel):
     prompt: str = Field(
-        description="The prompt to generate the image from. When generating DALL-E prompts, include specific visual details, such as colors, textures, and object placements, to guide the model toward a precise result. Mention the desired style (e.g., photorealistic, cartoonish, or abstract) and add context, like background elements or lighting, for more cohesive images. Focus on clarity and conciseness in each prompt to avoid ambiguity and ensure reproducible results. Unless you are trying to maintain a specific style or look add random modern art styles to ensure variety."
+        description="""
+The prompt to generate the image from.
+
+When creating prompts for images, include specific visual details, such as colors, textures, and object placements, to guide the model toward a precise result. Mention the desired style (e.g., photorealistic, cartoonish, or abstract) and add context, like background elements or lighting, for more cohesive images. Focus on clarity and conciseness in each prompt to avoid ambiguity and ensure reproducible results. Unless you are trying to maintain a specific style or look add multiple random modern art styles and artistic styles to ensure variety.
+
+When creating prompts for charts, specify the type (e.g., bar, line, pie), include axis labels, titles, and legends. Describe the chart's style (e.g., clean, modern, hand-drawn), and color scheme. Include the raw data in csv format.
+        """.strip()
     )
     style: Literal["natural", "vivid"] = Field(
         description="The style of the image to generate.", default="vivid"
@@ -65,7 +71,7 @@ class DalleArgs(BaseModel):
 class DalleTool(BaseTool):
     name: str = "dalle"
     description: str = (
-        "A tool that generates highly detailed, realistic or semi-realistic images based on a text prompt using OpenAI's DALL·E 3. To create the best images, prompts should be clear, specific, and include details on the subject, setting, style, composition, and atmosphere. Use descriptive adjectives, specify lighting and time of day, describe actions or interactions, and mention perspectives or camera angles for more accuracy. Including contextual references (e.g., historical periods, fictional worlds) can further refine the output. Avoid ambiguities and ensure the prompt defines relationships between elements clearly. Returns a markdown image tag for display."
+        "A tool that generates highly detailed, realistic or semi-realistic images and charts based on a text prompt using OpenAI's DALL·E 3. Returns a markdown image tag for display."
     )
     args_schema: Type[DalleArgs] = DalleArgs
 
@@ -94,6 +100,7 @@ class DalleTool(BaseTool):
             str: A markdown string containing the generated image.
         """
         try:
+            logger.debug(f"Generating dalle image for prompt: {prompt}")
             image = await generate_image(
                 prompt=prompt,
                 style=style,
