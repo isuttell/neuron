@@ -51,6 +51,7 @@ export function MediaList({ className, messages, threadId }: MediaListProps) {
           type: "image",
           alt: match[1],
           url: match[2],
+          toolCallId: message.tool_call_id,
           messageId: message.id,
           message: message,
           // timestamp: message.created_at,
@@ -76,12 +77,17 @@ export function MediaList({ className, messages, threadId }: MediaListProps) {
 
       return items;
     });
+
+  const uniqueMediaItems = Array.from(
+    new Map(mediaItems.map((item) => [item.toolCallId, item])).values()
+  );
+
   return (
     <div className={cn("flex flex-col m-2 overflow-y-auto", className)}>
       <div className="text-lg font-semibold p-4 ">Media</div>
       <div className="flex flex-1 flex-wrap relative">
         <div className="flex-1 absolute top-0 left-0 right-0 bottom-0 p-4 overflow-y-auto">
-          {mediaItems.map((item) => (
+          {uniqueMediaItems.map((item) => (
             <div key={item.messageId} className="mb-4">
               {item.type === "image" ? (
                 <ImageContent

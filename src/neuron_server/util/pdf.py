@@ -12,6 +12,8 @@ from neuron_server.logger import logger
 import re
 from langchain_core.runnables import Runnable
 import os
+from langchain_core.runnables import RunnableConfig
+from langchain_core.output_parsers import StrOutputParser
 
 markdown_splitter = MarkdownTextSplitter(chunk_size=1000, chunk_overlap=200)
 
@@ -28,11 +30,14 @@ def convert_to_documents(
 
 
 async def summarize_pages(
-    model: Runnable, pdf_path: str, metadata: Optional[Dict[str, Any]] = None
+    model: Runnable,
+    pdf_path: str,
+    metadata: Optional[Dict[str, Any]] = None,
+    config: RunnableConfig = None,
 ) -> Tuple[List[str], List[Document]]:
     filename = os.path.basename(pdf_path)
     pages = pymupdf4llm.to_markdown(pdf_path, page_chunks=True)
-    chain = document_summarize_page_prompt | model
+    chain = document_summarize_page_prompt | model | StrOutputParser()
     last_page: Optional[str] = None
     texts: List[str] = [page["text"] for page in pages]
     metadatas: List[Dict[str, Any]] = [
@@ -56,16 +61,16 @@ async def summarize_pages(
     # iterate over each page adding to the summary
     results: List[str] = []
     for i, page in enumerate(pages):
-        message: AIMessage = await chain.ainvoke(
+        content: str = await chain.ainvoke(
             {
                 "last_page": last_page or "",
                 "page": page,
                 "page_number": i + 1,
                 "total_pages": len(pages),
             },
-            {"run_name": "summarize_pages"},
+            {**(config or {}), "run_name": "summarize_pages"},
         )
-        summary = re.sub(r"```(?:\w+)?\s*|\s*```", "", message.content.strip()).strip()
+        summary = re.sub(r"```(?:\w+)?\s*|\s*```", "", content.strip()).strip()
         results.append(summary)
         last_page = summary
         logger.debug(
@@ -77,17 +82,19 @@ async def summarize_pages(
 
 
 async def summarize_document(
-    model: Runnable, metadata: str, summaries: List[str]
+    model: Runnable, metadata: str, summaries: List[str], config: RunnableConfig = None
 ) -> str:
-    chain = document_summarize_prompt | model
-    message: AIMessage = await chain.ainvoke(
+    chain = document_summarize_prompt | model | StrOutputParser()
+    content: str = await chain.ainvoke(
         {
-            "pages": [
-                f"Page {i+1} Summary:\n{summary}\n\n---\n\n"
-                for i, summary in enumerate(summaries)
-            ],
+            "pages": "\n\n".join(
+                [
+                    f'Page {i+1} Summary\n"""\n{summary}\n"""'
+                    for i, summary in enumerate(summaries)
+                ]
+            ),
             "metadata": metadata,
         },
-        {"run_name": "summarize_document"},
+        {**(config or {}), "run_name": "summarize_document"},
     )
-    return re.sub(r"```(?:\w+)?\s*|\s*```", "", message.content.strip()).strip()
+    return re.sub(r"```(?:\w+)?\s*|\s*```", "", content.strip()).strip()

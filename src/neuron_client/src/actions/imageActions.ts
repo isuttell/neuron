@@ -4,7 +4,7 @@ export const fetchImages = createAsyncThunk(
   "images/fetchImages",
   async (_, thunkAPI) => {
     try {
-      const response = await fetch(`/neuron/api/images/`);
+      const response = await fetch(`/api/images/`);
       const data = await response.json();
       return data;
     } catch (error: any) {

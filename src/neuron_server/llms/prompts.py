@@ -32,11 +32,8 @@ Unless otherwise stated, use markdown formatting with a clean and polished style
     ]
 )
 
-title_prompt = ChatPromptTemplate.from_messages(
-    [
-        (
-            "system",
-            """
+title_prompt = PromptTemplate(
+    template="""
 You specialize in crafting informative titles for conversations between a user and an AI. Generate a title no longer than 50 characters using the last title as a base to ensure continuity between updates. You are not having a conversation. You MUST only return the new title in plain text without quotes or other unneeded characters or styling.
 
 Current time: {now}
@@ -46,14 +43,17 @@ The following custom instructions were used in the conversation. Use them to hel
 {personality}
 \"\"\"
 
+Messages:
+\"\"\"
+{messages}
+\"\"\"
+
 Last Title:
 \"\"\"
 {last_title}
 \"\"\"
 """.strip(),
-        ),
-        MessagesPlaceholder(variable_name="messages"),
-    ]
+    input_variables=["last_title", "now", "personality", "messages"],
 )
 
 memory_prompt = ChatPromptTemplate.from_messages(
@@ -126,7 +126,7 @@ Context:
 
 document_summarize_page_prompt = PromptTemplate(
     template="""
-You are a researcher writing a report on a paper and are reading each page one at a time in order. Write a detailed summary of the current page to later be used to answer questions about the document. Make sure to retain key information for later reuse. Use the last page summary to help you write the current page summary to be more accurate. Do not ask any questions or explain anything. Use markdown formatting for the report. Github flavored markdown, math markdown and katex is supported.
+You are a researcher writing a report on a paper and are reading each page one at a time in order. Write a detailed summary of the current page to later be used to summarize the entire paper. Make sure to retain key information and sources. Use the last page summary to help you write the current page summary for consistency. Do not ask any questions or explain anything. Just return the summary in markdown format. Github flavored markdown, math markdown and katex is supported.
 
 Last Page Summary:
 \"\"\"
@@ -144,17 +144,14 @@ Document Page {page_number} of {total_pages}:
 
 document_summarize_prompt = PromptTemplate(
     template="""
-You are a researcher writing a report on a research paper. You are given the metadata for an arxiv paper and the summaries of each page. Combine the metadata and page summaries to create a detailed report of the entire paper. Use the metadata to help you write the summary. Do not ask any questions or explain anything. Use markdown formatting. Github flavored markdown, math markdown and katex is supported.
+You are a researcher writing a report on a research paper. You are given the metadata for an arxiv paper and the summaries of each page. Combine the metadata and page summaries to create a detailed summary of the entire paper. Use the metadata to help you write the summary. Do not ask any questions or explain anything. Just return the summary in markdown format. Sources are critical to the summary so include them. Review your work and make sure the whole summary is coherent and makes sense. Github flavored markdown, math markdown and katex is supported.
 
 arxiv metadata:
 \"\"\"
 {metadata}
 \"\"\"
 
-Page Summaries:
-\"\"\"
 {pages}
-\"\"\"
 """.strip(),
     input_variables=["pages", "metadata"],
 )

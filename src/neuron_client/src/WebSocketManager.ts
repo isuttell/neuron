@@ -98,6 +98,6 @@ export default class WebSocketManager {
 
 export const socketManager = new WebSocketManager(
   window.location.protocol === "https:"
-    ? `wss://${window.location.host}/neuron/ws`
-    : `ws://${window.location.host}/neuron/ws`
+    ? `wss://${window.location.host}/ws`
+    : `ws://${window.location.host}/ws`
 );

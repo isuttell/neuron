@@ -51,7 +51,7 @@ const router = createBrowserRouter(
       ],
     },
   ],
-  { basename: "/neuron" }
+  { basename: "/" }
 );
 
 createRoot(document.getElementById("root")!).render(

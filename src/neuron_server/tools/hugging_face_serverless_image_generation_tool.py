@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 from typing import Type
 import aiohttp
 import shutil
+import os
 
 
 class HuggingFaceRepoId(Enum):
@@ -146,7 +147,7 @@ class HuggingFaceServerlessImageGenerationTool(BaseTool):
                 "DateTimeOriginal",
                 now.isoformat(timespec="seconds"),
             )
-            file_path = f"{config.static_folder}/images/{filename}"
+            file_path = os.path.join(config.static_folder, "images", filename)
             image.save(file_path, format="png", pnginfo=pnginfo)
             url = f"{config.static_content_url}/images/{filename}"
             logger.debug(f"Saved generated image to {file_path} <{url}>")

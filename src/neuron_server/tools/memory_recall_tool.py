@@ -57,7 +57,7 @@ def calculate_score(document: Document, relevance_score: float) -> int:
         else None
     )
 
-    time_decay: float = log_decay(created_at) if created_at else 0.0
+    time_decay: float = (log_decay(created_at) * 0.75) if created_at else 0.0
     score = relevance_score * time_decay
     return round(score * 100)
 
@@ -97,6 +97,7 @@ class MemoryRecallTool(BaseTool):
         k: int = 3,
         score_threshold: float = 0.2,
     ) -> str:
+        assert "personality_id" in config["configurable"]
         doc_scores = await memories_store.asimilarity_search_with_relevance_scores(
             query,
             k=k,

@@ -99,7 +99,7 @@ class Config(BaseModel):
     port: int = Field(default=int(os.environ.get("PORT", 5000)), description="Port")
     client_assets_folder: str = Field(
         default=os.path.abspath(
-            os.environ.get("STATIC_FOLDER", "../neuron_client/dist")
+            os.environ.get("STATIC_FOLDER", "./src/neuron_client/dist")
         ),
         description="Static folder",
     )

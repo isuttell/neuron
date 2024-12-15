@@ -4,7 +4,7 @@ export const fetchThread = createAsyncThunk(
   "threads/fetchThread",
   async (threadId: string, thunkAPI) => {
     try {
-      const response = await fetch(`/neuron/api/threads/${threadId}`);
+      const response = await fetch(`/api/threads/${threadId}`);
       const data = await response.json();
       return data;
     } catch (error: any) {
@@ -17,9 +17,7 @@ export const fetchThreadsByPersonality = createAsyncThunk(
   "threads/fetchThreadsByPersonality",
   async (personalityId: string, thunkAPI) => {
     try {
-      const response = await fetch(
-        `/neuron/api/threads/personality/${personalityId}`
-      );
+      const response = await fetch(`/api/threads/personality/${personalityId}`);
       const data = await response.json();
       return data;
     } catch (error: any) {
@@ -35,7 +33,7 @@ export const createThread = createAsyncThunk(
     thunkAPI
   ) => {
     try {
-      const response = await fetch(`/neuron/api/threads/`, {
+      const response = await fetch(`/api/threads/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -62,7 +60,7 @@ export const updateThread = createAsyncThunk(
   "threads/updateThread",
   async (thread: UpdateThreadPayload, thunkAPI) => {
     try {
-      const response = await fetch(`/neuron/api/threads/${thread.id}`, {
+      const response = await fetch(`/api/threads/${thread.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -81,7 +79,7 @@ export const deleteThread = createAsyncThunk(
   "threads/deleteThread",
   async (threadId: string, thunkAPI) => {
     try {
-      await fetch(`/neuron/api/threads/${threadId}`, {
+      await fetch(`/api/threads/${threadId}`, {
         method: "DELETE",
       });
       return threadId;

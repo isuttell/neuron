@@ -125,6 +125,7 @@ async def index(**kwargs):
 
 # Assets don't change so we can cache them for a long time
 @blueprint.get("/static/<path:path>")
+@blueprint.get("/neuron/static/<path:path>")
 @cors(allowed_methods=["GET", "OPTIONS"], allowed_headers=["Authorization"])
 @cache_control(max_age=31536000, immutable=True)
 async def get_static(path):
@@ -159,7 +160,6 @@ async def ws():
     await asyncio.gather(producer, consumer)
 
 
-@app.get("/")
 @app.get("/status")
 async def health():
     await client.ping()
@@ -167,9 +167,9 @@ async def health():
     return {"server": "neuron", "status": "healthy"}
 
 
-app.register_blueprint(blueprint, url_prefix="/neuron")
-app.register_blueprint(webhook_blueprint, url_prefix="/neuron/webhooks")
-app.register_blueprint(thread_blueprint, url_prefix="/neuron/api/threads")
-app.register_blueprint(message_blueprint, url_prefix="/neuron/api/messages")
-app.register_blueprint(personality_blueprint, url_prefix="/neuron/api/personalities")
-app.register_blueprint(image_blueprint, url_prefix="/neuron/api/images")
+app.register_blueprint(blueprint, url_prefix="/")
+app.register_blueprint(webhook_blueprint, url_prefix="/api/webhooks")
+app.register_blueprint(thread_blueprint, url_prefix="/api/threads")
+app.register_blueprint(message_blueprint, url_prefix="/api/messages")
+app.register_blueprint(personality_blueprint, url_prefix="/api/personalities")
+app.register_blueprint(image_blueprint, url_prefix="/api/images")

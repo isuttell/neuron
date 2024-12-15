@@ -37,6 +37,7 @@ class ThreadConfig(TypedDict):
 async def execute_agent(
     prompt: str,
     personality_id: UUID,
+    location: str = "San Diego, California at -117.1860 W and 32.84 N.",
 ) -> str:
     personality = await PersonalityModel.get(personality_id)
     if personality is None:
@@ -45,19 +46,25 @@ async def execute_agent(
     llm: LLM = ProviderModelModel.get_llm()
     tools = get_tools(personality.tool_set) if personality.tool_set else None
     graph = llm.create_workflow(tools)
-    graph.checkpointer = AsyncPostgresSaver(pool)
+    graph.checkpointer = None
     result: AIMessage = await graph.ainvoke(
         {
             "messages": [
                 HumanMessage(content=prompt),
             ],
+            "location": location,
             "personality": personality.context,
             "memory": personality.memory,
             "now": datetime.now(timezone.utc)
             .astimezone()
             .strftime("%Y-%m-%d %H:%M:%S %Z"),
         },
-        config={"run_name": "home_prompt"},
+        config={
+            "run_name": "home_prompt",
+            "configurable": {
+                "personality_id": str(personality_id),
+            },
+        },
     )
     result: AIMessage = result["messages"][-1]
     assert isinstance(result, AIMessage)
@@ -87,7 +94,12 @@ async def update_thread_status(thread: ThreadModel, status: str):
         await save_thread(thread)
 
 
-async def astream(thread_id: UUID, personality_id: UUID, prompt: str):
+async def astream(
+    thread_id: UUID,
+    personality_id: UUID,
+    prompt: str,
+    location: str = "San Diego, California at -117.1860 W and 32.84 N.",
+):
     start_time = datetime.now(timezone.utc).astimezone()
     logger.debug(f"Agent started for {thread_id}")
     try:
@@ -125,7 +137,7 @@ async def astream(thread_id: UUID, personality_id: UUID, prompt: str):
                 ],
                 "personality": personality.context,
                 "title": thread.name or "",
-                "location": "San Diego, California at -117.1860 W and 32.84 N.",
+                "location": location,
                 "now": start_time.strftime("%Y-%m-%d %H:%M:%S %Z"),
             },
             config={

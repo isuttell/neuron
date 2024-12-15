@@ -3,29 +3,28 @@ from typing import Type
 from pydantic import BaseModel, Field
 from neuron_server.logger import logger
 import asyncio
-import time
 from neuron_server.config import config
 import os
 from uuid import uuid4
 import subprocess
-import shutil
+import time
 
 
-class ChartToolArgs(BaseModel):
-    description: str = Field(
-        description="The description of the chart. This will be displayed in the markdown link to the chart."
-    )
+class CodeInterpreterToolArgs(BaseModel):
     python_code: str = Field(
         description="""
-Python code to generate a chart. Must be a valid python code string and always include the data hard coded in the code. You may only write to the  {directory} directory. Save results as "{directory}/chart.png". Must be in utf-8 encoding. All variables must be defined. Use coding best practices. Stdout is returned so use it to return any information to the user in markdown. This is in a headless environment so do not use any GUI libraries. Latex is not installed so do not use it.
+Python code to execute. Must be a valid python code string and must always include the data hard coded into the code. You may only write to the {directory} directory. Must be in utf-8 encoding. All variables must be defined. Use coding best practices. This is in a headless environment so do not use any GUI libraries. Print all outout to the stdout which is returned as the tool response. Use markdown formatting with math and katex support to make the stdout more readable. Double check your work. You must return something in the stdout. Do not use emojis. Do not use eval.
 
-The following pip packages are installed and available to use when needed:
+The following pip packages are available as needed:
 adjustText
 astroplan
 astropy
+kaleido
 matplotlib
 numpy
 pandas
+pillow
+plotly
 plotnine[all]
 scienceplots
 scipy
@@ -75,25 +74,15 @@ def check_for_restricted_keywords(python_code: str) -> None:
             )
 
 
-class ChartTool(BaseTool):
-    name: str = "chart"
+class CodeInterpreterTool(BaseTool):
+    name: str = "code_interpreter"
     description: str = (
         """
-This tool allows you to do data analysis and generate visualizations using python. Use this tool to help visualize data or when the user asks for a chart/plot.
-
-Guidelines:
-- Use NumPy, SciPy, and Statsmodels for complex math/stats
-- Use Matplotlib, Seaborn, and Plotnine for customized, visually rich charts. Prefer seaborn or Plotnine.
-- Returns a markdown link to the chart to show the user
-- Returns stdout from the python code execution
-- Charts should be print publication quality
-- Do not make visualizations interactive or animated. They must be static.
-- When using the "science" style, import scienceplots first
-- The UI is dark so pick dark mode friendly colors by default
+This tool executes sandboxed Python code for complex data analysis, providing precise computational results for enhanced response generation. It leverages libraries such as pandas, numpy, scipy, and statsmodels for tasks like data cleaning, statistical modeling, and numerical computations. Use this for precise calculations and data analysis.
 """.strip()
     )
 
-    args_schema: Type[ChartToolArgs] = ChartToolArgs
+    args_schema: Type[CodeInterpreterToolArgs] = CodeInterpreterToolArgs
 
     timeout: int = 60
     code_interpreter_image: str = "192.168.1.160:5000/code-interpreter:latest"
@@ -101,7 +90,7 @@ Guidelines:
     def _run(self, description: str, python_code: str) -> str:
         return asyncio.run(self._arun(description, python_code))
 
-    async def _arun(self, description: str, python_code: str) -> str:
+    async def _arun(self, python_code: str) -> str:
         try:
             start_time = time.perf_counter()
             check_for_restricted_keywords(python_code)
@@ -121,7 +110,7 @@ Guidelines:
                             "docker",
                             "run",
                             "--name",
-                            "neuron-chart",
+                            "neuron-code-interpreter",
                             "--memory",
                             "4g",
                             "--cpus",
@@ -146,24 +135,16 @@ Guidelines:
                 ),
                 timeout=self.timeout,
             )
-
             if process.returncode != 0:
                 raise Exception(
                     f"Error executing script: stderr={process.stderr.strip()}"
                 )
-            output_filename = os.path.join(temp_folder, "chart.png")
-            if not os.path.exists(output_filename):
-                raise Exception("chart.png not found")
-            result_filename = f"chart_{uuid4().hex}.png"
-            result_file_path = os.path.join(
-                config.static_folder, "images", result_filename
-            )
-            shutil.move(output_filename, result_file_path)
-            url = f"{config.static_content_url}/images/{result_filename}"
+            if not process.stdout or len(process.stdout.strip()) == 0:
+                raise Exception("No stdout")
             logger.debug(
-                f"Saved chart to {result_file_path} <{url}> in {time.perf_counter() - start_time:.2f} seconds"
+                f"Code interpreter tool execution time: {time.perf_counter() - start_time:.2f} seconds"
             )
-            return f"![{description}]({url})\n{process.stdout.strip() if process.stdout else ''}".strip()
+            return process.stdout.strip()
         except asyncio.TimeoutError:
             message = f"python code execution timed out after {self.timeout} seconds"
             logger.error(message)

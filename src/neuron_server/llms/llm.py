@@ -73,7 +73,8 @@ class LLM:
         self.title = title_prompt | self.title_model | StrOutputParser()
         self.memory_model = memory_model
         self.memory = memory_prompt | self.memory_model | StrOutputParser()
-        self.tools = tools or []
+        self.default_tools = tools or []
+        self.tools = self.default_tools
 
     def create_workflow(
         self,
@@ -82,7 +83,8 @@ class LLM:
         workflow = StateGraph(AgentState)
         if tools:
             self.tools = tools
-
+        else:
+            self.tools = self.default_tools
         workflow.add_node("tools", ToolNode(self.tools))
         workflow.add_node("agent", self.call_model)
         workflow.add_node("update_title", self.call_title)
@@ -183,7 +185,7 @@ class LLM:
             {
                 "messages": messages,
                 "personality": state["personality"],
-                "location": state["location"] or "unknown",
+                "location": state["location"] if "location" in state else "unknown",
                 "recall_memories": (
                     state["recall_memories"] if "recall_memories" in state else ""
                 ),
@@ -214,14 +216,9 @@ class LLM:
             state["messages"],
             {**config, "run_name": "trim_messages"},
         )
-        messages.append(
-            HumanMessage(
-                content="Please update the title of our conversation so I can easily find it later"
-            )
-        )
         title: str = await self.title.ainvoke(
             {
-                "messages": messages,
+                "messages": get_buffer_string(messages),
                 "last_title": state.get("title", ""),
                 "personality": state["personality"],
                 "now": datetime.now(timezone.utc)

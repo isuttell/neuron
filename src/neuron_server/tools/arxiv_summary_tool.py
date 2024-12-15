@@ -12,6 +12,7 @@ import asyncio
 from neuron_server.vectorstores import arxiv_store
 import sys
 from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_core.runnables import RunnableConfig
 
 if sys.platform.startswith("win"):
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
@@ -48,6 +49,7 @@ This tool provides detailed, page-by-page summaries of research articles by thei
     async def _arun(
         self,
         id: str,
+        config: RunnableConfig,
         force_resummarize: bool = False,
     ) -> str:
         try:
@@ -96,9 +98,9 @@ This tool provides detailed, page-by-page summaries of research articles by thei
                     return f"Summary already exists:\n{file.read()}"
 
             page_summaries, documents = await summarize_pages(
-                model,
-                pdf_full_path,
-                {
+                model=model,
+                pdf_path=pdf_full_path,
+                metadata={
                     "title": article.title,
                     "short_id": article.get_short_id(),
                     "entry_id": article.entry_id,
@@ -107,8 +109,11 @@ This tool provides detailed, page-by-page summaries of research articles by thei
                     "primary_category": article.primary_category,
                     "categories": article.categories,
                 },
+                config=config,
             )
-            summary = await summarize_document(model, metadata, page_summaries)
+            summary = await summarize_document(
+                model=model, metadata=metadata, summaries=page_summaries, config=config
+            )
             if len(documents) > 0:
                 await arxiv_store.aadd_documents(documents)
             page_summaries = "\n\n".join(

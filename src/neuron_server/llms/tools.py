@@ -46,6 +46,7 @@ from langchain_community.utilities.nasa import NasaAPIWrapper
 from langchain_community.utilities.wolfram_alpha import WolframAlphaAPIWrapper
 from langchain_community.tools import WolframAlphaQueryRun
 from neuron_server.tools.chart_tool import ChartTool
+from neuron_server.tools.code_intrepreter_tool import CodeInterpreterTool
 
 homeassistant_api = HomeAssistantAPI(token=config.homeassistant.token)
 
@@ -128,6 +129,9 @@ tool_sets: Dict[str, List[BaseTool]] = {
     ],
     "notifications": [
         SendNotificationTool(),
+    ],
+    "code_interpreter": [
+        CodeInterpreterTool(),
     ],
 }
 

@@ -19,6 +19,7 @@ export interface Message {
   thread_id: string;
   status?: string;
   tool_calls?: any[];
+  tool_call_id?: string;
   additional_kwargs?: any;
   response_metadata?: any;
 }
