@@ -84,7 +84,7 @@ export default function NavThreads() {
             {thread.status === "idle" ? (
               <MessageCircle className="size-4 min-w-[20px]" />
             ) : (
-              <MessageCircleDashed className="size-4 min-w-[20px]" />
+              <MessageCircleDashed className="size-4 min-w-[20px] text-accent" />
             )}{" "}
             {thread.name || "Start conversation"}
           </NavLink>

@@ -24,12 +24,18 @@ from langchain_core.output_parsers import StrOutputParser
 import re
 from langchain_core.messages.utils import get_buffer_string
 import tiktoken
-from neuron_server.tools.memory_recall_tool import MemoryRecallTool
+from neuron_server.tools.memory_recall_tool import (
+    MemoryRecallTool,
+    MemoryStats,
+    NO_MEMORIES_FOUND,
+)
 from neuron_server.tools.memory_store_tool import MemoryStoreTool
 from neuron_server.llms.prompts import memory_prompt
 from pydantic import BaseModel, Field
 from neuron_server.config import config
 from neuron_server.logger import logger
+from neuron_server.models.embedding_model import EmbeddingModel
+from neuron_server.artifacts import artifact_prompt
 
 tokenizer = tiktoken.encoding_for_model("gpt-4o")
 
@@ -45,9 +51,22 @@ class AgentState(TypedDict):
     recall_memories: str = ""
 
 
+class MemoryRecallRanking(BaseModel):
+    document_id: str = Field(description="The ID of the memory recall document")
+    score: float = Field(
+        description="Give each recall memory a score from 1 to 10 based on how useful it was in constructing the last AI message"
+    )
+    useful: bool = Field(
+        description="True if the memory was useful in constructing the last AI message"
+    )
+
+
 class MemoryResponse(BaseModel):
-    memories: List[str] = Field(
-        description="A list of memories to be saved for later recall"
+    memory_recall_rankings: List[MemoryRecallRanking] = Field(
+        description="A list of existingrecall memories ranked by usefulness to the response"
+    )
+    new_memories: List[str] = Field(
+        description="A list of new details and novel information to save for later recall"
     )
 
 
@@ -149,6 +168,16 @@ class LLM:
             {"query": get_buffer_string(messages), "k": 10},
             config,
         )
+
+        for tool in self.tools:
+            if tool.name == "arxiv_recall":
+                additional_memories = await tool.ainvoke(
+                    {"query": get_buffer_string(messages), "k": 10},
+                    config,
+                )
+                recall_memories += "\n\n--------\n\n" + additional_memories
+                break
+
         logger.debug(f"recall_memories:\n{recall_memories}")
         return {
             "recall_memories": recall_memories,
@@ -169,17 +198,23 @@ class LLM:
     ):
         model: Runnable = self.model.bind_tools(self.tools)
         message_trimmer: Runnable = trim_messages(
-            max_tokens=30000,
+            max_tokens=200000,
             strategy="last",
             token_counter=model,
             include_system=True,
             allow_partial=False,
             start_on="human",
         )
-        messages = await message_trimmer.ainvoke(
+        messages: List[BaseMessage] = await message_trimmer.ainvoke(
             state["messages"],
             {**config, "run_name": "trim_messages"},
         )
+        # Filter out messages that don't have content
+        initial_messages_length = len(messages)
+        messages = [message for message in messages if message.content]
+        if len(messages) < initial_messages_length:
+            logger.debug(f"Filtered {initial_messages_length - len(messages)} messages")
+
         chain = chat_prompt | model
         response: AIMessage = await chain.ainvoke(
             {
@@ -192,6 +227,7 @@ class LLM:
                 "now": datetime.now(timezone.utc)
                 .astimezone()
                 .strftime("%Y-%m-%d %H:%M:%S %Z"),
+                "artifact_prompt": artifact_prompt,
             },
             config,
         )
@@ -236,7 +272,6 @@ class LLM:
         state: AgentState,
         config: RunnableConfig,
     ):
-
         message_trimmer: Runnable = trim_messages(
             max_tokens=1024,
             strategy="last",
@@ -254,15 +289,6 @@ class LLM:
             },
         )
         assert isinstance(messages, list)
-        messages.append(
-            HumanMessage(
-                content="Please return all new memories to be saved. Do not duplicate information."
-            )
-        )
-        recall_memories: str = await MemoryRecallTool().ainvoke(
-            {"query": get_buffer_string(messages), "k": 50},
-            config,
-        )
 
         model: Runnable = memory_prompt | self.memory_model.with_structured_output(
             MemoryResponse
@@ -270,21 +296,68 @@ class LLM:
 
         response: MemoryResponse = await model.ainvoke(
             {
-                "messages": messages,
-                "personality": "",
-                "recall_memories": recall_memories,
+                "messages": get_buffer_string(messages),
+                "recall_memories": state["recall_memories"],
                 "now": datetime.now(timezone.utc)
                 .astimezone()
                 .strftime("%Y-%m-%d %H:%M:%S %Z"),
             },
             {**config, "run_name": "update_memory"},
         )
+        if not response:
+            logger.error("No response from memory model")
+            return
 
-        if len(response.memories) > 0:
-            await MemoryStoreTool().ainvoke(
-                {"memories": response.memories},
-                config,
-            )
+        if len(response.memory_recall_rankings) > 0:
+            for ranking in response.memory_recall_rankings:
+                document = await EmbeddingModel.get(ranking.document_id)
+                if document:
+                    stats: MemoryStats = document.cmetadata.get(
+                        "stats",
+                        MemoryStats(
+                            useful=0,
+                            total=0,
+                            last_useful_at=None,
+                            last_recall_at=None,
+                            scores=[],
+                        ),
+                    )
+
+                    if ranking.useful:
+                        stats["last_useful_at"] = int(
+                            datetime.now(timezone.utc).timestamp()
+                        )
+                        stats["useful"] += 1
+
+                    stats["total"] += 1
+                    stats["last_recall_at"] = int(
+                        datetime.now(timezone.utc).timestamp()
+                    )
+                    stats["scores"].append(ranking.score)
+                    stats["scores"] = stats["scores"][-100:]
+                    document.cmetadata["stats"] = stats
+                    logger.debug(
+                        "Updating memory {document_id}: {useful_percentage}%".format(
+                            document_id=ranking.document_id,
+                            useful_percentage=round(
+                                (stats["useful"] / stats["total"]) * 100
+                            ),
+                        )
+                    )
+                    await document.save()
+
+        if len(response.new_memories) > 0:
+            new_memories: List[str] = []
+            for memory in response.new_memories:
+                matches = await MemoryRecallTool()._arun(
+                    query=memory, config=config, score_threshold=0.9, k=1
+                )
+                if matches == NO_MEMORIES_FOUND:
+                    # If there are no matches, then we add the memory to the list
+                    # to be saved later
+                    new_memories.append(memory)
+            if len(new_memories) > 0:
+                await MemoryStoreTool().ainvoke({"memories": new_memories})
 
     def should_call_tools(self, state: AgentState) -> Literal["tools", "continue"]:
         messages = state["messages"]
@@ -300,8 +373,7 @@ class LLM:
     def should_call_update_memory(
         self, state: AgentState
     ) -> Literal["update_memory", "continue"]:
-        return "continue"
-        if len(state["messages"]) > 2:
+        if len(state["messages"]) > 1:
             return "update_memory"
         else:
             return "continue"

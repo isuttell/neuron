@@ -148,8 +148,10 @@ This tool accepts a list of targets and plots the observability of the targets o
         time_resolution: float = 0.5,
     ) -> str:
         try:
+            start_time = start_time.astimezone()
+            end_time = end_time.astimezone()
             logger.debug(
-                f"Calculating observability for {', '.join(map(lambda t: t.name, targets))} on {start_time.isoformat()} to {end_time.isoformat()}..."
+                f"Calculating observability for {', '.join(map(lambda t: t.name, targets))} on {start_time.isoformat(timespec='minutes')} to {end_time.isoformat(timespec='minutes')}..."
             )
             min_altitude: float = 18
             airmass_constraint: float = 3.0
@@ -200,9 +202,9 @@ This tool accepts a list of targets and plots the observability of the targets o
                     rows.append(
                         {
                             "target": target_name,
-                            "time": time.to_datetime(timezone=observer.timezone)
-                            .replace(microsecond=0)
-                            .isoformat(),
+                            "time": time.to_datetime(
+                                timezone=observer.timezone
+                            ).isoformat(timespec="minutes"),
                             "observable": observable,
                         }
                     )
@@ -222,8 +224,8 @@ This tool accepts a list of targets and plots the observability of the targets o
 
 ## Constraints:
 
-- Start Time: {start_time.replace(microsecond=0).isoformat()}
-- End Time: {end_time.replace(microsecond=0).isoformat()}
+- Start Time: {start_time.isoformat(timespec="minutes")}
+- End Time: {end_time.isoformat(timespec="minutes")}
 - Minimum Altitude: {min_altitude} degrees
 - Maximum Airmass: {airmass_constraint}
 - Twilight Astronomical

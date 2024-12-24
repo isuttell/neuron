@@ -11,6 +11,7 @@ import {
   getActivePersonalityId,
   getActivePersonality,
 } from "./slices/personalitiesSlice";
+import logo from "@/assets/logo.svg";
 
 export default function Index() {
   const [prompt, setPrompt] = useState("");
@@ -19,12 +20,18 @@ export default function Index() {
   const [isLoading, setLoading] = useState(false);
   const activePersonalityId = useAppSelector(getActivePersonalityId);
   const activePersonality = useAppSelector(getActivePersonality);
-  const handleSubmit = () => {
-    if (!activePersonalityId || prompt.trim().length === 0) {
+  const handleSubmit = (greeting?: boolean) => {
+    if (!activePersonalityId || (prompt.trim().length === 0 && !greeting)) {
       return;
     }
     setLoading(true);
-    dispatch(createThread({ personalityId: activePersonalityId, prompt }))
+    dispatch(
+      createThread({
+        personalityId: activePersonalityId,
+        prompt,
+        greeting,
+      })
+    )
       .unwrap()
       .then(({ thread }) => {
         navigate(`/thread/${thread.id}`);
@@ -37,7 +44,9 @@ export default function Index() {
   return (
     <div className="flex flex-1 p-4 flex-col justify-center items-center flex-nowrap max-h-screen overflow-auto gap-2">
       <div className="flex flex-col w-full">
-        <div className="text-2xl font-bold text-center my-12">Neuron</div>
+        <div className="flex justify-center items-center">
+          <img src={logo} alt="Neuron" className="w-[120px]" />
+        </div>
         <div className="flex flex-col gap-2 max-w-[768px] mx-auto w-full">
           {activePersonality ? (
             <div className="text-md text-center mb-6 font-bold">
@@ -48,7 +57,13 @@ export default function Index() {
               Select a personality to start chatting
             </div>
           )}
-          <form className="" onSubmit={handleSubmit}>
+          <form
+            className=""
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSubmit();
+            }}
+          >
             <Label htmlFor="prompt" className="sr-only">
               Prompt
             </Label>
@@ -66,13 +81,22 @@ export default function Index() {
                 }
               }}
             />
-            <div className="flex flex-row gap-2 pt-2">
+            <div className="flex flex-row gap-2 pt-2 justify-end">
+              {!isLoading ? (
+                <Button
+                  onClick={() => handleSubmit(true)}
+                  type="submit"
+                  className="gap-1.5"
+                  disabled={isDisabled}
+                >
+                  Greet
+                </Button>
+              ) : null}
               <Button
-                onClick={handleSubmit}
+                onClick={() => handleSubmit(false)}
                 type="submit"
-                size="sm"
                 disabled={isDisabled || prompt.trim().length === 0}
-                className="ml-auto gap-1.5"
+                className="gap-1.5"
               >
                 {isLoading ? (
                   <>

@@ -53,7 +53,7 @@ async def get_image_base64(image_url: str) -> str:
 class InspectImageTool(BaseTool):
     name: str = "inspect_image"
     description: str = (
-        "This tool uses a OpenAI GPT-4o multi-modal vision capabilities to inspect an image and return a detailed description of the image. Use this tool to when you need to answer a question about an image."
+        "This tool uses  multi-modal vision capabilities to inspect an image and return a detailed description of the image. Use this tool to when you need to answer a question about an image."
     )
     args_schema: Type[InspectImageToolArgs] = InspectImageToolArgs
 
@@ -62,7 +62,7 @@ class InspectImageTool(BaseTool):
 
     async def _arun(self, image_url: str, prompt: str, max_tokens: int = 300) -> str:
         """
-        Inspect an image using OpenAI's GPT-4o multi-modal vision capabilities.
+        Inspect an image using multi-modal vision capabilities.
 
         Args:
             image_url (str): The URL of the image to be inspected.

@@ -14,8 +14,9 @@ from neuron_server.llms.huggingface import HuggingFaceLLM
 from neuron_server.llms.huggingface_toolless import HuggingFaceToollessLLM
 from neuron_server.config import config
 from neuron_server.database import get_session, ProviderModel
+from neuron_server.llms.cohere import CohereLLM
 
-Provider = Literal["openai", "anthropic", "huggingface"]
+Provider = Literal["openai", "anthropic", "huggingface", "cohere"]
 
 
 class ProviderModelModel(BaseModel):
@@ -69,6 +70,8 @@ class ProviderModelModel(BaseModel):
             return HuggingFaceToollessLLM(repo_id=self.model_id)
         elif self.provider == "openai":
             return OpenAILLM(model_id=self.model_id)
+        elif self.provider == "cohere":
+            return CohereLLM(model_id=self.model_id)
         else:
             raise ValueError(f"Unknown provider: {self.provider}")
 

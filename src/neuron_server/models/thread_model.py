@@ -9,26 +9,6 @@ from typing import Literal, Self, Any
 from pydantic import field_serializer
 
 
-def get_context_prompt(context: str) -> str:
-    if not context or len(context.strip()) == 0:
-        return ""
-    return f"""\
-The user has provided the following custom instructions for this specific conversation. Use them to guide your response:
-\"\"\"
-{context}
-\"\"\"""".strip()
-
-
-def get_memory_prompt(memory: str) -> str:
-    if not memory or len(memory.strip()) == 0:
-        return ""
-    return f"""\
-Based this thread's conversation, you determined the following was important to remember:
-\"\"\"
-{memory}
-\"\"\"""".strip()
-
-
 class ThreadModel(BaseModel):
     id: UUID = Field(default_factory=lambda: uuid4())
     name: str = Field(description="The name of the thread", default="")
@@ -61,24 +41,6 @@ class ThreadModel(BaseModel):
     @field_serializer("created_at", "updated_at")
     def parse_date(self, v: datetime) -> str:
         return v.astimezone().isoformat()
-
-    def get_context_prompt(self) -> str:
-        if not self.context or len(self.context.strip()) == 0:
-            return ""
-        return f"""\
-    The user has provided the following custom instructions for this specific conversation. Use them to guide your response:
-    \"\"\"
-    {self.context}
-    \"\"\"""".strip()
-
-    def get_memory_prompt(self) -> str:
-        if not self.memory or len(self.memory.strip()) == 0:
-            return ""
-        return f"""\
-    Based on past conversations you determined the following was important to remember:
-    \"\"\"
-    {self.memory}
-    \"\"\"""".strip()
 
     @classmethod
     async def create(
@@ -150,6 +112,8 @@ class ThreadModel(BaseModel):
     ) -> None:
         async with get_session() as session:
             thread = await session.get(Thread, self.id)
+            if not thread:
+                raise ValueError("Thread not found")
             thread.name = self.name
             thread.context = self.context
             thread.memory = self.memory

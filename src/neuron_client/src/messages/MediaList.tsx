@@ -1,5 +1,4 @@
 import { useRef, useEffect } from "react";
-import { Message } from "../slices/messagesSlice";
 import { cn } from "@/lib/utils";
 import AudioPlayer from "./AudioPlayer";
 import {
@@ -9,33 +8,23 @@ import {
 } from "@/components/ui/tooltip";
 import Content from "./Content";
 import ImageContent from "./ImageContent";
-
-interface MediaListProps {
-  className?: string;
-  messages: Message[];
-  threadId: string;
+import { Message } from "../slices/messagesSlice";
+interface MediaItem {
+  key: string;
+  type: string;
+  url: string;
+  messageId: string;
+  content?: string;
+  alt?: string;
+  toolCallId?: string;
 }
 
-export function MediaList({ className, messages, threadId }: MediaListProps) {
-  const endRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    // Scroll to the bottom of the messages when they change
-    if (endRef.current) {
-      endRef.current.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [
-    messages.length,
-    messages.length > 0 && messages[messages.length - 1].content,
-    endRef.current,
-    threadId,
-  ]);
-
+export function getMediaItems(messages: Message[]): MediaItem[] {
   // Extract media URLs from markdown image syntax and HTML audio/video tags
   const mediaItems = messages
     .filter((message) => message.type === "tool")
     .flatMap((message) => {
-      const items = [];
+      const items: MediaItem[] = [];
 
       const body = Array.isArray(message.content)
         ? message.content
@@ -45,18 +34,18 @@ export function MediaList({ className, messages, threadId }: MediaListProps) {
         : message.content;
 
       // Find markdown image tags ![alt](url)
-      const imageMatches = body.matchAll(/!\[([^\]]*)\]\(([^)]+)\)/g);
+      const imageMatches = body.matchAll(/\[([^\]]*)\]\(([^)]+)\)/g);
       for (const match of imageMatches) {
         items.push({
-          type: "image",
+          key: `${message.tool_call_id}-${match[2]}`,
+          type: /\.(jpeg|jpg|png|gif|svg)$/.test(match[2]) ? "image" : "link",
           alt: match[1],
           url: match[2],
-          toolCallId: message.tool_call_id,
+          toolCallId: `${message.tool_call_id}-${match[2]}`,
           messageId: message.id,
-          message: message,
-          // timestamp: message.created_at,
         });
       }
+
       // Find HTML audio/video tags with direct src or nested source tags
       const mediaMatches = body.matchAll(
         /<(audio|video)(?:[^>]*src="([^"]+)"[^>]*>|[^>]*>(?:[^<]*<source[^>]*src="([^"]+)"[^>]*>)?)/g
@@ -67,10 +56,11 @@ export function MediaList({ className, messages, threadId }: MediaListProps) {
         const sourceSrc = match[3];
         if (directSrc || sourceSrc) {
           items.push({
+            key: `${message.tool_call_id}-${directSrc || sourceSrc}`,
             type,
             url: directSrc || sourceSrc,
             messageId: message.id,
-            content: message.content,
+            content: typeof message.content === "string" ? message.content : "",
           });
         }
       }
@@ -78,17 +68,38 @@ export function MediaList({ className, messages, threadId }: MediaListProps) {
       return items;
     });
 
-  const uniqueMediaItems = Array.from(
-    new Map(mediaItems.map((item) => [item.toolCallId, item])).values()
+  return Array.from(
+    new Map(mediaItems.map((item) => [item.key, item])).values()
   );
+}
+
+interface MediaListProps {
+  className?: string;
+  mediaItems: MediaItem[];
+  threadId: string;
+}
+
+export function MediaList({ className, mediaItems, threadId }: MediaListProps) {
+  const endRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    // Scroll to the bottom of the messages when they change
+    if (endRef.current) {
+      endRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [
+    mediaItems.length,
+    mediaItems.length > 0 && mediaItems[mediaItems.length - 1].content,
+    endRef.current,
+    threadId,
+  ]);
 
   return (
-    <div className={cn("flex flex-col m-2 overflow-y-auto", className)}>
-      <div className="text-lg font-semibold p-4 ">Media</div>
+    <div className={cn("flex flex-col m-2", className)}>
       <div className="flex flex-1 flex-wrap relative">
-        <div className="flex-1 absolute top-0 left-0 right-0 bottom-0 p-4 overflow-y-auto">
-          {uniqueMediaItems.map((item) => (
-            <div key={item.messageId} className="mb-4">
+        <div className="flex-1">
+          {mediaItems.map((item) => (
+            <div key={item.key} className="mb-4">
               {item.type === "image" ? (
                 <ImageContent
                   url={item.url}
@@ -96,6 +107,11 @@ export function MediaList({ className, messages, threadId }: MediaListProps) {
                   width={1024}
                   height={1024}
                 />
+              ) : null}
+              {item.type === "link" ? (
+                <a href={item.url} target="_blank" rel="noopener noreferrer">
+                  {item.alt}
+                </a>
               ) : null}
               {item.type === "audio" ? (
                 <Tooltip delayDuration={0}>
@@ -124,7 +140,9 @@ export function MediaList({ className, messages, threadId }: MediaListProps) {
             </div>
           ))}
           {mediaItems.length === 0 && (
-            <div className="text-center text-gray-500 text-sm">No media</div>
+            <div className="text-center text-gray-500 text-sm">
+              No artifacts
+            </div>
           )}
           <div ref={endRef} />
         </div>

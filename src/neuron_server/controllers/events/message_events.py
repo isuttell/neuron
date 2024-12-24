@@ -31,3 +31,7 @@ class PostMessage(IncomingEvent):
     thread_id: UUID
     prompt: str
     personality_id: UUID
+
+
+class CancelMessage(IncomingEvent):
+    thread_id: UUID

@@ -14,12 +14,14 @@ interface ContentProps {
   className?: string;
   content: string;
   preload?: string;
+  onPromptClick?: (prompt: string) => void;
 }
 
 const Content: React.FC<ContentProps> = ({
   className,
   content,
   preload = "auto",
+  onPromptClick,
 }) => {
   return (
     <ReactMarkdown
@@ -53,6 +55,22 @@ const Content: React.FC<ContentProps> = ({
             />
           );
         },
+        //@ts-ignore
+        prompt({ node, className, children, ...props }) {
+          return (
+            <span
+              onClick={() => onPromptClick?.(children)}
+              className={cn(
+                onPromptClick &&
+                  "cursor-pointer border-b text-accent hover:text-primary transition-colors duration-300 ease-in-out",
+                className
+              )}
+              {...props}
+            >
+              {children}
+            </span>
+          );
+        },
         code({ node, className, children, ...props }) {
           const match = /language-(\w+)/.exec(className || "");
           if (match && match[1] === "thinking") {
@@ -66,16 +84,22 @@ const Content: React.FC<ContentProps> = ({
             );
           }
           return match ? (
-            <SyntaxHighlighter
-              children={String(children).replace(/\n$/, "")}
-              // @ts-ignore
-              style={oneDark}
-              language={match[1]}
-              PreTag="div"
-              {...props}
-            />
+            <>
+              {/* {match[1] === "python" ? <div className="">Run Code</div> : null} */}
+              <SyntaxHighlighter
+                children={String(children).replace(/\n$/, "")}
+                // @ts-ignore
+                style={oneDark}
+                language={match[1]}
+                PreTag="div"
+                {...props}
+              />
+            </>
           ) : (
-            <code className={`${className} whitespace-pre-line`} {...props}>
+            <code
+              className={`${className || ""} whitespace-pre-line`}
+              {...props}
+            >
               {children}
             </code>
           );

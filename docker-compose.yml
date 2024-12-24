@@ -11,6 +11,19 @@ services:
       - POSTGRES_DB=neuron
       - POSTGRES_USER=neuron
 
+  # riza:
+  #   restart: unless-stopped
+  #   image: rizaio/code-interpreter
+  #   environment:
+  #     - RIZA_API_KEY=${RIZA_API_KEY}
+
+  code:
+    restart: unless-stopped
+    image: 192.168.1.160:5000/code-interpreter:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.code
+
   redis:
     restart: unless-stopped
     image: redis:7.4-alpine

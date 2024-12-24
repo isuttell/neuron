@@ -3,6 +3,7 @@ from neuron_server.event_router import EventRouter
 from neuron_server.models import ThreadModel
 from neuron_server.controllers.events.message_events import (
     PostMessage,
+    CancelMessage,
 )
 from neuron_server.controllers.events.message_events import (
     ThreadMessage,
@@ -11,6 +12,7 @@ from uuid import UUID, uuid4
 from neuron_server.llms.agent import aget_state
 from werkzeug.exceptions import NotFound
 import neuron_server.llms.agent as agent
+from neuron_server.pubsub import pubsub
 
 router = EventRouter()
 
@@ -37,3 +39,11 @@ async def get_thread_messages(thread_id: UUID):
 @router.on(PostMessage)
 async def apost_message(event: PostMessage) -> None:
     await agent.astream(event.thread_id, event.personality_id, event.prompt)
+
+
+@router.on(CancelMessage)
+async def acancel_message(event: CancelMessage) -> None:
+    await pubsub.publish(
+        "cancel",
+        event.thread_id,
+    )

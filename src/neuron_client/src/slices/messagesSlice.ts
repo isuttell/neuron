@@ -11,6 +11,12 @@ interface Content {
 
 type MessageRole = "ai" | "human" | "tool" | "system";
 
+interface UsageMetadata extends Record<string, any> {
+  input_tokens?: number;
+  output_tokens?: number;
+  total_tokens?: number;
+}
+
 export interface Message {
   id: string;
   name?: string;
@@ -22,6 +28,7 @@ export interface Message {
   tool_call_id?: string;
   additional_kwargs?: any;
   response_metadata?: any;
+  usage_metadata?: UsageMetadata;
 }
 
 interface IncomingMessage extends Omit<Message, "created_at" | "updated_at"> {

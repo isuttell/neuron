@@ -11,6 +11,7 @@ import { Message } from "@/slices/messagesSlice";
 import Content from "./Content";
 interface MessageItemProps {
   message: Message;
+  onPromptClick?: (prompt: string) => void;
 }
 
 // const getFuzzyTime = (date: Date) => {
@@ -48,8 +49,11 @@ const getStatusMessage = (status: string) => {
 };
 
 const MessageItem: React.FC<MessageItemProps> = ({
-  message: { type: role, content, status = undefined },
+  message,
+  onPromptClick,
 }) => {
+  const { type: role, content, status = undefined } = message;
+
   const body = Array.isArray(content)
     ? content
         .filter((item) => item.type === "text")
@@ -68,17 +72,17 @@ const MessageItem: React.FC<MessageItemProps> = ({
           <TooltipTrigger asChild>
             <div
               className={`w-10 h-10 mr-4 ${
-                role === "human" ? "bg-accent" : "bg-primary"
+                role === "human" ? "bg-primary" : "bg-accent"
               } rounded-full flex items-center justify-center min-w-[40px]`}
             >
               {role === "human" ? (
-                <User className="text-white" size={20} />
+                <User className="text-primary-foreground" size={20} />
               ) : null}
               {role === "ai" || role === "system" ? (
-                <Bot className="text-black" size={20} />
+                <Bot className="text-accent-foreground" size={20} />
               ) : null}
               {role === "tool" ? (
-                <Hammer className="text-black" size={20} />
+                <Hammer className="text-accent-foreground" size={20} />
               ) : null}
             </div>
           </TooltipTrigger>
@@ -91,6 +95,7 @@ const MessageItem: React.FC<MessageItemProps> = ({
           <Content
             content={body}
             preload={status === "streaming" ? "none" : "auto"}
+            onPromptClick={onPromptClick}
           />
         ) : (
           <div className="space-y-2 flex-1">

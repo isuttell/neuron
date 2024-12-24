@@ -4,11 +4,11 @@ import { Label } from "@/components/ui/label";
 import { useParams } from "react-router-dom";
 import { useState } from "react";
 import { useAppSelector } from "../hooks";
-import { getSocket } from "../slices/socketSlice";
 import { CornerDownLeft } from "lucide-react";
 import { getActivePersonalityId } from "../slices/personalitiesSlice";
 import { Spinner } from "@/components/ui/spinner";
-
+import { sendMessage } from "../actions/messageActions";
+import { useAppDispatch } from "../hooks";
 interface MessageFormProps {
   status: string;
   disabled?: boolean;
@@ -60,7 +60,7 @@ export default function MessageForm({
   onSubmit,
   className = "",
 }: MessageFormProps) {
-  const socket = useAppSelector(getSocket);
+  const dispatch = useAppDispatch();
   const activePersonalityId = useAppSelector(getActivePersonalityId);
   const [value, setValue] = useState("");
   const { threadId } = useParams();
@@ -71,16 +71,17 @@ export default function MessageForm({
       | React.KeyboardEvent<HTMLTextAreaElement>
   ) => {
     e.preventDefault();
-    if (!socket || value.trim().length === 0 || !activePersonalityId) {
+    if (value.trim().length === 0 || !activePersonalityId || !threadId) {
       return;
     }
     onSubmit(value);
-    socket.sendMessage({
-      type: "PostMessage",
-      thread_id: threadId,
-      prompt: value,
-      personality_id: activePersonalityId,
-    });
+    dispatch(
+      sendMessage({
+        threadId,
+        prompt: value,
+        personalityId: activePersonalityId,
+      })
+    );
     setValue("");
   };
   return (

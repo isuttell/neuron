@@ -1,29 +1,37 @@
 from langchain.tools import BaseTool
-from typing import Type, Optional, List, Dict, Literal
+from typing import Type, Optional, List, Literal
 from pydantic import BaseModel, Field
 import argparse
 from neuron_server.logger import logger
-import pyvo
+from pyvo.dal import DALResults, TAPService
 import math
-import pandas as pd
-
-tap_service = pyvo.dal.TAPService("http://simbad.u-strasbg.fr/simbad/sim-tap")
+from pandas import DataFrame
+import time
 
 
 class AstroTargetSearchToolArgs(BaseModel):
     ra: float = Field(description="RA in degrees")
     dec: float = Field(description="Dec in degrees")
     radius: float = Field(
-        description="Radius to search within in degrees of the RA/Dec. Min 10, Max 90"
+        description="Radius to search within in degrees of the RA/Dec",
+        default=45,
+        gte=10,
+        lte=90,
     )
-    limit: Optional[int] = Field(50, description="The max number of items to return")
+    limit: Optional[int] = Field(
+        50, description="The max number of items to return", ge=0, lte=500
+    )
     min_flux: Optional[float] = Field(
         6.0,
         description="The inclusive minimum relative magnitude (astronomy) to return. Values larger than 6 are too dim for the naked human eye.",
+        lte=35,  # JWST limit
+        gte=-28,  # SUN limit
     )
     max_flux: Optional[float] = Field(
         22.0,
         description="The inclusive maximum relative magnitude (astronomy) to return. Values greater than 22 are too dim for the capabilities of the imaging telescope.",
+        lte=35,  # JWST limit
+        gte=-28,  # SUN limit
     )
     otypes: Optional[List[str]] = Field(
         ["GNe"],
@@ -35,7 +43,6 @@ class AstroTargetSearchToolArgs(BaseModel):
         "nbref",
         description="The fields to order the results by. 'nbref' is the number of references, 'min_flux' is the minimum flux, 'galdim_majaxis' is the major axis, and 'galdim_minaxis' is the minor axis.",
     )
-
     order_direction: Optional[Literal["ASC", "DESC"]] = Field(
         "DESC",
         description="The direction to order the results by",
@@ -81,6 +88,8 @@ Queries Simbad astronomical database to find celestial objects within a specifie
 
     args_schema: Type[AstroTargetSearchToolArgs] = AstroTargetSearchToolArgs
 
+    simbad_service: str = "http://simbad.u-strasbg.fr/simbad/sim-tap"
+
     def _run(
         self,
         ra: float,
@@ -95,91 +104,104 @@ Queries Simbad astronomical database to find celestial objects within a specifie
         ] = "nbref",
         order_direction: Optional[Literal["ASC", "DESC"]] = "DESC",
     ) -> str:
-        assert len(otypes) > 0, "otypes must be provided"
+        try:
+            assert len(otypes) > 0, "otypes must be provided"
 
-        otypes_str = ", ".join([f"'{otype}'" for otype in otypes])
-        otype_query = (
-            f"basic.otype = '{otypes[0]}..'"
-            if len(otypes) == 1
-            else f"basic.otype IN ({otypes_str})"
+            otypes_str = ", ".join([f"'{otype}'" for otype in otypes])
+            otype_query = (
+                f"basic.otype = '{otypes[0]}..'"
+                if len(otypes) == 1
+                else f"basic.otype IN ({otypes_str})"
+            )
+            query = f"""
+    SELECT TOP {limit}
+        basic.main_id,
+        basic.nbref,
+        basic.otype,
+        basic.morph_type,
+        basic.galdim_majaxis,
+        basic.galdim_majaxis_prec,
+        basic.galdim_minaxis,
+        basic.galdim_minaxis_prec,
+        basic.sp_type,
+        basic.ra,
+        basic.ra_prec,
+        basic.dec,
+        basic.dec_prec,
+        MIN(flux.flux) AS min_flux,
+        MAX(flux.flux) AS max_flux,
+        AVG(flux.flux) AS avg_flux,
+        basic.update_date
+    FROM basic
+    LEFT JOIN flux ON basic.oid = flux.oidref
+    WHERE
+        {otype_query}
+        AND CONTAINS(POINT('ICRS', RA, DEC), CIRCLE('ICRS', {ra}, {dec}, {radius})) = 1
+        AND (
+            (
+                flux.flux <= {float(max_flux)}
+                AND flux.flux >= {float(min_flux)}
+            )
+            OR flux.flux IS NULL
         )
-        query = f"""
-SELECT TOP {limit}
-    basic.main_id,
-    basic.nbref,
-    basic.otype,
-    basic.morph_type,
-    basic.galdim_majaxis,
-    basic.galdim_majaxis_prec,
-    basic.galdim_minaxis,
-    basic.galdim_minaxis_prec,
-    basic.sp_type,
-    basic.ra,
-    basic.ra_prec,
-    basic.dec,
-    basic.dec_prec,
-    MIN(flux.flux) AS min_flux,
-    MAX(flux.flux) AS max_flux,
-    AVG(flux.flux) AS avg_flux,
-    basic.update_date
-FROM basic
-LEFT JOIN flux ON basic.oid = flux.oidref
-WHERE
-    {otype_query}
-    AND CONTAINS(POINT('ICRS', RA, DEC), CIRCLE('ICRS', {ra}, {dec}, {radius})) = 1
-    AND (
-        (
-            flux.flux <= {float(max_flux)}
-            AND flux.flux >= {float(min_flux)}
-        )
-        OR flux.flux IS NULL
-    )
-    AND basic.nbref > 2
-GROUP BY basic.main_id, basic.nbref, basic.otype, basic.morph_type, basic.galdim_majaxis, basic.galdim_majaxis_prec, basic.galdim_minaxis, basic.galdim_minaxis_prec, basic.sp_type, basic.ra, basic.dec, basic.ra_prec, basic.dec_prec, basic.update_date
-ORDER BY {order_by} {order_direction}
-        """.strip()
-        # Execute the query
-        logger.debug(f"Querying:\n{query}")
-        query_results: pyvo.dal.DALResults = tap_service.search(query)
+        AND basic.nbref > 2
+    GROUP BY basic.main_id, basic.nbref, basic.otype, basic.morph_type, basic.galdim_majaxis, basic.galdim_majaxis_prec, basic.galdim_minaxis, basic.galdim_minaxis_prec, basic.sp_type, basic.ra, basic.dec, basic.ra_prec, basic.dec_prec, basic.update_date
+    ORDER BY {order_by} {order_direction}
+            """.strip()
+            # Execute the query
+            logger.debug(
+                f"Querying simbad for {otypes_str} objects within {radius} degrees of {ra} {dec}..."
+            )
+            start_time = time.perf_counter()
+            tap_service = TAPService(self.simbad_service)
 
-        results: List[Dict[str, str]] = []
-        for row in query_results:
-            morph_type = row["morph_type"] if row["morph_type"] else ""
-            ra = str(round(row["ra"], row["ra_prec"]))
-            dec = str(round(row["dec"], row["dec_prec"]))
-            majaxis = (
-                str(round(row["galdim_majaxis"], row["galdim_majaxis_prec"]))
-                if row["galdim_majaxis"] and not math.isnan(row["galdim_majaxis"])
-                else " "
+            query_results: DALResults = tap_service.search(query)
+            duration = time.perf_counter() - start_time
+            assert isinstance(query_results, DALResults)
+            logger.debug(f"Found {len(query_results)} results - {duration:.2f}s")
+            # Convert the results to a pandas DataFrame for easy formatting and return the results as a markdown table
+            df = DataFrame(
+                [
+                    {
+                        "Simbad ID (main_id)": row["main_id"],
+                        "References": row["nbref"],
+                        "Object Type": row["otype"],
+                        "Morphology": row.get("morph_type"),
+                        "Angular Size Major Axis (arcmin)": (
+                            round(row["galdim_majaxis"], row["galdim_majaxis_prec"])
+                            if row.get("galdim_majaxis")
+                            and not math.isnan(row["galdim_majaxis"])
+                            else None
+                        ),
+                        "Angular Size Minor Axis (arcmin)": (
+                            round(row["galdim_minaxis"], row["galdim_minaxis_prec"])
+                            if row.get("galdim_minaxis")
+                            and not math.isnan(row["galdim_minaxis"])
+                            else None
+                        ),
+                        "Spectral Type (sp_type)": row.get("sp_type"),
+                        "Flux": (
+                            round(row["min_flux"], 6) if row.get("min_flux") else None
+                        ),
+                        "RA°": round(row["ra"], row["ra_prec"]),
+                        "DEC°": round(row["dec"], row["dec_prec"]),
+                        "Update Date": row["update_date"],
+                    }
+                    for row in query_results
+                ]
             )
-            minaxis = (
-                str(round(row["galdim_minaxis"], row["galdim_minaxis_prec"]))
-                if row["galdim_minaxis"] and not math.isnan(row["galdim_minaxis"])
-                else ""
-            )
-            sp_type = row["sp_type"] if row["sp_type"] else ""
-            flux = str(round(row["min_flux"], 6)) if row["min_flux"] else ""
-            results.append(
-                {
-                    "main_id": row["main_id"],
-                    "nbref": row["nbref"],
-                    "Object Type": row["otype"],
-                    "Morphology": morph_type,
-                    "Angular Size Major Axis (arcmin)": majaxis,
-                    "Angular Size Minor Axis (arcmin)": minaxis,
-                    "Spectral Type": sp_type,
-                    "Flux": flux,
-                    "RA°": ra,
-                    "DEC°": dec,
-                    "Update Date": row["update_date"],
-                }
-            )
-        df = pd.DataFrame(results)
-        return f"""
-Found {len(query_results)} {otypes_str} objects with flux between {min_flux} and {max_flux} within a {radius} degree radius:
+            return f"""
+    # Simbad Search Results
 
-{df.to_markdown(index=False)}
-""".strip()
+    Found {len(query_results)} {otypes_str} objects with flux between {min_flux} and {max_flux} within a {radius} degree radius. Search took {duration:.2f} seconds.
+
+    ## Results
+
+    {df.to_markdown() if df.size > 0 else 'No results found'}
+    """.strip()
+        except Exception as e:
+            logger.exception(e)
+            raise e
 
 
 def main():
@@ -187,7 +209,7 @@ def main():
     parser.add_argument("--ra", type=float, help="RA", default=10.684708333333333)
     parser.add_argument("--dec", type=float, help="Dec", default=41.268750000000004)
     parser.add_argument("--radius", type=float, help="Radius in degrees", default=10)
-    parser.add_argument("--otype", type=str, help="Object type", default="G")
+    parser.add_argument("--otype", type=str, help="Object type", default="HII")
     args = parser.parse_args()
 
     tool = AstroTargetSearchTool()

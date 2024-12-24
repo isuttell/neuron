@@ -1,4 +1,4 @@
-import { Home, CircleUser, Package2, GalleryThumbnails } from "lucide-react";
+import { Home, CircleUser, GalleryThumbnails } from "lucide-react";
 import { useEffect } from "react";
 import { Outlet, Link, NavLink } from "react-router-dom";
 import { useAppSelector } from "../hooks";
@@ -6,7 +6,7 @@ import { getConnectionStatus, getSocket } from "../slices/socketSlice";
 import { Spinner } from "@/components/ui/spinner";
 import { useAppDispatch } from "../hooks";
 import NavThreads from "../threads/NavThreads";
-
+import logo from "@/assets/logo.svg";
 const links = [
   {
     to: "/",
@@ -42,7 +42,7 @@ export default function Root() {
               to="/"
               className="flex text-white items-center gap-2 font-semibold"
             >
-              <Package2 className="h-6 w-6" />
+              <img src={logo} alt="Neuron" className="size-6" />
               <span className="">Neuron</span>
             </Link>
           </div>

@@ -29,7 +29,11 @@ export const fetchThreadsByPersonality = createAsyncThunk(
 export const createThread = createAsyncThunk(
   "threads/createThread",
   async (
-    { personalityId, prompt }: { personalityId: string; prompt?: string },
+    {
+      personalityId,
+      prompt,
+      greeting,
+    }: { personalityId: string; prompt?: string; greeting?: boolean },
     thunkAPI
   ) => {
     try {
@@ -40,7 +44,8 @@ export const createThread = createAsyncThunk(
         },
         body: JSON.stringify({
           personality_id: personalityId,
-          prompt: prompt,
+          prompt,
+          greeting,
         }),
       });
       const data = await response.json();

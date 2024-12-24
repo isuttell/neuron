@@ -1,31 +1,27 @@
-from langchain_anthropic import ChatAnthropic
+from langchain_cohere import ChatCohere
 from typing import Optional, Literal
 from neuron_server.llms.llm import LLM
 from neuron_server.llms.tools import default_tools
 
 
-class AnthropicLLM(LLM):
-    provider: Literal["anthropic"] = "anthropic"
+class CohereLLM(LLM):
+    provider: Literal["cohere"] = "cohere"
 
     def __init__(
         self,
-        model_id: Optional[str] = "claude-3-5-sonnet-20241022",
+        model_id: Optional[str] = None,
     ):
-        model = ChatAnthropic(
-            model=model_id,
+        model = ChatCohere(
             temperature=1,
             streaming=True,
-            max_tokens=8192,
         )
-        title_model = ChatAnthropic(
-            model="claude-3-5-haiku-20241022",
-            temperature=1,
+        title_model = ChatCohere(
+            temperature=0.6,
             max_tokens=42,
         )
-        memory_model = ChatAnthropic(
-            model=model_id,
+        memory_model = ChatCohere(
             temperature=0.3,
-            max_tokens=8192,
+            max_tokens=4096,
         )
         super().__init__(
             model=model,

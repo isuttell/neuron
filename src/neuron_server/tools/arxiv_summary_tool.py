@@ -1,5 +1,5 @@
 from langchain.tools import BaseTool
-from neuron_server.config import config
+from neuron_server.config import config as neuron_config
 from neuron_server.logger import logger
 import arxiv
 import os
@@ -63,7 +63,9 @@ This tool provides detailed, page-by-page summaries of research articles by thei
             article = next(client.results(search), None)
             if not article:
                 return "No article found"
-            article_directory = f"{config.static_folder}/arxiv/{article.get_short_id()}"
+            article_directory = (
+                f"{neuron_config.static_folder}/arxiv/{article.get_short_id()}"
+            )
             if not os.path.exists(article_directory):
                 os.makedirs(article_directory)
             comment = article.comment.replace("\n", "<br />") if article.comment else ""

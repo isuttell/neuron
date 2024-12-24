@@ -5,6 +5,7 @@ RUN apt-get update && apt-get install -yqq \
   texlive-latex-extra \
   texlive-fonts-recommended \
   dvipng \
+  cm-super \
   && \
   apt-get clean && rm -rf /var/lib/apt/lists/*
 
@@ -24,11 +25,12 @@ RUN python -m venv /venv && \
   astroplan \
   astropy \
   starplot \
-  pillow
+  pillow \
+  opencv-python-headless
 
 WORKDIR /app
 
-RUN useradd -m code -d /app
+RUN useradd -m code -d /app && chown -R code /app
 
 USER code
 
@@ -37,6 +39,14 @@ ENV LANG="C.UTF-8"
 ENV LC_ALL="C.UTF-8"
 ENV PYTHONIOENCODING="utf-8"
 ENV MPLCONFIGDIR="/app"
+ENV HOME="/app"
+
+RUN /venv/bin/python -c "from astropy.utils.data import download_file; \
+  urls = [ \
+  'https://data.nanograv.org/static/data/ephem/de405.bsp', \
+  'https://data.nanograv.org/static/data/ephem/de430t.bsp', \
+  ]; \
+  [download_file(url, cache=True) for url in urls]"
 
 ENTRYPOINT [ "/venv/bin/python" ]
 

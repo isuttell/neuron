@@ -19,7 +19,7 @@ class ChartToolArgs(BaseModel):
         description="""
 Python code to generate a chart. Must be a valid python code string and always include the data hard coded in the code. You may only write to the  {directory} directory. Save results as "{directory}/chart.png". Must be in utf-8 encoding. All variables must be defined. Use coding best practices. Stdout is returned so use it to return any information to the user in markdown. This is in a headless environment so do not use any GUI libraries. Latex is not installed so do not use it.
 
-The following pip packages are installed and available to use when needed:
+These are the only pip modules installed and available:
 adjustText
 astroplan
 astropy
@@ -87,7 +87,7 @@ Guidelines:
 - Returns a markdown link to the chart to show the user
 - Returns stdout from the python code execution
 - Charts should be print publication quality
-- Do not make visualizations interactive or animated. They must be static.
+- Do not make visualizations interactive. Must return a png
 - When using the "science" style, import scienceplots first
 - The UI is dark so pick dark mode friendly colors by default
 """.strip()

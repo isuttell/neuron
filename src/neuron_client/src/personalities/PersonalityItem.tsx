@@ -15,7 +15,7 @@ import {
   getActivePersonality,
 } from "@/slices/personalitiesSlice";
 import { cn } from "@/lib/utils";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 interface PersonalityItemProps {
   personality: Personality;
@@ -27,6 +27,7 @@ const PersonalityItem: React.FC<PersonalityItemProps> = ({
   personality,
 }) => {
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   const activePersonality = useAppSelector(getActivePersonality);
   const isActive = activePersonality?.id === personality.id;
   return (
@@ -50,6 +51,7 @@ const PersonalityItem: React.FC<PersonalityItemProps> = ({
             dispatch(
               setActivePersonality(isActive ? undefined : personality.id)
             );
+            navigate(`/`);
           }}
         >
           {isActive ? "Deactivate" : "Activate"}

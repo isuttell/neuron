@@ -23,18 +23,17 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Textarea } from "@/components/ui/textarea";
 interface EditPersonalityDialogProps {
   personality?: Personality;
+  default_tools?: string[];
 }
 
 const ToolSetLabels = {
   arxiv: "Arxiv",
   astro: "Astro",
-  charts: "Charts",
   code_interpreter: "Code Interpreter",
   dice: "Dice",
   hd2: "Hell Divers 2",
   homeassistant: "Smart Home",
   image: "Image Generation",
-  nasa: "NASA",
   notifications: "Notifications",
   search: "Search",
   tts: "Audio Generation",
@@ -43,6 +42,7 @@ const ToolSetLabels = {
 
 const EditPersonalityDialog: React.FC<EditPersonalityDialogProps> = ({
   personality,
+  default_tools = ["image", "search", "tts"],
 }) => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
@@ -108,7 +108,7 @@ const EditPersonalityDialog: React.FC<EditPersonalityDialogProps> = ({
     setToolSet((personality?.tool_set || "").split("+"));
     setDescription(personality?.description || "");
   }, [open]);
-
+  const active_tools = tool_set.length > 0 ? tool_set : default_tools;
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -159,16 +159,24 @@ const EditPersonalityDialog: React.FC<EditPersonalityDialogProps> = ({
               className="flex-wrap gap-2 justify-start"
               type="multiple"
               variant="outline"
-              defaultValue={tool_set}
+              defaultValue={active_tools}
               onValueChange={(value) => {
-                setToolSet(value.filter((val) => val !== ""));
+                setToolSet(
+                  value.filter(
+                    (val) =>
+                      val !== "" && Object.keys(ToolSetLabels).includes(val)
+                  )
+                );
               }}
             >
               {Object.keys(ToolSetLabels).map((option) => (
                 <ToggleGroupItem
                   key={option}
                   value={option}
-                  defaultChecked={tool_set.includes(option)}
+                  defaultChecked={active_tools.includes(option)}
+                  variant={
+                    default_tools.includes(option) ? "default" : "outline"
+                  }
                 >
                   {ToolSetLabels[option as keyof typeof ToolSetLabels]}
                 </ToggleGroupItem>

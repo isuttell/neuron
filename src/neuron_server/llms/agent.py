@@ -12,7 +12,7 @@ from neuron_server.database import pool
 from neuron_server.llms.llm import LLM
 from neuron_server.models.thread_model import ThreadModel
 from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
-from neuron_server.pubsub import pubsub
+from neuron_server.pubsub import client as pubsub_client, pubsub
 from neuron_server.controllers.events.message_events import (
     MessageEvent,
     PartialMessageEvent,
@@ -228,6 +228,14 @@ async def astream(
                 thread.name = data["output"]
                 await thread.save()
             elif kind == "on_chat_model_end":
+                output: AIMessage = data["output"]
+                if not "update_title" in active_runs.values():
+                    # @TODO: This is a hack
+                    message = ThreadMessage(
+                        **output.model_dump(),
+                        thread_id=thread.id,
+                    )
+                    await pubsub.publish("app", MessageEvent(message=message))
                 await update_thread_status(thread, "thinking")
             elif kind == "error":
                 logger.error(data)

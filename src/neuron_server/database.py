@@ -1,11 +1,11 @@
 from typing import List
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, JSON, func
-from sqlalchemy.dialects.postgresql import UUID as pgUUID
+from sqlalchemy.dialects.postgresql import UUID as pgUUID, JSONB
+from pgvector.sqlalchemy import Vector
 from sqlalchemy.orm import relationship, Mapped, sessionmaker
 import uuid
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.ext.hybrid import hybrid_property
 from neuron_server.config import config
 from sqlalchemy.pool import NullPool
 from psycopg_pool import AsyncConnectionPool, AsyncNullConnectionPool
@@ -94,6 +94,28 @@ class Message(Base):
     updated_at = Column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
+
+
+class LangchainPGCollection(Base):
+    __tablename__ = "langchain_pg_collection"
+
+    uuid = Column(pgUUID, primary_key=True, nullable=False)
+    name = Column(String, nullable=False, unique=True)
+    cmetadata = Column(JSON, nullable=True)
+
+
+class LangchainPGEmbedding(Base):
+    __tablename__ = "langchain_pg_embedding"
+
+    id = Column(String, primary_key=True)
+    collection_id = Column(
+        pgUUID,
+        ForeignKey("langchain_pg_collection.uuid", ondelete="CASCADE"),
+        nullable=True,
+    )
+    embedding = Column(Vector(), nullable=True)
+    document = Column(String, nullable=True)
+    cmetadata = Column(JSONB, nullable=True)
 
 
 # Create async session maker

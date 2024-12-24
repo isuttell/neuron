@@ -5,6 +5,7 @@ from neuron_server.llms.agent import execute_agent
 from pydantic import BaseModel
 from typing import Optional
 from werkzeug.exceptions import BadRequest
+from neuron_server.tools.code_interpreter_api import run_code_interpreter
 
 blueprint = Blueprint(
     "webhooks",
@@ -32,3 +33,26 @@ async def prompt():
     )
     logger.info(f"home_prompt.response={content}")
     return {"status": "success", "content": content}
+
+
+class CodeInterpreterRequest(BaseModel):
+    python_code: str
+
+
+@blueprint.post("/code-interpreter")
+async def code_interpreter():
+    body = await request.get_json()
+    if not body:
+        raise BadRequest("No body provided")
+    payload = CodeInterpreterRequest(**body)
+    status = "success"
+    content = ""
+    try:
+        content, _ = await run_code_interpreter(
+            python_code=payload.python_code,
+        )
+    except Exception as e:
+        status = "error"
+        content = str(e)
+    logger.info(f"code_interpreter.response={content}")
+    return {"status": status, "content": content}

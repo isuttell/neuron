@@ -16,7 +16,6 @@ from neuron_server.tools.arxiv_summary_tool import ArxivSummaryTool
 from neuron_server.tools.arxiv_tool import ArxivTool
 from neuron_server.tools.dalle_tool import DalleTool
 from neuron_server.tools.elevenlabs_tts_tool import ElevenLabsTTSTool
-from neuron_server.tools.elevenlabs_soundeffects_tool import ElevenLabsSoundEffectsTool
 from neuron_server.tools.ffmpeg_tool import FFmpegTool
 from neuron_server.tools.homeassistant_sensor_tool import HomeAssistantSensorTool
 from neuron_server.tools.homeassistant_service_tool import HomeAssistantServiceTool
@@ -41,27 +40,15 @@ from neuron_server.tools.hd2_galactic_war_report_tool import (
     HD2GalacticWarReportTool,
 )
 from neuron_server.tools.hd2_liberation_history_tool import HD2LiberationHistoryTool
-from langchain_community.agent_toolkits.nasa.toolkit import NasaToolkit
-from langchain_community.utilities.nasa import NasaAPIWrapper
 from langchain_community.utilities.wolfram_alpha import WolframAlphaAPIWrapper
 from langchain_community.tools import WolframAlphaQueryRun
-from neuron_server.tools.chart_tool import ChartTool
-from neuron_server.tools.code_intrepreter_tool import CodeInterpreterTool
+from neuron_server.tools.code_interpreter_tool import CodeInterpreterTool
 
 homeassistant_api = HomeAssistantAPI(token=config.homeassistant.token)
 
-nasa_toolkit = NasaToolkit.from_nasa_api_wrapper(NasaAPIWrapper())
-
-nasa_tools = nasa_toolkit.get_tools()
-for tool in nasa_tools:
-    # Make names compatible with the rest of the tools
-    tool.name = f"nasa_{tool.mode}"
-
 tool_sets: Dict[str, List[BaseTool]] = {
-    "nasa": nasa_tools,
-    "charts": [
-        ChartTool(),
-    ],
+    "nasa": [],
+    "charts": [],
     "image": [
         DalleTool(),
         HuggingFaceServerlessImageGenerationTool(),
@@ -74,7 +61,6 @@ tool_sets: Dict[str, List[BaseTool]] = {
     ],
     "tts": [
         ElevenLabsTTSTool(),
-        ElevenLabsSoundEffectsTool(),
         FFmpegTool(),
     ],
     "search": [
@@ -142,8 +128,6 @@ default_tools: List[BaseTool] = list(
             *tool_sets["image"],
             *tool_sets["search"],
             *tool_sets["tts"],
-            *tool_sets["homeassistant"],
-            *tool_sets["weather"],
         ]
     }.values()
 )

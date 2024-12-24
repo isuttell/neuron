@@ -24,7 +24,7 @@ const ImageCard: React.FC<ImageCardProps> = ({ image }) => {
         {image.image ? (
           <img
             className="w-full h-auto object-cover rounded-lg"
-            src={image.image}
+            src={image.image.replace(/\.(?=[^.]*$)/, "_t.")}
             alt={image.prompt.slice(0, 256)}
           />
         ) : (

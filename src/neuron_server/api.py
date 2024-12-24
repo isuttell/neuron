@@ -26,6 +26,10 @@ from typing import Optional
 import asyncio
 from neuron_server.database import pool
 from neuron_server.pubsub import client
+import re
+import os
+from PIL import Image
+
 
 router = EventRouter()
 
@@ -129,6 +133,14 @@ async def index(**kwargs):
 @cors(allowed_methods=["GET", "OPTIONS"], allowed_headers=["Authorization"])
 @cache_control(max_age=31536000, immutable=True)
 async def get_static(path):
+    if (
+        re.match(r".*_t\.(jpe?g|png)$", path)
+        and not os.path.exists(os.path.join(config.static_folder, path))
+        and os.path.exists(os.path.join(config.static_folder, path.replace("_t.", ".")))
+    ):
+        image = Image.open(os.path.join(config.static_folder, path.replace("_t.", ".")))
+        image.thumbnail((512, 512))
+        image.save(os.path.join(config.static_folder, path))
     return await send_from_directory(config.static_folder, path)
 
 

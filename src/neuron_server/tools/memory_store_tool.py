@@ -8,6 +8,8 @@ from neuron_server.vectorstores import memories_store
 from langchain_core.runnables import RunnableConfig
 from langchain_core.documents import Document
 from uuid import uuid4
+from neuron_server.tools.memory_recall_tool import MemoryStats
+from datetime import datetime, timezone
 
 
 class MemoryStoreToolArgs(BaseModel):
@@ -38,8 +40,14 @@ class MemoryStoreTool(BaseTool):
                 "personality_id": config["configurable"].get("personality_id", None),
                 "user_id": config["configurable"].get("user_id", None),
                 "access_count": 0,
-                "last_access": int(time.time()),
                 "created_at": int(time.time()),
+                "stats": MemoryStats(
+                    useful=0,
+                    total=0,
+                    last_useful_at=None,
+                    last_recall_at=None,
+                    scores=[],
+                ),
             }
             documents = [
                 Document(page_content=memory, id=str(uuid4()), metadata=metadata)
