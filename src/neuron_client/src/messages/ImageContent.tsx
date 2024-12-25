@@ -25,7 +25,7 @@ const ImageContent: React.FC<ImageContentProps> = ({
       <DialogTrigger>
         <img
           className="w-full rounded-lg"
-          src={url.replace(/\.(?=[^.]*$)/, "_t.")}
+          src={url.endsWith(".gif") ? url : url.replace(/\.(?=[^.]*$)/, "_t.")}
           alt={alt}
           width={width}
           height={height}

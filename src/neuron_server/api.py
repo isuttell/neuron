@@ -122,6 +122,7 @@ blueprint = Blueprint(
 @blueprint.get("/personalities")
 @blueprint.get("/personality/<personality_id>")
 @blueprint.get("/gallery")
+@blueprint.get("/code-viewer")
 @blueprint.get("/stats")
 async def index(**kwargs):
     return await blueprint.send_static_file("index.html")

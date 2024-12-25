@@ -9,6 +9,8 @@ import { getActivePersonalityId } from "../slices/personalitiesSlice";
 import { Spinner } from "@/components/ui/spinner";
 import { sendMessage } from "../actions/messageActions";
 import { useAppDispatch } from "../hooks";
+import Counter from "../lib/Counter";
+
 interface MessageFormProps {
   status: string;
   disabled?: boolean;
@@ -47,7 +49,7 @@ const getStatusMessage = (status: string) => {
   ).map((value) => (
     <span
       key={value}
-      className="text-sm text-gray-500 capitalize inline-flex items-center rounded-md bg-background px-2 py-1 font-medium ring-1 ring-inset ring-gray-100/10"
+      className="text-sm text-muted-foreground capitalize inline-flex items-center rounded-md bg-muted px-2 py-1 font-medium ring-1 ring-inset ring-gray-100/10"
     >
       {value}
     </span>
@@ -64,6 +66,7 @@ export default function MessageForm({
   const activePersonalityId = useAppSelector(getActivePersonalityId);
   const [value, setValue] = useState("");
   const { threadId } = useParams();
+  const [startTime, setStartTime] = useState<Date | null>(null);
   const handleSubmit = (
     e:
       | React.FormEvent<HTMLFormElement>
@@ -75,6 +78,7 @@ export default function MessageForm({
       return;
     }
     onSubmit(value);
+    setStartTime(new Date());
     dispatch(
       sendMessage({
         threadId,
@@ -114,6 +118,12 @@ export default function MessageForm({
         >
           {status !== "idle" ? (
             <>
+              {startTime && (
+                <Counter
+                  className="text-xs text-gray-500 pr-1"
+                  startDate={new Date(startTime)}
+                />
+              )}
               <Spinner className="size-3.5" />
             </>
           ) : (

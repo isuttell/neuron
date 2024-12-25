@@ -10,26 +10,26 @@ from neuron_server.tools.code_interpreter_api import run_code_interpreter
 class CodeInterpreterToolArgs(BaseModel):
     python_code: str = Field(
         description="""
-Professional quality python 3.12 code which is saved to a file and executed. Must be valid self contained python code and must always include the inputs/data hard coded. You may only write to the {directory} directory. Must be in utf-8 encoding. All variables must be defined. Use coding best practices. Network requests are blocked. This is in a headless environment so do not use any GUI libraries or methods like plt.show(). This does not support interactivity. Results must be saved to the {directory}/artifacts/ directory. Print answer to the stdout which is returned as the tool response. Show your work and work step by step. When writing Latex ensure its clean and valid. You must return something in the stdout. Do not use emojis. Never use exec, eval or input. When using the science style import scienceplots first before using the style to ensure it is available.
+Must be valid, fully self contained Python 3.12 code encoded in ascii. Must include all required data in the code. Use best practices. Network requests are blocked. This is in a headless environment so do not use any GUI methods like plt.show(). You may only write to the {directory} directory. Results must be saved to the {directory}/artifacts/ directory. Print answer to the stdout with markdown formatting which is returned as the tool response. Show/print your work step by step. Do not use emojis. Never use the following methods: open, exec, eval. When using the matplot styles like the science or seaborn styles import the associated library, e.g. scienceplots first before using the style. ffmpeg is installed.
 
-These are the only pip modules installed and available:
-adjustText
-astroplan
-astropy
-kaleido
-matplotlib
-numpy
-opencv-python-headless
-pandas
-pillow
-plotly
-plotnine[all]
-scienceplots
-scipy
-seaborn[stats]
-statsmodels
+Installed Modules:
 
-Only the following ephemeris data is available for astropy:
+astroplan==0.10.1
+astropy==7.0.0
+kaleido==0.2.1
+matplotlib==3.10.0
+numpy==2.2.1
+opencv-python-headless==4.10.0.84
+pandas==2.2.3
+pillow==11.0.0
+plotly==5.24.1
+scienceplots==2.1.1
+scipy==1.14.1
+seaborn[stats]==0.13.2
+statsmodels==0.14.4
+
+Available ephemeris data:
+
 de405
 de430t
 """.format(
@@ -42,15 +42,13 @@ class CodeInterpreterTool(BaseTool):
     name: str = "code_interpreter"
     description: str = (
         """
-This tool executes Python code in a restricted headless environment for data analysis, precise computations, graphing, and visualizations for enhanced response generation. It leverages libraries such as pandas, numpy, scipy, and statsmodels for tasks like data cleaning, statistical modeling, and numerical computations. It also uses Matplotlib, Seaborn, Plotnine, and Plotly for customized, visually rich charts. Use this for precise calculations, data analysis, and data visualizations.
-
-The code is executed in a sandboxed, headless, noninteractive environment with no internet access. Use of eval and exec is also blocked. Code must complete within 120 seconds.
+This tool executes Python code in a restricted environment for data analysis, precise computations, graphing, and visualizations for enhanced response generation. It leverages libraries such as pandas, numpy, scipy, and statsmodels for tasks like data cleaning, statistical modeling, and numerical computations. It also uses Matplotlib, Seaborn, and Plotly for customized, visually rich charts. Use this for precise calculations, data analysis, and data visualizations. The code is executed in a sandboxed, headless, noninteractive environment with no internet access. Use of eval, exec, open, and input is also blocked. Code must complete within 300 seconds.
 """.strip()
     )
 
     args_schema: Type[CodeInterpreterToolArgs] = CodeInterpreterToolArgs
 
-    timeout: int = 120
+    timeout: int = 300
     code_interpreter_image: str = "192.168.1.160:5000/code-interpreter:latest"
 
     def _run(self, description: str, python_code: str) -> str:
@@ -92,5 +90,5 @@ The code is executed in a sandboxed, headless, noninteractive environment with n
                 duration=duration,
             ).strip()
         except Exception as e:
-            logger.exception(e)
+            logger.error(e)
             raise e

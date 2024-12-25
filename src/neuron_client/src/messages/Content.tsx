@@ -10,6 +10,7 @@ import AudioPlayer from "./AudioPlayer";
 import { cn } from "@/lib/utils";
 import "./Content.css";
 import "katex/dist/katex.min.css";
+
 interface ContentProps {
   className?: string;
   content: string;

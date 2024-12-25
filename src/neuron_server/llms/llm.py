@@ -178,7 +178,6 @@ class LLM:
                 recall_memories += "\n\n--------\n\n" + additional_memories
                 break
 
-        logger.debug(f"recall_memories:\n{recall_memories}")
         return {
             "recall_memories": recall_memories,
         }

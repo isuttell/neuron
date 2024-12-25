@@ -13,7 +13,13 @@ from typing import List
 
 
 class RestrictedKeywordError(Exception):
-    pass
+    def __init__(self, message: str, excerpt: str):
+        self.message = message
+        self.excerpt = excerpt
+        super().__init__(self.message)
+
+    def __str__(self):
+        return f"RestrictedKeywordError: {self.message}\nExcerpt:\n{self.excerpt}"
 
 
 def check_for_restricted_keywords(python_code: str) -> None:
@@ -33,51 +39,14 @@ def check_for_restricted_keywords(python_code: str) -> None:
         "requests",
         "http",
         "ftp",
-        "exec",
-        "eval",
-        "compile",
-        "execfile",
-        "os.popen",
-        "os.exec",
-        "os.spawn",
-        "os.fork",
-        "__import__",
-        "input",
-        "os.environ",
-    ]
-
-    for keyword in restricted_keywords:
-        if keyword in python_code:
-            raise RestrictedKeywordError(
-                f'Unable to run code due to restricted keyword: "{keyword}". Refactor your code to remove this keyword and try again.'
-            )
-
-
-def check_for_restricted_keywords(python_code: str) -> None:
-    restricted_keywords = [
-        "/proc",
-        "/sys",
-        "/etc",
-        "/var",
-        "/root",
-        "/home",
-        "os.system",
-        "subprocess",
-        "shutil",
-        "currentframe()",
-        "open(",
-        "socket",
-        "requests",
-        "http",
-        "ftp",
-        "exec",
-        "eval",
-        "compile",
-        "execfile",
-        "os.popen",
-        "os.exec",
-        "os.spawn",
-        "os.fork",
+        "exec(",
+        "eval(",
+        "compile(",
+        "execfile(",
+        "os.popen(",
+        "os.exec(",
+        "os.spawn(",
+        "os.fork(",
         "__import__",
         "input",
         "os.environ",
@@ -87,8 +56,10 @@ def check_for_restricted_keywords(python_code: str) -> None:
     for line_number, line in enumerate(lines, start=1):
         for keyword in restricted_keywords:
             if keyword in line:
+                excerpt = "\n".join(lines[line_number - 3 : line_number + 3])
                 raise RestrictedKeywordError(
-                    f'Unable to run code due to restricted keyword: "{keyword}" on line {line_number}. Refactor your code to remove this keyword and try again.'
+                    f'Unable to run code due to restricted keyword: "{keyword}" on line {line_number}. Refactor your code to remove this keyword and try again.',
+                    excerpt,
                 )
 
 
@@ -100,11 +71,13 @@ def get_media_type(file_path: str) -> str:
         ".jpeg",
         ".gif",
         ".svg",
+        ".webp",
     ]:
         return "image"
     elif ext in [
         ".mp4",
         ".mov",
+        ".webm",
     ]:
         return "video"
     elif ext in [
@@ -118,6 +91,8 @@ def get_media_type(file_path: str) -> str:
         ".htm",
     ]:
         return "html"
+    elif ext in [".py", ".js", ".ts", ".jsx", ".tsx"]:
+        return "code"
     elif ext in [
         ".pdf",
         ".csv",
@@ -130,12 +105,18 @@ def get_media_type(file_path: str) -> str:
     return "unknown"
 
 
+def force_stop_code_interpreter():
+    subprocess.run(
+        ["docker", "rm", "-v", "-f", "neuron-code-interpreter"],
+    )
+
+
 async def run_code_interpreter(
     python_code: str,
     timeout: int = 120,
     code_interpreter_image: str = "192.168.1.160:5000/code-interpreter:latest",
     cpu_limit: int = 16,
-    memory_limit: int | str = "4g",
+    memory_limit: int | str = "16g",
 ):
     try:
         start_time = time.perf_counter()
@@ -202,13 +183,13 @@ async def run_code_interpreter(
         artifacts: List[str] = []
 
         # Copy the source code to the artifacts folder
-        src_filename = "source_code.txt"
+        src_filename = "source_code.py"
         src_file = os.path.join(artifacts_folder, src_filename)
         shutil.copy(script_file, artifacts_folder)
         os.rename(os.path.join(artifacts_folder, script_filename), src_file)
 
         if process.stdout:
-            stdout_filename = "stdout.txt"
+            stdout_filename = "stdout.md"
             stdout_file = os.path.join(artifacts_folder, stdout_filename)
             with open(stdout_file, "w", encoding="utf-8") as f:
                 f.write(process.stdout.strip())
@@ -228,7 +209,5 @@ async def run_code_interpreter(
                 artifacts.append(f"[{file}]({url})")
         return process.stdout.strip() if process.stdout else "", artifacts
     except asyncio.TimeoutError:
-        subprocess.run(
-            ["docker", "rm", "-v", "-f", "neuron-code-interpreter"],
-        )
+        force_stop_code_interpreter()
         raise Exception(f"python code execution timed out after {timeout} seconds")

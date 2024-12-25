@@ -33,15 +33,24 @@ export function getMediaItems(messages: Message[]): MediaItem[] {
             .join("\n")
         : message.content;
 
-      // Find markdown image tags ![alt](url)
-      const imageMatches = body.matchAll(/\[([^\]]*)\]\(([^)]+)\)/g);
-      for (const match of imageMatches) {
+      // Find markdown image and link tags ![alt](url) and [alt](url)
+      const matches = body.matchAll(/\[([^\]]*)\]\(([^)]+)\)/g);
+      for (const match of matches) {
+        const key = `${message.tool_call_id}-${match[2]}`;
+        let alt = match[1];
+        let url = match[2];
+
+        if (alt.match(/\.(py|js|txt|md)$/)) {
+          alt = "View " + alt;
+          url = `/code-viewer?url=${url}`;
+        }
+
         items.push({
-          key: `${message.tool_call_id}-${match[2]}`,
-          type: /\.(jpeg|jpg|png|gif|svg)$/.test(match[2]) ? "image" : "link",
-          alt: match[1],
-          url: match[2],
-          toolCallId: `${message.tool_call_id}-${match[2]}`,
+          key,
+          type: /\.(jpeg|jpg|png|gif|svg)$/.test(url) ? "image" : "link",
+          alt,
+          url,
+          toolCallId: message.tool_call_id,
           messageId: message.id,
         });
       }
@@ -135,7 +144,9 @@ export function MediaList({ className, mediaItems, threadId }: MediaListProps) {
                 </Tooltip>
               ) : null}
               {item.type === "video" ? (
-                <video className="w-full" controls src={item.url} />
+                <video className="w-full" controls>
+                  <source src={item.url} type="video/mp4" />
+                </video>
               ) : null}
             </div>
           ))}

@@ -24,8 +24,4 @@ class HuggingFaceToollessLLM(LLM):
             max_new_tokens=max_tokens,
         )
         model = ChatHuggingFace(llm=llm, temperature=0.7, streaming=True)
-        low_temp_model = ChatHuggingFace(llm=llm, temperature=0.1, streaming=True)
-        super().__init__(
-            model, title_model=model, memory_model=low_temp_model, tools=[]
-        )
-        self.executor = chat_prompt | model
+        super().__init__(model, title_model=model, memory_model=model, tools=[])
