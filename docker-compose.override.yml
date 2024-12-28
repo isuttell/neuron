@@ -25,6 +25,19 @@ services:
     volumes:
       - redis-data:/data
 
+  neo4j:
+    restart: unless-stopped
+    ports:
+      - 7474:7474
+      - 7687:7687
+    volumes:
+      - neo4j-data:/data
+      - ./neo4j/logs:/logs
+      - ./neo4j/config:/config
+    env_file:
+      - .env-docker
+
 volumes:
   database-data:
   redis-data:
+  neo4j-data:

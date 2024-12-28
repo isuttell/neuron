@@ -8,7 +8,7 @@ from neuron_server.controllers.events.message_events import (
 from neuron_server.controllers.events.message_events import (
     ThreadMessage,
 )
-from uuid import UUID, uuid4
+from uuid import UUID
 from neuron_server.llms.agent import aget_state
 from werkzeug.exceptions import NotFound
 import neuron_server.llms.agent as agent

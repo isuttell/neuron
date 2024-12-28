@@ -5,6 +5,7 @@ import functools
 import json
 from typing import Any
 from neuron_server.logger import logger
+import pickle
 
 client = redis.Redis(
     host=config.redis.host,
@@ -21,12 +22,17 @@ def cache_response(ttl: ExpiryT):
             cached_result: ResponseT = await client.get(key)
 
             if cached_result is not None:
-                logger.debug(f"cache_response:hit={key}")
-                return cached_result.decode("utf-8")
+                try:
+                    logger.debug(f"cache_response:hit={key}")
+                    return pickle.loads(cached_result)
+                except Exception as e:
+                    logger.warning(f"Error unpickling cached result: {str(e)}")
+                    await client.delete(key)
 
-            result: str = await func(*args, **kwargs)
-            assert isinstance(result, str)
-            await client.set(key, result, ex=ttl)
+            result = await func(*args, **kwargs)
+            await client.set(
+                key, pickle.dumps(result, protocol=pickle.HIGHEST_PROTOCOL), ex=ttl
+            )
             return result
 
         return wrapped

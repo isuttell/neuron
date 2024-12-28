@@ -34,6 +34,7 @@ const ToolSetLabels = {
   hd2: "Hell Divers 2",
   homeassistant: "Smart Home",
   image: "Image Generation",
+  graph: "Graph",
   notifications: "Notifications",
   search: "Search",
   tts: "Audio Generation",

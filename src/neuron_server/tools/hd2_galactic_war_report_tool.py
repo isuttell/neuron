@@ -1,14 +1,15 @@
 from langchain.tools import BaseTool
 from typing import Type, Optional
 from neuron_server.config import config
-import time
 import aiohttp
 import asyncio
 from neuron_server.logger import logger
 from neuron_server.cache import cache_response
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from typing import Optional, List, Dict, Any, TypedDict
 from datetime import datetime, timezone
+from neuron_server.graph import process_document
+from langchain_core.runnables import RunnableConfig
 
 
 class Biome(BaseModel):
@@ -29,6 +30,7 @@ class Campaign(BaseModel):
     expireDateTime: Optional[float] = None
 
 
+@cache_response(ttl=60 * 1)
 async def get_campaigns() -> List[Campaign]:
     async with aiohttp.ClientSession() as session:
         url = "https://helldiverstrainingmanual.com/api/v1/war/campaign"
@@ -47,6 +49,7 @@ class News(BaseModel):
     message: str
 
 
+@cache_response(ttl=60 * 1)
 async def get_news() -> List[News]:
     async with aiohttp.ClientSession() as session:
         url = "https://helldiverstrainingmanual.com/api/v1/war/news"
@@ -69,6 +72,7 @@ class Planet(BaseModel):
     environmentals: List[Environmentals]
 
 
+@cache_response(ttl=60 * 60 * 24)
 async def get_planets() -> Dict[str, Planet]:
     async with aiohttp.ClientSession() as session:
         url = "https://helldiverstrainingmanual.com/api/v1/planets"
@@ -116,6 +120,7 @@ class MajorOrdersResponse(BaseModel):
     major_orders: List[MajorOrder]
 
 
+@cache_response(ttl=60 * 1)
 async def get_major_orders() -> List[MajorOrder]:
     async with aiohttp.ClientSession() as session:
         url = "https://helldiverstrainingmanual.com/api/v1/war/major-orders"
@@ -169,6 +174,7 @@ class WarStatus(TypedDict):
     layoutVersion: int
 
 
+@cache_response(ttl=60 * 1)
 async def get_war_status() -> WarStatus:
     async with aiohttp.ClientSession() as session:
         url = "https://helldiverstrainingmanual.com/api/v1/war/status"
@@ -284,22 +290,52 @@ def format_global_events(events: List[GlobalEvent]) -> str:
     return f"{headers}\n{event_rows}"
 
 
-@cache_response(ttl=60 * 1)
-async def get_report() -> str:
-    war_status = await get_war_status()
-    assert war_status["layoutVersion"] == 24
-    planets = await get_planets()
-    campaigns = await get_campaigns()
-    major_orders = await get_major_orders()
-
-    active_planets: List[Planet] = list(
-        map(
-            lambda campaign: planets[str(campaign.planetIndex)],
-            campaigns,
-        )
+class HD2GalacticWarReportTool(BaseTool):
+    name: str = "hd2_galactic_war_report"
+    description: str = (
+        """
+Get's the latest report on the in universe Hell Divers 2 Galactic War. Includes information on global events, latest major order, in-game news, and the current status of all active campaigns with details on the planet's health, health regen per second, and percentage of the mission completed. This should be considered the source of truth for the current state of the war. Updates every 5 minutes.
+""".strip()
     )
 
-    return f"""
+    def _run(self, *args, **kwargs):
+        return asyncio.run(self._arun(*args, **kwargs))
+
+    async def _arun(
+        self,
+        config: RunnableConfig,
+    ) -> str:
+        try:
+            war_status = await get_war_status()
+            assert war_status["layoutVersion"] == 24
+            planets = await get_planets()
+            campaigns = await get_campaigns()
+            major_orders = await get_major_orders()
+
+            for global_event in war_status["globalEvents"]:
+                text = f"Hell Divers 2:\nEvent ID: {global_event['eventId']}\n{global_event['title']}\n{global_event['message']}".strip()
+                await process_document(
+                    text=text,
+                    document_id=f"global_event:{global_event['eventId']}",
+                    config=config,
+                )
+
+            for major_order in major_orders:
+                text = f"Hell Divers 2:\n{major_order.setting.overrideTitle}\nMajor Order ID: {major_order.id32}\n{major_order.setting.overrideBrief}\n{major_order.setting.taskDescription}".strip()
+                await process_document(
+                    text=text,
+                    document_id=f"major_order:{major_order.id32}",
+                    config=config,
+                )
+
+            active_planets: List[Planet] = list(
+                map(
+                    lambda campaign: planets[str(campaign.planetIndex)],
+                    campaigns,
+                )
+            )
+
+            return f"""
 # Hell Divers 2 Galactic War Report for {datetime.now(timezone.utc).isoformat(timespec="seconds")}
 
 Classified Top Secret
@@ -325,29 +361,19 @@ War Time: {war_status["time"]}
 ## Planets
 
 {format_planets(active_planets)}
-""".strip()
+        """.strip()
 
-
-class HD2GalacticWarReportTool(BaseTool):
-    name: str = "hd2_galactic_war_report"
-    description: str = (
-        """
-Get's the latest report on the in universe Hell Divers 2 Galactic War. Includes information on global events, latest major order, in-game news, and the current status of all active campaigns with details on the planet's health, health regen per second, and percentage of the mission completed. This should be considered the source of truth for the current state of the war. Updates every 5 minutes.
-""".strip()
-    )
-
-    def _run(self, *args, **kwargs):
-        return asyncio.run(self._arun(*args, **kwargs))
-
-    async def _arun(
-        self,
-    ) -> str:
-        try:
-            return await get_report()
         except Exception as e:
             logger.exception(e)
             return f"Error getting HD2 Galactic War Report: {str(e)}"
 
 
+async def main():
+    tool = HD2GalacticWarReportTool()
+    print(
+        await tool.ainvoke(input={}, config={"configurable": {"personality_id": "1"}})
+    )
+
+
 if __name__ == "__main__":
-    print(asyncio.run(get_report()))
+    asyncio.run(main())

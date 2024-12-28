@@ -17,12 +17,9 @@ services:
   #   environment:
   #     - RIZA_API_KEY=${RIZA_API_KEY}
 
-  code:
+  neo4j:
     restart: unless-stopped
-    image: 192.168.1.160:5000/code-interpreter:latest
-    build:
-      context: .
-      dockerfile: Dockerfile.code
+    image: neo4j:5.26.0
 
   redis:
     restart: unless-stopped

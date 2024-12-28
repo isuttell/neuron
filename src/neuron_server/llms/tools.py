@@ -13,7 +13,7 @@ from langchain_community.utilities import WikipediaAPIWrapper
 from neuron_server.tools.security_camera_tool import SecurityCameraTool
 from neuron_server.tools.homeassistant_api import HomeAssistantAPI
 from neuron_server.tools.arxiv_summary_tool import ArxivSummaryTool
-from neuron_server.tools.arxiv_tool import ArxivTool
+from neuron_server.tools.arxiv_search_tool import ArxivSearchTool
 from neuron_server.tools.dalle_tool import DalleTool
 from neuron_server.tools.elevenlabs_tts_tool import ElevenLabsTTSTool
 from neuron_server.tools.ffmpeg_tool import FFmpegTool
@@ -43,12 +43,24 @@ from neuron_server.tools.hd2_liberation_history_tool import HD2LiberationHistory
 from langchain_community.utilities.wolfram_alpha import WolframAlphaAPIWrapper
 from langchain_community.tools import WolframAlphaQueryRun
 from neuron_server.tools.code_interpreter_tool import CodeInterpreterTool
+from neuron_server.tools.graph_question_tool import GraphQuestionTool
+from neuron_server.tools.graph_arxiv_import_tool import GraphArxivImportTool
+from neuron_server.tools.graph_import_tool import GraphImportTool
+from neuron_server.tools.graph_pdf_import_tool import GraphPDFImportTool
+from neuron_server.tools.graph_website_import_tool import GraphWebsiteImportTool
 
 homeassistant_api = HomeAssistantAPI(token=config.homeassistant.token)
 
 tool_sets: Dict[str, List[BaseTool]] = {
     "nasa": [],
     "charts": [],
+    "graph": [
+        ArxivSearchTool(),
+        GraphQuestionTool(),
+        GraphArxivImportTool(),
+        GraphImportTool(),
+        GraphWebsiteImportTool(),
+    ],
     "image": [
         DalleTool(),
         HuggingFaceServerlessImageGenerationTool(),
@@ -71,7 +83,7 @@ tool_sets: Dict[str, List[BaseTool]] = {
         WolframAlphaQueryRun(api_wrapper=WolframAlphaAPIWrapper()),
     ],
     "arxiv": [
-        ArxivTool(),
+        ArxivSearchTool(),
         ArxivSummaryTool(),
         ArxivRecallTool(),
     ],

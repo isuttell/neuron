@@ -1,7 +1,6 @@
 from langchain_anthropic import ChatAnthropic
 from typing import Optional, Literal
 from neuron_server.llms.llm import LLM
-from neuron_server.llms.tools import default_tools
 
 
 class AnthropicLLM(LLM):
@@ -31,5 +30,4 @@ class AnthropicLLM(LLM):
             model=model,
             title_model=title_model,
             memory_model=memory_model,
-            tools=default_tools,
         )

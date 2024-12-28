@@ -22,6 +22,7 @@ langchain_anthropic = "0.2.4"
 langchain_postgres = "*"
 langchain-cohere = "*"
 langgraph-checkpoint-postgres = "2.0.3"
+langchain-text-splitters = "0.3.4"
 langsmith = "*"
 aiohttp = "*"
 arxiv = "*"
@@ -44,6 +45,9 @@ tabulate = "*"
 starplot = "*"
 wolframalpha = "*"
 RestrictedPython = "*"
+langchain_neo4j = "*"
+neo4j = "*"
+firecrawl-py = "0.0.20"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

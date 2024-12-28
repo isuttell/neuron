@@ -19,9 +19,8 @@ import MediaList, { getMediaItems } from "../messages/MediaList";
 import { fetchThread, deleteThread } from "../actions/threadActions";
 import { fetchMessagesByThread } from "../actions/messageActions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import ArtifactViewer, {
-  extractAndReplaceArtifacts,
-} from "../artifacts/ArtifactViewer";
+import ArtifactsViewer from "../artifacts/ArtifactsViewer";
+import { extractAndReplaceArtifacts } from "../artifacts/extractArtifacts";
 import { cn } from "@/lib/utils";
 import { sendMessage } from "../actions/messageActions";
 import TokenCounter from "../messages/TokenCounter";
@@ -38,7 +37,7 @@ export default function Thread() {
   const navigate = useNavigate();
   const activePersonalityId = useAppSelector(getActivePersonalityId);
 
-  const [activeTab, setActiveTab] = useState("media");
+  const [activeTab, setActiveTab] = useState<"media" | "artifacts">("media");
   const lastMessageRef = useRef<HTMLDivElement | null>(null);
   const { threadId } = useParams();
   const thread = useAppSelector(
@@ -213,12 +212,26 @@ export default function Thread() {
             activeTab === "media" ? "max-w-[512px] w-1/4" : "w-1/2"
           )}
           onValueChange={(value) => {
-            setActiveTab(value);
+            setActiveTab(value as "media" | "artifacts");
           }}
         >
           <TabsList>
-            <TabsTrigger value="media">Media</TabsTrigger>
-            <TabsTrigger value="artifacts">Artifacts</TabsTrigger>
+            <TabsTrigger value="media">
+              Media
+              {mediaItems.length > 0 && (
+                <span className="ml-2 text-xs text-muted-foreground">
+                  ({mediaItems.length})
+                </span>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="artifacts">
+              Artifacts
+              {artifacts.length > 0 && (
+                <span className="ml-2 text-xs text-muted-foreground">
+                  ({artifacts.length})
+                </span>
+              )}
+            </TabsTrigger>
           </TabsList>
           <div className="flex flex-col flex-1 relative overflow-y-auto">
             <TabsContent
@@ -237,14 +250,7 @@ export default function Thread() {
                 activeTab === "artifacts" ? "block" : "hidden"
               )}
             >
-              {Object.keys(artifacts).map((key) => (
-                <ArtifactViewer key={key} artifacts={artifacts[key]} />
-              ))}
-              {Object.keys(artifacts).length === 0 && (
-                <div className="m-4 text-center text-muted-foreground">
-                  No artifacts
-                </div>
-              )}
+              <ArtifactsViewer artifacts={artifacts} />
             </TabsContent>
           </div>
         </Tabs>

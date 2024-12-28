@@ -1,7 +1,6 @@
 from langchain_cohere import ChatCohere
 from typing import Optional, Literal
 from neuron_server.llms.llm import LLM
-from neuron_server.llms.tools import default_tools
 
 
 class CohereLLM(LLM):
@@ -27,5 +26,4 @@ class CohereLLM(LLM):
             model=model,
             title_model=title_model,
             memory_model=memory_model,
-            tools=default_tools,
         )

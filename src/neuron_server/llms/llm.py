@@ -13,7 +13,7 @@ from typing import (
     Sequence,
     TypedDict,
 )
-from langchain_core.messages import BaseMessage, AIMessage, HumanMessage
+from langchain_core.messages import BaseMessage, AIMessage
 from langgraph.graph.message import add_messages
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph import StateGraph, END
@@ -36,6 +36,8 @@ from neuron_server.config import config
 from neuron_server.logger import logger
 from neuron_server.models.embedding_model import EmbeddingModel
 from neuron_server.artifacts import artifact_prompt
+from neuron_server.llms.tools import default_tools
+
 
 tokenizer = tiktoken.encoding_for_model("gpt-4o")
 
@@ -63,7 +65,7 @@ class MemoryRecallRanking(BaseModel):
 
 class MemoryResponse(BaseModel):
     memory_recall_rankings: List[MemoryRecallRanking] = Field(
-        description="A list of existingrecall memories ranked by usefulness to the response"
+        description="A list of existing recall memories ranked by usefulness to the response"
     )
     new_memories: List[str] = Field(
         description="A list of new details and novel information to save for later recall"
@@ -72,40 +74,38 @@ class MemoryResponse(BaseModel):
 
 class LLM:
     model: Runnable
-    provider: Literal["openai", "anthropic", "huggingface"]
+    provider: str
     chat: Runnable
     title: Runnable
     memory: Runnable
     memory_model: Runnable
     message_trimmer: Runnable
-    tools: List[BaseTool]
 
     def __init__(
         self,
         model: Runnable,
         title_model: Optional[Runnable] = None,
         memory_model: Optional[Runnable] = None,
-        tools: Optional[List[BaseTool]] = None,
     ):
         self.model = model
         self.title_model = title_model
         self.title = title_prompt | self.title_model | StrOutputParser()
         self.memory_model = memory_model
         self.memory = memory_prompt | self.memory_model | StrOutputParser()
-        self.default_tools = tools or []
-        self.tools = self.default_tools
 
     def create_workflow(
         self,
         tools: Optional[List[BaseTool]] = None,
     ):
         workflow = StateGraph(AgentState)
-        if tools:
-            self.tools = tools
-        else:
-            self.tools = self.default_tools
-        workflow.add_node("tools", ToolNode(self.tools))
-        workflow.add_node("agent", self.call_model)
+        model = self.model.bind_tools(tools or default_tools)
+        workflow.add_node("tools", ToolNode(tools or default_tools))
+
+        async def agent_node(state, config):
+            # pass the model ith the tools into the call_model function
+            return await self.call_model(model, state, config)
+
+        workflow.add_node("agent", agent_node)
         workflow.add_node("update_title", self.call_title)
 
         if config.memory_enabled:
@@ -159,24 +159,12 @@ class LLM:
         )
         messages: List[BaseMessage] = await message_trimmer.ainvoke(
             state["messages"],
-            {
-                **config,
-                "run_name": "trim_messages",
-            },
+            config,
         )
         recall_memories: str = await MemoryRecallTool().ainvoke(
             {"query": get_buffer_string(messages), "k": 10},
             config,
         )
-
-        for tool in self.tools:
-            if tool.name == "arxiv_recall":
-                additional_memories = await tool.ainvoke(
-                    {"query": get_buffer_string(messages), "k": 10},
-                    config,
-                )
-                recall_memories += "\n\n--------\n\n" + additional_memories
-                break
 
         return {
             "recall_memories": recall_memories,
@@ -192,10 +180,11 @@ class LLM:
     # Define the node that calls the model
     async def call_model(
         self,
+        model: Runnable,
         state: AgentState,
         config: RunnableConfig,
     ):
-        model: Runnable = self.model.bind_tools(self.tools)
+
         message_trimmer: Runnable = trim_messages(
             max_tokens=200000,
             strategy="last",
@@ -206,7 +195,7 @@ class LLM:
         )
         messages: List[BaseMessage] = await message_trimmer.ainvoke(
             state["messages"],
-            {**config, "run_name": "trim_messages"},
+            config,
         )
         # Filter out messages that don't have content
         initial_messages_length = len(messages)
@@ -249,18 +238,18 @@ class LLM:
         )
         messages: List[BaseMessage] = await message_trimmer.ainvoke(
             state["messages"],
-            {**config, "run_name": "trim_messages"},
+            config,
         )
         title: str = await self.title.ainvoke(
             {
                 "messages": get_buffer_string(messages),
                 "last_title": state.get("title", ""),
-                "personality": state["personality"],
+                "personality": "",
                 "now": datetime.now(timezone.utc)
                 .astimezone()
                 .strftime("%Y-%m-%d %H:%M:%S %Z"),
             },
-            {**config, "run_name": "update_title"},
+            config,
         )
         # Strip quotes from the title
         title = re.sub(r'^([\'"])(.*)\1$', r"\2", title)
@@ -282,10 +271,7 @@ class LLM:
         assert isinstance(message_trimmer, Runnable)
         messages: List[BaseMessage] = await message_trimmer.ainvoke(
             state["messages"],
-            {
-                **config,
-                "run_name": "trim_messages",
-            },
+            config,
         )
         assert isinstance(messages, list)
 
@@ -301,7 +287,7 @@ class LLM:
                 .astimezone()
                 .strftime("%Y-%m-%d %H:%M:%S %Z"),
             },
-            {**config, "run_name": "update_memory"},
+            config,
         )
         if not response:
             logger.error("No response from memory model")

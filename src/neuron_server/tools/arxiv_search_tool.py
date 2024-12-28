@@ -3,7 +3,7 @@ from neuron_server.config import config
 from neuron_server.logger import logger
 import arxiv
 import os
-from typing import List, Type
+from typing import List, Optional, Type
 from pydantic import BaseModel, Field
 
 arxiv_search_info = """
@@ -29,11 +29,16 @@ Query Guide:
 
 """.strip()
 
+# Construct the default API client.
+client = arxiv.Client()
 
-class ArxivToolArgs(BaseModel):
-    query: str = Field(description=f"The search query for arXiv.\n{arxiv_search_info}")
-    id_list: List[str] | None = Field(
-        description="The list of article IDs to search for."
+
+class ArxivSearchToolArgs(BaseModel):
+    query: Optional[str] = Field(
+        description=f"The search query for arXiv. If you want to search for a specific article, use the id_list field instead.\n{arxiv_search_info}"
+    )
+    id_list: Optional[List[str]] = Field(
+        description="The list of article IDs to search for. Either this or query is required."
     )
     max_results: int = Field(
         description="The maximum number of results to return.", default=10
@@ -48,8 +53,8 @@ class ArxivToolArgs(BaseModel):
     )
 
 
-class ArxivTool(BaseTool):
-    name: str = "arxiv"
+class ArxivSearchTool(BaseTool):
+    name: str = "arxiv_search"
     description: str = (
         """
 This tool searches arXiv for research articles, and retrieves short summaries. Embed short IDs in text responses to reference original sources.
@@ -60,7 +65,7 @@ This tool searches arXiv for research articles, and retrieves short summaries. E
 - For specific IDs, use `id_list` instead of `search_query=id:xxx` to handle article versions.
 """.strip()
     )
-    args_schema: Type[ArxivToolArgs] = ArxivToolArgs
+    args_schema: Type[ArxivSearchToolArgs] = ArxivSearchToolArgs
 
     def _run(
         self,
@@ -78,8 +83,7 @@ This tool searches arXiv for research articles, and retrieves short summaries. E
             if not query and not id_list:
                 raise ValueError("query or id_list is required")
             logger.debug(f"Searching arXiv with: query={query}, id_list={id_list}")
-            # Construct the default API client.
-            client = arxiv.Client()
+
             search = arxiv.Search(
                 query=query if id_list is None or len(id_list) == 0 else "",
                 id_list=id_list or [],
@@ -87,13 +91,10 @@ This tool searches arXiv for research articles, and retrieves short summaries. E
                 sort_by=sort_by,
                 sort_order=sort_order,
             )
-            articles = []
+
+            articles: List[str] = []
             for result in client.results(search):
-                article_directory = (
-                    f"{config.static_folder}/arxiv/{result.get_short_id()}"
-                )
-                if not os.path.exists(article_directory):
-                    os.makedirs(article_directory)
+                # <br /> is a line break in HTML for the markdown renderer
                 summary = result.summary.strip().replace("\n", "<br />")
                 comment = (
                     result.comment.strip().replace("\n", "<br />")
@@ -102,8 +103,8 @@ This tool searches arXiv for research articles, and retrieves short summaries. E
                 )
                 articles.append(
                     f"""
-| Field              | Description |
-|--------------------|-|
+| Field              | Value |
+|--------------------|-------|
 | Title              | {result.title} |
 | Short ID           | {result.get_short_id()} |
 | Link               | {result.entry_id} |

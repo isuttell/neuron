@@ -16,7 +16,7 @@ class WaitTool(BaseTool):
     name: str = "wait"
     description: str = (
         """
-This tool allows you to pause the execution of an agent for a specified number of seconds. It is useful for scenarios where you need to wait before proceeding, such as taking another image in a sequence. For instance, to wait for 5 seconds before capturing the next image, set the duration to 5.
+This tool allows you to pause the execution of an agent for a specified number of seconds. It is useful for scenarios where you need to wait before proceeding, such as waiting for an index to be built.
 """.strip()
     )
 

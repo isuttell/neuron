@@ -20,6 +20,9 @@ from neuron_server.controllers.image_controller import (
     blueprint as image_blueprint,
 )
 from neuron_server.controllers.webhook_controller import blueprint as webhook_blueprint
+from neuron_server.controllers.graph_controller import (
+    blueprint as graph_blueprint,
+)
 from functools import wraps
 from quart import Response
 from typing import Optional
@@ -186,3 +189,4 @@ app.register_blueprint(thread_blueprint, url_prefix="/api/threads")
 app.register_blueprint(message_blueprint, url_prefix="/api/messages")
 app.register_blueprint(personality_blueprint, url_prefix="/api/personalities")
 app.register_blueprint(image_blueprint, url_prefix="/api/images")
+app.register_blueprint(graph_blueprint, url_prefix="/api/graph")

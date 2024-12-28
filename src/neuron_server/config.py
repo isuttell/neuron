@@ -64,6 +64,20 @@ class HomeAssistantConfig(BaseModel):
     )
 
 
+class Neo4jConfig(BaseModel):
+    url: str = Field(
+        default=os.environ.get("NEO4J_URL", "bolt://localhost:7687"),
+        description="Neo4j URL",
+    )
+    username: str = Field(
+        default=os.environ.get("NEO4J_USERNAME", "neo4j"),
+        description="Neo4j username",
+    )
+    password: str = Field(
+        default=os.environ.get("NEO4J_PASSWORD"), description="Neo4j password"
+    )
+
+
 class Config(BaseModel):
     debug: bool = Field(
         default=os.environ.get("DEBUG", "False").lower() == "true",
@@ -135,6 +149,11 @@ class Config(BaseModel):
         default=os.environ.get("AUTOMATIC1111_ENDPOINT", "http://192.168.1.211:7860"),
         description="Automatic1111 API URL",
     )
+    firecrawl_api_key: str = Field(
+        default=os.environ.get("FIRECRAWL_API_KEY"),
+        description="FireCrawl API key",
+    )
+    neo4j: Neo4jConfig = Neo4jConfig()
 
 
 config = Config()

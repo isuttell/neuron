@@ -25,7 +25,7 @@ export default function TokenCounter({
   const anthropicEstCost =
     input_tokens / 3_000_000 + output_tokens / 15_000_000;
   return (
-    <Tooltip>
+    <Tooltip delayDuration={0}>
       <TooltipTrigger>
         <div className="flex m-2.5">
           <div className="w-[100px] h-[20px] bg-secondary rounded-full relative">

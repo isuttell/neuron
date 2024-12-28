@@ -87,8 +87,10 @@ async def save_thread(thread: ThreadModel):
     asyncio.create_task(task())
 
 
-async def update_thread_status(thread: ThreadModel, status: str):
-    if thread.status != status:
+async def update_thread_status(
+    thread: ThreadModel, status: str, force_update: bool = False
+):
+    if thread.status != status or force_update:
         thread.status = status
         # logger.debug(f"Updated thread status: {thread.id} {status}")
         await save_thread(thread)
@@ -163,10 +165,15 @@ async def astream(
                     active_runs[run_id] = "thinking" if name == "message" else name
                 elif kind == "on_chain_end":
                     del active_runs[run_id]
+
+                if name == "update_title" and kind == "on_chain_end":
+                    thread.name = data["output"]["title"]
+
                 values = list(set(active_runs.values()))
                 await update_thread_status(
                     thread,
                     ", ".join(values) if len(values) > 0 else "thinking",
+                    force_update=True,
                 )
 
             if kind in ["on_tool_start", "on_tool_end"]:
@@ -220,13 +227,6 @@ async def astream(
                 if not message.id:
                     message.id = run_id
                 await pubsub.publish("app", MessageEvent(message=message))
-            elif (
-                kind == "on_chain_end"
-                and name == "update_title"
-                and isinstance(data["output"], str)
-            ):
-                thread.name = data["output"]
-                await thread.save()
             elif kind == "on_chat_model_end":
                 output: AIMessage = data["output"]
                 if not "update_title" in active_runs.values():

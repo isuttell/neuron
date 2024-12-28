@@ -44,11 +44,10 @@ def check_for_restricted_keywords(python_code: str) -> None:
         "compile(",
         "execfile(",
         "os.popen(",
-        "os.exec(",
         "os.spawn(",
         "os.fork(",
         "__import__",
-        "input",
+        "input(",
         "os.environ",
     ]
 

@@ -2,7 +2,6 @@ from langchain_huggingface import HuggingFaceEndpoint, ChatHuggingFace
 from neuron_server.config import config
 from neuron_server.llms.llm import LLM
 from typing import Literal
-from neuron_server.llms.tools import default_tools
 
 
 class HuggingFaceLLM(LLM):
@@ -24,5 +23,7 @@ class HuggingFaceLLM(LLM):
         model = ChatHuggingFace(llm=llm, temperature=0.7, streaming=True)
         low_temp_model = ChatHuggingFace(llm=llm, temperature=0.1, streaming=True)
         super().__init__(
-            model, title_model=model, memory_model=low_temp_model, tools=default_tools
+            model,
+            title_model=model,
+            memory_model=low_temp_model,
         )

@@ -151,8 +151,8 @@ export function MediaList({ className, mediaItems, threadId }: MediaListProps) {
             </div>
           ))}
           {mediaItems.length === 0 && (
-            <div className="text-center text-gray-500 text-sm">
-              No artifacts
+            <div className="m-4 text-center text-muted-foreground">
+              No media found
             </div>
           )}
           <div ref={endRef} />

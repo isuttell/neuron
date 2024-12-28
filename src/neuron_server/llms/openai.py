@@ -1,7 +1,6 @@
 from langchain_openai import ChatOpenAI
 from neuron_server.llms.llm import LLM
 from typing import Optional, Literal
-from neuron_server.llms.tools import default_tools
 
 
 class OpenAILLM(LLM):
@@ -31,5 +30,4 @@ class OpenAILLM(LLM):
             model,
             title_model,
             memory_model,
-            tools=default_tools,
         )
