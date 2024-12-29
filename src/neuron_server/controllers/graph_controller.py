@@ -4,11 +4,12 @@ from pydantic import BaseModel
 from neuron_server.graph import question_graph, OutputState
 from pydantic import BaseModel
 from neuron_server.tools.graph_arxiv_import_tool import GraphArxivImportTool
-from neuron_server.graph import process_document, get_document, encode_md5
+from neuron_server.graph import process_document, encode_md5
 import pymupdf4llm
 from neuron_server.config import config as neuron_config
 import os
 from werkzeug.exceptions import BadRequest
+from werkzeug.utils import secure_filename
 
 router = EventRouter()
 
@@ -26,11 +27,13 @@ async def post_arxiv_import(arxiv_id: str):
 async def post_upload_pdf():
     files = await request.files
     form = await request.form
+    if "file" not in files:
+        raise BadRequest("file is required")
     file = files["file"]
     document_name = file.filename
     personality_id = form.get("personality_id")
     if not personality_id:
-        raise BadRequest("Personality ID is required")
+        raise BadRequest("personality_id is required")
     filename = f"{encode_md5(document_name)}.pdf"
     tmp_file_path = os.path.abspath(os.path.join(neuron_config.temp_folder, filename))
     try:
@@ -45,6 +48,46 @@ async def post_upload_pdf():
             text=text,
             document_id=document_id,
             document_name=document_name,
+            config={
+                "configurable": {
+                    "personality_id": personality_id,
+                }
+            },
+        )
+        return "success"
+    finally:
+        if os.path.exists(tmp_file_path):
+            os.remove(tmp_file_path)
+
+
+@blueprint.post("/doc")
+async def post_upload_doc():
+    files = await request.files
+    form = await request.form
+    if "file" not in files:
+        raise BadRequest("file is required")
+    file = files["file"]
+    document_name = os.path.splitext(file.filename)[0]
+    personality_id = form.get("personality_id")
+    if not personality_id:
+        raise BadRequest("personality_id is required")
+    document_id = encode_md5(document_name)
+    tmp_filename = f"{document_id}{os.path.splitext(secure_filename(file.filename))[1]}"
+    tmp_file_path = os.path.abspath(
+        os.path.join(neuron_config.temp_folder, tmp_filename)
+    )
+    try:
+        await file.save(tmp_file_path)
+
+        with open(tmp_file_path, "r", encoding="utf-8") as f:
+            text = f.read()
+
+        # Process the document and add it to the graph
+        await process_document(
+            text=text,
+            document_id=f"doc:{document_id}",
+            document_name=document_name,
+            source=file.filename,
             config={
                 "configurable": {
                     "personality_id": personality_id,

@@ -29,11 +29,11 @@ export interface Message {
   additional_kwargs?: any;
   response_metadata?: any;
   usage_metadata?: UsageMetadata;
+  created_at?: number;
 }
 
-interface IncomingMessage extends Omit<Message, "created_at" | "updated_at"> {
+interface IncomingMessage extends Omit<Message, "created_at"> {
   created_at: string;
-  updated_at: string;
 }
 
 interface IncomingPartialMessage extends IncomingMessage {
@@ -72,8 +72,9 @@ function parseIncomingMessage(message: IncomingMessage): Message {
   return {
     ...message,
     id: message.id.replace("run-", ""),
-    // created_at: new Date(message.created_at).getTime(),
-    // updated_at: new Date(message.updated_at).getTime(),
+    created_at: message.created_at
+      ? new Date(message.created_at).getTime()
+      : undefined,
   };
 }
 

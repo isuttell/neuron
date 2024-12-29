@@ -7,6 +7,8 @@ from datetime import datetime, timezone
 from typing import Literal, Self, Any
 from pydantic import field_serializer
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import func
 
 
 class EmbeddingModel(BaseModel):
@@ -110,3 +112,20 @@ class EmbeddingModel(BaseModel):
             session.add(embedding_instance)
             await session.commit()
             return cls(**embedding_instance.__dict__)
+
+    @classmethod
+    async def filter_by_metadata(cls, key: str, value: str) -> List[Self]:
+        async with get_session() as session:
+            results = await session.execute(
+                select(LangchainPGEmbedding).where(
+                    func.jsonb_extract_path_text(LangchainPGEmbedding.cmetadata, key)
+                    == str(value)
+                )
+            )
+            return [cls(**embedding.__dict__) for embedding in results.scalars().all()]
+
+    async def delete(self) -> None:
+        async with get_session() as session:
+            embedding_instance = await session.get(LangchainPGEmbedding, self.id)
+            await session.delete(embedding_instance)
+            await session.commit()

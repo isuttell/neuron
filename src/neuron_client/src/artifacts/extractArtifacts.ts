@@ -20,7 +20,7 @@ export function extractAndReplaceArtifacts(messages: Message[]): {
   artifacts: Artifact[];
 } {
   const artifactPattern =
-    /:::artifact\{identifier="([^"]+)" type="([^"]+)" title="([^"]+)"\}\n```([\w-]+)?\n([\s\S]*?)(\n```\n:::|$)/g;
+    /:::artifact\{identifier="([^"]+)" type="([^"]+)" title="([^"]+)"\}(\n```)?([\w-]+)?\n([\s\S]*?)((\n```)?\n:::|$)/g;
   const artifacts: Record<string, Artifact[]> = {};
   const updatedMessages = messages.map((message) => {
     let match;
@@ -28,6 +28,7 @@ export function extractAndReplaceArtifacts(messages: Message[]): {
     let updatedContent = Array.isArray(message.content)
       ? message.content.find((c) => c.type === "text")?.text
       : message.content;
+
     while (
       (match = artifactPattern.exec(
         Array.isArray(message.content)
@@ -35,7 +36,7 @@ export function extractAndReplaceArtifacts(messages: Message[]): {
           : message.content
       )) !== null
     ) {
-      const [fullMatch, identifier, type, title, language, artifactContent] =
+      const [fullMatch, identifier, type, title, language, _, artifactContent] =
         match;
       if (!artifacts[identifier]) {
         artifacts[identifier] = [];

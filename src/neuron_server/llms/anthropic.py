@@ -17,7 +17,8 @@ class AnthropicLLM(LLM):
             max_tokens=8192,
         )
         title_model = ChatAnthropic(
-            model="claude-3-5-haiku-20241022",
+            model=model_id,
+            # model="claude-3-5-haiku-20241022",
             temperature=1,
             max_tokens=42,
         )

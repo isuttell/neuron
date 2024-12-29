@@ -30,7 +30,7 @@ class GraphQuestionTool(BaseTool):
     name: str = "graph_question_tool"
     description: str = (
         """
-This tool answers questions, and looks for related information from a knowledge graph database filled with arxiv articles and other knowledge. Use this tool to answer deep questions from the graph. Make sure to include as many details as possible in the question.
+This tool answers questions, and looks for related information from a knowledge graph database filled with arxiv articles and other knowledge. Use this tool to answer deep questions from the graph. Make sure to include as many details as possible in the question. This may take a while and use a lot of tokens so reuse past results in the history if possible when answering follow up questions.
 """.strip()
     )
     args_schema: Type[GraphQuestionToolArgs] = GraphQuestionToolArgs

@@ -67,14 +67,14 @@ This tool scrapes a website using Firecrawl, converts it to markdown and adds it
             # Record the start time for performance measurement
             start_time = time.perf_counter()
 
-            # if url.endswith(".pdf"):
-            #     doc = await load_pdf_from_url(url)
-            #     docs = [doc]
-            # else:
-            loader = FireCrawlLoader(
-                api_key=neuron_config.firecrawl_api_key, url=url, mode=mode
-            )
-            docs = await loader.aload()
+            if url.endswith(".pdf"):
+                doc = await load_pdf_from_url(url)
+                docs = [doc]
+            else:
+                loader = FireCrawlLoader(
+                    api_key=neuron_config.firecrawl_api_key, url=url, mode=mode
+                )
+                docs = await loader.aload()
 
             # Process the documents and add them to the graph
             for doc in docs:
@@ -85,7 +85,7 @@ This tool scrapes a website using Firecrawl, converts it to markdown and adds it
                 await process_document(
                     text=doc.page_content.strip(),
                     document_id=document_id,
-                    document_name=doc.metadata.get("title", url),
+                    document_name=doc.metadata.get("title", None),
                     source=source,
                     config=config,
                 )

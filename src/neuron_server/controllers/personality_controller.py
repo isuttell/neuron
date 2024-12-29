@@ -22,6 +22,7 @@ from neuron_server.logger import logger
 from langchain_core.output_parsers import StrOutputParser
 from neuron_server.llms.tools import get_tools, default_tools
 from langchain_core.runnables import Runnable
+from neuron_server.models.embedding_model import EmbeddingModel
 
 router = EventRouter()
 
@@ -67,6 +68,35 @@ async def get_personality(personality_id: UUID):
     if not personality:
         raise NotFound(f"Personality with id {personality_id} not found")
     return {"personality": personality.model_dump()}
+
+
+@blueprint.get("/<uuid:personality_id>/memories")
+async def get_personality_memories(personality_id: UUID):
+    personality = await PersonalityModel.get(personality_id)
+    if not personality:
+        raise NotFound(f"Personality with id {personality_id} not found")
+    embeddings = await EmbeddingModel.filter_by_metadata(
+        key="personality_id", value=personality_id
+    )
+    return {
+        "embeddings": [
+            embedding.model_dump(exclude={"embedding"}) for embedding in embeddings
+        ],
+        "personalities": [personality.model_dump()],
+    }
+
+
+@blueprint.delete("/<uuid:personality_id>/memories")
+async def delete_personality_memory(personality_id: UUID):
+    personality = await PersonalityModel.get(personality_id)
+    if not personality:
+        raise NotFound(f"Personality with id {personality_id} not found")
+    embeddings = await EmbeddingModel.filter_by_metadata(
+        key="personality_id", value=personality_id
+    )
+    for embedding in embeddings:
+        await embedding.delete()
+    return Response(None, status=204)
 
 
 @blueprint.get("/")

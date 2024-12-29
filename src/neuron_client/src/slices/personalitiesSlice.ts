@@ -29,8 +29,7 @@ interface PersonalityState {
 
 // Define the initial state using that type
 const initialState: PersonalityState = {
-  activePersonalityId:
-    sessionStorage.getItem("activePersonalityId") || undefined,
+  activePersonalityId: localStorage.getItem("activePersonalityId") || undefined,
   personalities: [],
 };
 
@@ -56,9 +55,9 @@ export const personalitiesSlice = createSlice({
     ) => {
       state.activePersonalityId = action.payload;
       if (action.payload) {
-        sessionStorage.setItem("activePersonalityId", action.payload);
+        localStorage.setItem("activePersonalityId", action.payload);
       } else {
-        sessionStorage.removeItem("activePersonalityId");
+        localStorage.removeItem("activePersonalityId");
       }
     },
     upsertPersonality: (

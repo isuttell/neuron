@@ -12,7 +12,7 @@ from datetime import datetime, timedelta
 from langchain_openai import ChatOpenAI
 from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import SystemMessage, HumanMessage
-from typing import List, Type, Tuple
+from typing import List, Type, Tuple, Optional
 from langchain_core.output_parsers import StrOutputParser
 from cv2.typing import MatLike
 import base64
@@ -20,6 +20,7 @@ from pydantic import BaseModel, Field
 from io import BytesIO
 from langchain_core.runnables import Runnable
 from typing import Literal
+from langchain_core.runnables import RunnableConfig
 
 
 class CameraName(Enum):
@@ -51,6 +52,7 @@ async def inspect_images(
     start_time: datetime,
     fps: float,
     max_tokens: int = 1024,
+    config: Optional[RunnableConfig] = None,
 ):
     logger.debug(f"Inspecting {len(image_urls)} images with prompt: {prompt}")
 
@@ -83,6 +85,7 @@ Parameters:
             ),
         ],
         {
+            **(config or {}),
             "run_name": "inspect_camera_feed",
         },
         max_tokens=max_tokens,
@@ -190,13 +193,24 @@ class SecurityCameraTool(BaseTool):
     )
     args_schema: Type[SecurityCameraToolArgs] = SecurityCameraToolArgs
 
-    def _run(self, camera_name: CameraName) -> str:
-        return asyncio.run(self._arun(camera_name))
+    def _run(
+        self,
+        prompt: str,
+        camera_name: CameraName,
+        config: RunnableConfig,
+        frame_count: int = 3,
+        fps: float = 1,
+        provider: Literal["openai", "anthropic"] = "anthropic",
+    ) -> str:
+        return asyncio.run(
+            self._arun(prompt, camera_name, config, frame_count, fps, provider)
+        )
 
     async def _arun(
         self,
         prompt: str,
         camera_name: CameraName,
+        config: RunnableConfig,
         frame_count: int = 3,
         fps: float = 1,
         provider: Literal["openai", "anthropic"] = "anthropic",
@@ -231,6 +245,7 @@ class SecurityCameraTool(BaseTool):
                     image_urls=image_urls,
                     start_time=start_time,
                     fps=fps,
+                    config=config,
                 )
             )
             markdown_urls = save_images(

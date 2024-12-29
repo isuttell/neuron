@@ -96,7 +96,7 @@ export default function Index() {
                 onClick={() => handleSubmit(false)}
                 type="submit"
                 disabled={isDisabled || prompt.trim().length === 0}
-                className="gap-1.5"
+                className="gap-1.5 bg-accent text-accent-foreground"
               >
                 {isLoading ? (
                   <>

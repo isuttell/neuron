@@ -10,12 +10,13 @@ import { Spinner } from "@/components/ui/spinner";
 import { sendMessage } from "../actions/messageActions";
 import { useAppDispatch } from "../hooks";
 import Counter from "../lib/Counter";
-
+import { cn } from "@/lib/utils";
 interface MessageFormProps {
   status: string;
   disabled?: boolean;
   onSubmit: (value: string) => void;
   className?: string;
+  lastMessageAt?: number;
 }
 
 const StatusMap = {
@@ -61,12 +62,13 @@ export default function MessageForm({
   status,
   onSubmit,
   className = "",
+  lastMessageAt,
 }: MessageFormProps) {
   const dispatch = useAppDispatch();
   const activePersonalityId = useAppSelector(getActivePersonalityId);
   const [value, setValue] = useState("");
   const { threadId } = useParams();
-  const [startTime, setStartTime] = useState<Date | null>(null);
+
   const handleSubmit = (
     e:
       | React.FormEvent<HTMLFormElement>
@@ -78,7 +80,6 @@ export default function MessageForm({
       return;
     }
     onSubmit(value);
-    setStartTime(new Date());
     dispatch(
       sendMessage({
         threadId,
@@ -113,15 +114,20 @@ export default function MessageForm({
           onClick={handleSubmit}
           type="submit"
           size="sm"
-          className="ml-auto gap-1.5"
+          className={cn(
+            "ml-auto gap-1.5",
+            status === "idle"
+              ? "bg-accent text-accent-foreground"
+              : "bg-primary text-primary-foreground"
+          )}
           disabled={disabled}
         >
           {status !== "idle" ? (
             <>
-              {startTime && (
+              {lastMessageAt && (
                 <Counter
                   className="text-xs text-gray-500 pr-1"
-                  startDate={new Date(startTime)}
+                  startDate={lastMessageAt}
                 />
               )}
               <Spinner className="size-3.5" />

@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogTrigger,
@@ -6,12 +7,13 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-
+import { Spinner } from "@/components/ui/spinner";
 interface ImageContentProps {
   url: string;
   alt?: string;
   width?: number;
   height?: number;
+  thumbnail_size?: "t" | "l" | "xl";
 }
 
 const ImageContent: React.FC<ImageContentProps> = ({
@@ -19,17 +21,33 @@ const ImageContent: React.FC<ImageContentProps> = ({
   alt,
   width,
   height,
+  thumbnail_size = "t",
 }) => {
+  const [imageLoaded, setImageLoaded] = useState(false);
+  useEffect(() => {
+    const img = new Image();
+    img.src = url;
+    img.onload = () => {
+      setImageLoaded(true);
+    };
+  }, [url]);
   return (
     <Dialog>
-      <DialogTrigger>
-        <img
-          className="w-full rounded-lg"
-          src={url.endsWith(".gif") ? url : url.replace(/\.(?=[^.]*$)/, "_t.")}
-          alt={alt}
-          width={width}
-          height={height}
-        />
+      <DialogTrigger asChild>
+        <div className="relative">
+          <img
+            className="w-full rounded-lg border"
+            src={
+              url.endsWith(".gif")
+                ? url
+                : url.replace(/\.(?=[^.]*$)/, `_${thumbnail_size}.`)
+            }
+            alt={alt}
+            width={width}
+            height={height}
+          />
+          {!imageLoaded && <Spinner className="absolute top-2 right-2" />}
+        </div>
       </DialogTrigger>
       <DialogContent className="max-w-[95vw] max-h-[95vh] mx-auto box-border h-full flex-1 flex flex-col">
         <DialogHeader>

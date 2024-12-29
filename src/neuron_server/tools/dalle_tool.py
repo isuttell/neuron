@@ -116,7 +116,9 @@ class DalleTool(BaseTool):
                 "DateTimeOriginal",
                 now.isoformat(timespec="seconds"),
             )
-            file_path = os.path.join(config.static_folder, "images", filename)
+            file_path = os.path.abspath(
+                os.path.join(config.static_folder, "images", filename)
+            )
             image.save(
                 file_path,
                 format="png",

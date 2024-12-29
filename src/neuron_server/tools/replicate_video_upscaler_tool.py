@@ -1,0 +1,118 @@
+from langchain.tools import BaseTool
+from typing import Type, Literal, Optional
+from pydantic import BaseModel, Field
+import replicate.helpers
+from neuron_server.logger import logger
+import asyncio
+import time
+import replicate
+import aiohttp
+from uuid import uuid4
+import os
+from neuron_server.config import config as neuron_config
+import aiofiles
+
+
+class ReplicateVideoUpscalerToolArgs(BaseModel):
+    video_url: str = Field(description="The URL of the video to upscale")
+    model: Optional[Literal["RealESRGAN_x4plus", "realesr-animevideov3"]] = Field(
+        description="The model to use for the upscaling",
+        default="RealESRGAN_x4plus",
+    )
+    resolution: Optional[Literal["FHD", "2k," "4k", "8k"]] = Field(
+        description="The resolution to upscale the video too",
+        default="FHD",
+    )
+
+
+class ReplicateVideoUpscalerTool(BaseTool):
+    name: str = "replicate_video_upscaler"
+    description: str = (
+        """
+Real-ESRGAN Video Upscaler tool. Use this tool to upscale a generated video to a higher resolution. Only use this tool when directed to by the user as it's the final step in the video generation process.
+""".strip()
+    )
+
+    args_schema: Type[ReplicateVideoUpscalerToolArgs] = ReplicateVideoUpscalerToolArgs
+
+    def _run(
+        self,
+        video_url: str,
+        model: str = "RealESRGAN_x4plus",
+        resolution: str = "FHD",
+    ) -> str:
+        return asyncio.run(self._arun(video_url, model, resolution))
+
+    async def _arun(
+        self,
+        video_url: str,
+        model: str = "RealESRGAN_x4plus",
+        resolution: str = "FHD",
+    ) -> str:
+        if not video_url.endswith(".mp4"):
+            raise ValueError("Video URL must end with .mp4")
+        logger.debug(f"Upscaling video {video_url} to {resolution}")
+        tmp_upload_file = os.path.join(neuron_config.temp_folder, uuid4().hex)
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(video_url) as response:
+                    response.raise_for_status()
+
+                    async with aiofiles.open(tmp_upload_file, "wb") as file:
+                        await file.write(await response.content.read())
+
+            with open(tmp_upload_file, "rb") as video:
+                output: replicate.helpers.FileOutput = await replicate.async_run(
+                    "lucataco/real-esrgan-video:c23768236472c41b7a121ee735c8073e29080c01b32907740cfada61bff75320",
+                    input={
+                        "model": model,
+                        "resolution": resolution,
+                        "video_path": video,
+                    },
+                )
+                logger.debug(f"Generated <{output.url}>")
+
+            filename = f"replicate_real_esrgan_video_{uuid4().hex}.mp4"
+            file_path = os.path.abspath(
+                os.path.join(neuron_config.static_folder, filename)
+            )
+            async with aiofiles.open(file_path, "wb") as file:
+                async for chunk in output:
+                    await file.write(chunk)
+            url = f"{neuron_config.static_content_url}/{filename}"
+            logger.debug(f"Saved generated video to {file_path} <{url}>")
+            return f'<video src="{url}"></video>\nFilename: {file_path}'
+        except Exception as e:
+            logger.exception(e)
+            raise
+        finally:
+            if os.path.exists(tmp_upload_file):
+                os.remove(tmp_upload_file)
+
+
+async def main():
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="Generate a video from an image using a prompt."
+    )
+    parser.add_argument(
+        "--image_url",
+        type=str,
+        help="The URL of the image to use for the first frame of the video generation.",
+        default="http://192.168.1.211:5002/static/images/dalle_generated_image_20241222174012_t_t.png",
+    )
+    parser.add_argument(
+        "--prompt",
+        type=str,
+        help="The prompt to use for the video generation for everything after the first frame.",
+        default="panda and kitten missing each other",
+    )
+    args = parser.parse_args()
+    tool = VideoAudioGenerationTool()
+    result = await tool._arun(args.image_url, args.prompt)
+    print(result)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

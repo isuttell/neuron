@@ -214,7 +214,7 @@ def format_major_orders(
     return "\n".join(
         f"* {major_order.setting.overrideBrief}"
         + "".join(
-            f"\n  - {planets[str(task.values[2])].name}{' (Completed)' if major_order.progress[index] == 1 else ''}"
+            f"\n  - {planets[str(task.values[2])].name if str(task.values[2]) in planets else 'Unknown Planet'}{' (Completed)' if major_order.progress[index] == 1 else ''}"
             for index, task in enumerate(major_order.setting.tasks)
         )
         for major_order in major_orders

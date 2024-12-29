@@ -6,6 +6,7 @@ from uuid import UUID
 from pydantic import BaseModel
 from neuron_server.llms.agent import astream
 import asyncio
+from werkzeug.exceptions import BadRequest
 
 router = EventRouter()
 blueprint = Blueprint("thread", __name__)
@@ -15,7 +16,7 @@ blueprint = Blueprint("thread", __name__)
 async def get_thread(thread_id: UUID):
     thread = await ThreadModel.get(thread_id)
     if not thread:
-        raise ValueError("Thread not found")
+        raise BadRequest("Thread not found")
     return {
         "thread": thread.model_dump(),
     }

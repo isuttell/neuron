@@ -1,11 +1,16 @@
-from typing import Literal
+from typing import Literal, Optional
 from neuron_server.event_router import OutgoingEvent, IncomingEvent
 from uuid import UUID
 from langchain_core.messages import BaseMessage
+from pydantic import ConfigDict
 
 
 class ThreadMessage(BaseMessage):
     thread_id: UUID
+    created_at: Optional[str] = None
+    model_config = ConfigDict(
+        extra="allow",
+    )
 
 
 class GetThreadMessages(IncomingEvent):
@@ -20,6 +25,9 @@ class MessageEvent(OutgoingEvent):
 class PartialMessage(ThreadMessage):
     index: int
     status: str
+    model_config = ConfigDict(
+        extra="allow",
+    )
 
 
 class PartialMessageEvent(OutgoingEvent):

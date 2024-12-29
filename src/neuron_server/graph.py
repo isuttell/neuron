@@ -10,14 +10,13 @@ import hashlib
 from neuron_server.logger import logger
 from operator import add
 from langgraph.graph import StateGraph, START, END
-from langchain_core.output_parsers import StrOutputParser
 from langchain_community.vectorstores import Neo4jVector
 import re
 import ast
 from langchain_core.runnables import RunnableConfig
-from langchain_core.runnables import Runnable
 import time
 from datetime import datetime
+import json
 
 graph = Neo4jGraph(
     url=config.neo4j.url,
@@ -102,7 +101,7 @@ class Extraction(BaseModel):
     atomic_facts: List[AtomicFact] = Field(description="List of atomic facts")
 
 
-model = ChatOpenAI(model="gpt-4o-2024-11-20", temperature=0.1)
+model = ChatOpenAI(model="gpt-4o-2024-11-20", temperature=0.1, max_tokens=None)
 
 structured_llm = model.with_structured_output(Extraction)
 
@@ -471,7 +470,7 @@ Finally, it is emphasized again that even if the atomic fact is only slightly re
 
 class AtomicFactOutput(BaseModel):
     updated_notebook: str = Field(
-        description="""First, combine your current notebook with new insights and findings about the question from current atomic facts, creating a more complete version of the notebook that contains more valid information. Be detailed and accurate. Include sources and references."""
+        description="""First, combine your current notebook with new insights and findings about the question from current atomic facts, creating a more complete version of the notebook that contains more valid information. Be detailed and accurate. Include sources and references where possible. Use clean markdown formatting with support for katex and math."""
     )
     rational_next_action: str = Field(
         description="""Based on the given question, the rational plan, previous actions, and notebook content, analyze how to choose the next action."""
@@ -568,6 +567,17 @@ atomic_fact_chain = atomic_fact_check_prompt | model.with_structured_output(
 )
 
 
+def get_read_chunk_ids(previous_actions: List[str]) -> List[str]:
+    """
+    Get the list of chunks that have been read from the previous actions
+    """
+    read_chunks: List[str] = []
+    for action in previous_actions:
+        if action.startswith("read_chunk"):
+            read_chunks.append(action.split("(")[1].split(")")[0].strip())
+    return read_chunks
+
+
 async def atomic_fact_check(
     state: OverallState, config: RunnableConfig
 ) -> OverallState:
@@ -583,8 +593,8 @@ async def atomic_fact_check(
             "question": state.get("question"),
             "rational_plan": state.get("rational_plan"),
             "notebook": state.get("notebook"),
-            "previous_actions": state.get("previous_actions"),
-            "atomic_facts": atomic_facts,
+            "previous_actions": json.dumps(state.get("previous_actions"), indent=2),
+            "atomic_facts": json.dumps(atomic_facts, indent=2),
         },
         config=config,
     )
@@ -608,11 +618,16 @@ async def atomic_fact_check(
         response["neighbor_check_queue"] = neighbors
     elif chosen_action.get("function_name") == "read_chunk":
         args = chosen_action.get("arguments")
-        response["check_chunks_queue"] = (
+        check_chunks_queue: List[str] = (
             args[0]
-            if args
+            if isinstance(args, list) and len(args) > 0 and isinstance(args[0], list)
             else [atomic_fact.get("chunk_id") for atomic_fact in atomic_facts]
         )
+        read_chunks = get_read_chunk_ids(state.get("previous_actions"))
+        # Filter out chunks that have already been read
+        response["check_chunks_queue"] = [
+            cid for cid in check_chunks_queue if cid not in read_chunks
+        ]
     return response
 
 
@@ -744,10 +759,18 @@ async def chunk_check(state: OverallState, config: RunnableConfig) -> OverallSta
     personality_id: Optional[str] = config["configurable"].get("personality_id")
     assert personality_id is not None
     check_chunks_queue = state.get("check_chunks_queue")
+    if len(check_chunks_queue) == 0:
+        logger.error("No chunks to check")
+        return {
+            "chosen_action": "search_more",
+            "previous_actions": ["read_chunk(error: no chunks to check)"],
+        }
     chunk_id = check_chunks_queue.pop()
     assert isinstance(chunk_id, str)
     logger.debug(f"Step: read_chunk({chunk_id})")
-
+    read_chunks = get_read_chunk_ids(state.get("previous_actions"))
+    if chunk_id in read_chunks:
+        logger.warning(f"Chunk {chunk_id} has already been read")
     chunk = get_chunk(chunk_id, personality_id)
     if not chunk:
         raise ValueError(f"Chunk {chunk_id} not found")
@@ -756,8 +779,8 @@ async def chunk_check(state: OverallState, config: RunnableConfig) -> OverallSta
             "question": state.get("question"),
             "rational_plan": state.get("rational_plan"),
             "notebook": state.get("notebook"),
-            "previous_actions": state.get("previous_actions"),
-            "chunk": chunk,
+            "previous_actions": json.dumps(state.get("previous_actions"), indent=2),
+            "chunk": json.dumps(chunk, indent=2),
         },
         config=config,
     )
@@ -876,8 +899,8 @@ async def neighbor_select(state: OverallState, config: RunnableConfig) -> Overal
             "question": state.get("question"),
             "rational_plan": state.get("rational_plan"),
             "notebook": state.get("notebook"),
-            "nodes": state.get("neighbor_check_queue"),
-            "previous_actions": state.get("previous_actions"),
+            "nodes": json.dumps(state.get("neighbor_check_queue"), indent=2),
+            "previous_actions": json.dumps(state.get("previous_actions"), indent=2),
         },
         config=config,
     )
@@ -911,10 +934,10 @@ RETURN doc.id AS document_id, doc.name AS document_name, c.id AS chunk_id, c.tex
 
 class AnswerReasonOutput(BaseModel):
     analyze: str = Field(
-        description="""Analyze every fact in detail from the research before providing a final answer. Consider complementary information from other notes and employ a majority voting strategy to resolve any inconsistencies. Note any contradictions and inconsistencies if any. Look for and highlight any hidden insights or patterns identified in the notebook. Show your thought process step by step. Follow the rational plan. Call the notebook research if referenced."""
+        description="""Analyze each fact in the research. Consider complementary information from other notes and employ a majority voting strategy to resolve any inconsistencies. Note any contradictions and inconsistencies if any. Look for and highlight any hidden insights or patterns identified in the notebook. Show your thought process step by step. Follow the rational plan. Call the notebook research if referenced. The result should be a markdown formatted list or table of the facts with their analysis followed a section explaining your step by step process. Last include a sectional giving an overall assessment of the research and how well it answers the question and matched the ration plan. Include sources and references where possible."""
     )
     final_answer: str = Field(
-        description="""When generating the final answer, ensure that you take into account all available information. Be detailed as another llm will stylize your answer as needed. Just present the facts."""
+        description="""When generating the final answer, ensure that you take into account all available information. Just present the facts and a concise answer. Use markdown formatting with support for katex and math. Include sources and references where possible."""
     )
 
 
@@ -930,7 +953,7 @@ Strategy:
 #####
 1. You should first analyze the research facts in detail before providing a final answer.
 2. During the analysis, consider complementary information from other notes and employ a majority voting strategy to resolve any inconsistencies.
-3. When generating the final answer, ensure that you take into account all available information. Include sources.
+3. When generating the final answer, ensure that you take into account all available information. Include sources such as article ids and urls whenver possible.
 #####
 
 Example:

@@ -35,7 +35,6 @@ from pydantic import BaseModel, Field
 from neuron_server.config import config
 from neuron_server.logger import logger
 from neuron_server.models.embedding_model import EmbeddingModel
-from neuron_server.artifacts import artifact_prompt
 from neuron_server.llms.tools import default_tools
 
 
@@ -129,18 +128,18 @@ class LLM:
         )
         workflow.add_edge("tools", "agent")
 
-        if config.memory_enabled:
-            workflow.add_conditional_edges(
-                "update_title",
-                self.should_call_update_memory,
-                {
-                    "update_memory": "update_memory",
-                    "continue": END,
-                },
-            )
-            workflow.add_edge("update_memory", END)
-        else:
-            workflow.add_edge("update_title", END)
+        # if config.memory_enabled:
+        #     workflow.add_conditional_edges(
+        #         "update_title",
+        #         self.should_call_update_memory,
+        #         {
+        #             "update_memory": "update_memory",
+        #             "continue": END,
+        #         },
+        #     )
+        #     workflow.add_edge("update_memory", END)
+        # else:
+        workflow.add_edge("update_title", END)
 
         return workflow.compile()
 
@@ -204,6 +203,7 @@ class LLM:
             logger.debug(f"Filtered {initial_messages_length - len(messages)} messages")
 
         chain = chat_prompt | model
+
         response: AIMessage = await chain.ainvoke(
             {
                 "messages": messages,
@@ -215,11 +215,10 @@ class LLM:
                 "now": datetime.now(timezone.utc)
                 .astimezone()
                 .strftime("%Y-%m-%d %H:%M:%S %Z"),
-                "artifact_prompt": artifact_prompt,
             },
             config,
         )
-
+        response.created_at = datetime.now(timezone.utc).isoformat()
         # We return a list, because this will get added to the existing list
         return {"messages": [response]}
 
@@ -229,7 +228,7 @@ class LLM:
         config: RunnableConfig,
     ):
         message_trimmer: Runnable = trim_messages(
-            max_tokens=1024,
+            max_tokens=30000,
             strategy="last",
             token_counter=self.title_model,
             include_system=False,
@@ -244,7 +243,6 @@ class LLM:
             {
                 "messages": get_buffer_string(messages),
                 "last_title": state.get("title", ""),
-                "personality": "",
                 "now": datetime.now(timezone.utc)
                 .astimezone()
                 .strftime("%Y-%m-%d %H:%M:%S %Z"),

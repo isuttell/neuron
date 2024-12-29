@@ -8,7 +8,7 @@ class FFProbeTool(BaseTool):
     name: str = "ffprobe"
     description: str = (
         """
-This tool is designed to analyze video and audio using ffprobe. Starting with a fixed base of arguments (ffprobe -hide_banner), the LLM generates all additional arguments required to do tasks such inspect the duration, bitrate, and other metadata of a video or audio file. The tool avoids duplicating the initial arguments and focuses on creating the following functional set of arguments.
+This tool is designed to analyze video and audio using ffprobe. Starting with a fixed base of arguments (ffprobe -hide_banner), the LLM generates all additional arguments required to do tasks such inspect the duration, bitrate, and other metadata of a video or audio file. The tool avoids duplicating the initial arguments and focuses on creating the following functional set of arguments. Use this to determin the actual duration of a generated piece of audio or video.
 """.strip()
     )
 

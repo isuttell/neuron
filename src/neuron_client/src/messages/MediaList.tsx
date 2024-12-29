@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/tooltip";
 import Content from "./Content";
 import ImageContent from "./ImageContent";
+import VideoContent from "./VideoContent";
 import { Message } from "../slices/messagesSlice";
 interface MediaItem {
   key: string;
@@ -86,16 +87,24 @@ interface MediaListProps {
   className?: string;
   mediaItems: MediaItem[];
   threadId: string;
+  thumbnail_size?: "t" | "l" | "xl";
 }
 
-export function MediaList({ className, mediaItems, threadId }: MediaListProps) {
+export function MediaList({
+  className,
+  mediaItems,
+  threadId,
+  thumbnail_size = "t",
+}: MediaListProps) {
   const endRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     // Scroll to the bottom of the messages when they change
-    if (endRef.current) {
-      endRef.current.scrollIntoView({ behavior: "smooth" });
-    }
+    setTimeout(() => {
+      if (endRef.current) {
+        endRef.current.scrollIntoView({ behavior: "smooth" });
+      }
+    }, 0);
   }, [
     mediaItems.length,
     mediaItems.length > 0 && mediaItems[mediaItems.length - 1].content,
@@ -115,6 +124,7 @@ export function MediaList({ className, mediaItems, threadId }: MediaListProps) {
                   alt={item.alt}
                   width={1024}
                   height={1024}
+                  thumbnail_size={thumbnail_size}
                 />
               ) : null}
               {item.type === "link" ? (
@@ -144,9 +154,13 @@ export function MediaList({ className, mediaItems, threadId }: MediaListProps) {
                 </Tooltip>
               ) : null}
               {item.type === "video" ? (
-                <video className="w-full" controls>
-                  <source src={item.url} type="video/mp4" />
-                </video>
+                <VideoContent
+                  url={item.url}
+                  autoPlay={true}
+                  muted={true}
+                  controls={false}
+                  loop={true}
+                />
               ) : null}
             </div>
           ))}

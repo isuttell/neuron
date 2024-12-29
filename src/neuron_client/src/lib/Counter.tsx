@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 
 interface CounterProps {
-  startDate: Date;
+  startDate: number;
   className?: string;
 }
 
@@ -24,7 +24,7 @@ const Counter: React.FC<CounterProps> = ({ startDate, className }) => {
     const interval = setInterval(() => {
       const now = new Date();
       const secondsElapsed = Math.floor(
-        (now.getTime() - startDate.getTime()) / 1000
+        (now.getTime() - new Date(startDate).getTime()) / 1000
       );
       setElapsedTime(secondsElapsed);
     }, 1000);

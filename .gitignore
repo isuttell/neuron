@@ -17,3 +17,6 @@ venv.bak/
 /static
 *.bsp
 *.dat
+
+/docs
+/neo4j

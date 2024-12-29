@@ -92,7 +92,6 @@ async def update_thread_status(
 ):
     if thread.status != status or force_update:
         thread.status = status
-        # logger.debug(f"Updated thread status: {thread.id} {status}")
         await save_thread(thread)
 
 
@@ -120,6 +119,7 @@ async def astream(
         graph.checkpointer = AsyncPostgresSaver(pool)
 
         human_message = HumanMessage(content=prompt, id=str(uuid4()))
+        human_message.created_at = datetime.now(timezone.utc).isoformat()
         await pubsub.publish(
             "app",
             MessageEvent(
@@ -214,7 +214,7 @@ async def astream(
                                 index=index,
                                 status="streaming",
                                 # Use a stable start time and don't create a new one per event
-                                created_at=start_time,
+                                created_at=start_time.isoformat(),
                             )
                         ),
                     )
@@ -233,14 +233,13 @@ async def astream(
                     # @TODO: This is a hack
                     message = ThreadMessage(
                         **output.model_dump(),
+                        created_at=start_time.isoformat(),
                         thread_id=thread.id,
                     )
                     await pubsub.publish("app", MessageEvent(message=message))
                 await update_thread_status(thread, "thinking")
             elif kind == "error":
                 logger.error(data)
-
-        await update_thread_status(thread, "idle")
     except Exception as e:
         logger.exception(e)
         logger.error(f"AgentError: {e!r}")

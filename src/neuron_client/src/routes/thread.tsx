@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Trash, Bot } from "lucide-react";
+import { Trash, Bot, PanelRight } from "lucide-react";
 import { useParams, useNavigate } from "react-router-dom";
 import MessageForm from "../messages/MessageForm";
 import MessageItem from "../messages/MessageItem";
@@ -49,6 +49,9 @@ export default function Thread() {
     shallowEqual
   );
   const [showTools, setShowTools] = useState(false);
+  const [widthMode, setWidthMode] = useState<"narrow" | "wide">(
+    localStorage.getItem("widthMode") === "wide" ? "wide" : "narrow"
+  );
 
   useEffect(() => {
     if (!threadId) {
@@ -113,7 +116,7 @@ export default function Thread() {
     [...filteredMessages]
       .reverse()
       .findIndex((message) => message.type === "human");
-
+  const lastMessageAt = filteredMessages[lastUserMessage]?.created_at;
   return (
     <div className="flex flex-1 p-4 flex-col flex-nowrap max-h-screen">
       <div className="flex justify-between mb-2 border-b pb-2">
@@ -126,7 +129,7 @@ export default function Thread() {
             total_tokens={total_tokens}
           />
         )}
-        <Tooltip>
+        <Tooltip delayDuration={0}>
           <TooltipTrigger asChild>
             <Button
               variant={showTools ? "default" : "ghost"}
@@ -136,11 +139,30 @@ export default function Thread() {
               }}
             >
               <Bot className="size-4" />
-              <span className="sr-only">Toggle Tools</span>
+              <span className="sr-only">Toggle System Messages</span>
             </Button>
           </TooltipTrigger>
           <TooltipContent side="bottom">
-            {showTools ? "Hide" : "Show"} Tools
+            {showTools ? "Hide" : "Show"} System Messages
+          </TooltipContent>
+        </Tooltip>
+        <Tooltip delayDuration={0}>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => {
+                const newWidthMode = widthMode === "narrow" ? "wide" : "narrow";
+                setWidthMode(newWidthMode);
+                localStorage.setItem("widthMode", newWidthMode);
+              }}
+            >
+              <PanelRight className="size-4" />
+              <span className="sr-only">Toggle Width Mode</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">
+            {widthMode === "narrow" ? "Wide" : "Narrow"}
           </TooltipContent>
         </Tooltip>
         <EditThreadDialog thread={thread} />
@@ -200,6 +222,7 @@ export default function Thread() {
           <div className="bottom-0">
             <MessageForm
               status={thread.status}
+              lastMessageAt={lastMessageAt}
               className="max-w-[1170px] w-full mx-auto mt-2"
               onSubmit={() => {}}
             />
@@ -209,7 +232,9 @@ export default function Thread() {
           defaultValue={activeTab}
           className={cn(
             "ml-4 pl-4  flex-shrink-0 border-l flex-col flex",
-            activeTab === "media" ? "max-w-[512px] w-1/4" : "w-1/2"
+            widthMode === "narrow"
+              ? "max-w-[512px] w-1/4"
+              : "max-w-[1024px] w-1/2"
           )}
           onValueChange={(value) => {
             setActiveTab(value as "media" | "artifacts");
@@ -238,16 +263,20 @@ export default function Thread() {
               value="media"
               className={cn(
                 "flex flex-col flex-1 absolute top-0 left-0 right-0 bottom-0",
-                activeTab === "media" ? "block" : "hidden"
+                activeTab === "media" ? "flex" : "hidden"
               )}
             >
-              <MediaList threadId={thread.id} mediaItems={mediaItems} />
+              <MediaList
+                threadId={thread.id}
+                mediaItems={mediaItems}
+                thumbnail_size={widthMode === "narrow" ? "t" : "xl"}
+              />
             </TabsContent>
             <TabsContent
               value="artifacts"
               className={cn(
                 "flex flex-col flex-1 absolute top-0 left-0 right-0 bottom-0",
-                activeTab === "artifacts" ? "block" : "hidden"
+                activeTab === "artifacts" ? "flex" : "hidden"
               )}
             >
               <ArtifactsViewer artifacts={artifacts} />

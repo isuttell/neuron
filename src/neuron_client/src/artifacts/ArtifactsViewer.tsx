@@ -24,7 +24,7 @@ const ArtifactsViewer: React.FC<ArtifactsViewerProps> = ({ artifacts }) => {
     }
   }, [artifacts.length]);
   return (
-    <div>
+    <>
       <div className="flex flex-row gap-2">
         {artifacts.map(({ key, versions }, index) => (
           <Tooltip delayDuration={0}>
@@ -58,7 +58,7 @@ const ArtifactsViewer: React.FC<ArtifactsViewerProps> = ({ artifacts }) => {
           No artifacts found
         </div>
       )}
-    </div>
+    </>
   );
 };
 

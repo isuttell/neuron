@@ -11,7 +11,7 @@ import asyncio
 
 tool_promp_types = """
 Prompt Tips:
-*Short prompts (e.g., "footsteps on gravel") yield single sounds.
+* Short prompts (e.g., "footsteps on gravel") yield single sounds.
 * Descriptors like "high-quality, Foley" improve detail.
 * Use terms like Foley (realistic effects), Whoosh (movement sounds), Impact (collisions), Drone (atmosphere), and onomatopoeias (e.g., "meow").
 """.strip()

@@ -8,11 +8,20 @@ import {
 } from "@/components/ui/select";
 import Content from "../messages/Content";
 import { ArtifactVersion } from "./extractArtifacts";
+import VideoPlayer from "../messages/VideoPlayer";
+import AudioPlayer from "../messages/AudioPlayer";
 
 const TypeMap = {
   "text/plain": "plain",
   "image/svg+xml": "svg",
   "text/html": "html",
+  "video/mp4": "video",
+  "audio/mp3": "audio",
+  "image/*": "image",
+  "image/png": "image",
+  "image/jpeg": "image",
+  "image/jpg": "image",
+  "image/webp": "image",
 };
 
 export default function ArtifactItem({
@@ -80,6 +89,15 @@ export default function ArtifactItem({
             srcDoc={selectedArtifact.content}
           />
         )}
+        {type === "image" && (
+          <img
+            className="rounded-md"
+            src={selectedArtifact.content}
+            alt={selectedArtifact.title}
+          />
+        )}
+        {type === "video" && <VideoPlayer src={selectedArtifact.content} />}
+        {type === "audio" && <AudioPlayer src={selectedArtifact.content} />}
       </div>
     </div>
   );

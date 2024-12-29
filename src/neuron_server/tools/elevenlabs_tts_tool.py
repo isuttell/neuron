@@ -56,6 +56,9 @@ Callum (male, middle-aged, intense)
 Charlotte (female, Swedish)
 Oxley - Evil Character
 Sexy Female Villain Voice
+
+Voice Clones:
+Isaac
 """.strip()
     )
 

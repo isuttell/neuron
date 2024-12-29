@@ -40,14 +40,24 @@ from neuron_server.tools.hd2_galactic_war_report_tool import (
     HD2GalacticWarReportTool,
 )
 from neuron_server.tools.hd2_liberation_history_tool import HD2LiberationHistoryTool
-from langchain_community.utilities.wolfram_alpha import WolframAlphaAPIWrapper
-from langchain_community.tools import WolframAlphaQueryRun
 from neuron_server.tools.code_interpreter_tool import CodeInterpreterTool
 from neuron_server.tools.graph_question_tool import GraphQuestionTool
 from neuron_server.tools.graph_arxiv_import_tool import GraphArxivImportTool
 from neuron_server.tools.graph_import_tool import GraphImportTool
-from neuron_server.tools.graph_pdf_import_tool import GraphPDFImportTool
 from neuron_server.tools.graph_website_import_tool import GraphWebsiteImportTool
+from neuron_server.tools.replicate_video_generation_tool import (
+    ReplicateVideoGenerationTool,
+)
+from neuron_server.tools.replicate_audio_generation_tool import (
+    ReplicateAudioGenerationTool,
+)
+from neuron_server.tools.replicate_image_generation_tool import (
+    ReplicateImageGenerationTool,
+)
+from neuron_server.tools.inspect_image_tool import InspectImageTool
+from neuron_server.tools.replicate_sound_effect_generation_tool import (
+    ReplicateSoundEffectGenerationTool,
+)
 
 homeassistant_api = HomeAssistantAPI(token=config.homeassistant.token)
 
@@ -70,6 +80,15 @@ tool_sets: Dict[str, List[BaseTool]] = {
                 endpoint=config.automatic1111_endpoint,
             )
         ),
+        ReplicateImageGenerationTool(),
+        InspectImageTool(),
+    ],
+    "video": [
+        FFmpegTool(),
+        InspectImageTool(),
+        ReplicateVideoGenerationTool(),
+        ReplicateAudioGenerationTool(),
+        ReplicateSoundEffectGenerationTool(),
     ],
     "tts": [
         ElevenLabsTTSTool(),
@@ -80,7 +99,6 @@ tool_sets: Dict[str, List[BaseTool]] = {
             max_results=5, include_raw_content=True, search_depth="advanced"
         ),
         WikipediaQueryRun(api_wrapper=WikipediaAPIWrapper()),
-        WolframAlphaQueryRun(api_wrapper=WolframAlphaAPIWrapper()),
     ],
     "arxiv": [
         ArxivSearchTool(),

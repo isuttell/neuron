@@ -137,14 +137,20 @@ async def index(**kwargs):
 @cors(allowed_methods=["GET", "OPTIONS"], allowed_headers=["Authorization"])
 @cache_control(max_age=31536000, immutable=True)
 async def get_static(path):
+    match = re.match(r".*_(t|l|xl)\.(jpe?g|png)$", path)
     if (
-        re.match(r".*_t\.(jpe?g|png)$", path)
+        match
         and not os.path.exists(os.path.join(config.static_folder, path))
-        and os.path.exists(os.path.join(config.static_folder, path.replace("_t.", ".")))
+        and os.path.exists(
+            os.path.join(config.static_folder, path.replace(f"_{match.group(1)}.", "."))
+        )
     ):
-        image = Image.open(os.path.join(config.static_folder, path.replace("_t.", ".")))
-        image.thumbnail((512, 512))
-        image.save(os.path.join(config.static_folder, path))
+        image = Image.open(
+            os.path.join(config.static_folder, path.replace(f"_{match.group(1)}.", "."))
+        )
+        size = {"t": 512, "l": 768, "xl": 1024}.get(match.group(1), 512)
+        image.thumbnail((size, size))
+        image.save(os.path.join(config.static_folder, path), quality=85)
     return await send_from_directory(config.static_folder, path)
 
 
@@ -190,3 +196,23 @@ app.register_blueprint(message_blueprint, url_prefix="/api/messages")
 app.register_blueprint(personality_blueprint, url_prefix="/api/personalities")
 app.register_blueprint(image_blueprint, url_prefix="/api/images")
 app.register_blueprint(graph_blueprint, url_prefix="/api/graph")
+
+
+@app.errorhandler(404)
+async def not_found_error(error):
+    return {"error": "Not Found", "message": str(error)}, 404
+
+
+@app.errorhandler(500)
+async def internal_error(error):
+    return {"error": "Internal Server Error", "message": str(error)}, 500
+
+
+@app.errorhandler(400)
+async def bad_request_error(error):
+    return {"error": "Bad Request", "message": str(error)}, 400
+
+
+@app.errorhandler(403)
+async def forbidden_error(error):
+    return {"error": "Forbidden", "message": str(error)}, 403

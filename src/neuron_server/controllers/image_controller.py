@@ -25,6 +25,7 @@ def extract_prompts_from_directory(directory: str, max_images: int = 100):
         (filename, os.stat(os.path.join(directory, filename)))
         for filename in os.listdir(directory)
         if filename.endswith(".png")
+        and not any(substring in filename for substring in ["_t.", "_x.", "_xl."])
     ]
     # Sort by creation time so the newest images are at the top
     images.sort(key=lambda x: x[1].st_ctime, reverse=True)
@@ -42,7 +43,7 @@ def extract_prompts_from_directory(directory: str, max_images: int = 100):
             png_info = img.info
             prompt = png_info.get("Description", "")
             created_at = png_info.get("DateTimeOriginal", "")
-            url = f"{config.static_content_url}/images/{filename}"
+            url = f"{config.static_content_url}/{filename}"
             data = ImageFromDisk(
                 id=str(abs(hash(os.path.basename(file_path)))),
                 path=file_path,
@@ -59,5 +60,5 @@ def extract_prompts_from_directory(directory: str, max_images: int = 100):
 async def get_images():
     return [
         image.model_dump()
-        for image in extract_prompts_from_directory(config.static_folder + "/images")
+        for image in extract_prompts_from_directory(config.static_folder)
     ]
