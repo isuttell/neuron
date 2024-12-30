@@ -33,9 +33,10 @@ Prompt Tips:
             "isuttell/flux-lora-isaac:c2c37f42d4f435bd70a75479e241890f07459b0b1828ede06a6030b21768ad2f",
             "black-forest-labs/flux-1.1-pro-ultra",
             "recraft-ai/recraft-20b",
+            "ideogram-ai/ideogram-v2",
         ]
     ] = Field(
-        description="The model to use for the image generation. Use the flux-1.1-pro-ultra model for the best results and highest resolution images, and flux-lora-isaac when you need to generate images of Isaac. Use recraft-20b when trying to replicate a specific style",
+        description="The model to use for the image generation. Use the flux-1.1-pro-ultra model for the best results and highest resolution images, and flux-lora-isaac when you need to generate images of Isaac. Use recraft-20b when trying to replicate a specific style. ideogram-v2 excels at creating captivating designs, innovative logos and posters with unique text rendering capabilities. Use ideogram-v2 when you need to create a logo or poster or need to generate clean looking text.",
         default="black-forest-labs/flux-1.1-pro-ultra",
     )
     aspect_ratio: Optional[
