@@ -50,17 +50,16 @@ async def execute_agent(
     result: AIMessage = await graph.ainvoke(
         {
             "messages": [
+                HumanMessage(
+                    content="I can't respond so please try you're best to fullful my next request but don't ask questions, or provide prompt suggestions. Just respond with the answer to my question."
+                ),
                 HumanMessage(content=prompt),
             ],
             "location": location,
             "personality": personality.context,
-            "memory": personality.memory,
-            "now": datetime.now(timezone.utc)
-            .astimezone()
-            .strftime("%Y-%m-%d %H:%M:%S %Z"),
+            "now": datetime.now().astimezone().isoformat(timespec="seconds"),
         },
         config={
-            "run_name": "home_prompt",
             "configurable": {
                 "personality_id": str(personality_id),
             },
@@ -100,6 +99,7 @@ async def astream(
     personality_id: UUID,
     prompt: str,
     location: str = "San Diego, California at -117.1860 W and 32.84 N.",
+    username: str = "Isaac Suttell",
 ):
     start_time = datetime.now(timezone.utc).astimezone()
     logger.debug(f"Agent started for {thread_id}")
@@ -140,6 +140,7 @@ async def astream(
                 "personality": personality.context,
                 "title": thread.name or "",
                 "location": location,
+                "username": username,
                 "now": start_time.strftime("%Y-%m-%d %H:%M:%S %Z"),
             },
             config={

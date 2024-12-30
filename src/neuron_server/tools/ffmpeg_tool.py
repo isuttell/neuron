@@ -8,6 +8,15 @@ import subprocess
 from typing import Literal
 
 
+class FFmpegToolError(Exception):
+    def __init__(self, message: str, stderr: str):
+        self.message = message
+        self.stderr = stderr
+
+    def __str__(self):
+        return f"Error generating audio: {self.message}\n\nSTDERR:\n{self.stderr}"
+
+
 class FFmpegTool(BaseTool):
     name: str = "ffmpeg"
     description: str = (
@@ -28,7 +37,6 @@ Example concat args to join audio files:
     def _run(self, args: List[str], extension: Literal["mp3", "mp4"] = "mp3") -> str:
         process: subprocess.CompletedProcess
         try:
-
             id = str(uuid4())
             # Concatenate all audio files using ffmpeg
             output_dir = config.static_folder + "/ffmpeg"
@@ -50,6 +58,7 @@ Example concat args to join audio files:
             process = subprocess.run(
                 args,
                 check=True,
+                text=True,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
             )
@@ -63,5 +72,8 @@ Filename: {output}
             )
         except Exception as e:
             logger.exception(e)
-            stderr_output = process.stderr.decode("utf-8") if process else "None"
-            return f"Error generating audio: {str(e)}\n\nSTDERR:\n{stderr_output}"
+            if process:
+                logger.error(process.stderr)
+                raise FFmpegToolError(str(e), process.stderr)
+            else:
+                raise e

@@ -45,9 +45,9 @@ class AgentState(TypedDict):
     """The state of the agent."""
 
     messages: Annotated[Sequence[BaseMessage], add_messages]
+    username: str = "user"
     title: str = ""
     personality: str
-    memory: str = ""
     location: str = ""
     recall_memories: str = ""
 
@@ -209,6 +209,7 @@ class LLM:
                 "messages": messages,
                 "personality": state["personality"],
                 "location": state["location"] if "location" in state else "unknown",
+                "username": state["username"] if "username" in state else "user",
                 "recall_memories": (
                     state["recall_memories"] if "recall_memories" in state else ""
                 ),

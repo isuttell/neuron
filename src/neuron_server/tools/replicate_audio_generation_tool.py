@@ -33,7 +33,7 @@ class ReplicateAudioGenerationToolArgs(BaseModel):
         description="The seed to use for the audio generation", default=-1
     )
     negative_prompt: Optional[str] = Field(
-        description="Negative prompt to avoid certain sounds", default="music"
+        description="Negative prompt to avoid certain sounds", default="music, ethereal"
     )
 
 
@@ -41,7 +41,7 @@ class ReplicateAudioGenerationTool(BaseTool):
     name: str = "replicate_audio_generation"
     description: str = (
         """
-Use this tool to add realistic foley sound effects synced to a video using the zsxkib/mmaudio model. It can even do speech, if you're not too worried about the words making sense. It uses an advanced AI model that synthesizes high-quality audio from video content, enabling seamless video-to-audio transformation. Use this tool to add foley sounds to a video.
+Use this tool to add realistic foley sound effects synced to a video using the zsxkib/mmaudio model. It can even do speech, if you're not too worried about the words making sense. It uses an advanced AI model that synthesizes high-quality audio from video content, enabling seamless video-to-audio transformation. Use this tool to add foley sounds to a video. Avoid ethereal sounds.
 """.strip()
     )
 

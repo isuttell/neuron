@@ -20,7 +20,8 @@ blueprint = Blueprint("graph", __name__)
 @blueprint.post("/arxiv/<arxiv_id>")
 async def post_arxiv_import(arxiv_id: str):
     tool = GraphArxivImportTool()
-    return await tool.ainvoke({"arxiv_id": arxiv_id})
+    results = await tool.ainvoke({"arxiv_id": arxiv_id})
+    return {"status": "success", "results": results}
 
 
 @blueprint.post("/pdf")
@@ -54,7 +55,7 @@ async def post_upload_pdf():
                 }
             },
         )
-        return "success"
+        return {"status": "success"}
     finally:
         if os.path.exists(tmp_file_path):
             os.remove(tmp_file_path)
@@ -94,7 +95,7 @@ async def post_upload_doc():
                 }
             },
         )
-        return "success"
+        return {"status": "success"}
     finally:
         if os.path.exists(tmp_file_path):
             os.remove(tmp_file_path)
