@@ -52,8 +52,6 @@ class DalleArgs(BaseModel):
 The prompt to generate the image from.
 
 When creating prompts for images, include specific visual details, such as colors, textures, and object placements, to guide the model toward a precise result. Mention the desired style (e.g., photorealistic, cartoonish, or abstract) and add context, like background elements or lighting, for more cohesive images. Focus on clarity and conciseness in each prompt to avoid ambiguity and ensure reproducible results. Unless you are trying to maintain a specific style or look add multiple random modern art styles and artistic styles to ensure variety.
-
-When creating prompts for charts, specify the type (e.g., bar, line, pie), include axis labels, titles, and legends. Describe the chart's style (e.g., clean, modern, hand-drawn), and color scheme. Include the raw data in csv format.
         """.strip()
     )
     style: Literal["natural", "vivid"] = Field(

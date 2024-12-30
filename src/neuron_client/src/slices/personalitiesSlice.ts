@@ -9,6 +9,7 @@ export interface Personality {
   context: string;
   memory: string;
   tool_set: string;
+  logo?: string;
   created_at: string;
   updated_at: string;
 }

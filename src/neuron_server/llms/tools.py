@@ -58,6 +58,7 @@ from neuron_server.tools.inspect_image_tool import InspectImageTool
 from neuron_server.tools.replicate_sound_effect_generation_tool import (
     ReplicateSoundEffectGenerationTool,
 )
+from neuron_server.tools.update_logo_tool import UpdateLogoTool
 
 homeassistant_api = HomeAssistantAPI(token=config.homeassistant.token)
 
@@ -82,6 +83,7 @@ tool_sets: Dict[str, List[BaseTool]] = {
         ),
         ReplicateImageGenerationTool(),
         InspectImageTool(),
+        UpdateLogoTool(),
     ],
     "video": [
         FFmpegTool(),

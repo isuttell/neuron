@@ -5,7 +5,7 @@ import { upsertMessage, partialMessage } from "../slices/messagesSlice";
 import { upsertThread } from "../slices/threadsSlice";
 import { upsertPersonality } from "../slices/personalitiesSlice";
 import { upsertImage } from "../slices/imagesSlice";
-
+import { toast } from "../hooks/use-toast";
 interface DeleteThreadAction extends Action {
   type: "DeleteThread";
   thread_id: string;
@@ -49,11 +49,20 @@ const websocketMiddleware =
         socket.on("open", () => {
           // Dispatch an action when connected
           dispatch(connect(socket));
+          toast({
+            title: "Connected to server",
+            duration: 1000,
+          });
         });
 
         socket.on("close", () => {
           // Dispatch an action when disconnected
-          dispatch(disconnect());
+          if (socket.connected) {
+            dispatch(disconnect());
+            toast({
+              title: "Disconnected from server",
+            });
+          }
         });
 
         socket.on("personality", (event) => {
@@ -65,6 +74,11 @@ const websocketMiddleware =
         });
         socket.on("error", (event) => {
           console.error(`ServerError: ${event.message}`);
+          toast({
+            title: "Server error",
+            variant: "destructive",
+            description: event.message,
+          });
         });
       }
     } else if (socket.connected && action.type.indexOf("socket/") === 0) {

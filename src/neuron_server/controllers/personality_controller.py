@@ -34,6 +34,7 @@ class CreatePersonality(BaseModel):
     description: Optional[str] = None
     context: str
     memory: str
+    logo: Optional[str] = None
     tool_set: Optional[str] = None
 
 
@@ -116,6 +117,7 @@ async def create_personality():
         description=payload.description,
         context=payload.context,
         memory=payload.memory,
+        logo=payload.logo,
         tool_set=payload.tool_set,
     )
     return {"personality": personality.model_dump()}
@@ -142,6 +144,7 @@ async def update_personality(personality_id: UUID):
         context=payload.context,
         memory=payload.memory,
         tool_set=payload.tool_set,
+        logo=payload.logo,
     )
     return {"personality": personality.model_dump()}
 

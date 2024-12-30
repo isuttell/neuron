@@ -2,27 +2,9 @@ from uuid import UUID
 from neuron_server.database import get_session, Personality
 from typing import Optional, List, Self
 from sqlalchemy import select
-from pydantic import BaseModel, Field, field_serializer
+from pydantic import BaseModel, Field
 from uuid import uuid4
 from datetime import datetime, timezone
-
-
-def get_context_prompt(name: str, context: str) -> str:
-    return f"""\
-You the assistant are called {name}. Use the following custom instructions to guide your responses:
-\"\"\"
-{context}
-\"\"\"""".strip()
-
-
-def get_memory_prompt(memory: Optional[str] = None) -> str:
-    if not memory or len(memory.strip()) == 0:
-        return ""
-    return f"""\
-Based on past conversations you have determined the following about the personality:
-\"\"\"
-{memory}
-\"\"\"""".strip()
 
 
 class PersonalityModel(BaseModel):
@@ -33,6 +15,9 @@ class PersonalityModel(BaseModel):
     )
     context: str = Field(
         description="Information supplied by the personality for additional context"
+    )
+    logo: Optional[str] = Field(
+        description="A URL to an image that represents the personality", default=None
     )
     memory: str = Field(
         description="Information about the personality's preferences and history"
@@ -47,26 +32,6 @@ class PersonalityModel(BaseModel):
         default_factory=lambda: datetime.now(timezone.utc).astimezone()
     )
 
-    @field_serializer("created_at", "updated_at")
-    def parse_date(self, v: datetime) -> str:
-        return v.astimezone().isoformat()
-
-    def get_context_prompt(self) -> str:
-        return f"""\
-    You the assistant are called {self.name}. Use the following custom instructions to guide your responses:
-    \"\"\"
-    {self.context}
-    \"\"\"""".strip()
-
-    def get_memory_prompt(self) -> str:
-        if not self.memory or len(self.memory.strip()) == 0:
-            return ""
-        return f"""\
-    Personality memory across threads:
-    \"\"\"
-    {self.memory}
-    \"\"\"""".strip()
-
     @classmethod
     async def create(
         cls,
@@ -74,6 +39,7 @@ class PersonalityModel(BaseModel):
         description: str,
         context: str,
         memory: str,
+        logo: Optional[str] = None,
         tool_set: Optional[str] = None,
         id: Optional[UUID] = None,
     ) -> Self:
@@ -85,6 +51,7 @@ class PersonalityModel(BaseModel):
                 context=context,
                 memory=memory,
                 tool_set=tool_set,
+                logo=logo,
             )
             session.add(personality)
             await session.commit()
@@ -104,7 +71,8 @@ class PersonalityModel(BaseModel):
         description: str,
         context: str,
         memory: str,
-        tool_set: Optional[str] = None,
+        logo: Optional[str],
+        tool_set: Optional[str],
     ) -> Self:
         async with get_session() as session:
             personality = await session.get(Personality, id)
@@ -113,6 +81,7 @@ class PersonalityModel(BaseModel):
             personality.context = context
             personality.memory = memory
             personality.tool_set = tool_set
+            personality.logo = logo
             session.add(personality)
             await session.commit()
             return cls(**personality.__dict__)
@@ -142,4 +111,5 @@ class PersonalityModel(BaseModel):
             personality.context = self.context
             personality.memory = self.memory
             personality.tool_set = self.tool_set
+            personality.logo = self.logo
             await session.commit()

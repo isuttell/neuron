@@ -55,6 +55,7 @@ const EditPersonalityDialog: React.FC<EditPersonalityDialogProps> = ({
   );
   const [context, setContext] = useState(personality?.context || "");
   const [loading, setLoading] = useState(false);
+  const [logo, setLogo] = useState(personality?.logo || "");
   const [tool_set, setToolSet] = useState(
     (personality?.tool_set || "").split("+")
   );
@@ -72,6 +73,7 @@ const EditPersonalityDialog: React.FC<EditPersonalityDialogProps> = ({
             name,
             description,
             context,
+            logo,
             memory: personality.memory,
             tool_set: tool_set.length > 0 ? tool_set.join("+") : undefined,
           })
@@ -83,6 +85,7 @@ const EditPersonalityDialog: React.FC<EditPersonalityDialogProps> = ({
             description,
             context,
             memory: "",
+            logo,
             tool_set: tool_set.length > 0 ? tool_set.join("+") : undefined,
           })
         ).unwrap();
@@ -109,6 +112,7 @@ const EditPersonalityDialog: React.FC<EditPersonalityDialogProps> = ({
     setContext(personality?.context || "");
     setToolSet((personality?.tool_set || "").split("+"));
     setDescription(personality?.description || "");
+    setLogo(personality?.logo || "");
   }, [open]);
   const active_tools = tool_set.length > 0 ? tool_set : default_tools;
   return (
@@ -145,6 +149,14 @@ const EditPersonalityDialog: React.FC<EditPersonalityDialogProps> = ({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Description"
+            />
+          </div>
+          <div className="mb-4">
+            <Input
+              type="text"
+              value={logo}
+              onChange={(e) => setLogo(e.target.value)}
+              placeholder="Logo URL"
             />
           </div>
           <div className="mb-4">
