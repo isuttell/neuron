@@ -9,10 +9,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ImageModel } from "../slices/imagesSlice";
+import { MediaFile } from "../slices/imagesSlice";
 import Loading from "../lib/loading";
 interface ImageCardProps {
-  image: ImageModel;
+  image: MediaFile;
 }
 
 const ImageCard: React.FC<ImageCardProps> = ({ image }) => {
@@ -21,11 +21,11 @@ const ImageCard: React.FC<ImageCardProps> = ({ image }) => {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger className="flex w-full h-full items-center justify-center bg-secondary rounded-lg">
-        {image.image ? (
+        {image.url ? (
           <img
             className="w-full h-auto object-cover rounded-lg"
-            src={image.image.replace(/\.(?=[^.]*$)/, "_t.")}
-            alt={image.prompt.slice(0, 256)}
+            src={image.url.replace(/\.(?=[^.]*$)/, "_t.")}
+            alt={image.prompt ?? ""}
           />
         ) : (
           <Loading />
@@ -36,18 +36,18 @@ const ImageCard: React.FC<ImageCardProps> = ({ image }) => {
           <DialogTitle>Image Viewer</DialogTitle>
         </DialogHeader>
         <div className="flex-1">
-          {image.image ? (
+          {image.url ? (
             <img
               className="w-full h-auto object-cover"
-              src={image.image}
-              alt={image.prompt.slice(0, 256)}
+              src={image.url}
+              alt={image.prompt ?? ""}
             />
           ) : (
             <Loading />
           )}
         </div>
         <div className="text-center text-sm text-gray-500 my-2">
-          {image.prompt.slice(0, 256)}
+          {image.prompt?.slice(0, 256)}
         </div>
 
         <DialogFooter className="flex justify-end">

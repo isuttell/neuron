@@ -125,6 +125,7 @@ export function MediaList({
                   width={1024}
                   height={1024}
                   thumbnail_size={thumbnail_size}
+                  preload={true}
                 />
               ) : null}
               {item.type === "link" ? (

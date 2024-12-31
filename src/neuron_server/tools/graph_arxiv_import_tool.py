@@ -11,6 +11,9 @@ import time
 from werkzeug.exceptions import BadRequest
 import pymupdf4llm
 from neuron_server.config import config as neuron_config
+import tiktoken
+
+encoder = tiktoken.encoding_for_model("gpt-4o")
 
 
 def format_arxiv_summary(article: arxiv.Result) -> str:
@@ -110,19 +113,41 @@ Article {document_id} already exists in knowledge graph. Skipping import.
             # Convert the PDF to markdown text
             text = pymupdf4llm.to_markdown(pdf_full_path, show_progress=True)
             # Process the document and add it to the graph
-            await process_document(
+            doc_result = await process_document(
                 text=text,
                 document_id=document_id,
                 document_name=article.title,
                 source=article.entry_id,
                 config=config,
             )
+            token_count = len(encoder.encode(text))
+
             duration = time.perf_counter() - start_time
             logger.debug(f"Processed '{article.title}' in {duration:.2f} seconds")
+            keywords = ", ".join(doc_result.keywords)
             return f"""
-{format_arxiv_summary(article)}
+# Graph Import Result
 
 Added '{article.title}' to knowledge graph in {round(duration)} seconds
+
+## Arxiv Metadata
+
+{format_arxiv_summary(article)}
+
+## Document {doc_result.document_id}
+
+* **Name:** {doc_result.document_name or 'unknown'}
+* **Source:** {doc_result.source or 'unknown'}
+* **Keywords:** {keywords or 'None'}
+* **Tokens:** {token_count:,}
+
+### Summary
+
+{doc_result.summary}
+
+### Analysis
+
+{doc_result.analysis}
 """
         except Exception as e:
             logger.exception(e)

@@ -33,20 +33,30 @@ export const createThread = createAsyncThunk(
       personalityId,
       prompt,
       greeting,
-    }: { personalityId: string; prompt?: string; greeting?: boolean },
+      file,
+    }: {
+      personalityId: string;
+      prompt?: string;
+      greeting?: boolean;
+      file?: File;
+    },
     thunkAPI
   ) => {
     try {
+      const formData = new FormData();
+      formData.append("personality_id", personalityId);
+      if (file) {
+        formData.append("file", file);
+      }
+      if (prompt) {
+        formData.append("prompt", prompt);
+      }
+      if (greeting) {
+        formData.append("greeting", "true");
+      }
       const response = await fetch(`/api/threads/`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          personality_id: personalityId,
-          prompt,
-          greeting,
-        }),
+        body: formData,
       });
       const data = await response.json();
       return data;

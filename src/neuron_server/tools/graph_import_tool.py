@@ -6,10 +6,15 @@ import asyncio
 from langchain_core.runnables import RunnableConfig
 from neuron_server.graph import process_document, encode_md5
 import time
+import tiktoken
+
+encoder = tiktoken.encoding_for_model("gpt-4o")
 
 
 class GraphImportToolArgs(BaseModel):
-    text: str = Field(description="The text to import into the knowledge graph.")
+    text: str = Field(
+        description="The full unabridged text to import into the knowledge graph."
+    )
 
 
 class GraphImportTool(BaseTool):
@@ -34,13 +39,34 @@ Use this tool to import text into the knowledge graph for long term memory.
             assert personality_id is not None
             start_time = time.perf_counter()
             # Process the document and add it to the graph
-            await process_document(
+            doc_result = await process_document(
                 text=text,
                 document_id=f"text:{encode_md5(text.strip())}",
                 config=config,
             )
             duration = time.perf_counter() - start_time
-            return f"""Added text to knowledge graph in {round(duration)} seconds"""
+            keywords = ", ".join(doc_result.keywords)
+            token_count = len(encoder.encode(text))
+            return f"""
+# Graph Import Result
+
+Added text to knowledge graph in {round(duration)} seconds
+
+## Document {doc_result.document_id}
+
+* **Name:** {doc_result.document_name or 'unknown'}
+* **Source:** {doc_result.source or 'unknown'}
+* **Keywords:** {keywords or 'None'}
+* **Tokens:** {token_count:,}
+
+### Summary
+
+{doc_result.summary}
+
+### Analysis
+
+{doc_result.analysis}
+"""
         except Exception as e:
             logger.exception(e)
             raise e

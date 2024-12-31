@@ -15,6 +15,42 @@ export const fetchMessagesByThread = createAsyncThunk(
   }
 );
 
+export const postMessageByThread = createAsyncThunk(
+  "messages/postMessageByThread",
+  async (
+    {
+      threadId,
+      prompt,
+      personalityId,
+      file,
+    }: {
+      threadId: string;
+      prompt: string;
+      personalityId: string;
+      file?: File;
+    },
+    thunkAPI
+  ) => {
+    try {
+      const formData = new FormData();
+      formData.append("prompt", prompt);
+      formData.append("personality_id", personalityId);
+
+      if (file) {
+        formData.append("file", file);
+      }
+
+      const response = await fetch(`/api/messages/thread/${threadId}`, {
+        method: "POST",
+        body: formData,
+      });
+      return await response.json();
+    } catch (error: any) {
+      return thunkAPI.rejectWithValue(error.message);
+    }
+  }
+);
+
 export const sendMessage = createAsyncThunk(
   "messages/sendMessage",
   async (

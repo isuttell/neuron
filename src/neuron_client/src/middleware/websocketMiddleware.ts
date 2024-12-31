@@ -50,19 +50,17 @@ const websocketMiddleware =
           // Dispatch an action when connected
           dispatch(connect(socket));
           toast({
-            title: "Connected to server",
+            title: "Connected",
             duration: 1000,
           });
         });
 
         socket.on("close", () => {
           // Dispatch an action when disconnected
-          if (socket.connected) {
-            dispatch(disconnect());
-            toast({
-              title: "Disconnected from server",
-            });
-          }
+          dispatch(disconnect());
+          toast({
+            title: "Disconnected. Attempting to reconnect...",
+          });
         });
 
         socket.on("personality", (event) => {

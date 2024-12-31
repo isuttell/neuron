@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import { MessageCircle, MessageCircleDashed } from "lucide-react";
 import { NavLink } from "react-router-dom";
-import { useAppSelector } from "../hooks";
-import { useAppDispatch } from "../hooks";
+import { useAppSelector, useAppDispatch } from "../hooks";
 import NewThreadButton from "../threads/NewThreadButton";
 import { shallowEqual } from "react-redux";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -13,13 +12,24 @@ import {
 import { fetchThreadsByPersonality } from "../actions/threadActions";
 import { RootState } from "../store";
 import { fetchPersonality } from "@/actions/personalityActions";
+import {
+  SidebarMenuItem,
+  SidebarMenuButton,
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarGroupContent,
+} from "@/components/ui/sidebar";
 
 const selectThreads = (state: RootState, personalityId?: string) =>
   state.threads.threads.filter(
     (thread) => thread.personality_id === personalityId
   );
 
-export default function NavThreads() {
+interface NavThreadsProps {
+  activePathname?: string;
+}
+
+export default function NavThreads({ activePathname }: NavThreadsProps) {
   const dispatch = useAppDispatch();
   const activePersonalityId = useAppSelector(getActivePersonalityId);
   const activePersonality = useAppSelector(getActivePersonality);
@@ -43,52 +53,56 @@ export default function NavThreads() {
 
   if (!activePersonality) {
     return (
-      <nav className="grid items-start px-4 mt-2 text-sm font-medium">
-        <div className="text-center text-gray-500">No personality active</div>
-      </nav>
+      <SidebarGroup>
+        <SidebarGroupLabel>No personality active</SidebarGroupLabel>
+      </SidebarGroup>
     );
   }
 
   return (
-    <nav className="grid items-start px-4 mt-2 text-sm font-medium">
+    <SidebarGroup>
+      <SidebarGroupLabel>{activePersonality.name}</SidebarGroupLabel>
       <NewThreadButton />
-      <div className="text-xs  text-gray-400 font-bold pl-10 ml-1 mb-2">
-        {activePersonality.name}
-      </div>
-      {loading && threads.length === 0 && (
-        <div className="flex flex-col gap-6 my-2 pl-10">
-          <Skeleton className="h-4 w-[150px]" />
-          <Skeleton className="h-4 w-[100px]" />
-          <Skeleton className="h-4 w-[130px]" />
-        </div>
-      )}
-      {!loading && threads.length === 0 && (
-        <div className="text-small text-center text-gray-500 mt-4">
-          No threads yet
-        </div>
-      )}
-      {threads
-        .sort((a, b) => a.updated_at.localeCompare(b.updated_at))
-        .reverse()
-        .map((thread) => (
-          <NavLink
-            end
-            className={({ isActive }) =>
-              `flex items-center gap-3 rounded-lg px-3 py-2 transition-all  hover:text-primary ${
-                isActive ? "text-primary bg-muted" : "text-muted-foreground"
-              }`
-            }
-            to={`/thread/${thread.id}`}
-            key={thread.id}
-          >
-            {thread.status === "idle" ? (
-              <MessageCircle className="size-4 min-w-[20px]" />
-            ) : (
-              <MessageCircleDashed className="size-4 min-w-[20px] text-accent" />
-            )}{" "}
-            {thread.name || "Start conversation"}
-          </NavLink>
-        ))}
-    </nav>
+      <SidebarGroupContent className="space-y-2">
+        {loading && threads.length === 0 && (
+          <SidebarMenuItem>
+            <SidebarMenuButton>
+              <Skeleton className="h-4 w-[150px]" />
+            </SidebarMenuButton>
+            <SidebarMenuButton>
+              <Skeleton className="h-4 w-[100px]" />
+            </SidebarMenuButton>
+            <SidebarMenuButton>
+              <Skeleton className="h-4 w-[130px]" />
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        )}
+        {!loading && threads.length === 0 && (
+          <SidebarMenuItem className="text-small text-muted-foreground">
+            <SidebarMenuButton>No threads yet...</SidebarMenuButton>
+          </SidebarMenuItem>
+        )}
+        {threads
+          .sort((a, b) => a.updated_at.localeCompare(b.updated_at))
+          .reverse()
+          .map((thread) => (
+            <SidebarMenuItem key={thread.id} className="gap-2 space-y-1">
+              <SidebarMenuButton
+                isActive={activePathname === `/thread/${thread.id}`}
+                asChild
+              >
+                <NavLink to={`/thread/${thread.id}`} className="text-secondary">
+                  {thread.status === "idle" ? (
+                    <MessageCircle className="size-4 min-w-[20px]" />
+                  ) : (
+                    <MessageCircleDashed className="size-4 min-w-[20px] text-accent" />
+                  )}
+                  <span>{thread.name || "Start conversation"}</span>
+                </NavLink>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          ))}
+      </SidebarGroupContent>
+    </SidebarGroup>
   );
 }

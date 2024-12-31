@@ -1,76 +1,26 @@
-import { Home, CircleUser, GalleryThumbnails } from "lucide-react";
 import { useEffect } from "react";
-import { Outlet, Link, NavLink } from "react-router-dom";
+import { Outlet } from "react-router-dom";
 import { useAppSelector } from "../hooks";
 import { getConnectionStatus, getSocket } from "../slices/socketSlice";
 import { Spinner } from "@/components/ui/spinner";
 import { useAppDispatch } from "../hooks";
-import NavThreads from "../threads/NavThreads";
-import logo from "@/assets/logo.svg";
-const links = [
-  {
-    to: "/",
-    label: "Home",
-    Icon: Home,
-  },
-  {
-    to: "/personalities",
-    label: "Personalities",
-    Icon: CircleUser,
-  },
-  {
-    to: "/gallery",
-    label: "Gallery",
-    Icon: GalleryThumbnails,
-  },
-];
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { MainSidebar } from "@/components/layout/MainSidebar";
 
 export default function Root() {
   const isConnected = useAppSelector(getConnectionStatus);
   const socket = useAppSelector(getSocket);
   const dispatch = useAppDispatch();
+
   useEffect(() => {
     dispatch({ type: "socket/connect" });
   }, []);
 
   return (
-    <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
-      <div className="border-r bg-muted/40">
-        <div className="flex h-full max-h-screen flex-col gap-2">
-          <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
-            <Link
-              to="/"
-              className="flex text-white items-center gap-2 font-semibold"
-            >
-              <img src={logo} alt="Neuron" className="size-6" />
-              <span className="">Neuron</span>
-            </Link>
-          </div>
-          <div className="flex-1 flex flex-col overflow-y-auto">
-            <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
-              {links.map((link) => (
-                <NavLink
-                  end
-                  className={({ isActive }) =>
-                    `flex items-center gap-3 rounded-lg px-3 py-2 transition-all  hover:text-primary ${
-                      isActive
-                        ? "text-primary bg-muted"
-                        : "text-muted-foreground"
-                    }`
-                  }
-                  to={link.to}
-                  key={link.to}
-                >
-                  <link.Icon className="h-4 w-4" />
-                  {link.label}
-                </NavLink>
-              ))}
-            </nav>
-            <NavThreads />
-          </div>
-        </div>
-      </div>
-      <main className="flex">
+    <SidebarProvider>
+      <MainSidebar />
+      <main className="flex flex-1">
+        <SidebarTrigger className="m-2 size-10 mt-4" />
         {isConnected && socket ? (
           <Outlet />
         ) : (
@@ -81,6 +31,6 @@ export default function Root() {
           </div>
         )}
       </main>
-    </div>
+    </SidebarProvider>
   );
 }

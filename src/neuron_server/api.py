@@ -151,7 +151,7 @@ async def get_static(path):
         size = {"t": 512, "l": 768, "xl": 1024}.get(match.group(1), 512)
         image.thumbnail((size, size))
         image.save(os.path.join(config.static_folder, path), quality=85)
-    return await send_from_directory(config.static_folder, path)
+    return await send_from_directory(config.static_folder, path, as_attachment=True)
 
 
 async def sending():

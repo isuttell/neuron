@@ -64,6 +64,7 @@ UNWIND $data AS row
 MERGE (c:Chunk {id: row.chunk_id})
 SET c.text = row.chunk_text,
     c.index = row.index,
+    c.description = row.description,
     c.document_id = $document_id,
     c.document_name = $document_name,
     c.personality_id = $personality_id,
@@ -98,6 +99,9 @@ class AtomicFact(BaseModel):
 
 
 class Extraction(BaseModel):
+    description: str = Field(
+        description="A short description of the extracted information"
+    )
     atomic_facts: List[AtomicFact] = Field(description="List of atomic facts")
 
 
@@ -106,6 +110,27 @@ model = ChatOpenAI(model="gpt-4o-2024-11-20", temperature=0.1, max_tokens=None)
 structured_llm = model.with_structured_output(Extraction)
 
 construction_chain = construction_prompt | structured_llm
+
+
+class SummaryResponse(BaseModel):
+    summary: str = Field(description="A short summary of the extracted information")
+    critical_analysis: str = Field(
+        description="A detailed critical analysis of the extracted information. Identify inconsistencies and contradictions. Consider any biases or limitations. How trustworthy is the information? Is there evidence and supporting facts? What is the significance of the information? Provide future research recommendations if relevant."
+    )
+    keywords: List[str] = Field(
+        description="A list of informative keywords or concepts that are important to the extracted information"
+    )
+
+
+summary_chain = ChatPromptTemplate.from_messages(
+    [
+        (
+            "system",
+            "You are an intelligent assistant for summarizing information. You will be given a series of summaries of extracted information from a previous step, and you need to combine them into a single summary giving a high level overview of all the information.",
+        ),
+        ("human", "{input}"),
+    ]
+) | model.with_structured_output(SummaryResponse)
 
 
 def encode_md5(text: str) -> str:
@@ -175,6 +200,15 @@ async def process_chunk(
                     raise e
 
 
+class DocumentResult(BaseModel):
+    document_id: str = Field(description="The ID of the document")
+    document_name: Optional[str] = Field(description="The name of the document")
+    source: Optional[str] = Field(description="The source of the document")
+    keywords: List[str] = Field(description="The keywords of the document")
+    summary: str = Field(description="The summary of the document")
+    analysis: str = Field(description="The analysis of the document")
+
+
 async def process_document(
     text: str,
     config: RunnableConfig,
@@ -213,7 +247,22 @@ async def process_document(
         personality_id=personality_id,
     )
 
+    summary_response: SummaryResponse = await summary_chain.ainvoke(
+        {
+            "input": "\n\n".join(
+                [extraction.description for extraction in extractions]
+            ),
+        }
+    )
     logger.debug(f"Finished graph extraction - {time.perf_counter() - start_time:.2f}s")
+    return DocumentResult(
+        document_id=document_id,
+        document_name=document_name,
+        source=source,
+        keywords=summary_response.keywords,
+        summary=summary_response.summary,
+        analysis=summary_response.critical_analysis,
+    )
 
 
 class InputState(TypedDict):
@@ -762,10 +811,12 @@ async def chunk_check(state: OverallState, config: RunnableConfig) -> OverallSta
     if len(check_chunks_queue) == 0:
         logger.error("No chunks to check")
         return {
-            "chosen_action": "search_more",
+            "chosen_action": "stop_and_read_neighbor",
             "previous_actions": ["read_chunk(error: no chunks to check)"],
         }
     chunk_id = check_chunks_queue.pop()
+    if not isinstance(chunk_id, str):
+        raise ValueError(f"Chunk ID is not a string: {chunk_id}")
     assert isinstance(chunk_id, str)
     logger.debug(f"Step: read_chunk({chunk_id})")
     read_chunks = get_read_chunk_ids(state.get("previous_actions"))

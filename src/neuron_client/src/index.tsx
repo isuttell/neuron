@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAppSelector, useAppDispatch } from "./hooks";
-import { CornerDownLeft } from "lucide-react";
+import { CornerDownLeft, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -12,9 +12,11 @@ import {
   getActivePersonality,
 } from "./slices/personalitiesSlice";
 import logo from "@/assets/logo.svg";
-
+import { useToast } from "@/hooks/use-toast";
 export default function Index() {
   const [prompt, setPrompt] = useState("");
+  const [file, setFile] = useState<File | undefined>(undefined);
+  const { toast } = useToast();
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const [isLoading, setLoading] = useState(false);
@@ -30,16 +32,35 @@ export default function Index() {
         personalityId: activePersonalityId,
         prompt,
         greeting,
+        file,
       })
     )
       .unwrap()
       .then(({ thread }) => {
         navigate(`/thread/${thread.id}`);
       })
+      .catch((error) => {
+        toast({
+          variant: "destructive",
+          title: "Failed to create thread",
+          description: error?.message || "An unexpected error occurred",
+        });
+      })
       .finally(() => {
         setLoading(false);
       });
   };
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setFile(file);
+      toast({
+        title: "Attachment added",
+        description: `${file.name} has been added to the message`,
+      });
+    }
+  };
+
   const isDisabled = !activePersonalityId || isLoading;
   return (
     <div className="flex flex-1 p-4 flex-col justify-center items-center flex-nowrap max-h-screen overflow-auto gap-2">
@@ -82,6 +103,32 @@ export default function Index() {
               }}
             />
             <div className="flex flex-row gap-2 pt-2 justify-end">
+              <Button
+                type="button"
+                size="sm"
+                variant={file ? "default" : "outline"}
+                className="mr-2 gap-1.5"
+                disabled={isDisabled}
+                onClick={() => {
+                  if (file) {
+                    setFile(undefined);
+                    toast({
+                      title: "Attachment removed",
+                    });
+                  } else {
+                    document.getElementById("file-upload")?.click();
+                  }
+                }}
+              >
+                <Upload className="size-3.5" />
+              </Button>
+              <input
+                id="file-upload"
+                type="file"
+                className="hidden"
+                onChange={handleFileUpload}
+                accept=".png,.jpg,.jpeg,.gif,.webp,.pdf,.md,.txt,.csv"
+              />
               {!isLoading ? (
                 <Button
                   onClick={() => handleSubmit(true)}
@@ -96,7 +143,7 @@ export default function Index() {
                 onClick={() => handleSubmit(false)}
                 type="submit"
                 disabled={isDisabled || prompt.trim().length === 0}
-                className="gap-1.5 bg-accent text-accent-foreground"
+                className="gap-1.5 bg-primary text-primary-foreground"
               >
                 {isLoading ? (
                   <>

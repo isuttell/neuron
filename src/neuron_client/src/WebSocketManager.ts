@@ -18,8 +18,10 @@ export default class WebSocketManager {
     }
     this.socket = new WebSocket(this.url);
     this.socket.addEventListener("open", () => {
-      this.connected = true;
-      this.events.emit("open");
+      if (!this.connected) {
+        this.connected = true;
+        this.events.emit("open");
+      }
     });
 
     this.socket.addEventListener("message", (event) => {
@@ -32,8 +34,10 @@ export default class WebSocketManager {
     });
 
     this.socket.addEventListener("close", () => {
-      this.connected = false;
-      this.events.emit("close");
+      if (this.connected) {
+        this.connected = false;
+        this.events.emit("close");
+      }
       this.attemptReconnect();
     });
 

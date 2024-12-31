@@ -141,7 +141,7 @@ async def astream(
                 "title": thread.name or "",
                 "location": location,
                 "username": username,
-                "now": start_time.strftime("%Y-%m-%d %H:%M:%S %Z"),
+                "now": start_time.astimezone().isoformat(timespec="seconds"),
             },
             config={
                 "run_name": "message",

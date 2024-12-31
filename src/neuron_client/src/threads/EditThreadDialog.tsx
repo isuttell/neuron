@@ -15,13 +15,14 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import { updateThread } from "../actions/threadActions";
-
+import { useToast } from "../hooks/use-toast";
 interface EditThreadFormProps {
   thread: Thread;
 }
 
 const EditThreadDialog: React.FC<EditThreadFormProps> = ({ thread }) => {
   const dispatch = useAppDispatch();
+  const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(thread.name);
   const [context, setContext] = useState(thread.context);
@@ -35,9 +36,17 @@ const EditThreadDialog: React.FC<EditThreadFormProps> = ({ thread }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    await dispatch(updateThread({ id: thread.id, name, context }));
-    setOpen(false);
-    setLoading(false);
+    try {
+      await dispatch(updateThread({ id: thread.id, name, context }));
+      setOpen(false);
+      setLoading(false);
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Failed to save thread",
+        description: error?.message || "An unexpected error occurred",
+      });
+    }
   };
 
   return (

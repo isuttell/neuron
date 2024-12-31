@@ -12,7 +12,16 @@ import {
 import { shallowEqual } from "react-redux";
 import { RootState } from "../store";
 import { Button } from "@/components/ui/button";
-import EditThreadDialog from "../threads/EditThreadDialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog";
 import Loading from "@/lib/loading";
 import { getActivePersonalityId } from "../slices/personalitiesSlice";
 import MediaList, { getMediaItems } from "../messages/MediaList";
@@ -25,16 +34,19 @@ import { cn } from "@/lib/utils";
 import { sendMessage } from "../actions/messageActions";
 import TokenCounter from "../messages/TokenCounter";
 import { debounce } from "@/lib/utils";
-
+import { useToast } from "../hooks/use-toast";
 const selectThread = (state: RootState, threadId?: string) =>
   state.threads.threads.find((thread) => thread.id === threadId);
 
 const selectMessages = (state: RootState, threadId?: string) =>
   state.messages.messages.filter((message) => message.thread_id === threadId);
 
+const widthModeOrder = ["hidden", "narrow", "wide"];
+
 export default function Thread() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const activePersonalityId = useAppSelector(getActivePersonalityId);
 
   const [activeTab, setActiveTab] = useState<"media" | "artifacts">("media");
@@ -49,8 +61,12 @@ export default function Thread() {
     shallowEqual
   );
   const [showTools, setShowTools] = useState(false);
-  const [widthMode, setWidthMode] = useState<"narrow" | "wide">(
-    localStorage.getItem("widthMode") === "wide" ? "wide" : "narrow"
+  const [widthMode, setWidthMode] = useState<"narrow" | "wide" | "hidden">(
+    localStorage.getItem("widthMode") === "wide"
+      ? "wide"
+      : localStorage.getItem("widthMode") === "narrow"
+      ? "narrow"
+      : "hidden"
   );
 
   useEffect(() => {
@@ -98,17 +114,21 @@ export default function Thread() {
     { input_tokens: 0, output_tokens: 0, total_tokens: 0 }
   );
 
-  const filteredMessages = updatedMessages.filter((message) =>
-    [
-      !showTools ? message.type !== "tool" : true,
-      !showTools
-        ? (typeof message.content === "string" &&
-            message.content.indexOf("<|AI|>") !== 0) ||
-          typeof message.content !== "string"
-        : true,
-      message.content && message.content.length > 0,
-    ].every((condition) => condition)
-  );
+  const filteredMessages = updatedMessages
+    .map((message) => {
+      if (!showTools && typeof message.content === "string") {
+        message.content = message.content
+          .replace(/<\|AI\|>.*?<\|AI\|>/g, "")
+          .trim();
+      }
+      return message;
+    })
+    .filter((message) =>
+      [
+        !showTools ? message.type !== "tool" : true,
+        message.content && message.content.length > 0,
+      ].every((condition) => condition)
+    );
 
   const lastUserMessage =
     filteredMessages.length -
@@ -118,7 +138,7 @@ export default function Thread() {
       .findIndex((message) => message.type === "human");
   const lastMessageAt = filteredMessages[lastUserMessage]?.created_at;
   return (
-    <div className="flex flex-1 p-4 flex-col flex-nowrap max-h-screen">
+    <div className="flex flex-1 p-4 pl-0 flex-col flex-nowrap max-h-screen">
       <div className="flex justify-between mb-2 border-b pb-2">
         <h1 className="text-2xl font-bold">{thread.name || "Welcome..."}</h1>
         <div className="flex-1" />
@@ -142,9 +162,7 @@ export default function Thread() {
               <span className="sr-only">Toggle System Messages</span>
             </Button>
           </TooltipTrigger>
-          <TooltipContent side="bottom">
-            {showTools ? "Hide" : "Show"} System Messages
-          </TooltipContent>
+          <TooltipContent side="bottom">Toggle System Messages</TooltipContent>
         </Tooltip>
         <Tooltip delayDuration={0}>
           <TooltipTrigger asChild>
@@ -152,8 +170,12 @@ export default function Thread() {
               variant="ghost"
               size="icon"
               onClick={() => {
-                const newWidthMode = widthMode === "narrow" ? "wide" : "narrow";
-                setWidthMode(newWidthMode);
+                const newWidthMode =
+                  widthModeOrder[
+                    (widthModeOrder.indexOf(widthMode) + 1) %
+                      widthModeOrder.length
+                  ];
+                setWidthMode(newWidthMode as "hidden" | "narrow" | "wide");
                 localStorage.setItem("widthMode", newWidthMode);
               }}
             >
@@ -162,21 +184,61 @@ export default function Thread() {
             </Button>
           </TooltipTrigger>
           <TooltipContent side="bottom">
-            {widthMode === "narrow" ? "Wide" : "Narrow"}
+            Change Media Panel Width
           </TooltipContent>
         </Tooltip>
-        <EditThreadDialog thread={thread} />
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={debounce(() => {
-            navigate("/");
-            dispatch(deleteThread(thread.id));
-          }, 100)}
-        >
-          <Trash className="size-4" />
-          <span className="sr-only">Delete</span>
-        </Button>
+
+        <Dialog>
+          <DialogTrigger>
+            <Tooltip delayDuration={0}>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <Trash className="size-4" />
+                  <span className="sr-only">Delete</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Delete Thread</TooltipContent>
+            </Tooltip>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Are you absolutely sure?</DialogTitle>
+              <DialogDescription>
+                This action cannot be undone. This will permanently delete your
+                account and remove your data from our servers.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="justify-end">
+              <DialogClose asChild>
+                <Button type="button" variant="secondary">
+                  Cancel
+                </Button>
+              </DialogClose>
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={async () => {
+                  navigate("/");
+                  try {
+                    await dispatch(deleteThread(thread.id));
+                    toast({
+                      title: "Thread deleted",
+                    });
+                  } catch (error: any) {
+                    toast({
+                      variant: "destructive",
+                      title: "Failed to delete thread",
+                      description:
+                        error?.message || "An unexpected error occurred",
+                    });
+                  }
+                }}
+              >
+                Delete
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
       <div className="flex flex-row flex-1">
         <div className="flex flex-col flex-1">
@@ -232,9 +294,9 @@ export default function Thread() {
           defaultValue={activeTab}
           className={cn(
             "ml-4 pl-4  flex-shrink-0 border-l flex-col flex",
-            widthMode === "narrow"
-              ? "max-w-[512px] w-1/4"
-              : "max-w-[1024px] w-1/2"
+            widthMode === "narrow" && "max-w-[512px] w-1/4",
+            widthMode === "wide" && "max-w-[1024px] w-1/2",
+            widthMode === "hidden" && "hidden"
           )}
           onValueChange={(value) => {
             setActiveTab(value as "media" | "artifacts");

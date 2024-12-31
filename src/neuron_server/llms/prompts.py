@@ -103,7 +103,7 @@ Unless otherwise stated, use markdown formatting with a clean and polished style
 
 title_prompt = PromptTemplate(
     template="""
-You specialize in crafting titles for conversations between a user and an AI. Generate an information title of the conversation in six words or less. You are not having a conversation. No punctuation or quotation. Must be in Title Case. You MUST only return the new title in plain text without quotes or other unneeded characters or styling.
+You specialize in crafting titles for conversations between a user and an AI. Generate an information title of the conversation in 4 words or less. You are not having a conversation. No punctuation or quotation. Must be in Title Case. You MUST only return the new title in plain text without quotes or other unneeded characters or styling.
 
 Current time: {now}
 

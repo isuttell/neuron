@@ -3,14 +3,14 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useParams } from "react-router-dom";
 import { useState } from "react";
-import { useAppSelector } from "../hooks";
-import { CornerDownLeft } from "lucide-react";
+import { useAppSelector, useAppDispatch } from "../hooks";
+import { CornerDownLeft, Upload } from "lucide-react";
 import { getActivePersonalityId } from "../slices/personalitiesSlice";
 import { Spinner } from "@/components/ui/spinner";
-import { sendMessage } from "../actions/messageActions";
-import { useAppDispatch } from "../hooks";
+import { postMessageByThread } from "../actions/messageActions";
 import Counter from "../lib/Counter";
 import { cn } from "@/lib/utils";
+import { useToast } from "../hooks/use-toast";
 interface MessageFormProps {
   status: string;
   disabled?: boolean;
@@ -64,11 +64,12 @@ export default function MessageForm({
   className = "",
   lastMessageAt,
 }: MessageFormProps) {
+  const { toast } = useToast();
   const dispatch = useAppDispatch();
   const activePersonalityId = useAppSelector(getActivePersonalityId);
   const [value, setValue] = useState("");
   const { threadId } = useParams();
-
+  const [file, setFile] = useState<File | undefined>(undefined);
   const handleSubmit = (
     e:
       | React.FormEvent<HTMLFormElement>
@@ -80,15 +81,35 @@ export default function MessageForm({
       return;
     }
     onSubmit(value);
+    setValue("");
+    setFile(undefined);
     dispatch(
-      sendMessage({
+      postMessageByThread({
         threadId,
         prompt: value,
         personalityId: activePersonalityId,
+        file,
       })
-    );
-    setValue("");
+    ).catch((error) => {
+      toast({
+        variant: "destructive",
+        title: "Failed to send message",
+        description: error?.message || "An unexpected error occurred",
+      });
+    });
   };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setFile(file);
+      toast({
+        title: "Attachment added",
+        description: `${file.name} has been added to the message`,
+      });
+    }
+  };
+
   return (
     <form className={`${className}`} onSubmit={handleSubmit}>
       <Label htmlFor="message" className="sr-only">
@@ -111,6 +132,32 @@ export default function MessageForm({
         <div className="flex gap-1 flex-row">{getStatusMessage(status)}</div>
         <div className="flex-1" />
         <Button
+          type="button"
+          size="sm"
+          variant={file ? "default" : "outline"}
+          className="mr-2"
+          disabled={disabled}
+          onClick={() => {
+            if (file) {
+              setFile(undefined);
+              toast({
+                title: "Attachment removed",
+              });
+            } else {
+              document.getElementById("file-upload")?.click();
+            }
+          }}
+        >
+          <Upload className="size-3.5" />
+        </Button>
+        <input
+          id="file-upload"
+          type="file"
+          className="hidden"
+          onChange={handleFileUpload}
+          accept=".png,.jpg,.jpeg,.gif,.webp,.pdf,.md,.txt,.csv"
+        />
+        <Button
           onClick={handleSubmit}
           type="submit"
           size="sm"
@@ -120,7 +167,7 @@ export default function MessageForm({
               ? "bg-accent text-accent-foreground"
               : "bg-primary text-primary-foreground"
           )}
-          disabled={disabled}
+          disabled={disabled || value.length === 0}
         >
           {status !== "idle" ? (
             <>

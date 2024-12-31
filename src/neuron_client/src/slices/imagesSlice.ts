@@ -3,16 +3,19 @@ import type { PayloadAction } from "@reduxjs/toolkit";
 import type { RootState } from "../store";
 import * as actions from "../actions/imageActions";
 
-export interface ImageModel {
+export interface MediaFile {
   id: string;
-  prompt: string;
-  image: string;
+  path: string;
+  url: string;
+  prompt: string | null;
   created_at: string;
-  updated_at: string;
+  size: number;
+  mime_type: string;
+  media_type: string;
 }
 
 interface UpdateImagePayload {
-  image: ImageModel;
+  image: MediaFile;
 }
 
 interface DeleteImagePayload {
@@ -21,7 +24,7 @@ interface DeleteImagePayload {
 
 // Define a type for the slice state
 interface ImageState {
-  images: ImageModel[];
+  images: MediaFile[];
 }
 
 // Define the initial state using that type
@@ -29,7 +32,7 @@ const initialState: ImageState = {
   images: [],
 };
 
-function upsert(state: ImageState, image: ImageModel) {
+function upsert(state: ImageState, image: MediaFile) {
   const existingImageIndex = state.images.findIndex(
     (img) => img.id === image.id
   );

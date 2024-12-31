@@ -135,12 +135,8 @@ This tool generates audio from a provided script using ElevenLabs' TTS APIs and 
                     async for chunk in response:
                         file.write(chunk)
                 logger.debug(f"Saved generated audio chunk at {audio_file_path}")
-            # Concatenate all audio files using ffmpeg
-            output_dir = config.static_folder + "/tts"
-            if not os.path.exists(output_dir):
-                os.makedirs(output_dir, exist_ok=True)
             filename = f"{id}.mp3"
-            output = os.path.abspath(output_dir + "/" + filename)
+            output = os.path.abspath(os.path.join(config.static_folder, filename))
             ffmpeg_command = [
                 "ffmpeg",
                 "-hide_banner",
@@ -160,7 +156,7 @@ This tool generates audio from a provided script using ElevenLabs' TTS APIs and 
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
             )
-            url = config.static_content_url + "/tts/" + filename
+            url = config.static_content_url + "/" + filename
             logger.info(f"Generated audio file saved to {output} <{url}>")
             return f"""
 <audio src="{url}"></audio>

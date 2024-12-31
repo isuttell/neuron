@@ -155,5 +155,24 @@ class Config(BaseModel):
     )
     neo4j: Neo4jConfig = Neo4jConfig()
 
+    allowed_file_types: list[str] = Field(
+        default=[
+            ".png",
+            ".jpg",
+            ".jpeg",
+            ".gif",
+            ".webp",
+            ".pdf",
+            ".txt",
+            ".md",
+            ".csv",
+        ],
+        description="Allowed file types",
+    )
+    max_file_size: int = Field(
+        default=10_000_000,
+        description="Maximum file size in bytes",
+    )
+
 
 config = Config()

@@ -1,10 +1,10 @@
 from langchain.tools import BaseTool
 from neuron_server.logger import logger
 from pydantic import BaseModel, Field
-from typing import Type, Literal
+from typing import Type, Literal, Optional
 import asyncio
 from langchain_core.runnables import RunnableConfig
-from neuron_server.graph import process_document, get_document, encode_md5
+from neuron_server.graph import process_document, encode_md5
 import os
 import time
 from neuron_server.config import config as neuron_config
@@ -12,6 +12,7 @@ import aiohttp
 from langchain_community.document_loaders import FireCrawlLoader
 import pymupdf4llm
 from langchain_core.documents import Document
+import tiktoken
 
 
 async def load_pdf_from_url(url: str) -> Document:
@@ -29,17 +30,45 @@ async def load_pdf_from_url(url: str) -> Document:
                             break
                         f.write(chunk)
         text = pymupdf4llm.to_markdown(temp_file, show_progress=True)
-        return Document(page_content=text, metadata={"url": url})
+        return Document(
+            page_content=text,
+            metadata={
+                "title": url.rsplit("/", 1)[-1],
+                "sourceURL": url,
+            },
+        )
     finally:
         if os.path.exists(temp_file):
             os.remove(temp_file)
 
 
+async def load_text_from_url(url: str) -> Document:
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            response.raise_for_status()
+            text = await response.text()
+            return Document(
+                page_content=text,
+                metadata={
+                    "title": url.rsplit("/", 1)[-1],
+                    "sourceURL": url,
+                },
+            )
+
+
+def count_tokens(text: str) -> int:
+    """Count the number of tokens in a text string using tokenizer."""
+    encoder = tiktoken.encoding_for_model("gpt-4o")
+    return len(encoder.encode(text))
+
+
 class GraphWebsiteImportToolArgs(BaseModel):
-    url: str = Field(description="The url of the website to import.")
-    mode: Literal["scrape", "crawl"] = Field(
+    url: str = Field(
+        description="The url of the document or website to import. Supports html websites, text files, pdfs, csvs, and markdown documents"
+    )
+    mode: Optional[Literal["scrape", "crawl"]] = Field(
         "scrape",
-        description="The mode of the website import. Can be 'scrape' or 'crawl'. Scrape is for a single url and Crawl is for the url and all accessible sub pages",
+        description="The mode of the website import. Can be 'scrape' or 'crawl'. Scrape is for a single url and Crawl is for the url and all accessible sub pages. Ignored when importing documents",
     )
 
 
@@ -47,7 +76,7 @@ class GraphWebsiteImportTool(BaseTool):
     name: str = "website_graph_import"
     description: str = (
         """
-This tool scrapes a website using Firecrawl, converts it to markdown and adds it to the knowledge graph. Use this save information from the internet for later use or when the user asks you to save/import a website/pdf url.
+This tool imports documents, or scrapes a website using Firecrawl, and adds it to the knowledge graph. Use this save information from the internet for later use or when the user asks you to save/import a website/pdf url.
 """.strip()
     )
     args_schema: Type[GraphWebsiteImportToolArgs] = GraphWebsiteImportToolArgs
@@ -67,31 +96,61 @@ This tool scrapes a website using Firecrawl, converts it to markdown and adds it
             # Record the start time for performance measurement
             start_time = time.perf_counter()
 
-            if url.endswith(".pdf"):
+            if url.endswith(".txt") or url.endswith(".md") or url.endswith(".csv"):
+                doc = await load_text_from_url(url)
+                docs = [doc]
+            elif url.endswith(".pdf"):
                 doc = await load_pdf_from_url(url)
                 docs = [doc]
             else:
+                if "zaks.io" in url or "192.168" in url:
+                    raise ValueError("FireCrawl cannot import local files")
                 loader = FireCrawlLoader(
                     api_key=neuron_config.firecrawl_api_key, url=url, mode=mode
                 )
                 docs = await loader.aload()
 
+            if len(docs) == 0:
+                raise ValueError("No documents found")
+
             # Process the documents and add them to the graph
+            result = f"# Knowledge Graph Import Results\n\nImported '{url}' to the knowledge graph in {len(docs)} document(s)"
             for doc in docs:
                 source = doc.metadata.get("sourceURL", doc.metadata.get("url", url))
+                # Count tokens in the document
+                token_count = count_tokens(doc.page_content)
+
                 # Update the document id to be the source url
                 # in case we're in crawl model
                 document_id = f"website:{encode_md5(source)}"
-                await process_document(
+                doc_result = await process_document(
                     text=doc.page_content.strip(),
                     document_id=document_id,
                     document_name=doc.metadata.get("title", None),
                     source=source,
                     config=config,
                 )
+                keywords = ", ".join(doc_result.keywords)
+                result += f"""\
+
+## Document {doc_result.document_id}
+
+* **Name:** {doc_result.document_name or 'unknown'}
+* **Source:** {doc_result.source or 'unknown'}
+* **Keywords:** {keywords or 'None'}
+* **Tokens:** {token_count:,}
+
+### Summary
+
+{doc_result.summary}
+
+### Analysis
+
+{doc_result.analysis}
+"""
             duration = time.perf_counter() - start_time
             logger.debug(f"Processed '{url}' - {duration:.2f}s")
-            return f"Added '{url}' to the knowledge graph - {duration:.2f}s"
+            return result.strip()
         except Exception as e:
             logger.exception(e)
             raise e

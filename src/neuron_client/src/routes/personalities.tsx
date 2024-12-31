@@ -16,7 +16,7 @@ export default function Personalities() {
   }, []);
 
   return (
-    <div className="flex flex-1 p-4 flex-col flex-nowrap max-h-screen overflow-auto">
+    <div className="flex flex-1 p-4 pl-0 flex-col flex-nowrap max-h-screen overflow-auto">
       <div className="flex justify-between mb-2 border-b pb-2">
         <h1 className="text-2xl font-bold">Personalities</h1>
         <div className="flex-1" />

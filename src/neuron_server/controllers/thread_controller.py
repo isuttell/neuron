@@ -7,6 +7,10 @@ from pydantic import BaseModel
 from neuron_server.llms.agent import astream
 import asyncio
 from werkzeug.exceptions import BadRequest
+import hashlib
+import os
+import aiofiles
+from neuron_server.config import config as neuron_config
 
 router = EventRouter()
 blueprint = Blueprint("thread", __name__)
@@ -16,7 +20,7 @@ blueprint = Blueprint("thread", __name__)
 async def get_thread(thread_id: UUID):
     thread = await ThreadModel.get(thread_id)
     if not thread:
-        raise BadRequest("Thread not found")
+        raise ValueError("Thread not found")
     return {
         "thread": thread.model_dump(),
     }
@@ -41,27 +45,67 @@ class CreateThread(BaseModel):
 @blueprint.post("/")
 async def post_create_thread():
 
-    data = await request.get_json()
-    body = CreateThread(**data)
-    personality = await PersonalityModel.get(body.personality_id)
+    files = await request.files
+    form = await request.form
+    personality_id = form.get("personality_id")
+    if not personality_id:
+        raise BadRequest("personality_id is required")
+    prompt = str(form.get("prompt", ""))
+    greeting = str(form.get("greeting", "false")).lower() == "true"
+    personality = await PersonalityModel.get(personality_id)
     if not personality:
         raise ValueError("Personality not found")
 
+    if "file" in files:
+        file = files["file"]
+        ext = os.path.splitext(file.filename)[1]
+        if ext not in neuron_config.allowed_file_types:
+            raise BadRequest("Invalid file type")
+
+        # Create hash of file contents
+        hasher = hashlib.sha256()
+        file_contents: bytes = file.read()
+        assert isinstance(file_contents, bytes)
+        if len(file_contents) > neuron_config.max_file_size:
+            raise BadRequest("File too large")
+        hasher.update(file_contents)
+        content_hash = hasher.hexdigest()
+
+        filename = f"{content_hash}{ext}"
+        file_path = os.path.abspath(
+            os.path.join(neuron_config.static_folder, "user", filename)
+        )
+        url = f"{neuron_config.static_content_url}/user/{filename}"
+
+        # Only save if file doesn't already exist
+        if not os.path.exists(file_path):
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            async with aiofiles.open(file_path, "wb") as f:
+                await f.write(file_contents)
+
+        prompt = f"<|AI|>The user has uploaded a file called '{file.filename}' to <{url}> as part the request<|AI|>\n{prompt}"
+
     thread = await ThreadModel.create(
         personality_id=personality.id,
-        name=body.name,
-        context=body.context,
+        name=form.get("name"),
+        context=form.get("context"),
     )
-    # Start the conversation and stream the response
-    if body.greeting or body.prompt:
+
+    if greeting:
+        prompt = f"{prompt or ''}<|AI|>Start the conversation in a sentence or two. Don't run any tools.<|AI|>"
+
+    if prompt:
+        # Start the conversation and stream the response if we have any actions to take
+        # don't wait for the response to finish before returning so that we can return
+        # the thread immediately and stream the response in the background
         asyncio.create_task(
             astream(
-                prompt=body.prompt
-                or f"<|AI|>Start the conversation in a sentence or two. Don't run any tools.<|AI|>",
+                prompt=prompt,
                 personality_id=personality.id,
                 thread_id=thread.id,
             )
         )
+
     return {
         "thread": thread.model_dump(),
     }
