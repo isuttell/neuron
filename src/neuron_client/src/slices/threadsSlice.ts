@@ -2,6 +2,7 @@ import { createSlice } from "@reduxjs/toolkit";
 import type { PayloadAction } from "@reduxjs/toolkit";
 import type { RootState } from "../store";
 import * as actions from "../actions/threadActions";
+import * as messageActions from "../actions/messageActions";
 export interface Thread {
   id: string;
   name: string;
@@ -113,6 +114,22 @@ export const threadsSlice = createSlice({
           state.threads = state.threads.filter(
             (thread) => thread.id !== action.payload
           );
+        }
+      )
+      .addCase(
+        actions.fetchRecentThreads.fulfilled,
+        (state, action: PayloadAction<IncomingThreadsEvent>) => {
+          for (const thread of action.payload.threads) {
+            upsert(state, thread);
+          }
+        }
+      )
+      .addCase(
+        messageActions.fetchMessagesByThread.fulfilled,
+        (state, action: PayloadAction<IncomingThreadsEvent>) => {
+          for (const thread of action.payload.threads) {
+            upsert(state, thread);
+          }
         }
       );
   },

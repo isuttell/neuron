@@ -1,10 +1,10 @@
 from uuid import UUID
 from typing import List, Optional
 from neuron_server.database import get_session, Thread, Message
-from sqlalchemy import select, func
+from sqlalchemy import select, func, and_
 from pydantic import BaseModel, Field
 from uuid import uuid4
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Literal, Self, Any
 from pydantic import field_serializer
 
@@ -131,3 +131,29 @@ class ThreadModel(BaseModel):
             session.add(thread)
             await session.commit()
             return cls(**thread.__dict__)
+
+    @classmethod
+    async def get_recent_threads(cls, hours: int = 1, limit: int = 10) -> List[Self]:
+        """Get all threads that have received messages in the last specified hours.
+
+        Args:
+            hours: Number of hours to look back (default: 1)
+
+        Returns:
+            List of ThreadModel instances with recent messages
+        """
+        async with get_session() as session:
+            cutoff_time = datetime.now(timezone.utc) - timedelta(hours=hours)
+
+            # Query for threads with messages newer than cutoff time
+            query = (
+                select(Thread)
+                .where(
+                    Thread.created_at >= cutoff_time,
+                )
+                .order_by(Thread.updated_at.desc())
+                .limit(limit)
+            )
+
+            results = await session.execute(query)
+            return [cls(**thread.__dict__) for thread in results.scalars().all()]

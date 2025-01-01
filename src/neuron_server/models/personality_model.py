@@ -113,3 +113,12 @@ class PersonalityModel(BaseModel):
             personality.tool_set = self.tool_set
             personality.logo = self.logo
             await session.commit()
+
+    @classmethod
+    async def get_many(cls, ids: List[UUID]) -> List[Self]:
+        async with get_session() as session:
+            results = await session.execute(
+                select(Personality).where(Personality.id.in_(ids))
+            )
+            records = results.scalars().all()
+            return [cls(**personality.__dict__) for personality in records]

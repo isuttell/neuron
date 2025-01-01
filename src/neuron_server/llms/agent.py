@@ -1,5 +1,5 @@
 from neuron_server.logger import logger
-from typing import List, TypedDict, Optional, Set, Dict
+from typing import List, TypedDict, Optional, Set, Dict, Any, Callable
 from neuron_server.models.provider_model import ProviderModelModel
 from neuron_server.event_router import ErrorEvent
 from neuron_server.models.personality_model import PersonalityModel
@@ -78,10 +78,68 @@ async def aget_state(thread_id: UUID):
     )
 
 
+class Debouncer:
+    def __init__(self, wait: float):
+        self.wait = wait  # seconds
+        self.task: Optional[asyncio.Task] = None
+        self._future: Optional[asyncio.Future] = None
+        self._next_args: Optional[tuple] = None
+        self._next_kwargs: Optional[dict] = None
+        self._coro_func: Optional[Callable] = None
+
+    async def call(self, coro_func: Callable, *args, **kwargs):
+        """
+        Schedule a coroutine function to be executed with debouncing
+
+        Args:
+            coro_func: The async function to call
+            *args: Positional arguments for the coroutine
+            **kwargs: Keyword arguments for the coroutine
+        """
+        self._coro_func = coro_func
+        self._next_args = args
+        self._next_kwargs = kwargs
+
+        if self.task and not self.task.done():
+            if self._future:
+                await self._future
+            return
+
+        self._future = asyncio.Future()
+        self.task = asyncio.create_task(self._handle())
+        await self._future
+
+    async def _handle(self):
+        try:
+            await asyncio.sleep(self.wait)
+            if (
+                self._coro_func
+                and self._next_args is not None
+                and self._next_kwargs is not None
+            ):
+                await self._coro_func(*self._next_args, **self._next_kwargs)
+        finally:
+            if self._future and not self._future.done():
+                self._future.set_result(None)
+            self._coro_func = None
+            self._next_args = None
+            self._next_kwargs = None
+            self._future = None
+
+
+# Initialize a debouncer with a 100ms wait time
+debounce_publish = Debouncer(wait=0.1)
+
+
+async def _debounced_publish(channel: str, event: Any):
+    """Debounces pubsub publishes to limit frequency."""
+    await debounce_publish.call(pubsub.publish, channel, event)
+
+
 async def save_thread(thread: ThreadModel):
     async def task():
         await thread.save()
-        await pubsub.publish("app", GetThreadResponse(thread=thread))
+        await _debounced_publish("app", GetThreadResponse(thread=thread))
 
     asyncio.create_task(task())
 

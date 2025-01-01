@@ -26,6 +26,19 @@ export const fetchThreadsByPersonality = createAsyncThunk(
   }
 );
 
+export const fetchRecentThreads = createAsyncThunk(
+  "threads/fetchRecentThreads",
+  async (_, thunkAPI) => {
+    try {
+      const response = await fetch(`/api/threads/recent`);
+      const data = await response.json();
+      return data;
+    } catch (error: any) {
+      return thunkAPI.rejectWithValue(error.message);
+    }
+  }
+);
+
 export const createThread = createAsyncThunk(
   "threads/createThread",
   async (

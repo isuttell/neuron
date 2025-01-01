@@ -144,22 +144,27 @@ pdf
             docs = await load_document_from_url(url, mode=mode)
             if len(docs) == 0:
                 raise DocumentInspectToolFailed("No documents found")
-            result = f"# Document Inspect Results\n\nSource: {url}\n\n"
+            results = []
             for index, doc in enumerate(docs):
-                result += f"""\
-## Document {index +1}
-
-### Content
-
-{doc.page_content}
-
-### Metadata
-
-{json.dumps(doc.metadata, indent=2)}
+                results.append(
+                    f"""\
+    <document index="{index}">
+        <source>
+            {doc.metadata.get("source", url)}
+        </source>
+        <document_content>
+            {doc.page_content}
+        </document_content>
+        <document_metadata>
+            {json.dumps(doc.metadata, indent=4)}
+        </document_metadata>
+    </document>
 """
+                )
             duration = time.perf_counter() - start_time
             logger.debug(f"Processed '{url}' - {duration:.2f}s")
-            return result.strip()
+            docs = "\n\n".join(results)
+            return f"<documents>\n{docs}\n</documents>"
         except Exception as e:
             logger.exception(e)
             raise e

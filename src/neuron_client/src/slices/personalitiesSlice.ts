@@ -2,6 +2,7 @@ import { createSlice } from "@reduxjs/toolkit";
 import type { PayloadAction } from "@reduxjs/toolkit";
 import type { RootState } from "../store";
 import * as actions from "../actions/personalityActions";
+import * as threadActions from "../actions/threadActions";
 export interface Personality {
   id: string;
   name: string;
@@ -111,6 +112,14 @@ export const personalitiesSlice = createSlice({
           state.personalities = state.personalities.filter(
             (per) => per.id !== action.payload
           );
+        }
+      )
+      .addCase(
+        threadActions.fetchRecentThreads.fulfilled,
+        (state, action: PayloadAction<IncomingPersonalitiesEvent>) => {
+          for (const personality of action.payload.personalities) {
+            upsert(state, personality);
+          }
         }
       );
   },

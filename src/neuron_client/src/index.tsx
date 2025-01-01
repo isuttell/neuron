@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAppSelector, useAppDispatch } from "./hooks";
 import { CornerDownLeft, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -15,32 +15,19 @@ import logo from "@/assets/logo.svg";
 import { useToast } from "@/hooks/use-toast";
 import { RootState } from "./store";
 import FuzzyTimeAgo from "@/components/FuzzyTimeAgo";
-
+import { fetchRecentThreads } from "./actions/threadActions";
+import { StatusMessage } from "./messages/StatusMessage";
 const selectRecentThreads = (state: RootState) => {
-  // Get the latest AI message timestamp for each thread
-  const threadLastAiMessages = state.messages.messages
-    .filter((message) => message.type === "ai")
-    .reduce((acc, message) => {
-      if (
-        !acc[message.thread_id] ||
-        (message.created_at ?? 0) > (acc[message.thread_id] ?? 0)
-      ) {
-        acc[message.thread_id] = message.created_at ?? 0;
-      }
-      return acc;
-    }, {} as Record<string, number>);
-
-  // Sort threads using the latest AI message timestamps
   return Object.values(state.threads.threads)
-    .filter(
-      (thread) =>
-        threadLastAiMessages[thread.id] &&
-        thread.updated_at > Date.now() - 1000 * 60 * 60
-    ) // Only show threads with AI messages
-    .sort(
-      (a, b) =>
-        (threadLastAiMessages[b.id] ?? 0) - (threadLastAiMessages[a.id] ?? 0)
-    );
+    .sort((a, b) => b.updated_at - a.updated_at)
+    .filter((thread) => thread.updated_at > Date.now() - 1000 * 60 * 60) // Only show threads from last hour
+    .slice(0, 10)
+    .map((thread) => ({
+      ...thread,
+      personality: state.personalities.personalities.find(
+        (personality) => personality.id === thread.personality_id
+      ),
+    })); // Limit to 10 threads
 };
 
 export default function Index() {
@@ -53,6 +40,10 @@ export default function Index() {
   const activePersonalityId = useAppSelector(getActivePersonalityId);
   const activePersonality = useAppSelector(getActivePersonality);
   const recentThreads = useAppSelector(selectRecentThreads);
+
+  useEffect(() => {
+    dispatch(fetchRecentThreads());
+  }, []);
 
   const handleSubmit = (greeting?: boolean) => {
     if (!activePersonalityId || (prompt.trim().length === 0 && !greeting)) {
@@ -196,20 +187,32 @@ export default function Index() {
                 Recent updates
               </div>
               <div className="flex flex-col gap-2 mt-2">
-                {recentThreads.map((thread) => (
-                  <Link
-                    key={thread.id}
-                    to={`/thread/${thread.id}`}
-                    className="border-b border-border pb-2 last:border-b-0"
-                  >
-                    <div className="flex flex-row gap-2">
-                      <div className="line-clamp-2 text-sm">{thread.name}</div>
-                      <div className="text-sm text-muted-foreground">
-                        <FuzzyTimeAgo timestamp={thread.created_at} />
+                {recentThreads.map((thread) => {
+                  return (
+                    <Link
+                      key={thread.id}
+                      to={`/thread/${thread.id}`}
+                      className="border-b border-border pb-2 last:border-b-0"
+                    >
+                      <div className="flex flex-row gap-2 text-sm">
+                        <div className="font-bold">
+                          {thread.name || "Untitled"}
+                        </div>
+                        <div className="italic text-muted-foreground">
+                          from {thread.personality?.name || "Unknown"}
+                        </div>
+                        {thread.status !== "idle" ? (
+                          <div className="text-muted-foreground">
+                            <StatusMessage status={thread.status} />
+                          </div>
+                        ) : null}
+                        <div className="text-muted-foreground">
+                          <FuzzyTimeAgo timestamp={thread.created_at} /> ago
+                        </div>
                       </div>
-                    </div>
-                  </Link>
-                ))}
+                    </Link>
+                  );
+                })}
               </div>
             </>
           ) : null}

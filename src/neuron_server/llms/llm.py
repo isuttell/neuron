@@ -13,7 +13,7 @@ from typing import (
     Sequence,
     TypedDict,
 )
-from langchain_core.messages import BaseMessage, AIMessage
+from langchain_core.messages import BaseMessage, AIMessage, ToolMessage
 from langgraph.graph.message import add_messages
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph import StateGraph, END
@@ -104,12 +104,19 @@ class LLM:
             # pass the model ith the tools into the call_model function
             return await self.call_model(model, state, config)
 
+        async def title_node(state, config):
+            # pass the model ith the tools into the call_model function
+            return await self.call_title(model, state, config)
+
+        async def load_memory_node(state, config):
+            # pass the model ith the tools into the call_model function
+            return await self.load_memory(model, state, config)
+
         workflow.add_node("agent", agent_node)
-        workflow.add_node("update_title", self.call_title)
+        workflow.add_node("update_title", title_node)
 
         if config.memory_enabled:
-            workflow.add_node("update_memory", self.call_update_memory)
-            workflow.add_node("load_memory", self.load_memory)
+            workflow.add_node("load_memory", load_memory_node)
 
         # Entry point
         if config.memory_enabled:
@@ -128,36 +135,31 @@ class LLM:
         )
         workflow.add_edge("tools", "agent")
 
-        # if config.memory_enabled:
-        #     workflow.add_conditional_edges(
-        #         "update_title",
-        #         self.should_call_update_memory,
-        #         {
-        #             "update_memory": "update_memory",
-        #             "continue": END,
-        #         },
-        #     )
-        #     workflow.add_edge("update_memory", END)
-        # else:
         workflow.add_edge("update_title", END)
 
         return workflow.compile()
 
     async def load_memory(
         self,
+        model: Runnable,
         state: AgentState,
         config: RunnableConfig,
     ):
         message_trimmer: Runnable = trim_messages(
-            max_tokens=1024,
+            max_tokens=1000,
             strategy="last",
-            token_counter=self.memory_model,
+            token_counter=model,
             include_system=False,
             allow_partial=True,
             start_on="human",
         )
+        messages = [
+            msg
+            for msg in state["messages"]
+            if not isinstance(msg, ToolMessage) and getattr(msg, "tool_calls", []) == []
+        ]
         messages: List[BaseMessage] = await message_trimmer.ainvoke(
-            state["messages"],
+            messages,
             config,
         )
         recall_memories: str = await MemoryRecallTool().ainvoke(
@@ -184,23 +186,21 @@ class LLM:
         config: RunnableConfig,
     ):
 
-        message_trimmer: Runnable = trim_messages(
-            max_tokens=200000,
-            strategy="last",
-            token_counter=model,
-            include_system=True,
-            allow_partial=False,
-            start_on="human",
-        )
-        messages: List[BaseMessage] = await message_trimmer.ainvoke(
-            state["messages"],
-            config,
-        )
+        # message_trimmer: Runnable = trim_messages(
+        #     max_tokens=200000,
+        #     strategy="last",
+        #     token_counter=model,
+        #     include_system=True,
+        #     allow_partial=False,
+        #     start_on="human",
+        # )
+        # messages: List[BaseMessage] = await message_trimmer.ainvoke(
+        #     state["messages"],
+        #     config,
+        # )
+
         # Filter out messages that don't have content
-        initial_messages_length = len(messages)
-        messages = [message for message in messages if message.content]
-        if len(messages) < initial_messages_length:
-            logger.debug(f"Filtered {initial_messages_length - len(messages)} messages")
+        messages = state["messages"]
 
         chain = chat_prompt | model
 
@@ -225,19 +225,25 @@ class LLM:
 
     async def call_title(
         self,
+        model: Runnable,
         state: AgentState,
         config: RunnableConfig,
     ):
         message_trimmer: Runnable = trim_messages(
-            max_tokens=20000,
+            max_tokens=4096,
             strategy="last",
-            token_counter=self.title_model,
+            token_counter=model,
             include_system=False,
             allow_partial=True,
             start_on="human",
         )
+        messages = [
+            msg
+            for msg in state["messages"]
+            if not isinstance(msg, ToolMessage) and getattr(msg, "tool_calls", []) == []
+        ]
         messages: List[BaseMessage] = await message_trimmer.ainvoke(
-            state["messages"],
+            messages,
             config,
         )
         title: str = await self.title.ainvoke(

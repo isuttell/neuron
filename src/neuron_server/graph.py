@@ -843,8 +843,6 @@ async def chunk_check(state: OverallState, config: RunnableConfig) -> OverallSta
             "previous_actions": ["read_chunk(error: no chunks to check)"],
         }
     chunk_id = check_chunks_queue.pop()
-    if not isinstance(chunk_id, str):
-        raise Exception(f"Chunk ID is not a string: {chunk_id}")
     logger.debug(f"Step: read_chunk({chunk_id})")
     read_chunks = get_read_chunk_ids(state.get("previous_actions"))
     if chunk_id in read_chunks:

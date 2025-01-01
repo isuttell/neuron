@@ -68,13 +68,13 @@ This tool answers questions, and looks for related information from a knowledge 
                 },
             )
             return f"""
-# Answer
-
+<answer>
 {response['answer']}
+</answer>
 
-## Research Analysis
-
+<research_analysis>
 {response['analysis']}
+</research_analysis>
 """.strip()
         except Exception as e:
             logger.exception(e)

@@ -55,7 +55,6 @@ export default function Thread() {
     if (!threadId) {
       return;
     }
-    dispatch(fetchThread(threadId));
     dispatch(fetchMessagesByThread(threadId));
   }, [threadId]);
 

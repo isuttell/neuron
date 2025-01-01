@@ -34,6 +34,18 @@ async def get_threads(personality_id: UUID):
     }
 
 
+@blueprint.get("/recent")
+async def get_recent_threads():
+    threads = await ThreadModel.get_recent_threads(hours=1)
+    personalities = await PersonalityModel.get_many(
+        list(set(thread.personality_id for thread in threads))
+    )
+    return {
+        "threads": [thread.model_dump() for thread in threads],
+        "personalities": [personality.model_dump() for personality in personalities],
+    }
+
+
 class CreateThread(BaseModel):
     name: Optional[str] = None
     context: Optional[str] = None

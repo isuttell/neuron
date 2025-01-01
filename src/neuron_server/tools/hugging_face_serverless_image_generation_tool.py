@@ -40,7 +40,7 @@ class HuggingFaceServerlessImageGenerationToolArgs(BaseModel):
 
 
 class HuggingFaceServerlessImageGenerationTool(BaseTool):
-    name: str = "hfs_image_generation"
+    name: str = "hugging_face_serverless_image_generation"
     description: str = (
         "A tool that generates an image based on a given prompt using diffusion models from HuggingFace and returns it in markdown format. Use this when the user asks for an image. flux.1-dev is best for storytelling or projects requiring consistent character and scene continuity across multiple images, with more stylistic flexibility and dynamic visual variety. Stable Diffusion 3.5, however, shines in creating detailed, high-quality images based closely on explicit prompts, making it ideal for realistic scenes or when precise control over each image's look is required. The prompt should be a detailed description of what to generate. Make sure to include all relevant details such as location, time of day, art style, etc. to ensure better consistency and quality. Unless you are trying to maintain a specific style or look add random modern styles to ensure variety. Image generation times make take up to a minute. Returns a markdown image tag to be shown to the user."
     )

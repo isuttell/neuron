@@ -8,9 +8,10 @@ import { CornerDownLeft, Upload } from "lucide-react";
 import { getActivePersonalityId } from "../slices/personalitiesSlice";
 import { Spinner } from "@/components/ui/spinner";
 import { postMessageByThread } from "../actions/messageActions";
-import Counter from "../lib/Counter";
 import { cn } from "@/lib/utils";
 import { useToast } from "../hooks/use-toast";
+import { StatusMessage } from "./StatusMessage";
+
 interface MessageFormProps {
   status: string;
   disabled?: boolean;
@@ -18,44 +19,6 @@ interface MessageFormProps {
   className?: string;
   lastMessageAt?: number;
 }
-
-const StatusMap = {
-  error: "Error",
-  idle: "Idle",
-  streaming: "Streaming",
-  thinking: "Thinking",
-  tools: "Tools",
-  update_memory: "Memory",
-  update_title: "Title",
-};
-
-const getStatusMessage = (status: string) => {
-  return Array.from(
-    new Set(
-      status
-        .split(",")
-        .sort((a, b) => {
-          if (a.trim() === "thinking") return -1;
-          if (b.trim() === "thinking") return 1;
-          if (a.trim() === "tools") return -1;
-          if (b.trim() === "tools") return 1;
-          return a.localeCompare(b);
-        })
-        .map((value) =>
-          typeof StatusMap[value as keyof typeof StatusMap] === "string"
-            ? StatusMap[value as keyof typeof StatusMap]
-            : value.replace(/_/g, " ").trim()
-        )
-    )
-  ).map((value) => (
-    <span
-      key={value}
-      className="text-sm text-muted-foreground capitalize inline-flex items-center rounded-md bg-muted px-2 py-1 font-medium ring-1 ring-inset ring-gray-100/10"
-    >
-      {value}
-    </span>
-  ));
-};
 
 export default function MessageForm({
   disabled = false,
@@ -128,7 +91,10 @@ export default function MessageForm({
         }}
       />
       <div className="flex items-center pt-2">
-        <div className="flex gap-1 flex-row">{getStatusMessage(status)}</div>
+        <StatusMessage
+          status={status}
+          tagClassName="text-sm text-muted-foreground capitalize inline-flex items-center rounded-md bg-muted px-2 py-1 font-medium ring-1 ring-inset ring-gray-100/10"
+        />
         <div className="flex-1" />
         <Button
           type="button"

@@ -39,6 +39,7 @@ async def get_thread_messages(thread_id: UUID):
         if message.type != "system"
     ]
     return {
+        "threads": [thread.model_dump()],
         "messages": [message.model_dump() for message in messages],
     }
 
