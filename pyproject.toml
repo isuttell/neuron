@@ -51,6 +51,7 @@ firecrawl-py = "0.0.20"
 replicate = "*"
 aiofiles = "*"
 piexif = "*"
+yt-dlp = "*"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

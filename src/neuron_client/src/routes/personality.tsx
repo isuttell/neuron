@@ -68,6 +68,7 @@ export default function Personality() {
         context: updatedContext,
         memory: personality.memory,
         tool_set: personality.tool_set,
+        logo: personality.logo,
       })
     );
     setIsSaving(false);

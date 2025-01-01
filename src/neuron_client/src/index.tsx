@@ -6,13 +6,43 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { createThread } from "./actions/threadActions";
 import { Spinner } from "@/components/ui/spinner";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import {
   getActivePersonalityId,
   getActivePersonality,
 } from "./slices/personalitiesSlice";
 import logo from "@/assets/logo.svg";
 import { useToast } from "@/hooks/use-toast";
+import { RootState } from "./store";
+import FuzzyTimeAgo from "@/components/FuzzyTimeAgo";
+
+const selectRecentThreads = (state: RootState) => {
+  // Get the latest AI message timestamp for each thread
+  const threadLastAiMessages = state.messages.messages
+    .filter((message) => message.type === "ai")
+    .reduce((acc, message) => {
+      if (
+        !acc[message.thread_id] ||
+        (message.created_at ?? 0) > (acc[message.thread_id] ?? 0)
+      ) {
+        acc[message.thread_id] = message.created_at ?? 0;
+      }
+      return acc;
+    }, {} as Record<string, number>);
+
+  // Sort threads using the latest AI message timestamps
+  return Object.values(state.threads.threads)
+    .filter(
+      (thread) =>
+        threadLastAiMessages[thread.id] &&
+        thread.updated_at > Date.now() - 1000 * 60 * 60
+    ) // Only show threads with AI messages
+    .sort(
+      (a, b) =>
+        (threadLastAiMessages[b.id] ?? 0) - (threadLastAiMessages[a.id] ?? 0)
+    );
+};
+
 export default function Index() {
   const [prompt, setPrompt] = useState("");
   const [file, setFile] = useState<File | undefined>(undefined);
@@ -22,6 +52,8 @@ export default function Index() {
   const [isLoading, setLoading] = useState(false);
   const activePersonalityId = useAppSelector(getActivePersonalityId);
   const activePersonality = useAppSelector(getActivePersonality);
+  const recentThreads = useAppSelector(selectRecentThreads);
+
   const handleSubmit = (greeting?: boolean) => {
     if (!activePersonalityId || (prompt.trim().length === 0 && !greeting)) {
       return;
@@ -127,7 +159,7 @@ export default function Index() {
                 type="file"
                 className="hidden"
                 onChange={handleFileUpload}
-                accept=".png,.jpg,.jpeg,.gif,.webp,.pdf,.md,.txt,.csv"
+                accept=".png,.jpg,.jpeg,.gif,.webp,.pdf,.md,.txt,.csv,.srt,.vtt,.mp3,.wav,.mp4"
               />
               {!isLoading ? (
                 <Button
@@ -158,6 +190,29 @@ export default function Index() {
               </Button>
             </div>
           </form>
+          {recentThreads.length > 0 ? (
+            <>
+              <div className="text-sm font-bold text-muted-foreground">
+                Recent updates
+              </div>
+              <div className="flex flex-col gap-2 mt-2">
+                {recentThreads.map((thread) => (
+                  <Link
+                    key={thread.id}
+                    to={`/thread/${thread.id}`}
+                    className="border-b border-border pb-2 last:border-b-0"
+                  >
+                    <div className="flex flex-row gap-2">
+                      <div className="line-clamp-2 text-sm">{thread.name}</div>
+                      <div className="text-sm text-muted-foreground">
+                        <FuzzyTimeAgo timestamp={thread.created_at} />
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </>
+          ) : null}
         </div>
       </div>
     </div>

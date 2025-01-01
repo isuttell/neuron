@@ -83,15 +83,14 @@ export default function NavThreads({ activePathname }: NavThreadsProps) {
           </SidebarMenuItem>
         )}
         {threads
-          .sort((a, b) => a.updated_at.localeCompare(b.updated_at))
-          .reverse()
+          .sort((a, b) => b.updated_at - a.updated_at)
           .map((thread) => (
             <SidebarMenuItem key={thread.id} className="gap-2 space-y-1">
               <SidebarMenuButton
                 isActive={activePathname === `/thread/${thread.id}`}
                 asChild
               >
-                <NavLink to={`/thread/${thread.id}`} className="text-secondary">
+                <NavLink to={`/thread/${thread.id}`} className="text-gray-300">
                   {thread.status === "idle" ? (
                     <MessageCircle className="size-4 min-w-[20px]" />
                   ) : (

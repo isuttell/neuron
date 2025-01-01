@@ -87,7 +87,7 @@ async def save_thread(thread: ThreadModel):
 
 
 async def update_thread_status(
-    thread: ThreadModel, status: str, force_update: bool = False
+    thread: ThreadModel, status: str, force_update: bool = True
 ):
     if thread.status != status or force_update:
         thread.status = status
@@ -101,7 +101,7 @@ async def astream(
     location: str = "San Diego, California at -117.1860 W and 32.84 N.",
     username: str = "Isaac Suttell",
 ):
-    start_time = datetime.now(timezone.utc).astimezone()
+    start_time = datetime.now().astimezone()
     logger.debug(f"Agent started for {thread_id}")
     try:
         thread = await ThreadModel.get(thread_id)
@@ -119,7 +119,7 @@ async def astream(
         graph.checkpointer = AsyncPostgresSaver(pool)
 
         human_message = HumanMessage(content=prompt, id=str(uuid4()))
-        human_message.created_at = datetime.now(timezone.utc).isoformat()
+        human_message.created_at = datetime.now().isoformat()
         await pubsub.publish(
             "app",
             MessageEvent(

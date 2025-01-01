@@ -49,7 +49,7 @@ const ImageContent: React.FC<ImageContentProps> = ({
       <DialogTrigger asChild>
         <div className="relative">
           <img
-            className="w-full rounded-lg border"
+            className="rounded-lg w-full h-full object-contain max-h-[1024px] max-w-[1024px] border border-gray-900 cursor-pointer bg-black"
             src={
               url.endsWith(".gif")
                 ? url
@@ -58,8 +58,11 @@ const ImageContent: React.FC<ImageContentProps> = ({
             alt={alt}
             width={width}
             height={height}
+            rel="noopener noreferrer"
           />
-          {!imageLoaded && <Spinner className="absolute top-2 right-2" />}
+          {!imageLoaded && (
+            <Spinner className="absolute top-2 right-2 opacity-50" size={8} />
+          )}
           <div className="absolute bottom-2 right-2 space-x-2">
             <Tooltip>
               <TooltipTrigger asChild>

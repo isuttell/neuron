@@ -59,6 +59,7 @@ from neuron_server.tools.replicate_sound_effect_generation_tool import (
     ReplicateSoundEffectGenerationTool,
 )
 from neuron_server.tools.update_logo_tool import UpdateLogoTool
+from neuron_server.tools.inspect_document_tool import DocumentInspectTool
 
 homeassistant_api = HomeAssistantAPI(token=config.homeassistant.token)
 
@@ -71,13 +72,14 @@ tool_sets: Dict[str, List[BaseTool]] = {
         GraphArxivImportTool(),
         GraphImportTool(),
         GraphWebsiteImportTool(),
+        DocumentInspectTool(),
     ],
     "image": [
         DalleTool(),
         HuggingFaceServerlessImageGenerationTool(),
         Automatic1111Tool(
             api=Automatic1111API(
-                output_directory=os.path.join(config.static_folder, "images"),
+                output_directory=os.path.join(config.static_folder),
                 endpoint=config.automatic1111_endpoint,
             )
         ),
@@ -90,7 +92,7 @@ tool_sets: Dict[str, List[BaseTool]] = {
         InspectImageTool(),
         ReplicateVideoGenerationTool(),
         ReplicateAudioGenerationTool(),
-        ReplicateSoundEffectGenerationTool(),
+        # ReplicateSoundEffectGenerationTool(),
     ],
     "tts": [
         ElevenLabsTTSTool(),
@@ -101,6 +103,8 @@ tool_sets: Dict[str, List[BaseTool]] = {
             max_results=5, include_raw_content=True, search_depth="advanced"
         ),
         WikipediaQueryRun(api_wrapper=WikipediaAPIWrapper()),
+        InspectImageTool(),
+        DocumentInspectTool(),
     ],
     "arxiv": [
         ArxivSearchTool(),

@@ -10,16 +10,21 @@ export interface Thread {
   personality_id: string;
   status: string;
   message_count: number;
+  created_at: number;
+  updated_at: number;
+}
+
+interface IncomingThread extends Omit<Thread, "created_at" | "updated_at"> {
   created_at: string;
   updated_at: string;
 }
 
 interface IncomingThreadEvent {
-  thread: Thread;
+  thread: IncomingThread;
 }
 
 interface IncomingThreadsEvent {
-  threads: Thread[];
+  threads: IncomingThread[];
 }
 
 // Define a type for the slice state
@@ -31,8 +36,21 @@ interface ThreadState {
 const initialState: ThreadState = {
   threads: [],
 };
+/**
+ * Parses an incoming message dates and returns a Message object
+ * @param message - The incoming message
+ * @returns A Message object
+ */
+function parseIncomingThread(thread: IncomingThread): Thread {
+  return {
+    ...thread,
+    created_at: new Date(thread.created_at).getTime(),
+    updated_at: new Date(thread.updated_at).getTime(),
+  };
+}
 
-function upsert(state: ThreadState, thread: Thread) {
+function upsert(state: ThreadState, incomingThread: IncomingThread) {
+  const thread = parseIncomingThread(incomingThread);
   const existingThreadIndex = state.threads.findIndex(
     (item) => item.id === thread.id
   );

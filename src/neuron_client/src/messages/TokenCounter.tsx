@@ -3,15 +3,8 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-
-function formatNumber(num: number): string {
-  if (num >= 1_000_000) {
-    return (num / 1_000_000).toFixed(1) + "m";
-  } else if (num >= 1_000) {
-    return (num / 1_000).toFixed(1) + "k";
-  }
-  return num.toString();
-}
+import { formatNumber } from "../utils/numberFormat";
+import TokenMetadataTable from "./TokenMetadataTable";
 
 export default function TokenCounter({
   input_tokens,
@@ -22,8 +15,6 @@ export default function TokenCounter({
   output_tokens: number;
   total_tokens: number;
 }) {
-  const anthropicEstCost =
-    input_tokens / 3_000_000 + output_tokens / 15_000_000;
   return (
     <Tooltip delayDuration={0}>
       <TooltipTrigger>
@@ -40,34 +31,11 @@ export default function TokenCounter({
         </div>
       </TooltipTrigger>
       <TooltipContent>
-        <table className="min-w-full">
-          <tbody>
-            <tr className="border-b">
-              <td className="text-sm font-bold">Input</td>
-              <td className="text-sm text-right">
-                {input_tokens.toLocaleString()}
-              </td>
-            </tr>
-            <tr className="border-b">
-              <td className="text-sm font-bold">Output</td>
-              <td className="text-sm text-right">
-                {output_tokens.toLocaleString()}
-              </td>
-            </tr>
-            <tr>
-              <td className="text-sm font-bold">Total</td>
-              <td className="text-sm text-right">
-                {total_tokens.toLocaleString()}
-              </td>
-            </tr>
-            <tr>
-              <td className="text-sm font-bold">Est. Cost</td>
-              <td className="text-sm text-right">
-                ${anthropicEstCost.toFixed(2)}
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <TokenMetadataTable
+          input_tokens={input_tokens}
+          output_tokens={output_tokens}
+          total_tokens={total_tokens}
+        />
       </TooltipContent>
     </Tooltip>
   );

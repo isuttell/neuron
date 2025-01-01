@@ -26,7 +26,7 @@ class MediaFile(BaseModel):
     created_at: str
     size: int
     mime_type: str
-    media_type: str
+    media_type: Optional[str]
 
 
 async def get_media_files(directory: str, limit: int = 100) -> List[MediaFile]:

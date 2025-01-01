@@ -22,11 +22,7 @@ import {
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "../hooks/use-toast";
-import {
-  Tooltip,
-  TooltipTrigger,
-  TooltipContent,
-} from "@/components/ui/tooltip";
+
 interface EditPersonalityDialogProps {
   personality?: Personality;
   default_tools?: string[];
@@ -56,12 +52,13 @@ const EditPersonalityDialog: React.FC<EditPersonalityDialogProps> = ({
   const navigate = useNavigate();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [name, setName] = useState(personality?.name || "");
   const [description, setDescription] = useState(
     personality?.description || ""
   );
   const [context, setContext] = useState(personality?.context || "");
-  const [loading, setLoading] = useState(false);
+
   const [logo, setLogo] = useState(personality?.logo || "");
   const [tool_set, setToolSet] = useState(
     (personality?.tool_set || "").split("+")
@@ -131,24 +128,17 @@ const EditPersonalityDialog: React.FC<EditPersonalityDialogProps> = ({
   const active_tools = tool_set.length > 0 ? tool_set : default_tools;
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger>
-        <Tooltip delayDuration={0}>
-          <TooltipTrigger>
-            <Button variant="ghost" size="icon">
-              {personality ? (
-                <UserPen className="size-4" />
-              ) : (
-                <UserPlus className="size-4" />
-              )}
-              <span className="sr-only">
-                {personality ? "Edit" : "Create"} Personality
-              </span>
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom">
+      <DialogTrigger asChild>
+        <Button variant="ghost" size="icon">
+          {personality ? (
+            <UserPen className="size-4" />
+          ) : (
+            <UserPlus className="size-4" />
+          )}
+          <span className="sr-only">
             {personality ? "Edit" : "Create"} Personality
-          </TooltipContent>
-        </Tooltip>
+          </span>
+        </Button>
       </DialogTrigger>
       <DialogContent>
         <form onSubmit={handleSubmit}>

@@ -62,7 +62,6 @@ export default function MessageForm({
   status,
   onSubmit,
   className = "",
-  lastMessageAt,
 }: MessageFormProps) {
   const { toast } = useToast();
   const dispatch = useAppDispatch();
@@ -155,7 +154,7 @@ export default function MessageForm({
           type="file"
           className="hidden"
           onChange={handleFileUpload}
-          accept=".png,.jpg,.jpeg,.gif,.webp,.pdf,.md,.txt,.csv"
+          accept=".png,.jpg,.jpeg,.gif,.webp,.pdf,.md,.txt,.csv,.srt,.vtt,.mp3,.wav,.mp4"
         />
         <Button
           onClick={handleSubmit}
@@ -171,12 +170,6 @@ export default function MessageForm({
         >
           {status !== "idle" ? (
             <>
-              {lastMessageAt && (
-                <Counter
-                  className="text-xs text-gray-500 pr-1"
-                  startDate={lastMessageAt}
-                />
-              )}
               <Spinner className="size-3.5" />
             </>
           ) : (

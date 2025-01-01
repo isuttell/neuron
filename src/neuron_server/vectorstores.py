@@ -18,3 +18,11 @@ arxiv_store = PGVector(
     connection=engine,
     use_jsonb=True,
 )
+
+
+document_store = PGVector(
+    embeddings=embeddings,
+    collection_name="documents",
+    connection=engine,
+    use_jsonb=True,
+)

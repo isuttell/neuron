@@ -1,12 +1,6 @@
 import { useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import AudioPlayer from "./AudioPlayer";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import Content from "./Content";
 import ImageContent from "./ImageContent";
 import VideoContent from "./VideoContent";
 import { Message } from "../slices/messagesSlice";
@@ -134,25 +128,7 @@ export function MediaList({
                 </a>
               ) : null}
               {item.type === "audio" ? (
-                <Tooltip delayDuration={0}>
-                  <TooltipTrigger className="w-full">
-                    <AudioPlayer
-                      className="w-full"
-                      preload="auto"
-                      src={item.url}
-                    />
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-[512px] p-4">
-                    <Content
-                      content={
-                        Array.isArray(item.content)
-                          ? item.content[0].text
-                          : item.content || ""
-                      }
-                      preload="none"
-                    />
-                  </TooltipContent>
-                </Tooltip>
+                <AudioPlayer className="w-full" preload="auto" src={item.url} />
               ) : null}
               {item.type === "video" ? (
                 <VideoContent

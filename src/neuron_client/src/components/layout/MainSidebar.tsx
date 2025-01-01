@@ -37,7 +37,7 @@ export function MainSidebar() {
         <div>
           <Link
             to="/"
-            className="flex items-center gap-2 font-semibold px-2 py-2 text-primary hover:text-primary/80"
+            className="flex items-center gap-2 font-semibold px-2 py-2 text-white hover:text-white/80"
           >
             <img src={logo} alt="Neuron" className="size-6 -ml-1" />
             <span>Neuron</span>
@@ -50,7 +50,7 @@ export function MainSidebar() {
                 isActive={location.pathname === link.to}
                 asChild
               >
-                <NavLink to={link.to} className="text-secondary">
+                <NavLink to={link.to} className="text-gray-300">
                   <link.Icon className="h-4 w-4" />
                   <span>{link.label}</span>
                 </NavLink>

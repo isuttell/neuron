@@ -62,6 +62,10 @@ def count_tokens(text: str) -> int:
     return len(encoder.encode(text))
 
 
+class GraphWebsiteImportFailed(Exception):
+    pass
+
+
 class GraphWebsiteImportToolArgs(BaseModel):
     url: str = Field(
         description="The url of the document or website to import. Supports html websites, text files, pdfs, csvs, and markdown documents"
@@ -73,7 +77,7 @@ class GraphWebsiteImportToolArgs(BaseModel):
 
 
 class GraphWebsiteImportTool(BaseTool):
-    name: str = "website_graph_import"
+    name: str = "graph_website_import"
     description: str = (
         """
 This tool imports documents, or scrapes a website using Firecrawl, and adds it to the knowledge graph. Use this save information from the internet for later use or when the user asks you to save/import a website/pdf url.
@@ -91,12 +95,19 @@ This tool imports documents, or scrapes a website using Firecrawl, and adds it t
         mode: str = "scrape",
     ) -> str:
         try:
+            logger.debug(f"Importing website '{url}' with mode '{mode}'")
             personality_id = config["configurable"].get("personality_id")
             assert personality_id is not None
             # Record the start time for performance measurement
             start_time = time.perf_counter()
 
-            if url.endswith(".txt") or url.endswith(".md") or url.endswith(".csv"):
+            if (
+                url.endswith(".txt")
+                or url.endswith(".md")
+                or url.endswith(".csv")
+                or url.endswith(".srt")
+                or url.endswith(".vtt")
+            ):
                 doc = await load_text_from_url(url)
                 docs = [doc]
             elif url.endswith(".pdf"):
@@ -104,14 +115,17 @@ This tool imports documents, or scrapes a website using Firecrawl, and adds it t
                 docs = [doc]
             else:
                 if "zaks.io" in url or "192.168" in url:
-                    raise ValueError("FireCrawl cannot import local files")
+                    raise GraphWebsiteImportFailed(
+                        "FireCrawl cannot access urls on the local network."
+                    )
+
                 loader = FireCrawlLoader(
                     api_key=neuron_config.firecrawl_api_key, url=url, mode=mode
                 )
                 docs = await loader.aload()
 
             if len(docs) == 0:
-                raise ValueError("No documents found")
+                raise GraphWebsiteImportFailed("No documents found")
 
             # Process the documents and add them to the graph
             result = f"# Knowledge Graph Import Results\n\nImported '{url}' to the knowledge graph in {len(docs)} document(s)"

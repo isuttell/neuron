@@ -1,4 +1,4 @@
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils";
 import { HTMLAttributes } from "react";
 
 interface SpinnerProps extends HTMLAttributes<SVGElement> {
@@ -7,7 +7,12 @@ interface SpinnerProps extends HTMLAttributes<SVGElement> {
   strokeWidth?: number;
 }
 
-export function Spinner({ className, size = 24, strokeWidth = 2, ...props }: SpinnerProps) {
+export function Spinner({
+  className,
+  size = 64,
+  strokeWidth = 2,
+  ...props
+}: SpinnerProps) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -19,10 +24,10 @@ export function Spinner({ className, size = 24, strokeWidth = 2, ...props }: Spi
       strokeWidth={strokeWidth}
       strokeLinecap="round"
       strokeLinejoin="round"
-      className={cn("w-16 h-16 animate-spin", className)}
+      className={cn(`animate-spin`, className)}
       {...props}
     >
       <path d="M21 12a9 9 0 1 1-6.219-8.56" />
     </svg>
-  )
+  );
 }

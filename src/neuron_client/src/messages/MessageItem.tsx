@@ -10,6 +10,8 @@ import {
 import { Message } from "@/slices/messagesSlice";
 import Content from "./Content";
 import FuzzyTimeAgo from "@/components/FuzzyTimeAgo";
+import { formatNumber } from "../utils/numberFormat";
+import TokenMetadataTable from "./TokenMetadataTable";
 
 interface MessageItemProps {
   message: Message;
@@ -70,7 +72,7 @@ const MessageItem: React.FC<MessageItemProps> = ({
             {role === "human" ? "You" : "AI"}
           </TooltipContent>
         </Tooltip>
-        <div className="flex flex-col flex-1">
+        <div className="flex flex-col flex-1 ">
           {body.trim().length > 0 ? (
             <Content
               content={body}
@@ -88,17 +90,36 @@ const MessageItem: React.FC<MessageItemProps> = ({
               )}
             </div>
           )}
-          <div className="flex justify-end flex-shrink-0">
+          <div className="flex justify-end flex-shrink-0 space-x-2">
+            {message.usage_metadata?.total_tokens &&
+              message.usage_metadata.total_tokens > 0 && (
+                <Tooltip delayDuration={0}>
+                  <TooltipTrigger>
+                    <span className="text-xs text-gray-500">
+                      {formatNumber(message.usage_metadata.total_tokens)}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">
+                    <TokenMetadataTable
+                      input_tokens={message.usage_metadata.input_tokens ?? 0}
+                      output_tokens={message.usage_metadata.output_tokens ?? 0}
+                      total_tokens={message.usage_metadata.total_tokens ?? 0}
+                    />
+                  </TooltipContent>
+                </Tooltip>
+              )}
             {message.created_at && (
               <Tooltip delayDuration={0}>
                 <TooltipTrigger>
                   <FuzzyTimeAgo
-                    className="text-xs text-gray-500 cursor-default"
+                    className="text-xs text-gray-500"
                     timestamp={message.created_at}
                   />
                 </TooltipTrigger>
-                <TooltipContent side="right">
-                  {new Date(message.created_at).toLocaleString()}
+                <TooltipContent side="bottom">
+                  <span className="p-4">
+                    {new Date(message.created_at).toLocaleString()}
+                  </span>
                 </TooltipContent>
               </Tooltip>
             )}

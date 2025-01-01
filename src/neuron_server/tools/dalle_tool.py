@@ -70,7 +70,7 @@ When creating prompts for images, include specific visual details, such as color
 class DalleTool(BaseTool):
     name: str = "dalle"
     description: str = (
-        "A tool that generates highly detailed, realistic or semi-realistic images and charts based on a text prompt using OpenAI's DALL·E 3. Returns a markdown image tag for display."
+        "A tool that generates detailed, realistic or semi-realistic images and charts based on a text prompt using OpenAI's DALL·E 3. Returns a markdown image tag for display."
     )
     args_schema: Type[DalleArgs] = DalleArgs
 

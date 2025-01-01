@@ -1,55 +1,36 @@
 import { useEffect, useRef, useState } from "react";
-import { Trash, Bot, PanelRight } from "lucide-react";
 import { useParams, useNavigate } from "react-router-dom";
 import MessageForm from "../messages/MessageForm";
 import MessageItem from "../messages/MessageItem";
 import { useAppSelector, useAppDispatch } from "../hooks";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { shallowEqual } from "react-redux";
 import { RootState } from "../store";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
-  DialogClose,
-} from "@/components/ui/dialog";
 import Loading from "@/lib/loading";
 import { getActivePersonalityId } from "../slices/personalitiesSlice";
 import MediaList, { getMediaItems } from "../messages/MediaList";
-import { fetchThread, deleteThread } from "../actions/threadActions";
+import { fetchThread } from "../actions/threadActions";
 import { fetchMessagesByThread } from "../actions/messageActions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import ArtifactsViewer from "../artifacts/ArtifactsViewer";
-import { extractAndReplaceArtifacts } from "../artifacts/extractArtifacts";
 import { cn } from "@/lib/utils";
 import { sendMessage } from "../actions/messageActions";
 import TokenCounter from "../messages/TokenCounter";
 import { debounce } from "@/lib/utils";
-import { useToast } from "../hooks/use-toast";
+import DeleteThreadButton from "@/components/DeleteThreadButton";
+import ToggleSystemMessages from "@/components/ToggleSystemMessages";
+import MediaPanelWidth, { WidthMode } from "@/components/MediaPanelWidth";
+
 const selectThread = (state: RootState, threadId?: string) =>
   state.threads.threads.find((thread) => thread.id === threadId);
 
 const selectMessages = (state: RootState, threadId?: string) =>
   state.messages.messages.filter((message) => message.thread_id === threadId);
 
-const widthModeOrder = ["hidden", "narrow", "wide"];
-
 export default function Thread() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const { toast } = useToast();
   const activePersonalityId = useAppSelector(getActivePersonalityId);
 
-  const [activeTab, setActiveTab] = useState<"media" | "artifacts">("media");
+  const [activeTab, setActiveTab] = useState<"media">("media");
   const lastMessageRef = useRef<HTMLDivElement | null>(null);
   const { threadId } = useParams();
   const thread = useAppSelector(
@@ -61,7 +42,8 @@ export default function Thread() {
     shallowEqual
   );
   const [showTools, setShowTools] = useState(false);
-  const [widthMode, setWidthMode] = useState<"narrow" | "wide" | "hidden">(
+
+  const [widthMode, setWidthMode] = useState<WidthMode>(
     localStorage.getItem("widthMode") === "wide"
       ? "wide"
       : localStorage.getItem("widthMode") === "narrow"
@@ -93,8 +75,6 @@ export default function Thread() {
     }, 0);
   }, [lastMessageRef.current]);
 
-  const { updatedMessages, artifacts } = extractAndReplaceArtifacts(messages);
-
   const mediaItems = getMediaItems(messages);
 
   if (!thread || (thread.message_count > 0 && messages.length === 0)) {
@@ -114,14 +94,23 @@ export default function Thread() {
     { input_tokens: 0, output_tokens: 0, total_tokens: 0 }
   );
 
-  const filteredMessages = updatedMessages
+  const filteredMessages = messages
+    .slice()
     .map((message) => {
-      if (!showTools && typeof message.content === "string") {
-        message.content = message.content
-          .replace(/<\|AI\|>.*?<\|AI\|>/g, "")
-          .trim();
+      let content = Array.isArray(message.content)
+        ? message.content
+            .filter((item) => item.type === "text")
+            .map((item) => item.text)
+            .join("\n")
+        : message.content;
+
+      if (!showTools) {
+        content = (content || "").replace(/<\|AI\|>.*?<\|AI\|>/g, "").trim();
       }
-      return message;
+      return {
+        ...message,
+        content,
+      };
     })
     .filter((message) =>
       [
@@ -136,7 +125,7 @@ export default function Thread() {
     [...filteredMessages]
       .reverse()
       .findIndex((message) => message.type === "human");
-  const lastMessageAt = filteredMessages[lastUserMessage]?.created_at;
+
   return (
     <div className="flex flex-1 p-4 pl-0 flex-col flex-nowrap max-h-screen">
       <div className="flex justify-between mb-2 border-b pb-2">
@@ -149,96 +138,12 @@ export default function Thread() {
             total_tokens={total_tokens}
           />
         )}
-        <Tooltip delayDuration={0}>
-          <TooltipTrigger asChild>
-            <Button
-              variant={showTools ? "default" : "ghost"}
-              size="icon"
-              onClick={() => {
-                setShowTools(!showTools);
-              }}
-            >
-              <Bot className="size-4" />
-              <span className="sr-only">Toggle System Messages</span>
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom">Toggle System Messages</TooltipContent>
-        </Tooltip>
-        <Tooltip delayDuration={0}>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => {
-                const newWidthMode =
-                  widthModeOrder[
-                    (widthModeOrder.indexOf(widthMode) + 1) %
-                      widthModeOrder.length
-                  ];
-                setWidthMode(newWidthMode as "hidden" | "narrow" | "wide");
-                localStorage.setItem("widthMode", newWidthMode);
-              }}
-            >
-              <PanelRight className="size-4" />
-              <span className="sr-only">Toggle Width Mode</span>
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom">
-            Change Media Panel Width
-          </TooltipContent>
-        </Tooltip>
-
-        <Dialog>
-          <DialogTrigger>
-            <Tooltip delayDuration={0}>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  <Trash className="size-4" />
-                  <span className="sr-only">Delete</span>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">Delete Thread</TooltipContent>
-            </Tooltip>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Are you absolutely sure?</DialogTitle>
-              <DialogDescription>
-                This action cannot be undone. This will permanently delete your
-                account and remove your data from our servers.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter className="justify-end">
-              <DialogClose asChild>
-                <Button type="button" variant="secondary">
-                  Cancel
-                </Button>
-              </DialogClose>
-              <Button
-                type="button"
-                variant="destructive"
-                onClick={async () => {
-                  navigate("/");
-                  try {
-                    await dispatch(deleteThread(thread.id));
-                    toast({
-                      title: "Thread deleted",
-                    });
-                  } catch (error: any) {
-                    toast({
-                      variant: "destructive",
-                      title: "Failed to delete thread",
-                      description:
-                        error?.message || "An unexpected error occurred",
-                    });
-                  }
-                }}
-              >
-                Delete
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <ToggleSystemMessages
+          showTools={showTools}
+          onToggle={() => setShowTools(!showTools)}
+        />
+        <MediaPanelWidth widthMode={widthMode} onChange={setWidthMode} />
+        <DeleteThreadButton threadId={thread.id} />
       </div>
       <div className="flex flex-row flex-1">
         <div className="flex flex-col flex-1">
@@ -284,7 +189,6 @@ export default function Thread() {
           <div className="bottom-0">
             <MessageForm
               status={thread.status}
-              lastMessageAt={lastMessageAt}
               className="max-w-[1170px] w-full mx-auto mt-2"
               onSubmit={() => {}}
             />
@@ -299,7 +203,7 @@ export default function Thread() {
             widthMode === "hidden" && "hidden"
           )}
           onValueChange={(value) => {
-            setActiveTab(value as "media" | "artifacts");
+            setActiveTab(value as "media");
           }}
         >
           <TabsList>
@@ -308,14 +212,6 @@ export default function Thread() {
               {mediaItems.length > 0 && (
                 <span className="ml-2 text-xs text-muted-foreground">
                   ({mediaItems.length})
-                </span>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="artifacts">
-              Artifacts
-              {artifacts.length > 0 && (
-                <span className="ml-2 text-xs text-muted-foreground">
-                  ({artifacts.length})
                 </span>
               )}
             </TabsTrigger>
@@ -328,20 +224,13 @@ export default function Thread() {
                 activeTab === "media" ? "flex" : "hidden"
               )}
             >
-              <MediaList
-                threadId={thread.id}
-                mediaItems={mediaItems}
-                thumbnail_size={widthMode === "narrow" ? "t" : "xl"}
-              />
-            </TabsContent>
-            <TabsContent
-              value="artifacts"
-              className={cn(
-                "flex flex-col flex-1 absolute top-0 left-0 right-0 bottom-0",
-                activeTab === "artifacts" ? "flex" : "hidden"
-              )}
-            >
-              <ArtifactsViewer artifacts={artifacts} />
+              {widthMode !== "hidden" ? (
+                <MediaList
+                  threadId={thread.id}
+                  mediaItems={mediaItems}
+                  thumbnail_size={widthMode === "narrow" ? "t" : "xl"}
+                />
+              ) : null}
             </TabsContent>
           </div>
         </Tabs>

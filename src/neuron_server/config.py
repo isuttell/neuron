@@ -166,6 +166,11 @@ class Config(BaseModel):
             ".txt",
             ".md",
             ".csv",
+            ".srt",
+            ".vtt",
+            ".mp3",
+            ".wav",
+            ".mp4",
         ],
         description="Allowed file types",
     )

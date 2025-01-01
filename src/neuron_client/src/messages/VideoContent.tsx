@@ -32,10 +32,10 @@ const VideoContent: React.FC<VideoContentProps> = ({
   const { toast } = useToast();
   return (
     <Dialog>
-      <DialogTrigger>
-        <div className="relative">
+      <DialogTrigger asChild>
+        <div className="w-full relative overflow-hidden">
           <video
-            className="rounded-md border border-gray-900 w-full"
+            className="rounded-lg w-full h-full object-contain max-h-[1024px] max-w-[1024px] border border-gray-900 cursor-pointer bg-black"
             src={url}
             autoPlay={autoPlay}
             muted={muted}
@@ -81,7 +81,7 @@ const VideoContent: React.FC<VideoContentProps> = ({
                   </a>
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Download image</TooltipContent>
+              <TooltipContent>Download video</TooltipContent>
             </Tooltip>
           </div>
         </div>

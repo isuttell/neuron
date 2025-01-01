@@ -43,6 +43,7 @@ class Personality(Base):
     name = Column(Text, nullable=False)
     context = Column(Text, nullable=False, default="")
     memory = Column(Text, nullable=False, default="")
+    logo = Column(Text, nullable=True)
     tool_set = Column(Text, nullable=True, default=None)
     description = Column(Text, nullable=False, default="")
     created_at = Column(DateTime(timezone=True), server_default=func.now())

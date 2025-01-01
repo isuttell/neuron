@@ -118,7 +118,7 @@ class ReplicateImageGenerationTool(BaseTool):
     name: str = "replicate_image_generation"
     description: str = (
         """
-Use this tool to generate an image using a text prompt on replicate.com. flux-1.1-pro-ultra is the best model for most use cases as it generates the highest quality results and typically matches the prompt the best. flux-lora-isaac a fined tuned flux dev model for generating images of Isaac. Use ideogram-v2 for logos and posters.
+Use this tool to generate an image using a text prompt on replicate.com and has access to a range of models. flux-1.1-pro-ultra is the best model for most use cases, from realistic or semi-realistic images to illustrations. It outputs the highest resolution and follows the prompts the best. flux-lora-isaac a fined tuned flux dev model for generating images of Isaac. Use ideogram-v2 for logos and posters.
 """.strip()
     )
 

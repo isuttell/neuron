@@ -1,5 +1,6 @@
 from langchain_neo4j import Neo4jGraph
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from langchain_anthropic import ChatAnthropic
 from neuron_server.config import config
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
@@ -17,6 +18,7 @@ from langchain_core.runnables import RunnableConfig
 import time
 from datetime import datetime
 import json
+from langchain_core.prompts import PromptTemplate
 
 graph = Neo4jGraph(
     url=config.neo4j.url,
@@ -24,6 +26,29 @@ graph = Neo4jGraph(
     password=config.neo4j.password,
     enhanced_schema=True,
 )
+
+# Add indexes if they don't exist
+index_queries = [
+    # Document indexes
+    "CREATE INDEX document_name_idx IF NOT EXISTS FOR (d:Document) ON (d.name)",
+    "CREATE INDEX document_source_idx IF NOT EXISTS FOR (d:Document) ON (d.source)",
+    "CREATE INDEX document_personality_idx IF NOT EXISTS FOR (d:Document) ON (d.personality_id)",
+    # Chunk indexes
+    "CREATE INDEX chunk_personality_idx IF NOT EXISTS FOR (c:Chunk) ON (c.personality_id)",
+    "CREATE INDEX chunk_document_idx IF NOT EXISTS FOR (c:Chunk) ON (c.document_id)",
+    # AtomicFact indexes
+    "CREATE INDEX atomic_fact_id_idx IF NOT EXISTS FOR (a:AtomicFact) ON (a.id)",
+    "CREATE INDEX atomic_fact_text_idx IF NOT EXISTS FOR (a:AtomicFact) ON (a.text)",
+    # KeyElement index
+    "CREATE INDEX key_element_id_idx IF NOT EXISTS FOR (k:KeyElement) ON (k.id)",
+]
+
+for query in index_queries:
+    try:
+        # graph.query(query)
+        pass
+    except Exception as e:
+        logger.error(f"Error creating index: {str(e)}")
 
 logger.debug(f"Connected to Neo4j at {config.neo4j.url}")
 
@@ -105,8 +130,8 @@ class Extraction(BaseModel):
     atomic_facts: List[AtomicFact] = Field(description="List of atomic facts")
 
 
-model = ChatOpenAI(model="gpt-4o-2024-11-20", temperature=0.1, max_tokens=None)
-
+model = ChatOpenAI(model="gpt-4o-2024-11-20", temperature=0.3, max_tokens=None)
+# model = ChatAnthropic(model="claude-3-5-sonnet-20241022", temperature=0.3)
 structured_llm = model.with_structured_output(Extraction)
 
 construction_chain = construction_prompt | structured_llm
@@ -319,7 +344,7 @@ def parse_function(input_str):
         return None
 
 
-rational_plan_system = """As an intelligent assistant with access to a knowledge graph database, your primary objective is to answer the following question by gathering supporting facts from various articles. To facilitate this objective, the first step is to make a rational plan based on the question. This plan should outline the step-by-step process to resolve the question and specify the key information required to formulate a comprehensive answer. Use the message history if you need more context for the user's question. Do not answer the question, only make a plan to follow.
+rational_plan_system = """As an intelligent assistant with access to a knowledge graph database, your primary objective is to answer the following question by gathering supporting facts from various articles. To facilitate this objective, the first step is to make a rational plan based on the question. This plan should outline the step-by-step process, in a few steps as possible, to resolve the question and specify the key information required to formulate a comprehensive answer. Use the message history if you need more context for the user's question. Do not answer the question, only make a plan to follow.
 
 Now: {now}
 
@@ -380,7 +405,7 @@ async def rational_plan_node(
 embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
 
 
-def get_potential_nodes(question: str) -> List[str]:
+async def get_potential_nodes(question: str) -> List[str]:
     # Load it on demand here to generate the embeddings on the fly
     # @TODO find a better way to get the embeddings created
     neo4j_vector = Neo4jVector.from_existing_graph(
@@ -394,7 +419,7 @@ def get_potential_nodes(question: str) -> List[str]:
         embedding_node_property="embedding",
         retrieval_query="RETURN node.id AS text, score, {} AS metadata",
     )
-    data = neo4j_vector.similarity_search(question, k=50)
+    data = await neo4j_vector.asimilarity_search(question, k=50)
     return [el.page_content for el in data]
 
 
@@ -469,12 +494,12 @@ initial_nodes_chain = initial_node_prompt | model.with_structured_output(Initial
 async def initial_node_selection(
     state: OverallState, config: RunnableConfig = None
 ) -> OverallState:
-    potential_nodes = get_potential_nodes(state.get("question"))
-    initial_nodes = await initial_nodes_chain.ainvoke(
+    potential_nodes = await get_potential_nodes(state.get("question"))
+    initial_nodes: InitialNodes = await initial_nodes_chain.ainvoke(
         {
             "question": state.get("question"),
             "rational_plan": state.get("rational_plan"),
-            "nodes": potential_nodes,
+            "nodes": json.dumps(potential_nodes),
         },
         config=config,
     )
@@ -486,7 +511,7 @@ async def initial_node_selection(
             key=lambda node: node.score,
             reverse=True,
         )
-    ][:5]
+    ][:3]
     return {
         "check_atomic_facts_queue": check_atomic_facts_queue,
         "previous_actions": ["initial_node_selection"],
@@ -501,7 +526,7 @@ atomic_fact_check_system = """As an intelligent assistant, your primary objectiv
 Your current task is to check a node and its associated atomic facts, with the objective of determining whether to proceed with reviewing the text chunk corresponding to these atomic facts. Given the question, the rational plan, previous actions, notebook content, and the current node's atomic facts and their corresponding chunk_ids, you have the following action options:
 
 #####
-1. read_chunk(List[ID]): Choose this action if you believe that a text chunk linked to an atomic fact may hold the necessary information to answer the question. This will allow you to access more complete and detailed information. Must include at least one ID in the list.
+1. read_chunk(List[ID]): Choose this action if you believe that a text chunk linked to an atomic fact may hold the necessary information to answer the question. This will allow you to access more complete and detailed information. Must include at least one ID in the list and not repeat chunks already read.
 2. stop_and_read_neighbor(): Choose this action if you ascertain that all text chunks lack valuable information.
 #####
 
@@ -584,6 +609,9 @@ class AtomFactResult(TypedDict):
 def get_atomic_facts(
     key_elements: List[str], personality_id: str
 ) -> List[AtomFactResult]:
+    """
+    Get the atomic facts for the given key elements and personality
+    """
     data = graph.query(
         """
 MATCH (k:KeyElement)<-[:HAS_KEY_ELEMENT]-(fact)<-[:HAS_ATOMIC_FACT]-(c:Chunk)<-[:HAS_CHUNK]-(doc:Document)
@@ -636,7 +664,7 @@ async def atomic_fact_check(
         key_elements=state.get("check_atomic_facts_queue"),
         personality_id=personality_id,
     )
-    logger.debug(f"Reading atomic facts about: {state.get('check_atomic_facts_queue')}")
+    logger.debug(f"Step: Atomic Fact Check ({state.get('check_atomic_facts_queue')})")
     atomic_facts_results: AtomicFactOutput = await atomic_fact_chain.ainvoke(
         {
             "question": state.get("question"),
@@ -670,7 +698,7 @@ async def atomic_fact_check(
         check_chunks_queue: List[str] = (
             args[0]
             if isinstance(args, list) and len(args) > 0 and isinstance(args[0], list)
-            else [atomic_fact.get("chunk_id") for atomic_fact in atomic_facts]
+            else []
         )
         read_chunks = get_read_chunk_ids(state.get("previous_actions"))
         # Filter out chunks that have already been read
@@ -680,7 +708,7 @@ async def atomic_fact_check(
     return response
 
 
-chunk_read_system_prompt = """As an intelligent assistant, your primary objective is to answer questions based on information within a text. To facilitate this objective, a graph has been created from the text, comprising the following elements:
+chunk_read_system_prompt = """As an intelligent assistant, your primary objective is to answer questions based on information within a text. To facilitate this objective, a knowledge graph of relevant information has been created from the text, comprising the following elements:
 1. Text Chunks: Segments of the original text.
 2. Atomic Facts: Smallest, indivisible truths extracted from text chunks.
 3. Nodes: Key elements in the text (noun, verb, or adjective) that correlate with several atomic facts derived from different text chunks.
@@ -816,22 +844,19 @@ async def chunk_check(state: OverallState, config: RunnableConfig) -> OverallSta
         }
     chunk_id = check_chunks_queue.pop()
     if not isinstance(chunk_id, str):
-        raise ValueError(f"Chunk ID is not a string: {chunk_id}")
-    assert isinstance(chunk_id, str)
+        raise Exception(f"Chunk ID is not a string: {chunk_id}")
     logger.debug(f"Step: read_chunk({chunk_id})")
     read_chunks = get_read_chunk_ids(state.get("previous_actions"))
     if chunk_id in read_chunks:
         logger.warning(f"Chunk {chunk_id} has already been read")
     chunk = get_chunk(chunk_id, personality_id)
-    if not chunk:
-        raise ValueError(f"Chunk {chunk_id} not found")
     read_chunk_results: ChunkOutput = await chunk_read_chain.ainvoke(
         {
             "question": state.get("question"),
             "rational_plan": state.get("rational_plan"),
             "notebook": state.get("notebook"),
             "previous_actions": json.dumps(state.get("previous_actions"), indent=2),
-            "chunk": json.dumps(chunk, indent=2),
+            "chunk": json.dumps(chunk, indent=2) if chunk else "Unable to find a chunk",
         },
         config=config,
     )
@@ -860,7 +885,7 @@ async def chunk_check(state: OverallState, config: RunnableConfig) -> OverallSta
             response["chosen_action"] = "search_neighbor"
             # Get neighbors/use vector similarity
             logger.debug(f"Neighbor rational: {read_chunk_results.rational_next_move}")
-            neighbors = get_potential_nodes(read_chunk_results.rational_next_move)
+            neighbors = await get_potential_nodes(read_chunk_results.rational_next_move)
             response["neighbor_check_queue"] = neighbors
 
     response["check_chunks_queue"] = check_chunks_queue
@@ -985,7 +1010,7 @@ RETURN doc.id AS document_id, doc.name AS document_name, c.id AS chunk_id, c.tex
 
 class AnswerReasonOutput(BaseModel):
     analyze: str = Field(
-        description="""Analyze each fact in the research. Consider complementary information from other notes and employ a majority voting strategy to resolve any inconsistencies. Note any contradictions and inconsistencies if any. Look for and highlight any hidden insights or patterns identified in the notebook. Show your thought process step by step. Follow the rational plan. Call the notebook research if referenced. The result should be a markdown formatted list or table of the facts with their analysis followed a section explaining your step by step process. Last include a sectional giving an overall assessment of the research and how well it answers the question and matched the ration plan. Include sources and references where possible."""
+        description="""Do a critical analysis of the research. Consider complementary information from other notes and employ a majority voting strategy to resolve any inconsistencies. Note any contradictions and inconsistencies if any. Show your thought process step by step. Follow the rational plan. The result should be cleanly formatted in markdown using latex and math if required. Last include a final section giving an overall assessment of the research and how well it answers the question. If the research is not sufficient to answer the question, explain why and what is missing. Include sources and references where possible."""
     )
     final_answer: str = Field(
         description="""When generating the final answer, ensure that you take into account all available information. Just present the facts and a concise answer. Use markdown formatting with support for katex and math. Include sources and references where possible."""
@@ -1056,7 +1081,7 @@ answer_reasoning_chain = answer_reasoning_prompt | model.with_structured_output(
 
 
 async def answer_reasoning(state: OverallState, config: RunnableConfig) -> OutputState:
-    logger.debug("Step: Answer Reasoning")
+    logger.debug("Step: Answer")
     final_answer = await answer_reasoning_chain.ainvoke(
         {
             "now": datetime.now().astimezone().isoformat(timespec="seconds"),
@@ -1161,7 +1186,8 @@ if __name__ == "__main__":
         "--question",
         type=str,
         help="The question to be processed",
-        default="What information do we have about Large Language Models (LLMs) in our knowledge graph? Include details about architectures, training methods, and recent developments.",
+        default="What do you know about llms?",
+        # default="What information do we have about Large Language Models in our knowledge graph? Include details about architectures, training methods, and recent developments.",
     )
     parser.add_argument(
         "--personality_id",

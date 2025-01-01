@@ -229,7 +229,7 @@ class LLM:
         config: RunnableConfig,
     ):
         message_trimmer: Runnable = trim_messages(
-            max_tokens=30000,
+            max_tokens=20000,
             strategy="last",
             token_counter=self.title_model,
             include_system=False,
