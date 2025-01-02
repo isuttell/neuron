@@ -23,6 +23,10 @@ from neuron_server.controllers.webhook_controller import blueprint as webhook_bl
 from neuron_server.controllers.graph_controller import (
     blueprint as graph_blueprint,
 )
+from neuron_server.controllers.prompt_controller import (
+    router as prompt_router,
+    blueprint as prompt_blueprint,
+)
 from functools import wraps
 from quart import Response
 from typing import Optional
@@ -40,6 +44,7 @@ router.register_controller(thread_router)
 router.register_controller(message_router)
 router.register_controller(personality_router)
 router.register_controller(image_router)
+router.register_controller(prompt_router)
 
 
 app = Quart(
@@ -127,6 +132,7 @@ blueprint = Blueprint(
 @blueprint.get("/gallery")
 @blueprint.get("/code-viewer")
 @blueprint.get("/stats")
+@blueprint.get("/prompts")
 async def index(**kwargs):
     return await blueprint.send_static_file("index.html")
 
@@ -196,6 +202,7 @@ app.register_blueprint(message_blueprint, url_prefix="/api/messages")
 app.register_blueprint(personality_blueprint, url_prefix="/api/personalities")
 app.register_blueprint(image_blueprint, url_prefix="/api/images")
 app.register_blueprint(graph_blueprint, url_prefix="/api/graph")
+app.register_blueprint(prompt_blueprint, url_prefix="/api/prompts")
 
 
 @app.errorhandler(404)

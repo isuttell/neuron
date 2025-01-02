@@ -51,6 +51,9 @@ from neuron_server.tools.replicate_video_generation_tool import (
 from neuron_server.tools.replicate_audio_generation_tool import (
     ReplicateAudioGenerationTool,
 )
+from neuron_server.tools.replicate_music_generation_tool import (
+    ReplicateMusicGenerationTool,
+)
 from neuron_server.tools.replicate_image_generation_tool import (
     ReplicateImageGenerationTool,
 )
@@ -92,10 +95,12 @@ tool_sets: Dict[str, List[BaseTool]] = {
         InspectImageTool(),
         ReplicateVideoGenerationTool(),
         ReplicateAudioGenerationTool(),
+        ReplicateMusicGenerationTool(),
         # ReplicateSoundEffectGenerationTool(),
     ],
     "tts": [
         ElevenLabsTTSTool(),
+        ReplicateMusicGenerationTool(),
         FFmpegTool(),
     ],
     "search": [
@@ -172,6 +177,6 @@ default_tools: List[BaseTool] = list(
 def get_tools(query: str) -> List[BaseTool]:
     ts = [tool for name in [*query.strip("+").split("+")] for tool in tool_sets[name]]
     if config.memory_enabled:
-        # ts.append(MemoryRecallTool())
+        ts.append(MemoryRecallTool())
         ts.append(MemoryStoreTool())
     return list({tool.name: tool for tool in ts}.values())

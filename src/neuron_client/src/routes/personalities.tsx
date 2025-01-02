@@ -6,18 +6,39 @@ import PersonalityItem from "../personalities/PersonalityItem";
 import EditPersonalityDialog from "../personalities/EditPersonalityDialog";
 import { useAppDispatch } from "../hooks";
 import { fetchPersonalities } from "../actions/personalityActions";
+import { SidebarTrigger } from "@/components/ui/sidebar";
+import {
+  getPersonalitiesLoading,
+  getPersonalitiesError,
+} from "../slices/personalitiesSlice";
+import { Spinner } from "@/components/ui/spinner";
 
 export default function Personalities() {
   const personalities = useAppSelector(getPersonalities);
+  const loading = useAppSelector(getPersonalitiesLoading);
+  const error = useAppSelector(getPersonalitiesError);
   const dispatch = useAppDispatch();
 
   useEffect(() => {
     dispatch(fetchPersonalities());
   }, []);
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full w-full">
+        <Spinner />
+      </div>
+    );
+  }
+
+  if (error) {
+    return <div>Error: {error}</div>;
+  }
+
   return (
-    <div className="flex flex-1 p-4 pl-0 flex-col flex-nowrap max-h-screen overflow-auto">
+    <div className="flex flex-1 p-4 flex-col flex-nowrap max-h-screen overflow-auto">
       <div className="flex justify-between mb-2 border-b pb-2">
+        <SidebarTrigger className="size-10 mr-2" />
         <h1 className="text-2xl font-bold">Personalities</h1>
         <div className="flex-1" />
         <EditPersonalityDialog />

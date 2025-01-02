@@ -54,6 +54,9 @@ class Personality(Base):
     threads: Mapped[List["Thread"]] = relationship(
         back_populates="personality", cascade="all, delete-orphan"
     )
+    prompts: Mapped[List["Prompt"]] = relationship(
+        back_populates="personality", cascade="all, delete-orphan"
+    )
 
 
 class Thread(Base):
@@ -117,6 +120,24 @@ class LangchainPGEmbedding(Base):
     embedding = Column(Vector(), nullable=True)
     document = Column(String, nullable=True)
     cmetadata = Column(JSONB, nullable=True)
+
+
+class Prompt(Base):
+    __tablename__ = "prompts"
+
+    id = Column(pgUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(Text, nullable=False)
+    text = Column(Text, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+    personality_id = Column(
+        pgUUID(as_uuid=True),
+        ForeignKey("personalities.id", ondelete="CASCADE"),
+        nullable=True,
+    )
+    personality: Mapped["Personality"] = relationship(back_populates="prompts")
 
 
 # Create async session maker

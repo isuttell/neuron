@@ -11,6 +11,7 @@ import { postMessageByThread } from "../actions/messageActions";
 import { cn } from "@/lib/utils";
 import { useToast } from "../hooks/use-toast";
 import { StatusMessage } from "./StatusMessage";
+import { PromptDropdown } from "@/components/PromptDropdown";
 
 interface MessageFormProps {
   status: string;
@@ -90,7 +91,7 @@ export default function MessageForm({
           }
         }}
       />
-      <div className="flex items-center pt-2">
+      <div className="flex items-center gap-2 pt-2">
         <StatusMessage
           status={status}
           tagClassName="text-sm text-muted-foreground capitalize inline-flex items-center rounded-md bg-muted px-2 py-1 font-medium ring-1 ring-inset ring-gray-100/10"
@@ -100,7 +101,6 @@ export default function MessageForm({
           type="button"
           size="sm"
           variant={file ? "default" : "outline"}
-          className="mr-2"
           disabled={disabled}
           onClick={() => {
             if (file) {
@@ -121,6 +121,10 @@ export default function MessageForm({
           className="hidden"
           onChange={handleFileUpload}
           accept=".png,.jpg,.jpeg,.gif,.webp,.pdf,.md,.txt,.csv,.srt,.vtt,.mp3,.wav,.mp4"
+        />
+        <PromptDropdown
+          disabled={disabled}
+          onSelectPrompt={(promptText) => setValue(promptText)}
         />
         <Button
           onClick={handleSubmit}

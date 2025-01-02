@@ -12,6 +12,8 @@ import aiofiles
 import aiohttp
 from PIL import PngImagePlugin, Image
 from datetime import datetime, timezone
+import re
+import shutil
 
 
 class ReplicateImageGenerationToolArgs(BaseModel):
@@ -27,6 +29,9 @@ Prompt Tips:
 - Incorporate Mood and Atmosphere: "Depict a cozy, warmly lit bookstore cafe on a rainy evening."
 - Experiment with Unusual Perspectives: "Illustrate a 'bug's-eye view' of a picnic in a lush garden."
 """.strip(),
+    )
+    slug: str = Field(
+        description="A unique identifier. Must be all lower case with no special characters or spaces. Use dashes for spaces. Keep it short and descriptive. Must be less than 256 characters",
     )
     model: Optional[
         Literal[
@@ -112,13 +117,17 @@ Prompt Tips:
         description="Random seed. Set for reproducible generation",
         default=None,
     )
+    update_tablet: bool = Field(
+        description="Whether to update the smart home tablet dashboard with the generated image. Only use this if the user explicitly asks for it",
+        default=False,
+    )
 
 
 class ReplicateImageGenerationTool(BaseTool):
     name: str = "replicate_image_generation"
     description: str = (
         """
-Use this tool to generate an image using a text prompt on replicate.com and has access to a range of models. flux-1.1-pro-ultra is the best model for most use cases, from realistic or semi-realistic images to illustrations. It outputs the highest resolution and follows the prompts the best. flux-lora-isaac a fined tuned flux dev model for generating images of Isaac. Use ideogram-v2 for logos and posters.
+Use this tool to generate an image using a text prompt on replicate.com and has access to a range of models. flux-1.1-pro-ultra is the best model for most use cases, from realistic or semi-realistic images to illustrations. It outputs the highest resolution and has the best consistency between images. flux-lora-isaac a fined tuned flux dev model for generating images of Isaac. Use ideogram-v2 for logos and posters. When generating personality logos they must use a square aspect ratio and work well on a dark background.
 """.strip()
     )
 
@@ -129,6 +138,7 @@ Use this tool to generate an image using a text prompt on replicate.com and has 
     def _run(
         self,
         prompt: str,
+        slug: str,
         model: str,
         aspect_ratio: str = "3:2",
         num_inference_steps: int = 25,
@@ -142,6 +152,7 @@ Use this tool to generate an image using a text prompt on replicate.com and has 
             self._arun(
                 prompt,
                 model,
+                slug,
                 aspect_ratio,
                 num_inference_steps,
                 style,
@@ -155,6 +166,7 @@ Use this tool to generate an image using a text prompt on replicate.com and has 
     async def _arun(
         self,
         prompt: str,
+        slug: str,
         model: str = "black-forest-labs/flux-1.1-pro-ultra",
         aspect_ratio: str = "3:2",
         num_inference_steps: int = 25,
@@ -163,6 +175,7 @@ Use this tool to generate an image using a text prompt on replicate.com and has 
         raw: bool = False,
         image_prompt_strength: Optional[float] = None,
         seed: Optional[int] = None,
+        update_tablet: bool = False,
     ) -> str:
         logger.debug(f"Generating image using {model}")
         tmp_upload_file = os.path.join(neuron_config.temp_folder, uuid4().hex)
@@ -211,12 +224,17 @@ Use this tool to generate an image using a text prompt on replicate.com and has 
                     image_prompt.close()
                 if os.path.exists(tmp_upload_file):
                     os.remove(tmp_upload_file)
-            now = datetime.now(timezone.utc).astimezone()
+            now = datetime.now().astimezone()
             if not isinstance(output, list):
                 output = [output]
             results = []
-            for result in output:
-                filename = f"replicate_image_{uuid4().hex}.png"
+
+            # Remove any non-alphanumeric characters and limit to 255 characters
+            slug = re.sub(r"[^a-z0-9-_]", "", slug)[:255].lower().replace(" ", "-")
+
+            for i, result in enumerate(output):
+                # Ensure a unique filename
+                filename = f"replicate_{uuid4().hex[:8]}_{slug}.png"
                 file_path = os.path.abspath(
                     os.path.join(neuron_config.static_folder, filename)
                 )
@@ -242,7 +260,13 @@ Use this tool to generate an image using a text prompt on replicate.com and has 
                     ),
                 )
                 image = Image.open(file_path)
-                image.save(file_path, format="png", pnginfo=pnginfo)
+                image.save(file_path, format="png", pnginfo=pnginfo, quality=95)
+
+                if update_tablet and i == 0:
+                    shutil.copy(file_path, neuron_config.tablet_image_filename)
+                    logger.debug(
+                        f"Copied generated image to {neuron_config.tablet_image_filename}"
+                    )
 
                 url = f"{neuron_config.static_content_url}/{filename}"
                 results.append(f"![{prompt}]({url})")

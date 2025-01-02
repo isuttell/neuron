@@ -17,17 +17,21 @@ import { RootState } from "./store";
 import FuzzyTimeAgo from "@/components/FuzzyTimeAgo";
 import { fetchRecentThreads } from "./actions/threadActions";
 import { StatusMessage } from "./messages/StatusMessage";
+import { PromptDropdown } from "@/components/PromptDropdown";
+import { SidebarTrigger } from "@/components/ui/sidebar";
+import { cn } from "./lib/utils";
+
 const selectRecentThreads = (state: RootState) => {
   return Object.values(state.threads.threads)
     .sort((a, b) => b.updated_at - a.updated_at)
-    .filter((thread) => thread.updated_at > Date.now() - 1000 * 60 * 60) // Only show threads from last hour
-    .slice(0, 10)
+    .filter((thread) => thread.updated_at > Date.now() - 1000 * 60 * 60 * 12) // Only show threads from last day
+    .slice(0, 5)
     .map((thread) => ({
       ...thread,
       personality: state.personalities.personalities.find(
         (personality) => personality.id === thread.personality_id
       ),
-    })); // Limit to 10 threads
+    }));
 };
 
 export default function Index() {
@@ -85,9 +89,11 @@ export default function Index() {
   };
 
   const isDisabled = !activePersonalityId || isLoading;
+
   return (
-    <div className="flex flex-1 p-4 flex-col justify-center items-center flex-nowrap max-h-screen overflow-auto gap-2">
-      <div className="flex flex-col w-full">
+    <div className="flex flex-1 p-4 flex-col justify-center items-center flex-nowrap max-h-screen overflow-auto gap-2 relative">
+      <SidebarTrigger className="m-2 size-10 absolute top-2 left-2" />
+      <div className="flex flex-col w-full h-full justify-center items-center">
         <div className="flex justify-center items-center">
           <img src={logo} alt="Neuron" className="w-[120px]" />
         </div>
@@ -145,6 +151,10 @@ export default function Index() {
               >
                 <Upload className="size-3.5" />
               </Button>
+              <PromptDropdown
+                disabled={isDisabled}
+                onSelectPrompt={(promptText) => setPrompt(promptText)}
+              />
               <input
                 id="file-upload"
                 type="file"
@@ -192,22 +202,27 @@ export default function Index() {
                     <Link
                       key={thread.id}
                       to={`/thread/${thread.id}`}
-                      className="border-b border-border pb-2 last:border-b-0"
+                      className={cn(
+                        "border-b border-border pb-2 last:pb-0 last:border-b-0"
+                      )}
                     >
                       <div className="flex flex-row gap-2 text-sm">
                         <div className="font-bold">
                           {thread.name || "Untitled"}
                         </div>
-                        <div className="italic text-muted-foreground">
+                        <div className="italic text-muted-foreground sentence-case">
                           from {thread.personality?.name || "Unknown"}
                         </div>
                         {thread.status !== "idle" ? (
-                          <div className="text-muted-foreground">
-                            <StatusMessage status={thread.status} />
+                          <div className="text-muted-foreground font-bold">
+                            <StatusMessage
+                              status={thread.status}
+                              tagClassName="border-b mb-[-1px]"
+                            />
                           </div>
                         ) : null}
-                        <div className="text-muted-foreground">
-                          <FuzzyTimeAgo timestamp={thread.created_at} /> ago
+                        <div className="text-muted-foreground lowercase">
+                          <FuzzyTimeAgo ago timestamp={thread.created_at} />
                         </div>
                       </div>
                     </Link>

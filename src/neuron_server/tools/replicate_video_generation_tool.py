@@ -11,6 +11,7 @@ from uuid import uuid4
 import os
 from neuron_server.config import config as neuron_config
 import aiofiles
+import re
 
 
 class ReplicateVideoGenerationToolArgs(BaseModel):
@@ -19,6 +20,9 @@ class ReplicateVideoGenerationToolArgs(BaseModel):
     )
     prompt: str = Field(
         description="To create effective prompts for MiniMax's Video-01 model, define the subject, setting, and any actions or movements clearly. Include dynamic camera effects like panning, zooming, or handheld motion to enhance engagement. Combine these elements for complex scenes while maintaining character consistency by specifying attributes like clothing, hair, and environment. Example: A noir detective in a trench coat stands under a dim streetlight in a rainy alley, with the camera zooming in slowly."
+    )
+    slug: str = Field(
+        description="A unique identifier. Must be all lower case with no special characters or spaces. Use dashes for spaces. Keep it short and descriptive. Must be less than 256 characters",
     )
 
 
@@ -36,10 +40,12 @@ This tool uses the video generation model minimax/video-01, also known as Hailuo
 
     ref: str = "minimax/video-01"
 
-    def _run(self, prompt: str, image_url: Optional[str] = None) -> str:
-        return asyncio.run(self._arun(prompt, image_url))
+    def _run(self, prompt: str, slug: str, image_url: Optional[str] = None) -> str:
+        return asyncio.run(self._arun(prompt, slug, image_url))
 
-    async def _arun(self, prompt: str, image_url: Optional[str] = None) -> str:
+    async def _arun(
+        self, prompt: str, slug: str, image_url: Optional[str] = None
+    ) -> str:
         start_time = time.perf_counter()
         source = f" from {image_url}" if image_url else ""
         logger.debug(f"Generating video with prompt{source}: {prompt}")
@@ -72,7 +78,8 @@ This tool uses the video generation model minimax/video-01, also known as Hailuo
                 ):
                     input_args["first_frame_image"].close()
 
-            filename = f"{self.ref.replace('/', '_')}_{uuid4().hex}.mp4"
+            slug = re.sub(r"[^a-z0-9-_]", "", slug)[:255].lower().replace(" ", "-")
+            filename = f"{self.ref.replace('/', '_')}_{uuid4().hex[:8]}_{slug}.mp4"
             file_path = os.path.abspath(
                 os.path.join(neuron_config.static_folder, filename)
             )
@@ -102,7 +109,7 @@ async def main():
         "--image_url",
         type=str,
         help="The URL of the image to use for the first frame of the video generation.",
-        default="http://192.168.1.211:5002/static/images/dalle_generated_image_20241222174012_t_t.png",
+        default="http://192.168.1.211:5002/static/images/dalle_generated_image_20241222174012.png",
     )
     parser.add_argument(
         "--prompt",
@@ -111,8 +118,8 @@ async def main():
         default="panda and kitten missing each other",
     )
     args = parser.parse_args()
-    tool = ImageToVideoTool()
-    result = await tool._arun(args.image_url, args.prompt)
+    tool = ReplicateVideoGenerationTool()
+    result = await tool._arun(args.prompt, args.image_url)
     print(result)
 
 

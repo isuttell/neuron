@@ -35,12 +35,18 @@ export function StatusMessage({
         .map((value) =>
           typeof StatusMap[value as keyof typeof StatusMap] === "string"
             ? StatusMap[value as keyof typeof StatusMap]
-            : value.replace(/_/g, " ").replace(/tts/gi, "TTS").trim()
+            : value
+                .replace(/_/g, " ")
+                .replace(/tts/gi, "TTS")
+                .split(" ")
+                .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+                .join(" ")
+                .trim()
         )
     )
   );
   return (
-    <div className={cn("flex flex-row", className)}>
+    <div className={cn("flex flex-row gap-2 title-case", className)}>
       {tags.map((tag) => (
         <div key={tag} className={cn(tagClassName)}>
           {tag}

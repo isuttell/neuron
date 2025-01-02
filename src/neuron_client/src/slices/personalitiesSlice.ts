@@ -27,12 +27,16 @@ interface IncomingPersonalitiesEvent {
 interface PersonalityState {
   activePersonalityId?: string;
   personalities: Personality[];
+  loading: boolean;
+  error: string | null;
 }
 
 // Define the initial state using that type
 const initialState: PersonalityState = {
   activePersonalityId: localStorage.getItem("activePersonalityId") || undefined,
   personalities: [],
+  loading: false,
+  error: null,
 };
 
 function upsert(state: PersonalityState, personality: Personality) {
@@ -82,18 +86,38 @@ export const personalitiesSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
+      // Fetch personality
+      .addCase(actions.fetchPersonality.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
       .addCase(
         actions.fetchPersonality.fulfilled,
         (state, action: PayloadAction<IncomingPersonalityEvent>) => {
+          state.loading = false;
           upsert(state, action.payload.personality);
         }
       )
+      .addCase(actions.fetchPersonality.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message || "Failed to fetch personality";
+      })
+      // Fetch personalities
+      .addCase(actions.fetchPersonalities.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
       .addCase(
         actions.fetchPersonalities.fulfilled,
         (state, action: PayloadAction<IncomingPersonalitiesEvent>) => {
+          state.loading = false;
           state.personalities = action.payload.personalities;
         }
       )
+      .addCase(actions.fetchPersonalities.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message || "Failed to fetch personalities";
+      })
       .addCase(
         actions.createPersonality.fulfilled,
         (state, action: PayloadAction<IncomingPersonalityEvent>) => {
@@ -150,5 +174,11 @@ export const getActivePersonality = (
           personality.id === state.personalities.activePersonalityId
       )
     : undefined;
+
+export const getPersonalitiesLoading = (state: RootState) =>
+  state.personalities.loading;
+
+export const getPersonalitiesError = (state: RootState) =>
+  state.personalities.error;
 
 export default personalitiesSlice.reducer;

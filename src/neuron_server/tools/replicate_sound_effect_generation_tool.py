@@ -11,6 +11,7 @@ import os
 from neuron_server.config import config as neuron_config
 import aiofiles
 import subprocess
+import re
 
 
 def join_video_audio(video_file: str, audio_file: str, output_file: str):
@@ -65,6 +66,9 @@ Example prompts:
     cfg_scale: Optional[float] = Field(
         description="Classifier-free guidance scale", default=6.0
     )
+    slug: str = Field(
+        description="A unique identifier. Must be all lower case with no special characters or spaces. Use dashes for spaces. Keep it short and descriptive. Must be less than 256 characters",
+    )
     # sigma_max: Optional[int] = Field(description="Maximum noise level", default=500)
     # sigma_min: Optional[float] = Field(description="Minimum noise level", default=0.03)
     # batch_size: Optional[int] = Field(
@@ -105,6 +109,7 @@ This tool is optimized for generating short audio samples, sound effects, and pr
         self,
         video_url: str,
         prompt: str,
+        slug: str,
         seed: int = -1,
         steps: int = 25,
         cfg_scale: float = 4.5,
@@ -139,6 +144,7 @@ This tool is optimized for generating short audio samples, sound effects, and pr
         self,
         video_url: str,
         prompt: str,
+        slug: str,
         seed: int = -1,
         steps: int = 25,
         cfg_scale: float = 4.5,
@@ -198,9 +204,8 @@ This tool is optimized for generating short audio samples, sound effects, and pr
                 async for chunk in output:
                     await file.write(chunk)
 
-            output_filename = (
-                f"{self.ref.split(':')[0].replace('/', '_')}_{uuid4().hex}.mp4"
-            )
+            slug = re.sub(r"[^a-z0-9-_]", "", slug)[:255].lower().replace(" ", "-")
+            output_filename = f"{self.ref.split(':')[0].replace('/', '_')}_{uuid4().hex[:8]}_{slug}.mp4"
             output_file_path = os.path.abspath(
                 os.path.join(neuron_config.static_folder, output_filename)
             )

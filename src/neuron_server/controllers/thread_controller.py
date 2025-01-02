@@ -36,7 +36,7 @@ async def get_threads(personality_id: UUID):
 
 @blueprint.get("/recent")
 async def get_recent_threads():
-    threads = await ThreadModel.get_recent_threads(hours=1)
+    threads = await ThreadModel.get_recent_threads(hours=24)
     personalities = await PersonalityModel.get_many(
         list(set(thread.personality_id for thread in threads))
     )
@@ -104,7 +104,7 @@ async def post_create_thread():
     )
 
     if greeting:
-        prompt = f"{prompt or ''}<|AI|>Start the conversation in a sentence or two. Don't run any tools.<|AI|>"
+        prompt = f"{prompt or ''}<|AI|>Start the conversation in a sentence or two and then provide some prompt suggestions as a list. Don't run any tools<|AI|>"
 
     if prompt:
         # Start the conversation and stream the response if we have any actions to take
@@ -115,6 +115,7 @@ async def post_create_thread():
                 prompt=prompt,
                 personality_id=personality.id,
                 thread_id=thread.id,
+                user_id=None,
             )
         )
 

@@ -12,13 +12,15 @@ import asyncio
 import aiohttp
 import shutil
 import os
+from typing import List
 
 
-async def generate_image(
+async def generate_images(
     prompt: str,
     style: Literal["natural", "vivid"] = "vivid",
     size: Literal["1024x1024", "1792x1024", "1024x1792"] = "1024x1024",
-) -> Image.Image:
+    n: int = 1,
+) -> List[Image.Image]:
     """
     Generate an image based on the given prompt dalle
 
@@ -36,14 +38,17 @@ async def generate_image(
         size=size,
         quality="hd",
         style=style,
-        n=1,
+        n=n,
     )
     # Download the image so we can save it long term
-    image_url = response.data[0].url
-    async with aiohttp.ClientSession() as session:
-        async with session.get(image_url) as response:
-            response.raise_for_status()
-            return Image.open(BytesIO(await response.content.read()))
+    images = []
+    for image in response.data:
+        image_url = image.url
+        async with aiohttp.ClientSession() as session:
+            async with session.get(image_url) as response:
+                response.raise_for_status()
+                images.append(Image.open(BytesIO(await response.content.read())))
+    return images
 
 
 class DalleArgs(BaseModel):
@@ -62,8 +67,12 @@ When creating prompts for images, include specific visual details, such as color
         default="1024x1024",
     )
     update_tablet: bool = Field(
-        description="Whether to update the smart home tablet dashboard with the generated image. Only use this if the user explicitly asks for it.",
+        description="Whether to update the smart home tablet dashboard with the generated image. Only use this if the user explicitly asks for it. Only works if n=1.",
         default=False,
+    )
+    n: int = Field(
+        description="The number of images to generate. Default to 1.",
+        default=1,
     )
 
 
@@ -79,8 +88,10 @@ class DalleTool(BaseTool):
         prompt: str,
         style: Literal["natural", "vivid"] = "vivid",
         size: Literal["1024x1024", "1792x1024", "1024x1792"] = "1024x1024",
+        update_tablet: bool = False,
+        n: int = 1,
     ) -> str:
-        return asyncio.run(self._arun(prompt, style, size))
+        return asyncio.run(self._arun(prompt, style, size, update_tablet, n))
 
     async def _arun(
         self,
@@ -88,6 +99,7 @@ class DalleTool(BaseTool):
         style: Literal["natural", "vivid"] = "vivid",
         size: Literal["1024x1024", "1792x1024", "1024x1792"] = "1024x1024",
         update_tablet: bool = False,
+        n: int = 1,
     ) -> str:
         """
         Runs the tool to generate an image based on the given prompt.
@@ -100,36 +112,40 @@ class DalleTool(BaseTool):
         """
         try:
             logger.debug(f"Generating dalle image for prompt: {prompt}")
-            image = await generate_image(
+            images = await generate_images(
                 prompt=prompt,
                 style=style,
                 size=size,
             )
             now = datetime.now(timezone.utc).astimezone()
             timestamp = now.strftime("%Y%m%d%H%M%S")
-            filename = f"dalle_generated_image_{timestamp}.png"
-            pnginfo = PngImagePlugin.PngInfo()
-            pnginfo.add_text("Description", prompt)
-            pnginfo.add_text(
-                "DateTimeOriginal",
-                now.isoformat(timespec="seconds"),
-            )
-            file_path = os.path.abspath(
-                os.path.join(config.static_folder, "images", filename)
-            )
-            image.save(
-                file_path,
-                format="png",
-                pnginfo=pnginfo,
-            )
-            url = f"{config.static_content_url}/images/{filename}"
-            logger.debug(f"Saved generated image to {file_path} <{url}>")
-            if update_tablet:
-                shutil.copy(file_path, config.tablet_image_filename)
-                logger.debug(
-                    f"Copied generated image to {config.tablet_image_filename}"
+            results = []
+            for i, image in enumerate(images):
+                filename = f"dalle_generated_image_{timestamp}_{i}.png"
+                pnginfo = PngImagePlugin.PngInfo()
+                pnginfo.add_text("Description", prompt)
+                pnginfo.add_text(
+                    "DateTimeOriginal",
+                    now.isoformat(timespec="seconds"),
                 )
-            return f"![{prompt}]({url})"
+                file_path = os.path.abspath(
+                    os.path.join(config.static_folder, "images", filename)
+                )
+                image.save(
+                    file_path,
+                    format="png",
+                    pnginfo=pnginfo,
+                )
+                url = f"{config.static_content_url}/images/{filename}"
+                logger.debug(f"Saved generated image to {file_path} <{url}>")
+                results.append(url)
+
+                if update_tablet and n == 1:
+                    shutil.copy(file_path, config.tablet_image_filename)
+                    logger.debug(
+                        f"Copied generated image to {config.tablet_image_filename}"
+                    )
+            return "\n".join([f"![{prompt}]({url})" for url in results])
         except Exception as e:
             logger.exception(e)
             return f"Error generating image: {str(e)}"

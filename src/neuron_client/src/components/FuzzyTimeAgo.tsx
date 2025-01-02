@@ -6,7 +6,7 @@ const getFuzzyTimeAgo = (date: number) => {
   const secondsPast = Math.floor((now.getTime() - date) / 1000);
 
   if (secondsPast < 60) {
-    return "Just now";
+    return undefined;
   }
   if (secondsPast < 3600) {
     return `${Math.floor(secondsPast / 60)}m`;
@@ -26,16 +26,18 @@ const getFuzzyTimeAgo = (date: number) => {
 interface FuzzyTimeAgoProps {
   timestamp: number;
   className?: string;
+  ago?: boolean;
 }
 
 const FuzzyTimeAgo: React.FC<FuzzyTimeAgoProps> = ({
   timestamp,
   className,
+  ago = false,
 }) => {
   const [fuzzyTime, setFuzzyTime] = useState(getFuzzyTimeAgo(timestamp));
 
   useEffect(() => {
-    const updateInterval = fuzzyTime === "Just now" ? 1000 : 60000;
+    const updateInterval = !fuzzyTime ? 1000 : 60000;
     const interval = setInterval(() => {
       setFuzzyTime(getFuzzyTimeAgo(timestamp));
     }, updateInterval);
@@ -43,7 +45,11 @@ const FuzzyTimeAgo: React.FC<FuzzyTimeAgoProps> = ({
     return () => clearInterval(interval);
   }, [timestamp, fuzzyTime]);
 
-  return <span className={className}>{fuzzyTime}</span>;
+  return (
+    <span className={className}>
+      {fuzzyTime ? `${fuzzyTime}${ago ? " ago" : ""}` : "just now"}
+    </span>
+  );
 };
 
 export default FuzzyTimeAgo;

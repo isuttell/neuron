@@ -1,4 +1,4 @@
-import { Home, CircleUser, GalleryThumbnails } from "lucide-react";
+import { Home, CircleUser, GalleryThumbnails, FileText } from "lucide-react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import {
   Sidebar,
@@ -26,6 +26,11 @@ const links = [
     to: "/gallery",
     label: "Gallery",
     Icon: GalleryThumbnails,
+  },
+  {
+    to: "/prompts",
+    label: "Prompts",
+    Icon: FileText,
   },
 ];
 

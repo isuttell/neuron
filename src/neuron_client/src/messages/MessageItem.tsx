@@ -12,10 +12,13 @@ import Content from "./Content";
 import FuzzyTimeAgo from "@/components/FuzzyTimeAgo";
 import { formatNumber } from "../utils/numberFormat";
 import TokenMetadataTable from "./TokenMetadataTable";
+import { getMediaItems } from "./MediaList";
+import MediaList from "./MediaList";
 
 interface MessageItemProps {
   message: Message;
   onPromptClick?: (prompt: string) => void;
+  showTools?: boolean;
 }
 
 const getStatusMessage = (status: string) => {
@@ -33,6 +36,7 @@ const getStatusMessage = (status: string) => {
 const MessageItem: React.FC<MessageItemProps> = ({
   message,
   onPromptClick,
+  showTools = false,
 }) => {
   const { type: role, content, status = undefined } = message;
 
@@ -42,10 +46,24 @@ const MessageItem: React.FC<MessageItemProps> = ({
         .map((item) => item.text)
         .join("\n")
     : content;
+  const mediaItems = getMediaItems([message]);
+
+  if (role === "tool" && !mediaItems.length) {
+    return null;
+  }
+  if (!showTools && role === "tool") {
+    return (
+      <MediaList
+        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 ml-[5.5rem]"
+        mediaItems={getMediaItems([message])}
+        threadId={message.thread_id}
+      />
+    );
+  }
 
   return (
     <Card
-      className={`w-full mb-2 ${
+      className={`w-full my-2 ${
         role === "tool" || role === "system" ? "bg-zinc-900" : ""
       }`}
     >
@@ -91,6 +109,14 @@ const MessageItem: React.FC<MessageItemProps> = ({
             </div>
           )}
           <div className="flex justify-end flex-shrink-0 space-x-2">
+            {typeof message.node === "string" && message.node !== "agent" && (
+              <Tooltip delayDuration={0}>
+                <TooltipTrigger>
+                  <span className="text-xs text-gray-500">{message.node}</span>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">Node</TooltipContent>
+              </Tooltip>
+            )}
             {message.usage_metadata?.total_tokens &&
               message.usage_metadata.total_tokens > 0 && (
                 <Tooltip delayDuration={0}>

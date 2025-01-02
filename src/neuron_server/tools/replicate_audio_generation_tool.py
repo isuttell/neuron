@@ -10,10 +10,14 @@ from uuid import uuid4
 import os
 from neuron_server.config import config as neuron_config
 import aiofiles
+import re
 
 
 class ReplicateAudioGenerationToolArgs(BaseModel):
     video_url: str = Field(description="The URL of the video to add the audio to")
+    slug: str = Field(
+        description="A unique identifier. Must be all lower case with no special characters or spaces. Use dashes for spaces. Keep it short and descriptive. Must be less than 256 characters",
+    )
     prompt: Optional[str] = Field(
         description="Keywords to guide the audio generation. Only use if the model is not generating the audio you want.",
         default=None,
@@ -56,6 +60,7 @@ Use this tool to add realistic foley sound effects synced to a video using the z
     def _run(
         self,
         video_url: str,
+        slug: str,
         prompt: str = "",
         duration: int = 6,
         num_steps: int = 25,
@@ -78,6 +83,7 @@ Use this tool to add realistic foley sound effects synced to a video using the z
     async def _arun(
         self,
         video_url: str,
+        slug: str,
         prompt: str = "",
         duration: int = 6,
         num_steps: int = 25,
@@ -118,8 +124,8 @@ Use this tool to add realistic foley sound effects synced to a video using the z
                     },
                 )
                 logger.debug(f"Generated <{output.url}>")
-
-            filename = f"{self.ref.split(':')[0].replace('/', '_')}_{uuid4().hex}.mp4"
+            slug = re.sub(r"[^a-z0-9-_]", "", slug)[:255].lower().replace(" ", "-")
+            filename = f"{self.ref.split(':')[0].replace('/', '_')}_{uuid4().hex[:8]}_{slug}.mp4"
             file_path = os.path.abspath(
                 os.path.join(neuron_config.static_folder, filename)
             )

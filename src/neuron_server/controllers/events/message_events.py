@@ -7,6 +7,7 @@ from pydantic import ConfigDict
 
 class ThreadMessage(BaseMessage):
     thread_id: UUID
+    node: Optional[str] = None
     created_at: Optional[str] = None
     model_config = ConfigDict(
         extra="allow",
@@ -25,6 +26,7 @@ class MessageEvent(OutgoingEvent):
 class PartialMessage(ThreadMessage):
     index: int
     status: str
+    node: str
     model_config = ConfigDict(
         extra="allow",
     )

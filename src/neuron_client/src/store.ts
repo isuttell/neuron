@@ -7,6 +7,8 @@ import socket from "./slices/socketSlice";
 import personalities from "./slices/personalitiesSlice";
 import images from "./slices/imagesSlice";
 import app from "./slices/appSlice";
+import promptsReducer from "./slices/promptsSlice";
+
 export const store = configureStore({
   reducer: {
     app,
@@ -15,6 +17,7 @@ export const store = configureStore({
     socket,
     personalities,
     images,
+    prompts: promptsReducer,
   },
   // @ts-ignore
   middleware: (getDefaultMiddleware) =>

@@ -12,7 +12,7 @@ from neuron_server.database import pool
 from neuron_server.llms.llm import LLM
 from neuron_server.models.thread_model import ThreadModel
 from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
-from neuron_server.pubsub import client as pubsub_client, pubsub
+from neuron_server.pubsub import pubsub
 from neuron_server.controllers.events.message_events import (
     MessageEvent,
     PartialMessageEvent,
@@ -155,6 +155,7 @@ async def update_thread_status(
 async def astream(
     thread_id: UUID,
     personality_id: UUID,
+    user_id: UUID,
     prompt: str,
     location: str = "San Diego, California at -117.1860 W and 32.84 N.",
     username: str = "Isaac Suttell",
@@ -206,6 +207,7 @@ async def astream(
                 "configurable": {
                     "thread_id": str(thread.id),
                     "personality_id": str(personality_id),
+                    "user_id": str(user_id) if user_id else None,
                 },
             },
             version="v2",
@@ -214,7 +216,7 @@ async def astream(
             name: str = body["name"]
             data: dict = body["data"]
             run_id: str = body["run_id"]
-            # logger.debug(f"Received event: {kind} {name}")
+            node: Optional[str] = body["metadata"].get("langgraph_node")
 
             if kind in ["on_chain_start", "on_chain_end"] and name in [
                 "update_title",
@@ -255,11 +257,7 @@ async def astream(
             if kind == "on_chat_model_stream" and isinstance(data["chunk"], AIMessage):
                 chunk = data["chunk"]
                 content = get_message_content(chunk)
-                if (
-                    isinstance(content, str)
-                    and len(content) > 0
-                    and body["metadata"]["langgraph_node"] == "agent"
-                ):
+                if isinstance(content, str) and len(content) > 0:
                     await update_thread_status(thread, "streaming")
                     index += 1
                     await pubsub.publish(
@@ -272,19 +270,21 @@ async def astream(
                                 thread_id=thread.id,
                                 index=index,
                                 status="streaming",
+                                node=node,
                                 # Use a stable start time and don't create a new one per event
                                 created_at=start_time.isoformat(),
                             )
                         ),
                     )
+
             elif kind == "on_tool_end" and isinstance(data["output"], ToolMessage):
                 output: ToolMessage = data["output"]
+                output.id = run_id if not output.id else output.id
                 message = ThreadMessage(
                     **output.model_dump(),
                     thread_id=thread.id,
+                    node=node,
                 )
-                if not message.id:
-                    message.id = run_id
                 await pubsub.publish("app", MessageEvent(message=message))
             elif kind == "on_chat_model_end":
                 output: AIMessage = data["output"]
@@ -294,6 +294,7 @@ async def astream(
                         **output.model_dump(),
                         created_at=start_time.isoformat(),
                         thread_id=thread.id,
+                        node=node,
                     )
                     await pubsub.publish("app", MessageEvent(message=message))
                 await update_thread_status(thread, "thinking")

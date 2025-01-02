@@ -114,6 +114,10 @@ class MemoryRecallToolArgs(BaseModel):
         gte=0.0,
         le=1.0,
     )
+    filter_by_thread: bool = Field(
+        description="If True, the memories will be filtered by the current thread.",
+        default=False,
+    )
 
 
 NO_MEMORIES_FOUND = "No memories found"
@@ -122,7 +126,7 @@ NO_MEMORIES_FOUND = "No memories found"
 class MemoryRecallTool(BaseTool):
     name: str = "recall_memory"
     description: str = (
-        "This tool allows you to recall information from long term memory. Use this if you are looking for a specific memory."
+        "This tool allows you to recall information from long term memory. Use this if you are looking for a specific memory or need a wide range of memories and the answer is not in the current recall memories."
     )
 
     args_schema: Type[MemoryRecallToolArgs] = MemoryRecallToolArgs

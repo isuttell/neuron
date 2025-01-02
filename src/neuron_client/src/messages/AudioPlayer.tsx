@@ -1,5 +1,5 @@
 import React, { memo } from "react";
-
+import { cn } from "@/lib/utils";
 interface AudioPlayerProps {
   className?: string;
   src: string;
@@ -21,7 +21,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
       autoPlay={autoPlay}
       loop={loop}
       preload={preload}
-      className={className}
+      className={cn("rounded-md", className)}
     >
       <source src={src} type="audio/mpeg" />
       Your browser does not support the audio element.

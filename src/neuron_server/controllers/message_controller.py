@@ -91,6 +91,7 @@ async def post_thread_message(thread_id: UUID):
     await agent.astream(
         thread_id=thread.id,
         personality_id=personality_id,
+        user_id=None,
         prompt=prompt,
     )
 
@@ -101,7 +102,12 @@ async def post_thread_message(thread_id: UUID):
 
 @router.on(PostMessage)
 async def apost_message(event: PostMessage) -> None:
-    await agent.astream(event.thread_id, event.personality_id, event.prompt)
+    await agent.astream(
+        thread_id=event.thread_id,
+        personality_id=event.personality_id,
+        user_id=None,
+        prompt=event.prompt,
+    )
 
 
 @router.on(CancelMessage)

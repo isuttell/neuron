@@ -20,7 +20,6 @@ export default function Root() {
     <SidebarProvider>
       <MainSidebar />
       <main className="flex flex-1">
-        <SidebarTrigger className="m-2 size-10 mt-4" />
         {isConnected && socket ? (
           <Outlet />
         ) : (

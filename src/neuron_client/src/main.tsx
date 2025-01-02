@@ -14,6 +14,7 @@ import Gallery from "./routes/gallery.tsx";
 import Personality from "./routes/personality.tsx";
 import Index from "./index.tsx";
 import CodeViewer from "./routes/code-viewer.tsx";
+import Prompts from "./routes/prompts.tsx";
 
 import "./index.css";
 
@@ -48,6 +49,10 @@ const router = createBrowserRouter(
         {
           path: "gallery",
           element: <Gallery />,
+        },
+        {
+          path: "prompts",
+          element: <Prompts />,
         },
       ],
     },

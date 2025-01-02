@@ -30,6 +30,7 @@ export interface Message {
   response_metadata?: any;
   usage_metadata?: UsageMetadata;
   created_at?: number;
+  node?: string;
 }
 
 interface IncomingMessage extends Omit<Message, "created_at"> {

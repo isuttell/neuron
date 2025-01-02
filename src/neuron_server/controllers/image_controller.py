@@ -11,6 +11,9 @@ import mimetypes
 import hashlib
 import aiofiles
 from typing import List
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = EventRouter()
 
@@ -41,42 +44,47 @@ async def get_media_files(directory: str, limit: int = 100) -> List[MediaFile]:
     # Sort by creation time so the newest are at the top
     media_files.sort(key=lambda x: x[1].st_ctime, reverse=True)
     for filename, stats in media_files[:limit]:
-        ext = os.path.splitext(filename)[1]
-        file_path = os.path.abspath(os.path.join(directory, filename))
-        metadata_path = os.path.abspath(
-            os.path.join(directory, filename.replace(ext, ".json"))
-        )
-        if os.path.exists(metadata_path):
-            async with aiofiles.open(metadata_path, "r") as file:
-                content = await file.read()
-                metadata = json.loads(content)
-                results.append(MediaFile(**metadata))
+        try:
+            ext = os.path.splitext(filename)[1]
+            if not ext:
                 continue
-        prompt: Optional[str] = None
-        created_at = datetime.fromtimestamp(stats.st_ctime).isoformat()
-        if ext == ".png":
-            with Image.open(file_path) as img:
-                png_info = img.info
-                prompt = png_info.get("Description", "")
-                created_at = png_info.get("DateTimeOriginal", "")
+            file_path = os.path.abspath(os.path.join(directory, filename))
+            metadata_path = os.path.abspath(
+                os.path.join(directory, filename.replace(ext, ".json"))
+            )
+            if os.path.exists(metadata_path):
+                async with aiofiles.open(metadata_path, "r") as file:
+                    content = await file.read()
+                    metadata = json.loads(content)
+                    results.append(MediaFile(**metadata))
+                    continue
+            prompt: Optional[str] = None
+            created_at = datetime.fromtimestamp(stats.st_ctime).isoformat()
+            if ext == ".png":
+                with Image.open(file_path) as img:
+                    png_info = img.info
+                    prompt = png_info.get("Description", "")
+                    created_at = png_info.get("DateTimeOriginal", "")
 
-        url = f"{config.static_content_url}/{filename}"
-        mime_type = mimetypes.guess_type(file_path)[0]
-        media_type = mime_type.split("/")[0]
-        size = stats.st_size
-        data = MediaFile(
-            id=hashlib.md5(filename.encode("utf-8")).hexdigest(),
-            path=file_path,
-            url=url,
-            prompt=prompt,
-            created_at=created_at,
-            mime_type=mime_type,
-            media_type=media_type,
-            size=size,
-        )
-        async with aiofiles.open(metadata_path, "w") as file:
-            await file.write(data.model_dump_json(indent=4))
-        results.append(data)
+            url = f"{config.static_content_url}/{filename}"
+            mime_type = mimetypes.guess_type(file_path)[0]
+            media_type = mime_type.split("/")[0]
+            size = stats.st_size
+            data = MediaFile(
+                id=hashlib.md5(filename.encode("utf-8")).hexdigest(),
+                path=file_path,
+                url=url,
+                prompt=prompt,
+                created_at=created_at,
+                mime_type=mime_type,
+                media_type=media_type,
+                size=size,
+            )
+            async with aiofiles.open(metadata_path, "w") as file:
+                await file.write(data.model_dump_json(indent=4))
+            results.append(data)
+        except Exception as e:
+            logger.error(f"Error processing media file {filename}: {e}")
     return results
 
 

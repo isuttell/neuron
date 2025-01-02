@@ -1,6 +1,6 @@
 import { useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import AudioPlayer from "./AudioPlayer";
+import AudioContent from "./AudioContent";
 import ImageContent from "./ImageContent";
 import VideoContent from "./VideoContent";
 import { Message } from "../slices/messagesSlice";
@@ -107,48 +107,44 @@ export function MediaList({
   ]);
 
   return (
-    <div className={cn("flex flex-col m-2", className)}>
-      <div className="flex flex-1 flex-wrap relative">
-        <div className="flex-1">
-          {mediaItems.map((item) => (
-            <div key={item.key} className="mb-4">
-              {item.type === "image" ? (
-                <ImageContent
-                  url={item.url}
-                  alt={item.alt}
-                  width={1024}
-                  height={1024}
-                  thumbnail_size={thumbnail_size}
-                  preload={true}
-                />
-              ) : null}
-              {item.type === "link" ? (
-                <a href={item.url} target="_blank" rel="noopener noreferrer">
-                  {item.alt}
-                </a>
-              ) : null}
-              {item.type === "audio" ? (
-                <AudioPlayer className="w-full" preload="auto" src={item.url} />
-              ) : null}
-              {item.type === "video" ? (
-                <VideoContent
-                  url={item.url}
-                  autoPlay={true}
-                  muted={true}
-                  controls={false}
-                  loop={true}
-                />
-              ) : null}
-            </div>
-          ))}
-          {mediaItems.length === 0 && (
-            <div className="m-4 text-center text-muted-foreground">
-              No media found
-            </div>
-          )}
-          <div ref={endRef} />
+    <div className={cn("flex", className)}>
+      {mediaItems.map((item) => (
+        <div key={item.key}>
+          {item.type === "image" ? (
+            <ImageContent
+              url={item.url}
+              alt={item.alt}
+              width={1024}
+              height={1024}
+              thumbnail_size={thumbnail_size}
+              preload={true}
+            />
+          ) : null}
+          {item.type === "link" ? (
+            <a href={item.url} target="_blank" rel="noopener noreferrer">
+              {item.alt}
+            </a>
+          ) : null}
+          {item.type === "audio" ? (
+            <AudioContent className="w-full" preload="auto" url={item.url} />
+          ) : null}
+          {item.type === "video" ? (
+            <VideoContent
+              url={item.url}
+              autoPlay={true}
+              muted={true}
+              controls={false}
+              loop={true}
+            />
+          ) : null}
         </div>
-      </div>
+      ))}
+      {mediaItems.length === 0 && (
+        <div className="m-4 text-center text-muted-foreground">
+          No media found
+        </div>
+      )}
+      <div ref={endRef} />
     </div>
   );
 }

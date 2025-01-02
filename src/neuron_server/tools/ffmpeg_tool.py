@@ -2,10 +2,11 @@ from langchain.tools import BaseTool
 from neuron_server.config import config
 from neuron_server.logger import logger
 from uuid import uuid4
-from typing import List
+from typing import List, Literal, Type
 import os
 import subprocess
-from typing import Literal
+from pydantic import BaseModel, Field
+import re
 
 
 class FFmpegToolError(Exception):
@@ -17,32 +18,49 @@ class FFmpegToolError(Exception):
         return f"Error generating audio: {self.message}\n\nSTDERR:\n{self.stderr}"
 
 
-class FFmpegTool(BaseTool):
-    name: str = "ffmpeg"
-    description: str = (
-        """
-This tool is designed to manipulate video and audio using ffmpeg. Starting with a fixed base of arguments (ffmpeg -hide_banner -nostats -loglevel error -y), the LLM generates all additional arguments required to do tasks such as join audio clips and integrate sound effects based on the user’s specifications. The tool avoids duplicating the initial arguments and focuses on creating a cohesive output according to the user's input for sequence, timing, and effects. The output filename and URL is automatically generated, appended to the args, and returned in the tool's response, ready for use. Do not show the output filename to the user as they can't directly access it.
+class FFmpegToolArgs(BaseModel):
+    args: List[str] = Field(
+        description="""\
+ffmpeg arguments. Starting with a fixed base of arguments (ffmpeg -hide_banner -nostats -loglevel error -y), include all arguments required to do tasks such as join audio clips and integrate sound effects based on the user’s specifications. The tool avoids duplicating the initial arguments and focuses on creating a cohesive output according to the user's input for sequence, timing, and effects. The output filename and URL is automatically generated, appended to the args, and returned in the tool's response, ready for use.
 
 Example concat args to join audio files:
-
+<example>
 [
 "-i",
 "concat:file1.mp3|file2.mp3|file3.mp3",
 "-c",
 "copy"
 ]
+</example>
+                            """
+    )
+    extension: Literal["mp3", "mp4", "wav"] = Field(description="Output file extension")
+    slug: str = Field(
+        description="A unique identifier. Must be all lower case with no special characters or spaces. Use dashes for spaces. Keep it short and descriptive. Must be less than 256 characters",
+    )
+
+
+class FFmpegTool(BaseTool):
+    name: str = "ffmpeg"
+    description: str = (
+        """
+This tool is designed to manipulate video and audio using ffmpeg. Do not show the output filename to the user as they can't directly access it.
 """.strip()
     )
 
-    def _run(self, args: List[str], extension: Literal["mp3", "mp4"] = "mp3") -> str:
+    args_schema: Type[FFmpegToolArgs] = FFmpegToolArgs
+
+    def _run(
+        self, args: List[str], extension: Literal["mp3", "mp4", "wav"], slug: str
+    ) -> str:
         process: subprocess.CompletedProcess
         try:
-            id = str(uuid4())
+            # Remove any non-alphanumeric characters and limit to 255 characters
+            slug = re.sub(r"[^a-z0-9-_]", "", slug)[:255].lower().replace(" ", "-")
+
             # Concatenate all audio files using ffmpeg
-            output_dir = config.static_folder + "/ffmpeg"
-            os.makedirs(output_dir, exist_ok=True)
-            filename = f"{id}.{extension}"
-            output = os.path.abspath(output_dir + "/" + filename)
+            filename = f"ffmpeg_{uuid4().hex[:8]}_{slug}.{extension}"
+            output = os.path.abspath(os.path.join(config.static_folder, filename))
             args = (
                 [
                     "ffmpeg",
@@ -61,8 +79,11 @@ Example concat args to join audio files:
                 text=True,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
+                timeout=600,
             )
-            url = config.static_content_url + "/ffmpeg/" + filename
+            if not os.path.exists(output):
+                raise FFmpegToolError("Output file not found", process.stderr)
+            url = config.static_content_url + "/" + filename
             logger.info(f"File saved to {output} <{url}>")
             return f"""
 { '<video src="{url}" controls></video>' if extension == "mp4" else '<audio src="{url}"></audio>' }

@@ -8,7 +8,6 @@ import { RootState } from "../store";
 import Loading from "@/lib/loading";
 import { getActivePersonalityId } from "../slices/personalitiesSlice";
 import MediaList, { getMediaItems } from "../messages/MediaList";
-import { fetchThread } from "../actions/threadActions";
 import { fetchMessagesByThread } from "../actions/messageActions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
@@ -18,6 +17,7 @@ import { debounce } from "@/lib/utils";
 import DeleteThreadButton from "@/components/DeleteThreadButton";
 import ToggleSystemMessages from "@/components/ToggleSystemMessages";
 import MediaPanelWidth, { WidthMode } from "@/components/MediaPanelWidth";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 
 const selectThread = (state: RootState, threadId?: string) =>
   state.threads.threads.find((thread) => thread.id === threadId);
@@ -113,8 +113,10 @@ export default function Thread() {
     })
     .filter((message) =>
       [
-        !showTools ? message.type !== "tool" : true,
         message.content && message.content.length > 0,
+        !showTools && typeof message.node === "string"
+          ? ["agent", "tools"].includes(message.node)
+          : true,
       ].every((condition) => condition)
     );
 
@@ -126,8 +128,9 @@ export default function Thread() {
       .findIndex((message) => message.type === "human");
 
   return (
-    <div className="flex flex-1 p-4 pl-0 flex-col flex-nowrap max-h-screen">
+    <div className="flex flex-1 p-4 flex-col flex-nowrap max-h-screen">
       <div className="flex justify-between mb-2 border-b pb-2">
+        <SidebarTrigger className="size-10 mr-2" />
         <h1 className="text-2xl font-bold">{thread.name || "Welcome..."}</h1>
         <div className="flex-1" />
         {input_tokens > 0 && output_tokens > 0 && total_tokens > 0 && (
@@ -161,6 +164,7 @@ export default function Thread() {
                   >
                     <MessageItem
                       message={message}
+                      showTools={showTools}
                       onPromptClick={debounce((prompt) => {
                         if (!activePersonalityId) {
                           return;
@@ -225,6 +229,7 @@ export default function Thread() {
             >
               {widthMode !== "hidden" ? (
                 <MediaList
+                  className="flex-col gap-2"
                   threadId={thread.id}
                   mediaItems={mediaItems}
                   thumbnail_size={widthMode === "narrow" ? "t" : "xl"}
