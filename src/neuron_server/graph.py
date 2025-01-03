@@ -45,8 +45,7 @@ index_queries = [
 
 for query in index_queries:
     try:
-        # graph.query(query)
-        pass
+        graph.query(query)
     except Exception as e:
         logger.error(f"Error creating index: {str(e)}")
 
@@ -547,7 +546,7 @@ class AtomicFactOutput(BaseModel):
         description="""First, combine your current notebook with new insights and findings about the question from current atomic facts, creating a more complete version of the notebook that contains more valid information. Be detailed and accurate. Include sources and references where possible. Use clean markdown formatting with support for katex and math."""
     )
     rational_next_action: str = Field(
-        description="""Based on the given question, the rational plan, previous actions, and notebook content, analyze how to choose the next action."""
+        description="""Based on the given question, the rational plan, previous actions, and notebook content, analyze how to choose the next action. Show your chain of thought."""
     )
     chosen_action: str = Field(
         description="""
@@ -708,7 +707,7 @@ async def atomic_fact_check(
     return response
 
 
-chunk_read_system_prompt = """As an intelligent assistant, your primary objective is to answer questions based on information within a text. To facilitate this objective, a knowledge graph of relevant information has been created from the text, comprising the following elements:
+chunk_read_system_prompt = """As an intelligent assistant, your primary objective is to answer questions based on information within a text. To facilitate this objective, a knowledge graph of relevant information has been created from multiple documents, comprising the following elements:
 1. Text Chunks: Segments of the original text.
 2. Atomic Facts: Smallest, indivisible truths extracted from text chunks.
 3. Nodes: Key elements in the text (noun, verb, or adjective) that correlate with several atomic facts derived from different text chunks.
@@ -716,15 +715,16 @@ chunk_read_system_prompt = """As an intelligent assistant, your primary objectiv
 Your current task is to assess a specific text chunk and determine whether the available information suffices to answer the question. Given the question, rational plan, previous actions, notebook content, and the current text chunk, you have the following action options:
 #####
 1. search_more(): Choose this action if you think that the essential information necessary to answer the question is still lacking.
-2. read_previous_chunk(): Choose this action if you feel that the previous text chunk contains valuable information for answering the question.
-3. read_subsequent_chunk(): Choose this action if you feel that the subsequent text chunk contains valuable information for answering the question.
+2. read_previous_chunk(): Choose this action if you feel that the previous text chunk contains essential information for answering the question.
+3. read_subsequent_chunk(): Choose this action if you feel that the subsequent text chunk contains essential information for answering the question.
 4. termination(): Choose this action if you believe that the information you have currently obtained is enough to answer the question. This will allow you to summarize the gathered information and provide a final answer.
 #####
 
 Strategy:
 #####
 1. Reflect on previous actions and prevent redundant revisiting of nodes or chunks.
-2. You can only choose one action.
+2. Show your chain of thought.
+3. You can only choose one action.
 #####
 """
 
@@ -734,15 +734,14 @@ class ChunkOutput(BaseModel):
         description="""First, combine your previous notes with new insights and findings about the question from current text chunks, creating a more complete version of the notebook that contains more valid information. Include sources."""
     )
     rational_next_move: str = Field(
-        description="""Based on the given question, rational plan, previous actions, and
-notebook content, analyze how to choose the next action."""
+        description="""Based on the given question, rational plan, previous actions, and notebook content, concisely analyze how to choose the next action. Show your chain of thought."""
     )
     chosen_action: str = Field(
         description="""
 Choose one of the following actions:
 1. search_more(): Choose this action if you think that the essential information necessary to answer the question is still lacking.
-2. read_previous_chunk(): Choose this action if you feel that the previous text chunk contains valuable information for answering the question.
-3. read_subsequent_chunk(): Choose this action if you feel that the subsequent text chunk contains valuable information for answering the question.
+2. read_previous_chunk(): Choose this action if you feel that the previous text chunk contains essential information for answering the question.
+3. read_subsequent_chunk(): Choose this action if you feel that the subsequent text chunk contains essential information for answering the question.
 4. termination(): Choose this action if you believe that the information you have currently obtained is enough to answer the question. This will allow you to summarize the gathered information and provide a final answer.""".strip()
     )
 
@@ -895,23 +894,25 @@ As an intelligent assistant, your primary objective is to answer questions based
 1. Text Chunks: Segments of the original text.
 2. Atomic Facts: Smallest, indivisible truths extracted from text chunks.
 3. Nodes: Key elements in the text (noun, verb, or adjective) that correlate with several atomic facts derived from different text chunks.
+
 Your current task is to assess all neighboring nodes of the current node, with the objective of determining whether to proceed to the next neighboring node. Given the question, rational plan, previous actions, notebook content, and the neighbors of the current node, you have the following Action Options:
 #####
-1. read_neighbor_node(key element of node): Choose this action if you believe that any of the neighboring nodes may contain information relevant to the question. Note that you should focus on one neighbor node at a time.
+1. read_neighbor_node(key element of node): Choose this action if you believe that any of the neighboring nodes may contain information important to the question. Note that you should focus on one neighbor node at a time.
 2. termination(): Choose this action if you believe that none of the neighboring nodes possess information that could answer the question.
 #####
 
 Strategy:
 #####
 1. Reflect on previous actions and prevent redundant revisiting of nodes or chunks.
-2. You can only choose one action. This means that you can choose to read only one neighbor node or choose to terminate.
+2. Show your chain of thought.
+3. You can only choose one action. This means that you can choose to read only one neighbor node or choose to terminate.
 #####
 """.strip()
 
 
 class NeighborOutput(BaseModel):
     rational_next_move: str = Field(
-        description="""Based on the given question, rational plan, previous actions, and notebook content, concisely analyze how to choose the next action."""
+        description="""Based on the given question, rational plan, previous actions, and notebook content, concisely analyze how to choose the next action. Show your chain of thought."""
     )
     chosen_action: str = Field(
         description="""You have the following Action Options:

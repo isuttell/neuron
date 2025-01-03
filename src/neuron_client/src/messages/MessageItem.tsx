@@ -48,7 +48,7 @@ const MessageItem: React.FC<MessageItemProps> = ({
     : content;
   const mediaItems = getMediaItems([message]);
 
-  if (role === "tool" && !mediaItems.length) {
+  if (!showTools && role === "tool" && !mediaItems.length) {
     return null;
   }
   if (!showTools && role === "tool") {

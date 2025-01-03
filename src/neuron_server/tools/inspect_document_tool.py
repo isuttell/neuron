@@ -70,6 +70,7 @@ async def load_document_from_url(
     metadata: Optional[Dict[str, Any]] = None,
     mode: Literal["scrape", "crawl"] = "scrape",
 ) -> List[Document]:
+    metadata = {"updated_at": int(time.time()), **(metadata or {})}
     if (
         url.endswith(".txt")
         or url.endswith(".md")
@@ -78,13 +79,11 @@ async def load_document_from_url(
         or url.endswith(".vtt")
     ):
         doc = await load_text_from_url(
-            url, metadata={"extension": url.rsplit(".")[-1], **(metadata or {})}
+            url, metadata={"extension": url.rsplit(".")[-1], **metadata}
         )
         return [doc]
     elif url.endswith(".pdf"):
-        doc = await load_pdf_from_url(
-            url, metadata={"extension": "pdf", **(metadata or {})}
-        )
+        doc = await load_pdf_from_url(url, metadata={"extension": "pdf", **metadata})
         return [doc]
     else:
         if "zaks.io" in url or "192.168" in url:
@@ -95,7 +94,10 @@ async def load_document_from_url(
         loader = FireCrawlLoader(
             api_key=neuron_config.firecrawl_api_key, url=url, mode=mode
         )
-        return await loader.aload()
+        docs = await loader.aload()
+        for doc in docs:
+            doc.metadata["updated_at"] = int(time.time())
+        return docs
 
 
 class DocumentInspectToolFailed(Exception):
@@ -109,6 +111,10 @@ class DocumentInspectToolArgs(BaseModel):
     mode: Optional[Literal["scrape", "crawl"]] = Field(
         "scrape",
         description="The mode of the website import. Can be 'scrape' or 'crawl'. Scrape is for a single url and Crawl is for the url and all accessible sub pages. Ignored when importing documents",
+    )
+    add_facts_to_store: bool = Field(
+        False,
+        description="If True, the document's atomic facts will be extracted and added to the document store. This is useful for long term memory.",
     )
 
 
@@ -129,19 +135,33 @@ pdf
     )
     args_schema: Type[DocumentInspectToolArgs] = DocumentInspectToolArgs
 
-    def _run(self, url: str, mode: str = "scrape") -> str:
-        return asyncio.run(self._arun(url, mode))
+    def _run(self, *args, **kwargs) -> str:
+        return asyncio.run(self._arun(*args, **kwargs))
 
     async def _arun(
         self,
         url: str,
+        config: RunnableConfig,
         mode: str = "scrape",
     ) -> str:
         try:
             # Record the start time for performance measurement
             start_time = time.perf_counter()
 
-            docs = await load_document_from_url(url, mode=mode)
+            docs = await load_document_from_url(
+                url,
+                mode=mode,
+                metadata={
+                    "personality_id": (
+                        config["configurable"].get("personality_id", None)
+                        if config
+                        else None
+                    ),
+                    "user_id": (
+                        config["configurable"].get("user_id", None) if config else None
+                    ),
+                },
+            )
             if len(docs) == 0:
                 raise DocumentInspectToolFailed("No documents found")
             results = []
@@ -149,15 +169,9 @@ pdf
                 results.append(
                     f"""\
     <document index="{index}">
-        <source>
-            {doc.metadata.get("source", url)}
-        </source>
-        <document_content>
-            {doc.page_content}
-        </document_content>
-        <document_metadata>
-            {json.dumps(doc.metadata, indent=4)}
-        </document_metadata>
+        <source>{doc.metadata.get("source", url)}</source>
+        <document_content>{doc.page_content}</document_content>
+        <document_metadata>{json.dumps(doc.metadata or {})}</document_metadata>
     </document>
 """
                 )
