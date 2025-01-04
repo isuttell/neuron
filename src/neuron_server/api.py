@@ -1,5 +1,4 @@
 from quart import Quart, websocket, send_from_directory, Blueprint
-from neuron_server.logger import logger
 import json
 from neuron_server.config import config
 from neuron_server.event_router import EventRouter, ErrorEvent
@@ -27,6 +26,9 @@ from neuron_server.controllers.prompt_controller import (
     router as prompt_router,
     blueprint as prompt_blueprint,
 )
+from neuron_server.controllers.app_controller import (
+    blueprint as app_blueprint,
+)
 from functools import wraps
 from quart import Response
 from typing import Optional
@@ -36,7 +38,12 @@ from neuron_server.pubsub import client
 import re
 import os
 from PIL import Image
+import logging
+from neuron_server.util.image_utilities import create_thumbnails
+from neuron_server.controllers.auth import decode_token
+from werkzeug.exceptions import HTTPException
 
+logger = logging.getLogger(__name__)
 
 router = EventRouter()
 
@@ -45,7 +52,6 @@ router.register_controller(message_router)
 router.register_controller(personality_router)
 router.register_controller(image_router)
 router.register_controller(prompt_router)
-
 
 app = Quart(
     __name__,
@@ -141,22 +147,8 @@ async def index(**kwargs):
 @blueprint.get("/static/<path:path>")
 @blueprint.get("/neuron/static/<path:path>")
 @cors(allowed_methods=["GET", "OPTIONS"], allowed_headers=["Authorization"])
-@cache_control(max_age=31536000, immutable=True)
+@cache_control(max_age=31536000)
 async def get_static(path):
-    match = re.match(r".*_(t|l|xl)\.(jpe?g|png)$", path)
-    if (
-        match
-        and not os.path.exists(os.path.join(config.static_folder, path))
-        and os.path.exists(
-            os.path.join(config.static_folder, path.replace(f"_{match.group(1)}.", "."))
-        )
-    ):
-        image = Image.open(
-            os.path.join(config.static_folder, path.replace(f"_{match.group(1)}.", "."))
-        )
-        size = {"t": 512, "l": 768, "xl": 1024}.get(match.group(1), 512)
-        image.thumbnail((size, size))
-        image.save(os.path.join(config.static_folder, path), quality=85)
     return await send_from_directory(config.static_folder, path, as_attachment=True)
 
 
@@ -183,9 +175,24 @@ async def receiving():
 
 @blueprint.websocket("/ws")
 async def ws():
-    producer = asyncio.create_task(sending())
-    consumer = asyncio.create_task(receiving())
-    await asyncio.gather(producer, consumer)
+    # First message is the access token
+    data = await websocket.receive()
+    token = None
+    try:
+        # Verify the access token
+        access_token = data.split("=")[-1]
+        token = await decode_token(access_token)
+        logger.info(f"Connected ({token.user_id})")
+        # Start the producer and consumer
+        producer = asyncio.create_task(sending())
+        consumer = asyncio.create_task(receiving())
+        await asyncio.gather(producer, consumer)
+    except Exception as e:
+        websocket.close(401, str(e))
+        logger.error(e)
+    finally:
+        if token:
+            logger.info(f"Disconnected ({token.user_id})")
 
 
 @app.get("/status")
@@ -203,23 +210,14 @@ app.register_blueprint(personality_blueprint, url_prefix="/api/personalities")
 app.register_blueprint(image_blueprint, url_prefix="/api/images")
 app.register_blueprint(graph_blueprint, url_prefix="/api/graph")
 app.register_blueprint(prompt_blueprint, url_prefix="/api/prompts")
+app.register_blueprint(app_blueprint, url_prefix="/api/app")
 
 
-@app.errorhandler(404)
-async def not_found_error(error):
-    return {"error": "Not Found", "message": str(error)}, 404
-
-
-@app.errorhandler(500)
+@app.errorhandler(Exception)
 async def internal_error(error):
     return {"error": "Internal Server Error", "message": str(error)}, 500
 
 
-@app.errorhandler(400)
-async def bad_request_error(error):
-    return {"error": "Bad Request", "message": str(error)}, 400
-
-
-@app.errorhandler(403)
-async def forbidden_error(error):
-    return {"error": "Forbidden", "message": str(error)}, 403
+@app.errorhandler(HTTPException)
+async def http_error(error):
+    return {"error": error.name, "message": error.description}, error.code

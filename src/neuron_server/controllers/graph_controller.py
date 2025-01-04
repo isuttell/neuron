@@ -10,6 +10,7 @@ from neuron_server.config import config as neuron_config
 import os
 from werkzeug.exceptions import BadRequest
 from werkzeug.utils import secure_filename
+from neuron_server.controllers.auth import requires_auth
 
 router = EventRouter()
 
@@ -18,6 +19,7 @@ blueprint = Blueprint("graph", __name__)
 
 
 @blueprint.post("/arxiv/<arxiv_id>")
+@requires_auth
 async def post_arxiv_import(arxiv_id: str):
     tool = GraphArxivImportTool()
     results = await tool.ainvoke({"arxiv_id": arxiv_id})
@@ -25,6 +27,7 @@ async def post_arxiv_import(arxiv_id: str):
 
 
 @blueprint.post("/pdf")
+@requires_auth
 async def post_upload_pdf():
     files = await request.files
     form = await request.form
@@ -62,6 +65,7 @@ async def post_upload_pdf():
 
 
 @blueprint.post("/doc")
+@requires_auth
 async def post_upload_doc():
     files = await request.files
     form = await request.form
@@ -106,6 +110,7 @@ class QuestionRequest(BaseModel):
 
 
 @blueprint.post("/question")
+@requires_auth
 async def post_question():
     body = await request.get_json()
     payload = QuestionRequest(**body)

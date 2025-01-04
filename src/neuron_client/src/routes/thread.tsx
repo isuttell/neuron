@@ -11,8 +11,7 @@ import MediaList, { getMediaItems } from "../messages/MediaList";
 import { fetchMessagesByThread } from "../actions/messageActions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
-import { sendMessage } from "../actions/messageActions";
-import TokenCounter from "../messages/TokenCounter";
+import { postMessageByThread } from "../actions/messageActions";
 import { debounce } from "@/lib/utils";
 import DeleteThreadButton from "@/components/DeleteThreadButton";
 import ToggleSystemMessages from "@/components/ToggleSystemMessages";
@@ -79,19 +78,6 @@ export default function Thread() {
   if (!thread || (thread.message_count > 0 && messages.length === 0)) {
     return <Loading />;
   }
-  const { input_tokens, output_tokens, total_tokens } = messages.reduce(
-    (results, message) => {
-      return {
-        input_tokens:
-          results.input_tokens + (message.usage_metadata?.input_tokens || 0),
-        output_tokens:
-          results.output_tokens + (message.usage_metadata?.output_tokens || 0),
-        total_tokens:
-          results.total_tokens + (message.usage_metadata?.total_tokens || 0),
-      };
-    },
-    { input_tokens: 0, output_tokens: 0, total_tokens: 0 }
-  );
 
   const filteredMessages = messages
     .slice()
@@ -131,15 +117,10 @@ export default function Thread() {
     <div className="flex flex-1 p-4 flex-col flex-nowrap max-h-screen">
       <div className="flex justify-between mb-2 border-b pb-2">
         <SidebarTrigger className="size-10 mr-2" />
-        <h1 className="text-2xl font-bold">{thread.name || "Welcome..."}</h1>
+        <h1 className="text-lg lg:text-2xl font-bold ">
+          {thread.name || "Welcome..."}
+        </h1>
         <div className="flex-1" />
-        {input_tokens > 0 && output_tokens > 0 && total_tokens > 0 && (
-          <TokenCounter
-            input_tokens={input_tokens}
-            output_tokens={output_tokens}
-            total_tokens={total_tokens}
-          />
-        )}
         <ToggleSystemMessages
           showTools={showTools}
           onToggle={() => setShowTools(!showTools)}
@@ -156,7 +137,7 @@ export default function Thread() {
                   <div
                     key={message.id}
                     ref={
-                      index === lastUserMessage + 1 ||
+                      index === lastUserMessage ||
                       (index === array.length - 1 && index === lastUserMessage)
                         ? lastMessageRef
                         : null
@@ -170,7 +151,7 @@ export default function Thread() {
                           return;
                         }
                         dispatch(
-                          sendMessage({
+                          postMessageByThread({
                             threadId: thread.id,
                             prompt,
                             personalityId: activePersonalityId,
@@ -233,6 +214,7 @@ export default function Thread() {
                   threadId={thread.id}
                   mediaItems={mediaItems}
                   thumbnail_size={widthMode === "narrow" ? "t" : "xl"}
+                  showControls={true}
                 />
               ) : null}
             </TabsContent>

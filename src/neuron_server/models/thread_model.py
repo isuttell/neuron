@@ -11,6 +11,7 @@ from pydantic import field_serializer
 
 class ThreadModel(BaseModel):
     id: UUID = Field(default_factory=lambda: uuid4())
+    user_id: str = Field(description="The ID of the user who owns this thread")
     name: str = Field(description="The name of the thread", default="")
     context: str = Field(
         description="Additional context for the thread provided by the user",
@@ -46,6 +47,7 @@ class ThreadModel(BaseModel):
     async def create(
         cls,
         personality_id: UUID,
+        user_id: str,
         name: Optional[str] = "",
         context: Optional[str] = "",
         memory: Optional[str] = "",
@@ -55,6 +57,7 @@ class ThreadModel(BaseModel):
         async with get_session() as session:
             thread = Thread(
                 id=id,
+                user_id=user_id,
                 name=name,
                 context=context,
                 memory=memory,
@@ -100,11 +103,14 @@ class ThreadModel(BaseModel):
             return None
 
     @classmethod
-    async def list(cls, personality_id: UUID) -> List[Self]:
+    async def list(
+        cls, personality_id: UUID, user_id: Optional[str] = None
+    ) -> List[Self]:
         async with get_session() as session:
-            results = await session.execute(
-                select(Thread).where(Thread.personality_id == personality_id)
-            )
+            query = select(Thread).where(Thread.personality_id == personality_id)
+            if user_id:
+                query = query.where(Thread.user_id == user_id)
+            results = await session.execute(query)
             return [cls(**thread.__dict__) for thread in results.scalars().all()]
 
     async def save(
@@ -133,11 +139,15 @@ class ThreadModel(BaseModel):
             return cls(**thread.__dict__)
 
     @classmethod
-    async def get_recent_threads(cls, hours: int = 1, limit: int = 10) -> List[Self]:
+    async def get_recent_threads(
+        cls, hours: int = 1, limit: int = 10, user_id: Optional[str] = None
+    ) -> List[Self]:
         """Get all threads that have received messages in the last specified hours.
 
         Args:
             hours: Number of hours to look back (default: 1)
+            limit: Maximum number of threads to return (default: 10)
+            user_id: Optional user ID to filter threads by owner
 
         Returns:
             List of ThreadModel instances with recent messages
@@ -145,15 +155,17 @@ class ThreadModel(BaseModel):
         async with get_session() as session:
             cutoff_time = datetime.now(timezone.utc) - timedelta(hours=hours)
 
-            # Query for threads with messages newer than cutoff time
             query = (
                 select(Thread)
                 .where(
                     Thread.created_at >= cutoff_time,
                 )
                 .order_by(Thread.updated_at.desc())
-                .limit(limit)
             )
 
+            if user_id:
+                query = query.where(Thread.user_id == user_id)
+
+            query = query.limit(limit)
             results = await session.execute(query)
             return [cls(**thread.__dict__) for thread in results.scalars().all()]

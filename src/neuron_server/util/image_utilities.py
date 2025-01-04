@@ -1,7 +1,6 @@
 from PIL import Image
-from typing import Tuple
-import numpy.typing as npt
-import numpy as np
+from typing import Tuple, List, Dict
+import os
 
 
 def resize_with_padding(
@@ -24,3 +23,29 @@ def resize_with_padding(
     # Paste resized image onto padded background
     padded.paste(resized, (left, top))
     return padded
+
+
+def create_thumbnails(
+    filename: str,
+    directory: str,
+    sizes: Dict[str, int] = {"t": 512, "l": 768, "xl": 1024},
+):
+    image = Image.open(filename)
+    ext = os.path.splitext(filename)[1]
+    basename = os.path.splitext(os.path.basename(filename))[0]
+    for suffix, size in sizes.items():
+        # Create a new image so we can strip
+        # the extra metadata
+        thumbnail = image.copy()
+        thumbnail.thumbnail((size, size))
+        thumbnail_filename = os.path.abspath(
+            os.path.join(
+                directory,
+                f"{basename}_{suffix}{ext}",
+            )
+        )
+        thumbnail.save(
+            thumbnail_filename,
+            optimize=True,
+            quality=85,
+        )

@@ -1,12 +1,18 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import { getSocket } from "../slices/socketSlice";
 import { RootState } from "../store";
+import { getAccessToken } from "./getToken";
 
 export const fetchMessagesByThread = createAsyncThunk(
   "messages/fetchMessagesByThread",
   async (threadId: string, thunkAPI) => {
     try {
-      const response = await fetch(`/api/messages/thread/${threadId}`);
+      const accessToken = await getAccessToken();
+      const response = await fetch(`/api/messages/thread/${threadId}`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
       const data = await response.json();
       return data;
     } catch (error: any) {
@@ -40,9 +46,13 @@ export const postMessageByThread = createAsyncThunk(
         formData.append("file", file);
       }
 
+      const accessToken = await getAccessToken();
       const response = await fetch(`/api/messages/thread/${threadId}`, {
         method: "POST",
         body: formData,
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
       });
       return await response.json();
     } catch (error: any) {

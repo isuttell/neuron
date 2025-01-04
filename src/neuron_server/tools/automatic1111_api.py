@@ -11,6 +11,7 @@ from zoneinfo import ZoneInfo
 from datetime import datetime
 import time
 import aiohttp
+from neuron_server.util.image_utilities import create_thumbnails
 
 
 class ImageGenerationOverrideSettings(BaseModel):
@@ -195,7 +196,11 @@ class Automatic1111API:
         )
         pnginfo.add_text("Parameters", params.get("info", ""))
         filename = os.path.join(self.output_directory, f"{uuid4()}.png")
-        image.save(filename, optimize=True, quality=90, pnginfo=pnginfo)
+        image.save(filename, quality=95, pnginfo=pnginfo)
+        create_thumbnails(
+            filename,
+            os.path.dirname(filename),
+        )
         logging.debug(f"Saved generated image to {filename}")
         return filename
 

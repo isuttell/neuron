@@ -40,22 +40,13 @@ const PersonalityItem: React.FC<PersonalityItemProps> = ({
 
   const handleActivate = () => {
     dispatch(setActivePersonality(isActive ? undefined : personality.id));
-    navigate(`/`);
-    const toastie = toast({
-      title: `${personality.name} activated`,
-      description: (
-        <span
-          onClick={() => {
-            navigate(-1);
-            toastie.dismiss();
-          }}
-          className="flex items-center gap-2 cursor-pointer"
-        >
-          <ArrowLeft className="size-3.5" /> Go Back
-        </span>
-      ),
-    });
+    if (!isActive) {
+      toast({
+        title: `${personality.name} activated`,
+      });
+    }
   };
+
   return (
     <Card
       className={cn(
@@ -75,7 +66,12 @@ const PersonalityItem: React.FC<PersonalityItemProps> = ({
             alt={`${personality.name} logo`}
             width={256}
             height={256}
-            onClick={handleActivate}
+            onClick={() => {
+              if (!isActive) {
+                handleActivate();
+              }
+              navigate(`/`);
+            }}
           />
         )) || (
           <div className="mb-2 text-xs text-muted-foreground">
@@ -100,7 +96,10 @@ const PersonalityItem: React.FC<PersonalityItemProps> = ({
         </Tooltip>
         <Button
           variant={isActive ? "default" : "outline"}
-          onClick={handleActivate}
+          onClick={(e) => {
+            e.preventDefault();
+            handleActivate();
+          }}
         >
           {isActive ? "Deactivate" : "Activate"}
         </Button>

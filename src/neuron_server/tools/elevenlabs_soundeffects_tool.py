@@ -1,13 +1,13 @@
 from langchain.tools import BaseTool
 from neuron_server.config import config
 from neuron_server.logger import logger
-from uuid import uuid4
 import os
 from elevenlabs import AsyncElevenLabs
 from neuron_server.logger import logger
 from typing import Optional, Type
 from pydantic import Field, BaseModel
 import asyncio
+from neuron_server.util.slug import safe_filename
 
 tool_promp_types = """
 Prompt Tips:
@@ -25,13 +25,20 @@ class ElevenLabsSoundEffectsToolArgs(BaseModel):
         description="The duration of the sound which will be generated in seconds. Must be at least 0.5 and at most 22.",
         default=None,
     )
+    prompt_influence: Optional[float] = Field(
+        description="The influence of the prompt on the sound effect. Must be between 0 and 1. Defaults to 0.3",
+        default=0.3,
+    )
+    slug: str = Field(
+        description="A unique identifier. Must be all lower case with no special characters or spaces. Use dashes for spaces. Keep it short and descriptive. Must be less than 256 characters",
+    )
 
 
 class ElevenLabsSoundEffectsTool(BaseTool):
-    name: str = "elevenlabs_soundeffects"
+    name: str = "elevenlabs_sound_effects"
     description: str = (
         """
-This tool generates sound effects using the Eleven Labs sound effect API from text prompts. Provide a prompt, and the tool returns a sound file with an <audio> tag for playback include a location on the disk. Complex sequences (e.g., "a man walks through a hallway, then falls") must be created with individual effects and later combined using ffmpeg for optimal quality.
+This tool generates sound effects using the Eleven Labs sound effect API from text prompts. Provide a prompt, and the tool returns a sound file with an <audio> tag for playback. Complex sequences (e.g., "a man walks through a hallway, then falls") must be created with individual effects and later combined using ffmpeg for optimal quality.
 """.strip()
     )
     args_schema: Type[ElevenLabsSoundEffectsToolArgs] = ElevenLabsSoundEffectsToolArgs
@@ -39,34 +46,37 @@ This tool generates sound effects using the Eleven Labs sound effect API from te
     def _run(self, prompt: str, duration_seconds: Optional[float] = None) -> str:
         return asyncio.run(self._arun(prompt, duration_seconds))
 
-    async def _arun(self, prompt: str, duration_seconds: Optional[float] = None) -> str:
+    async def _arun(
+        self,
+        prompt: str,
+        slug: str,
+        duration_seconds: Optional[float] = None,
+        prompt_influence: Optional[float] = None,
+    ) -> str:
         try:
             logger.debug(
                 f"Generating sound effect for prompt {prompt} with duration {duration_seconds}"
             )
             client = AsyncElevenLabs(api_key=config.elevenlabs_api_key)
-            id = str(uuid4())
             response = client.text_to_sound_effects.convert(
                 text=prompt,
-                prompt_influence=0.3,
+                prompt_influence=prompt_influence,
                 duration_seconds=duration_seconds,
             )
-            output_dir = config.static_folder + "/soundeffects"
-            os.makedirs(output_dir, exist_ok=True)
-            audio_file_path = os.path.abspath(output_dir + "/" + f"{id}.mp3")
+            filename = safe_filename("elevenlabs_soundeffect", slug, "mp3")
+            audio_file_path = os.path.abspath(
+                os.path.join(config.static_folder, filename)
+            )
             with open(audio_file_path, "wb") as file:
                 async for chunk in response:
                     file.write(chunk)
-            url = config.static_content_url + "/soundeffects/" + f"{id}.mp3"
+            url = config.static_content_url + "/" + filename
             logger.debug(f"Saved generated audio to {audio_file_path} <{url}>")
 
-            return f"""
-<audio src="{url}"></audio>
-Filename: {audio_file_path}
-""".strip()
+            return f'<audio src="{url}"></audio>'
         except Exception as e:
-            logger.exception(e)
-            return f"Error generating audio: {str(e)}"
+            logger.error(e, exc_info=True)
+            raise
 
 
 def main():

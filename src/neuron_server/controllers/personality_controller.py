@@ -23,6 +23,7 @@ from langchain_core.output_parsers import StrOutputParser
 from neuron_server.llms.tools import get_tools, default_tools
 from langchain_core.runnables import Runnable
 from neuron_server.models.embedding_model import EmbeddingModel
+from neuron_server.controllers.auth import requires_auth
 
 router = EventRouter()
 
@@ -64,6 +65,7 @@ async def ainvoke_description(llm: LLM, context: str) -> str:
 
 
 @blueprint.get("/<uuid:personality_id>")
+@requires_auth
 async def get_personality(personality_id: UUID):
     personality = await PersonalityModel.get(personality_id)
     if not personality:
@@ -72,6 +74,7 @@ async def get_personality(personality_id: UUID):
 
 
 @blueprint.get("/<uuid:personality_id>/memories")
+@requires_auth
 async def get_personality_memories(personality_id: UUID):
     personality = await PersonalityModel.get(personality_id)
     if not personality:
@@ -88,6 +91,7 @@ async def get_personality_memories(personality_id: UUID):
 
 
 @blueprint.delete("/<uuid:personality_id>/memories")
+@requires_auth
 async def delete_personality_memory(personality_id: UUID):
     personality = await PersonalityModel.get(personality_id)
     if not personality:
@@ -101,6 +105,7 @@ async def delete_personality_memory(personality_id: UUID):
 
 
 @blueprint.get("/")
+@requires_auth
 async def get_personalities():
     personalities = await PersonalityModel.list()
     return {
@@ -109,6 +114,7 @@ async def get_personalities():
 
 
 @blueprint.post("/")
+@requires_auth
 async def create_personality():
     body = await request.get_json()
     payload = CreatePersonality(**body)
@@ -124,6 +130,7 @@ async def create_personality():
 
 
 @blueprint.put("/<uuid:personality_id>")
+@requires_auth
 async def update_personality(personality_id: UUID):
     body = await request.get_json()
     payload = UpdatePersonality(**body)
@@ -150,12 +157,14 @@ async def update_personality(personality_id: UUID):
 
 
 @blueprint.delete("/<uuid:personality_id>")
+@requires_auth
 async def delete_personality(personality_id: UUID):
     await PersonalityModel.delete(personality_id)
     return Response(status=204)
 
 
 @router.on(PostPersonalityPrompt)
+@requires_auth
 async def post_personality_prompt(event: PostPersonalityPrompt):
     llm: LLM = ProviderModelModel.get_llm()
     personality = await PersonalityModel.get(event.personality_id)

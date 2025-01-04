@@ -43,7 +43,7 @@ class GraphArxivImportTool(BaseTool):
     name: str = "arxiv_graph_import"
     description: str = (
         """
-Use this tool to import arXiv articles into the knowledge graph or check if an article already exists. It will return basic metadata about the article and the time it took to process. Be aware that this is a can be a slow process depending on the size of the article.
+Use this tool to import arXiv articles into the knowledge graph or check if an article already exists. It will return basic metadata about the article and the time it took to process. Be aware that this is a can be a slow process depending on the size of the article. Always confirm with the user before running this tool.
 """.strip()
     )
     args_schema: Type[GraphArxivImportToolArgs] = GraphArxivImportToolArgs
@@ -57,8 +57,6 @@ Use this tool to import arXiv articles into the knowledge graph or check if an a
         config: RunnableConfig,
     ) -> str:
         try:
-            personality_id = config["configurable"].get("personality_id")
-            assert personality_id is not None
             # Record the start time for performance measurement
             start_time = time.perf_counter()
             logger.debug(f"Searching arXiv with: id_list=[{arxiv_id}]")

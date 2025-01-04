@@ -104,19 +104,11 @@ class LLM:
             # pass the model ith the tools into the call_model function
             return await self.call_model(model, state, config)
 
-        async def title_node(state, config):
-            # pass the model ith the tools into the call_model function
-            return await self.call_title(model, state, config)
-
-        async def load_memory_node(state, config):
-            # pass the model ith the tools into the call_model function
-            return await self.load_memory(model, state, config)
-
         workflow.add_node("agent", agent_node)
-        workflow.add_node("update_title", title_node)
+        workflow.add_node("update_title", self.call_title)
 
         if config.memory_enabled:
-            workflow.add_node("load_memory", load_memory_node)
+            workflow.add_node("load_memory", self.load_memory)
 
         # Entry point
         if config.memory_enabled:
@@ -141,29 +133,19 @@ class LLM:
 
     async def load_memory(
         self,
-        model: Runnable,
         state: AgentState,
         config: RunnableConfig,
     ):
-        message_trimmer: Runnable = trim_messages(
-            max_tokens=1000,
-            strategy="last",
-            token_counter=model,
-            include_system=False,
-            allow_partial=True,
-            start_on="human",
-        )
         messages = [
             msg
             for msg in state["messages"]
             if not isinstance(msg, ToolMessage) and getattr(msg, "tool_calls", []) == []
         ]
-        messages: List[BaseMessage] = await message_trimmer.ainvoke(
-            messages,
-            config,
-        )
+        tokens = tokenizer.encode(get_buffer_string(messages))[-1000:]
+        messages = tokenizer.decode(tokens)
+
         recall_memories: str = await MemoryRecallTool().ainvoke(
-            {"query": get_buffer_string(messages), "k": 10},
+            {"query": messages, "k": 10},
             config,
         )
 
@@ -185,20 +167,6 @@ class LLM:
         state: AgentState,
         config: RunnableConfig,
     ):
-
-        # message_trimmer: Runnable = trim_messages(
-        #     max_tokens=200000,
-        #     strategy="last",
-        #     token_counter=model,
-        #     include_system=True,
-        #     allow_partial=False,
-        #     start_on="human",
-        # )
-        # messages: List[BaseMessage] = await message_trimmer.ainvoke(
-        #     state["messages"],
-        #     config,
-        # )
-
         # Filter out messages that don't have content
         messages = state["messages"]
 
@@ -225,27 +193,14 @@ class LLM:
 
     async def call_title(
         self,
-        model: Runnable,
         state: AgentState,
         config: RunnableConfig,
     ):
-        message_trimmer: Runnable = trim_messages(
-            max_tokens=4096,
-            strategy="last",
-            token_counter=model,
-            include_system=False,
-            allow_partial=True,
-            start_on="human",
-        )
         messages = [
             msg
             for msg in state["messages"]
             if not isinstance(msg, ToolMessage) and getattr(msg, "tool_calls", []) == []
         ]
-        messages: List[BaseMessage] = await message_trimmer.ainvoke(
-            messages,
-            config,
-        )
         title: str = await self.title.ainvoke(
             {
                 "messages": get_buffer_string(messages),

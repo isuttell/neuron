@@ -52,6 +52,7 @@ replicate = "*"
 aiofiles = "*"
 piexif = "*"
 yt-dlp = "*"
+pyjwt = { version = "*", extras = ["crypto"] }
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

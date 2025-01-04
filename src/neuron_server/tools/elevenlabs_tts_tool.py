@@ -10,6 +10,7 @@ from elevenlabs import AsyncElevenLabs
 from neuron_server.logger import logger
 import asyncio
 from pydantic import BaseModel, Field
+from neuron_server.util.slug import safe_filename
 
 
 class ElevenLabsTTSToolArgs(BaseModel):
@@ -17,14 +18,13 @@ class ElevenLabsTTSToolArgs(BaseModel):
         description="""
 The script format should consist of speaker identifiers followed by their respective dialogues, formatted as the example below:
 
-Example:
-```
+<example>
 [Chris]
 Hello, how are you?
 
 [Jessica]
 I'm great!
-```
+</example>
 
 Each script block should be short enough to be processed in a single call to the API.
 
@@ -60,6 +60,10 @@ Sexy Female Villain Voice
 Voice Clones:
 Isaac
 """.strip()
+    )
+
+    slug: str = Field(
+        description="A unique identifier. Must be all lower case with no special characters or spaces. Use dashes for spaces. Keep it short and descriptive. Must be less than 256 characters",
     )
 
 
@@ -110,15 +114,14 @@ This tool generates audio from a provided script using ElevenLabs' TTS APIs and 
     )
     args_schema: Type[ElevenLabsTTSToolArgs] = ElevenLabsTTSToolArgs
 
-    def _run(self, script: str) -> str:
-        return asyncio.run(self._arun(script))
+    def _run(self, *args, **kwargs) -> str:
+        return asyncio.run(self._arun(*args, **kwargs))
 
-    async def _arun(self, script: str) -> str:
+    async def _arun(self, script: str, slug: str) -> str:
         try:
             client = AsyncElevenLabs(api_key=config.elevenlabs_api_key)
-            id = str(uuid4())
-            working_dir = config.temp_folder + "/" + id
-            os.makedirs(working_dir, exist_ok=True)
+            working_dir = os.path.abspath(os.path.join(config.temp_folder, uuid4().hex))
+            os.makedirs(working_dir)
             audio_files: List[str] = []
             for index, line in enumerate(parse_script(script)):
                 logger.debug(
@@ -129,13 +132,15 @@ This tool generates audio from a provided script using ElevenLabs' TTS APIs and 
                     voice=line["voice"],
                     model="eleven_multilingual_v2",
                 )
-                audio_file_path = working_dir + "/" + f"line-{index}.mp3"
+                audio_file_path = os.path.abspath(
+                    os.path.join(working_dir, f"line-{index}.mp3")
+                )
                 audio_files.append(audio_file_path)
                 with open(audio_file_path, "wb") as file:
                     async for chunk in response:
                         file.write(chunk)
                 logger.debug(f"Saved generated audio chunk at {audio_file_path}")
-            filename = f"{id}.mp3"
+            filename = safe_filename("elevenlabs_tts", slug, "mp3")
             output = os.path.abspath(os.path.join(config.static_folder, filename))
             ffmpeg_command = [
                 "ffmpeg",
@@ -158,13 +163,10 @@ This tool generates audio from a provided script using ElevenLabs' TTS APIs and 
             )
             url = config.static_content_url + "/" + filename
             logger.info(f"Generated audio file saved to {output} <{url}>")
-            return f"""
-<audio src="{url}"></audio>
-Filename: {output}
-""".strip()
+            return f'<audio src="{url}"></audio>'
         except Exception as e:
-            logger.exception(e)
-            raise e
+            logger.error(e, exc_info=True)
+            raise
         finally:
             shutil.rmtree(working_dir)
 

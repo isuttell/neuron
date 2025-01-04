@@ -1,26 +1,39 @@
 import React, { useEffect, useState } from "react";
 
 const getFuzzyTimeAgo = (date: number) => {
-  const now = new Date();
+  const now = Date.now();
+  const diff = now - date;
 
-  const secondsPast = Math.floor((now.getTime() - date) / 1000);
+  // Convert to seconds and use fixed thresholds
+  const seconds = Math.floor(diff / 1000);
 
-  if (secondsPast < 60) {
+  // Less than 1 minute
+  if (seconds < 60) {
     return undefined;
   }
-  if (secondsPast < 3600) {
-    return `${Math.floor(secondsPast / 60)}m`;
+
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) {
+    return `${minutes}m`;
   }
-  if (secondsPast <= 86400) {
-    return `${Math.floor(secondsPast / 3600)}h`;
+
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) {
+    return `${hours}h`;
   }
-  if (secondsPast <= 2592000) {
-    return `${Math.floor(secondsPast / 86400)}d`;
+
+  const days = Math.floor(hours / 24);
+  if (days < 30) {
+    return `${days}d`;
   }
-  if (secondsPast <= 31536000) {
-    return `${Math.floor(secondsPast / 2592000)}mo`;
+
+  const months = Math.floor(days / 30);
+  if (months < 12) {
+    return `${months}mo`;
   }
-  return `${Math.floor(secondsPast / 31536000)}y`;
+
+  const years = Math.floor(days / 365);
+  return `${years}y`;
 };
 
 interface FuzzyTimeAgoProps {

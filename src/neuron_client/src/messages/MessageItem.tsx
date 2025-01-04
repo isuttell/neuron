@@ -7,7 +7,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Message } from "@/slices/messagesSlice";
+import { Message, getTextContent } from "@/slices/messagesSlice";
 import Content from "./Content";
 import FuzzyTimeAgo from "@/components/FuzzyTimeAgo";
 import { formatNumber } from "../utils/numberFormat";
@@ -38,20 +38,17 @@ const MessageItem: React.FC<MessageItemProps> = ({
   onPromptClick,
   showTools = false,
 }) => {
-  const { type: role, content, status = undefined } = message;
-
-  const body = Array.isArray(content)
-    ? content
-        .filter((item) => item.type === "text")
-        .map((item) => item.text)
-        .join("\n")
-    : content;
+  const { type: role, content, node, status = undefined } = message;
+  const isTool = role === "tool" || node === "tools";
+  const body = getTextContent(content);
   const mediaItems = getMediaItems([message]);
 
-  if (!showTools && role === "tool" && !mediaItems.length) {
-    return null;
-  }
-  if (!showTools && role === "tool") {
+  if (!showTools && isTool) {
+    if (mediaItems.length === 0) {
+      // If there are no media items, don't show the tool card
+      return null;
+    }
+    // If there are media items, show the media list but not the raw content
     return (
       <MediaList
         className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 ml-[5.5rem]"
@@ -61,7 +58,7 @@ const MessageItem: React.FC<MessageItemProps> = ({
     );
   }
 
-  return (
+  const elements = [
     <Card
       className={`w-full my-2 ${
         role === "tool" || role === "system" ? "bg-zinc-900" : ""
@@ -92,11 +89,15 @@ const MessageItem: React.FC<MessageItemProps> = ({
         </Tooltip>
         <div className="flex flex-col flex-1 ">
           {body.trim().length > 0 ? (
-            <Content
-              content={body}
-              preload={status === "streaming" ? "none" : "auto"}
-              onPromptClick={onPromptClick}
-            />
+            isTool ? (
+              <div className="whitespace-pre-wrap">{body}</div>
+            ) : (
+              <Content
+                content={body}
+                preload={status === "streaming" ? "none" : "auto"}
+                onPromptClick={onPromptClick}
+              />
+            )
           ) : (
             <div className="space-y-2 flex-1">
               <Skeleton className="h-4 w-[250px]" />
@@ -152,8 +153,18 @@ const MessageItem: React.FC<MessageItemProps> = ({
           </div>
         </div>
       </CardContent>
-    </Card>
-  );
+    </Card>,
+  ];
+  if (mediaItems.length > 0) {
+    elements.push(
+      <MediaList
+        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 ml-[5.5rem]"
+        mediaItems={mediaItems}
+        threadId={message.thread_id}
+      />
+    );
+  }
+  return elements;
 };
 
 export default memo(MessageItem);

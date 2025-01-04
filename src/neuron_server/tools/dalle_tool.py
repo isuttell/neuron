@@ -13,6 +13,7 @@ import aiohttp
 import shutil
 import os
 from typing import List
+from neuron_server.util.image_utilities import create_thumbnails
 
 
 async def generate_images(
@@ -129,14 +130,19 @@ class DalleTool(BaseTool):
                     now.isoformat(timespec="seconds"),
                 )
                 file_path = os.path.abspath(
-                    os.path.join(config.static_folder, "images", filename)
+                    os.path.join(config.static_folder, filename)
                 )
                 image.save(
                     file_path,
                     format="png",
                     pnginfo=pnginfo,
+                    quality=95,
                 )
-                url = f"{config.static_content_url}/images/{filename}"
+                create_thumbnails(
+                    file_path,
+                    config.static_folder,
+                )
+                url = f"{config.static_content_url}/{filename}"
                 logger.debug(f"Saved generated image to {file_path} <{url}>")
                 results.append(url)
 

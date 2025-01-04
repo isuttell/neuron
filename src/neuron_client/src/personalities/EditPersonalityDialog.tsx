@@ -42,6 +42,7 @@ const ToolSetLabels = {
   tts: "Audio Generation",
   weather: "Weather",
   video: "Video Generation",
+  document_query: "Document Query",
 };
 
 const EditPersonalityDialog: React.FC<EditPersonalityDialogProps> = ({

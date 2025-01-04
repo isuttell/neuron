@@ -7,9 +7,22 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
+  SidebarFooter,
 } from "@/components/ui/sidebar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import NavThreads from "@/threads/NavThreads";
 import logo from "@/assets/logo.svg";
+import ImageContent from "@/messages/ImageContent";
+import { ChevronUp } from "lucide-react";
+
+import { useAuth0 } from "@auth0/auth0-react";
+import { getSidebarImage } from "@/slices/appSlice";
+import { useAppSelector } from "@/hooks";
 
 const links = [
   {
@@ -36,9 +49,19 @@ const links = [
 
 export function MainSidebar() {
   const location = useLocation();
+  const { logout, user } = useAuth0();
+
+  const sidebarImage = useAppSelector(getSidebarImage);
   return (
     <Sidebar>
       <SidebarHeader className="border-b">
+        <div className="flex justify-center items-center p-2">
+          <ImageContent
+            url={sidebarImage || `/static/smart_dashboard_image.png`}
+            width={256}
+            height={256}
+          />
+        </div>
         <div>
           <Link
             to="/"
@@ -67,6 +90,52 @@ export function MainSidebar() {
       <SidebarContent>
         <NavThreads activePathname={location.pathname} />
       </SidebarContent>
+      <SidebarFooter className="border-t">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <SidebarMenuButton>
+                  <img
+                    src={user?.picture}
+                    alt={user?.nickname}
+                    className="size-6 rounded-full"
+                  />
+                  <div className="flex flex-col">{user?.nickname}</div>
+                  <ChevronUp className="ml-auto" />
+                </SidebarMenuButton>
+              </DropdownMenuTrigger>
+
+              <DropdownMenuContent
+                side="top"
+                className="w-[--radix-popper-anchor-width]"
+              >
+                <div className="flex items-center gap-2 p-2 border-b">
+                  <img
+                    src={user?.picture}
+                    alt={user?.nickname}
+                    className="size-8 rounded-full"
+                  />
+                  <div className="flex flex-col">
+                    <div className="text-sm font-semibold">
+                      {user?.nickname}
+                    </div>
+                    <div className="text-xs text-gray-500">{user?.email}</div>
+                  </div>
+                </div>
+
+                <DropdownMenuItem
+                  onClick={() => {
+                    logout();
+                  }}
+                >
+                  Logout
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
     </Sidebar>
   );
 }

@@ -1,5 +1,5 @@
 import { EventEmitter } from "events";
-
+import { getAccessToken } from "./actions/getToken";
 export default class WebSocketManager {
   private socket?: WebSocket;
   private events: EventEmitter;
@@ -19,8 +19,11 @@ export default class WebSocketManager {
     this.socket = new WebSocket(this.url);
     this.socket.addEventListener("open", () => {
       if (!this.connected) {
-        this.connected = true;
-        this.events.emit("open");
+        getAccessToken().then((token) => {
+          this.socket?.send(`access_token=${token}`);
+          this.connected = true;
+          this.events.emit("open");
+        });
       }
     });
 

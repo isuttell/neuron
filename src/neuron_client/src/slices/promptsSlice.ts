@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { RootState } from "../store";
-
+import { getAccessToken } from "../actions/getToken";
 export interface Prompt {
   id: string;
   name: string;
@@ -28,7 +28,12 @@ export const fetchPrompts = createAsyncThunk(
     const url = personalityId
       ? `/api/prompts?personality_id=${personalityId}`
       : "/api/prompts";
-    const response = await fetch(url);
+    const accessToken = await getAccessToken();
+    const response = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
     if (!response.ok) {
       throw new Error("Failed to fetch prompts");
     }
@@ -40,10 +45,12 @@ export const fetchPrompts = createAsyncThunk(
 export const createPrompt = createAsyncThunk(
   "prompts/createPrompt",
   async (prompt: { name: string; text: string; personality_id?: string }) => {
+    const accessToken = await getAccessToken();
     const response = await fetch("/api/prompts", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
       },
       body: JSON.stringify(prompt),
     });
@@ -58,10 +65,12 @@ export const createPrompt = createAsyncThunk(
 export const updatePrompt = createAsyncThunk(
   "prompts/updatePrompt",
   async ({ id, ...updates }: Partial<Prompt> & { id: string }) => {
+    const accessToken = await getAccessToken();
     const response = await fetch(`/api/prompts/${id}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
       },
       body: JSON.stringify(updates),
     });
@@ -76,8 +85,12 @@ export const updatePrompt = createAsyncThunk(
 export const deletePrompt = createAsyncThunk(
   "prompts/deletePrompt",
   async (id: string) => {
+    const accessToken = await getAccessToken();
     const response = await fetch(`/api/prompts/${id}`, {
       method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
     });
     if (!response.ok) {
       throw new Error("Failed to delete prompt");

@@ -82,6 +82,7 @@ interface MediaListProps {
   mediaItems: MediaItem[];
   threadId: string;
   thumbnail_size?: "t" | "l" | "xl";
+  showControls?: boolean;
 }
 
 export function MediaList({
@@ -89,6 +90,7 @@ export function MediaList({
   mediaItems,
   threadId,
   thumbnail_size = "t",
+  showControls = false,
 }: MediaListProps) {
   const endRef = useRef<HTMLDivElement | null>(null);
 
@@ -108,37 +110,58 @@ export function MediaList({
 
   return (
     <div className={cn("flex", className)}>
-      {mediaItems.map((item) => (
-        <div key={item.key}>
-          {item.type === "image" ? (
+      {mediaItems.map((item) => {
+        if (item.type === "image") {
+          return (
             <ImageContent
+              key={item.key}
               url={item.url}
               alt={item.alt}
               width={1024}
               height={1024}
               thumbnail_size={thumbnail_size}
-              preload={true}
+              showControls={showControls}
             />
-          ) : null}
-          {item.type === "link" ? (
-            <a href={item.url} target="_blank" rel="noopener noreferrer">
+          );
+        }
+        if (item.type === "link") {
+          return (
+            <a
+              href={item.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              key={item.key}
+            >
               {item.alt}
             </a>
-          ) : null}
-          {item.type === "audio" ? (
-            <AudioContent className="w-full" preload="auto" url={item.url} />
-          ) : null}
-          {item.type === "video" ? (
+          );
+        }
+        if (item.type === "audio") {
+          return (
+            <AudioContent
+              className="w-full"
+              preload="auto"
+              url={item.url}
+              key={item.key}
+              showControls={showControls}
+            />
+          );
+        }
+        if (item.type === "video") {
+          return (
             <VideoContent
               url={item.url}
               autoPlay={true}
               muted={true}
               controls={false}
               loop={true}
+              key={item.key}
+              showControls={showControls}
             />
-          ) : null}
-        </div>
-      ))}
+          );
+        }
+        return null;
+      })}
       {mediaItems.length === 0 && (
         <div className="m-4 text-center text-muted-foreground">
           No media found

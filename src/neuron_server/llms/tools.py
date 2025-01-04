@@ -16,6 +16,9 @@ from neuron_server.tools.arxiv_summary_tool import ArxivSummaryTool
 from neuron_server.tools.arxiv_search_tool import ArxivSearchTool
 from neuron_server.tools.dalle_tool import DalleTool
 from neuron_server.tools.elevenlabs_tts_tool import ElevenLabsTTSTool
+from neuron_server.tools.elevenlabs_soundeffects_tool import (
+    ElevenLabsSoundEffectsTool,
+)
 from neuron_server.tools.ffmpeg_tool import FFmpegTool
 from neuron_server.tools.homeassistant_sensor_tool import HomeAssistantSensorTool
 from neuron_server.tools.homeassistant_service_tool import HomeAssistantServiceTool
@@ -63,6 +66,8 @@ from neuron_server.tools.replicate_sound_effect_generation_tool import (
 )
 from neuron_server.tools.update_logo_tool import UpdateLogoTool
 from neuron_server.tools.inspect_document_tool import DocumentInspectTool
+from neuron_server.tools.document_query_tool import DocumentQueryTool
+from neuron_server.tools.set_sidebar_image_tool import SetImageTool
 
 homeassistant_api = HomeAssistantAPI(token=config.homeassistant.token)
 
@@ -77,18 +82,23 @@ tool_sets: Dict[str, List[BaseTool]] = {
         GraphWebsiteImportTool(),
         DocumentInspectTool(),
     ],
+    "document_query": [
+        InspectImageTool(),
+        DocumentQueryTool(),
+        DocumentInspectTool(),
+    ],
     "image": [
         DalleTool(),
-        HuggingFaceServerlessImageGenerationTool(),
-        Automatic1111Tool(
-            api=Automatic1111API(
-                output_directory=os.path.join(config.static_folder),
-                endpoint=config.automatic1111_endpoint,
-            )
-        ),
+        # Automatic1111Tool(
+        #     api=Automatic1111API(
+        #         output_directory=os.path.join(config.static_folder),
+        #         endpoint=config.automatic1111_endpoint,
+        #     )
+        # ),
         ReplicateImageGenerationTool(),
         InspectImageTool(),
         UpdateLogoTool(),
+        SetImageTool(),
     ],
     "video": [
         FFmpegTool(),
@@ -101,6 +111,7 @@ tool_sets: Dict[str, List[BaseTool]] = {
     "tts": [
         ElevenLabsTTSTool(),
         ReplicateMusicGenerationTool(),
+        ElevenLabsSoundEffectsTool(),
         FFmpegTool(),
     ],
     "search": [

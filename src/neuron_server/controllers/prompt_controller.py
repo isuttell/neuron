@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from typing import Optional
 from neuron_server.event_router import EventRouter
 from werkzeug.exceptions import NotFound
+from neuron_server.controllers.auth import requires_auth
 
 router = EventRouter()
 blueprint = Blueprint("prompt", __name__)
@@ -21,6 +22,7 @@ class UpdatePrompt(CreatePrompt):
 
 
 @blueprint.get("/<uuid:prompt_id>")
+@requires_auth
 async def get_prompt(prompt_id: UUID):
     prompt = await PromptModel.get(prompt_id)
     if not prompt:
@@ -29,6 +31,7 @@ async def get_prompt(prompt_id: UUID):
 
 
 @blueprint.get("/")
+@requires_auth
 async def list_prompts():
     personality_id = request.args.get("personality_id")
     prompts = await PromptModel.list(
@@ -38,6 +41,7 @@ async def list_prompts():
 
 
 @blueprint.post("/")
+@requires_auth
 async def create_prompt():
     body = await request.get_json()
     payload = CreatePrompt(**body)
@@ -50,6 +54,7 @@ async def create_prompt():
 
 
 @blueprint.put("/<uuid:prompt_id>")
+@requires_auth
 async def update_prompt(prompt_id: UUID):
     body = await request.get_json()
     payload = UpdatePrompt(**body)
@@ -64,6 +69,7 @@ async def update_prompt(prompt_id: UUID):
 
 
 @blueprint.delete("/<uuid:prompt_id>")
+@requires_auth
 async def delete_prompt(prompt_id: UUID):
     await PromptModel.delete(prompt_id)
     return Response(status=204)

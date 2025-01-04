@@ -30,7 +30,7 @@ export default function MediaPanelWidth({
     <Tooltip delayDuration={0}>
       <TooltipTrigger asChild>
         <Button variant="ghost" size="icon" onClick={cycleWidthMode}>
-          <PanelRight className="size-4" />
+          <PanelRight className="size-6" />
           <span className="sr-only">Toggle Width Mode</span>
         </Button>
       </TooltipTrigger>

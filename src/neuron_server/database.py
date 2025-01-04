@@ -68,10 +68,12 @@ class Thread(Base):
     memory = Column(Text, default="")
     status = Column(String, default="idle")
     message_count = Column(Integer, default=0)
+    user_id = Column(String, nullable=False, index=True)
     personality_id = Column(
         pgUUID(as_uuid=True),
         ForeignKey("personalities.id", ondelete="CASCADE"),
         nullable=False,
+        index=True,
     )
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(

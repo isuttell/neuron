@@ -5,6 +5,7 @@ import { upsertMessage, partialMessage } from "../slices/messagesSlice";
 import { upsertThread } from "../slices/threadsSlice";
 import { upsertPersonality } from "../slices/personalitiesSlice";
 import { upsertImage } from "../slices/imagesSlice";
+import { setSidebarImage } from "../slices/appSlice";
 import { toast } from "../hooks/use-toast";
 interface DeleteThreadAction extends Action {
   type: "DeleteThread";
@@ -44,6 +45,10 @@ const websocketMiddleware =
 
         socket.on("thread", (event) => {
           dispatch(upsertThread(event));
+        });
+
+        socket.on("sidebar_image", (event) => {
+          dispatch(setSidebarImage(event.url));
         });
 
         socket.on("open", () => {

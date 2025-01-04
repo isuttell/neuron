@@ -37,6 +37,8 @@ class ThreadConfig(TypedDict):
 async def execute_agent(
     prompt: str,
     personality_id: UUID,
+    user_id: str = "auth0|677842260dc433462eaf13a6",
+    username: str = "Isaac",
     location: str = "San Diego, California at -117.1860 W and 32.84 N.",
 ) -> str:
     personality = await PersonalityModel.get(personality_id)
@@ -56,12 +58,14 @@ async def execute_agent(
                 HumanMessage(content=prompt),
             ],
             "location": location,
+            "username": username,
             "personality": personality.context,
             "now": datetime.now().astimezone().isoformat(timespec="seconds"),
         },
         config={
             "configurable": {
                 "personality_id": str(personality_id),
+                "user_id": str(user_id),
             },
         },
     )
@@ -156,9 +160,9 @@ async def astream(
     thread_id: UUID,
     personality_id: UUID,
     user_id: UUID,
+    username: str,
     prompt: str,
     location: str = "San Diego, California at -117.1860 W and 32.84 N.",
-    username: str = "Isaac Suttell",
 ):
     start_time = datetime.now().astimezone()
     logger.debug(f"Agent started for {thread_id}")
@@ -207,7 +211,7 @@ async def astream(
                 "configurable": {
                     "thread_id": str(thread.id),
                     "personality_id": str(personality_id),
-                    "user_id": str(user_id) if user_id else None,
+                    "user_id": str(user_id),
                 },
             },
             version="v2",

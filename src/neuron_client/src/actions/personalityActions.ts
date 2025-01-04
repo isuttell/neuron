@@ -1,10 +1,16 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
+import { getAccessToken } from "./getToken";
 
 export const fetchPersonality = createAsyncThunk(
   "personalities/fetchPersonality",
   async (personalityId: string, thunkAPI) => {
     try {
-      const response = await fetch(`/api/personalities/${personalityId}`);
+      const accessToken = await getAccessToken();
+      const response = await fetch(`/api/personalities/${personalityId}`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
       const data = await response.json();
       return data;
     } catch (error: any) {
@@ -17,7 +23,12 @@ export const fetchPersonalities = createAsyncThunk(
   "personalities/fetchPersonalities",
   async (_, thunkAPI) => {
     try {
-      const response = await fetch(`/api/personalities/`);
+      const accessToken = await getAccessToken();
+      const response = await fetch(`/api/personalities/`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
       const data = await response.json();
       return data;
     } catch (error: any) {
@@ -39,10 +50,12 @@ export const createPersonality = createAsyncThunk(
   "personalities/createPersonality",
   async (personality: CreatePersonality, thunkAPI) => {
     try {
+      const accessToken = await getAccessToken();
       const response = await fetch(`/api/personalities/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify(personality),
       });
@@ -62,10 +75,12 @@ export const updatePersonality = createAsyncThunk(
   "personalities/updatePersonality",
   async (personality: UpdatePersonality, thunkAPI) => {
     try {
+      const accessToken = await getAccessToken();
       const response = await fetch(`/api/personalities/${personality.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify({
           name: personality.name,
@@ -88,8 +103,12 @@ export const deletePersonality = createAsyncThunk(
   "personalities/deletePersonality",
   async (personalityId: string, thunkAPI) => {
     try {
+      const accessToken = await getAccessToken();
       await fetch(`/api/personalities/${personalityId}`, {
         method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
       });
       return personalityId;
     } catch (error: any) {

@@ -11,15 +11,17 @@ import hashlib
 import os
 import aiofiles
 from neuron_server.config import config as neuron_config
+from neuron_server.controllers.auth import requires_auth
 
 router = EventRouter()
 blueprint = Blueprint("thread", __name__)
 
 
 @blueprint.get("/<uuid:thread_id>")
+@requires_auth
 async def get_thread(thread_id: UUID):
     thread = await ThreadModel.get(thread_id)
-    if not thread:
+    if not thread or thread.user_id != request.token.user_id:
         raise ValueError("Thread not found")
     return {
         "thread": thread.model_dump(),
@@ -27,16 +29,22 @@ async def get_thread(thread_id: UUID):
 
 
 @blueprint.get("/personality/<uuid:personality_id>")
+@requires_auth
 async def get_threads(personality_id: UUID):
-    threads = await ThreadModel.list(personality_id=personality_id)
+    threads = await ThreadModel.list(
+        personality_id=personality_id, user_id=request.token.user_id
+    )
     return {
         "threads": [thread.model_dump() for thread in threads],
     }
 
 
 @blueprint.get("/recent")
+@requires_auth
 async def get_recent_threads():
-    threads = await ThreadModel.get_recent_threads(hours=24)
+    threads = await ThreadModel.get_recent_threads(
+        hours=24, user_id=request.token.user_id
+    )
     personalities = await PersonalityModel.get_many(
         list(set(thread.personality_id for thread in threads))
     )
@@ -55,6 +63,7 @@ class CreateThread(BaseModel):
 
 
 @blueprint.post("/")
+@requires_auth
 async def post_create_thread():
 
     files = await request.files
@@ -101,6 +110,7 @@ async def post_create_thread():
         personality_id=personality.id,
         name=form.get("name"),
         context=form.get("context"),
+        user_id=request.token.user_id,
     )
 
     if greeting:
@@ -115,7 +125,8 @@ async def post_create_thread():
                 prompt=prompt,
                 personality_id=personality.id,
                 thread_id=thread.id,
-                user_id=None,
+                user_id=request.token.user_id,
+                username=request.token.nickname,
             )
         )
 
@@ -125,7 +136,11 @@ async def post_create_thread():
 
 
 @blueprint.delete("/<uuid:thread_id>")
+@requires_auth
 async def delete_thread(thread_id: UUID):
+    thread = await ThreadModel.get(thread_id)
+    if not thread or thread.user_id != request.token.user_id:
+        raise ValueError("Thread not found")
     await ThreadModel.delete(thread_id)
     return Response(status=204)
 
@@ -136,11 +151,12 @@ class UpdateThread(BaseModel):
 
 
 @blueprint.put("/<uuid:thread_id>")
+@requires_auth
 async def update_thread(thread_id: UUID):
     body = await request.get_json()
     payload = UpdateThread(**body)
     thread = await ThreadModel.get(thread_id)
-    if not thread:
+    if not thread or thread.user_id != request.token.user_id:
         raise ValueError("Thread not found")
     thread.name = payload.name
     thread.context = payload.context

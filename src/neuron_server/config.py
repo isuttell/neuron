@@ -178,6 +178,18 @@ class Config(BaseModel):
         default=10_000_000,
         description="Maximum file size in bytes",
     )
+    auth0_domain: str = Field(
+        default=os.environ.get("AUTH0_DOMAIN", "dev-c33mi6x6gyem2l5o.us.auth0.com"),
+        description="Auth0 domain",
+    )
+    auth0_api_audience: str = Field(
+        default=os.environ.get("AUTH0_API_AUDIENCE", "https://neuron.zaks.io/api"),
+        description="API audience",
+    )
+    auth0_client_id: str = Field(
+        default=os.environ.get("AUTH0_CLIENT_ID", "LYSbL0a44J1McAObzNLfSRdoBZ7KwfPR"),
+        description="Auth0 client ID",
+    )
 
 
 config = Config()

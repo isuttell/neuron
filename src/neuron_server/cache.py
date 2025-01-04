@@ -3,15 +3,28 @@ from redis.typing import ExpiryT, ResponseT
 from neuron_server.config import config
 import functools
 import json
-from typing import Any
-from neuron_server.logger import logger
+from typing import Any, Optional
 import pickle
+import logging
+
+logger = logging.getLogger(__name__)
 
 client = redis.Redis(
     host=config.redis.host,
     port=config.redis.port,
     db=config.redis.db,
 )
+
+
+async def set_cache_key(key: str, value: Any, ttl: Optional[ExpiryT] = None):
+    await client.set(key, pickle.dumps(value, protocol=pickle.HIGHEST_PROTOCOL), ex=ttl)
+
+
+async def get_cache_key(key: str) -> Optional[Any]:
+    cached_result: Optional[ResponseT] = await client.get(key)
+    if cached_result is not None:
+        return pickle.loads(cached_result)
+    return None
 
 
 def cache_response(ttl: ExpiryT):

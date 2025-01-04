@@ -20,6 +20,7 @@ interface VideoContentProps {
   muted?: boolean;
   controls?: boolean;
   loop?: boolean;
+  showControls?: boolean;
 }
 
 const VideoContent: React.FC<VideoContentProps> = ({
@@ -28,6 +29,7 @@ const VideoContent: React.FC<VideoContentProps> = ({
   muted = false,
   controls = false,
   loop = false,
+  showControls = false,
 }) => {
   const { toast } = useToast();
   return (
@@ -42,48 +44,50 @@ const VideoContent: React.FC<VideoContentProps> = ({
             controls={controls}
             loop={loop}
           />
-          <div className="absolute bottom-2 right-2 space-x-2">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  className=""
-                  variant="outline"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    navigator.clipboard.writeText(url);
-                    toast({
-                      title: "Video URL copied to clipboard",
-                    });
-                  }}
-                >
-                  <Copy />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Copy video URL</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="outline"
-                  asChild
-                  onClick={(e) => {
-                    e.stopPropagation();
-                  }}
-                >
-                  <a
-                    className="text-primary"
-                    href={url}
-                    download
-                    target="_blank"
-                    rel="noopener noreferrer"
+          {showControls && (
+            <div className="absolute bottom-2 right-2 space-x-2">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    className=""
+                    variant="outline"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      navigator.clipboard.writeText(url);
+                      toast({
+                        title: "Video URL copied to clipboard",
+                      });
+                    }}
                   >
-                    <Download />
-                  </a>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Download video</TooltipContent>
-            </Tooltip>
-          </div>
+                    <Copy />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Copy video URL</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    asChild
+                    onClick={(e) => {
+                      e.stopPropagation();
+                    }}
+                  >
+                    <a
+                      className="text-primary"
+                      href={url}
+                      download
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Download />
+                    </a>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Download video</TooltipContent>
+              </Tooltip>
+            </div>
+          )}
         </div>
       </DialogTrigger>
       <DialogContent className="max-w-[95vw] max-h-[95vh] mx-auto box-border h-full flex-1 flex flex-col">

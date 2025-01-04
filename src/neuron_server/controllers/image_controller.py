@@ -12,6 +12,7 @@ import hashlib
 import aiofiles
 from typing import List
 import logging
+from neuron_server.controllers.auth import requires_auth
 
 logger = logging.getLogger(__name__)
 
@@ -89,6 +90,7 @@ async def get_media_files(directory: str, limit: int = 100) -> List[MediaFile]:
 
 
 @blueprint.get("/")
+@requires_auth
 async def get_images():
     return [
         image.model_dump(exclude={"path"})

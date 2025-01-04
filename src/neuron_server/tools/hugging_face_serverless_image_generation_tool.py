@@ -12,6 +12,7 @@ from typing import Type
 import aiohttp
 import shutil
 import os
+from neuron_server.util.image_utilities import create_thumbnails
 
 
 class HuggingFaceRepoId(Enum):
@@ -153,9 +154,22 @@ class HuggingFaceServerlessImageGenerationTool(BaseTool):
             logger.debug(f"Saved generated image to {file_path} <{url}>")
             if update_tablet:
                 shutil.copy(file_path, config.tablet_image_filename)
+                create_thumbnails(
+                    config.tablet_image_filename,
+                    config.static_folder,
+                )
                 logger.debug(
                     f"Copied generated image to {config.tablet_image_filename}"
                 )
+                static_table_image = os.path.abspath(
+                    os.path.join(config.static_folder, "smart_dashboard_image.png"),
+                )
+                shutil.copy(file_path, static_table_image)
+                create_thumbnails(
+                    static_table_image,
+                    config.static_folder,
+                )
+                logger.debug(f"Copied generated image to {static_table_image}")
             return f"![{prompt}]({url})"
         except Exception as e:
             logger.exception(e)

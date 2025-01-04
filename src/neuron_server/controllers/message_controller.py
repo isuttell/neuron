@@ -20,6 +20,7 @@ import os
 from neuron_server.config import config as neuron_config
 import hashlib
 import aiofiles
+from neuron_server.controllers.auth import requires_auth
 
 router = EventRouter()
 
@@ -27,6 +28,7 @@ blueprint = Blueprint("message", __name__)
 
 
 @blueprint.get("/thread/<uuid:thread_id>")
+@requires_auth
 async def get_thread_messages(thread_id: UUID):
     thread = await ThreadModel.get(thread_id)
     if not thread:
@@ -45,6 +47,7 @@ async def get_thread_messages(thread_id: UUID):
 
 
 @blueprint.post("/thread/<uuid:thread_id>")
+@requires_auth
 async def post_thread_message(thread_id: UUID):
     thread = await ThreadModel.get(thread_id)
     if not thread:
@@ -91,7 +94,8 @@ async def post_thread_message(thread_id: UUID):
     await agent.astream(
         thread_id=thread.id,
         personality_id=personality_id,
-        user_id=None,
+        user_id=request.token.user_id,
+        username=request.token.nickname,
         prompt=prompt,
     )
 

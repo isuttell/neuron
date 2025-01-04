@@ -33,9 +33,11 @@ index_queries = [
     "CREATE INDEX document_name_idx IF NOT EXISTS FOR (d:Document) ON (d.name)",
     "CREATE INDEX document_source_idx IF NOT EXISTS FOR (d:Document) ON (d.source)",
     "CREATE INDEX document_personality_idx IF NOT EXISTS FOR (d:Document) ON (d.personality_id)",
+    "CREATE INDEX document_user_idx IF NOT EXISTS FOR (d:Document) ON (d.user_id)",
     # Chunk indexes
     "CREATE INDEX chunk_personality_idx IF NOT EXISTS FOR (c:Chunk) ON (c.personality_id)",
     "CREATE INDEX chunk_document_idx IF NOT EXISTS FOR (c:Chunk) ON (c.document_id)",
+    "CREATE INDEX chunk_user_idx IF NOT EXISTS FOR (c:Chunk) ON (c.user_id)",
     # AtomicFact indexes
     "CREATE INDEX atomic_fact_id_idx IF NOT EXISTS FOR (a:AtomicFact) ON (a.id)",
     "CREATE INDEX atomic_fact_text_idx IF NOT EXISTS FOR (a:AtomicFact) ON (a.text)",
@@ -81,6 +83,7 @@ import_query = """
 MERGE (d:Document {id:$document_id})
 SET d.name = $document_name,
     d.personality_id = $personality_id,
+    d.user_id = $user_id,
     d.source = $source,
     d.updated_at = $updated_at
 WITH d
@@ -92,6 +95,8 @@ SET c.text = row.chunk_text,
     c.document_id = $document_id,
     c.document_name = $document_name,
     c.personality_id = $personality_id,
+    c.user_id = $user_id,
+    c.source = $source,
     c.updated_at = $updated_at
 MERGE (d)-[:HAS_CHUNK]->(c)
 WITH c, row
@@ -168,6 +173,7 @@ def import_chunks(
     document_id: str,
     document_name: Optional[str] = None,
     personality_id: Optional[str] = None,
+    user_id: Optional[str] = None,
     source: Optional[str] = None,
 ):
     docs: List[Dict[str, Any]] = [extraction.model_dump() for extraction in extractions]
@@ -185,6 +191,7 @@ def import_chunks(
             "document_id": document_id,
             "document_name": document_name,
             "personality_id": personality_id,
+            "user_id": user_id,
             "source": source,
             "updated_at": datetime.now().astimezone().isoformat(timespec="seconds"),
         },
@@ -246,6 +253,8 @@ async def process_document(
     logger.debug(f"Started graph extraction...")
     personality_id: Optional[str] = config["configurable"].get("personality_id")
     assert personality_id is not None
+    user_id: Optional[str] = config["configurable"].get("user_id")
+    assert user_id is not None
 
     text_splitter = TokenTextSplitter(
         chunk_size=chunk_size, chunk_overlap=chunk_overlap
@@ -269,6 +278,7 @@ async def process_document(
         document_name=document_name,
         source=source,
         personality_id=personality_id,
+        user_id=user_id,
     )
 
     summary_response: SummaryResponse = await summary_chain.ainvoke(
@@ -343,7 +353,7 @@ def parse_function(input_str):
         return None
 
 
-rational_plan_system = """As an intelligent assistant with access to a knowledge graph database, your primary objective is to answer the following question by gathering supporting facts from various articles. To facilitate this objective, the first step is to make a rational plan based on the question. This plan should outline the step-by-step process, in a few steps as possible, to resolve the question and specify the key information required to formulate a comprehensive answer. Use the message history if you need more context for the user's question. Do not answer the question, only make a plan to follow.
+rational_plan_system = """As an intelligent assistant with access to a knowledge graph database, your primary objective is to answer the following question by gathering supporting facts from various articles using the notebook as a starting point. To facilitate this objective, the first step is to make a rational plan based on the question. This plan should outline the step-by-step process, in a few steps as possible, to resolve the question and specify the key information required to formulate a comprehensive answer. Use the message history if you need more context for the user's question. Do not answer the question, only make a plan to follow and determine the next action.
 
 Now: {now}
 
@@ -357,7 +367,12 @@ Basic Example:
 User: Who had a longer tennis career, Danny or Alice?
 Assistant: In order to answer this question, we first need to find the length of Danny's and Alice's tennis careers, such as the start and retirement of their careers, and then compare the two.
 #####
-"""
+
+Notebook:
+\"\"\"
+{notebook}
+\"\"\"
+""".strip()
 
 rational_prompt = ChatPromptTemplate.from_messages(
     [
@@ -377,6 +392,12 @@ class RationalPlanOutput(BaseModel):
     rational_plan: str = Field(
         description="The step by step rational plan to answer the question. It should be in second person and concise"
     )
+    chosen_action: str = Field(
+        description="""
+1. search_more(): Choose this action if you think that the essential information necessary to answer the question is still lacking.
+2. terminate(): Choose this action if you believe that the information you have currently obtained is enough to answer the question. This will allow you to summarize the gathered information and provide a final answer.
+""".strip()
+    )
 
 
 rational_chain = rational_prompt | model.with_structured_output(RationalPlanOutput)
@@ -389,6 +410,7 @@ async def rational_plan_node(
         {
             "question": state.get("question"),
             "history": state.get("history"),
+            "notebook": state.get("notebook"),
             "now": datetime.now().astimezone().isoformat(timespec="seconds"),
         },
         config=config,
@@ -398,6 +420,7 @@ async def rational_plan_node(
     return {
         "rational_plan": rational_plan,
         "previous_actions": ["rational_plan"],
+        "chosen_action": response.chosen_action,
     }
 
 
@@ -1122,6 +1145,8 @@ def chunk_condition(
         return "chunk_check"
     elif state.get("chosen_action") == "search_neighbor":
         return "neighbor_select"
+    logger.error(f"Unknown action: {state.get('chosen_action')}")
+    return "neighbor_select"
 
 
 def neighbor_condition(
@@ -1133,7 +1158,54 @@ def neighbor_condition(
         return "atomic_fact_check"
 
 
+def rational_plan_node_condition(
+    state: OverallState,
+) -> Literal["initial_node_selection", "answer_reasoning"]:
+    if state.get("chosen_action") == "search_more":
+        return "initial_node_selection"
+    return "answer_reasoning"
+
+
+async def initial_notebook(state: OverallState) -> List[str]:
+    neo4j_vector = Neo4jVector.from_existing_graph(
+        url=config.neo4j.url,
+        username=config.neo4j.username,
+        password=config.neo4j.password,
+        embedding=embeddings,
+        index_name="chunk_index",
+        node_label="Chunk",
+        text_node_properties=["text", "description", "document_name"],
+        embedding_node_property="embedding",
+        retrieval_query="""RETURN node.text AS text, score, {document_name: node.document_name, description: node.description, document_id: node.document_id, chunk_id: node.id, source: node.source} AS metadata""",
+    )
+    data = await neo4j_vector.asimilarity_search(state.get("question"), k=3)
+    logger.info(f"Retrieved {len(data)} chunks")
+    docs = "".join(
+        [
+            f"""\
+    <chunk>
+        <document_name>{el.metadata.get("document_name")}</document_name>
+        <chunk_id>{el.metadata.get("chunk_id")}</chunk_id>
+        <chunk_description>{el.metadata.get("description")}</chunk_description>
+        <chunk_text>{el.page_content}</chunk_text>
+        <chunk_source>{el.metadata.get("source", "Unknown")}</chunk_source>
+    </chunk>
+"""
+            for el in data
+        ]
+    )
+    notebook = f"""\
+<chunks>
+{docs}
+</chunks>
+"""
+    return {
+        "notebook": notebook,
+    }
+
+
 question_graph = StateGraph(OverallState, input=InputState, output=OutputState)
+question_graph.add_node(initial_notebook)
 question_graph.add_node(rational_plan_node)
 question_graph.add_node(initial_node_selection)
 question_graph.add_node(atomic_fact_check)
@@ -1141,9 +1213,15 @@ question_graph.add_node(chunk_check)
 question_graph.add_node(answer_reasoning)
 question_graph.add_node(neighbor_select)
 
-question_graph.add_edge(START, "rational_plan_node")
-question_graph.add_edge("rational_plan_node", "initial_node_selection")
+question_graph.add_edge(START, "initial_notebook")
+question_graph.add_edge("initial_notebook", "rational_plan_node")
 question_graph.add_edge("initial_node_selection", "atomic_fact_check")
+
+question_graph.add_conditional_edges(
+    "rational_plan_node",
+    rational_plan_node_condition,
+)
+
 question_graph.add_conditional_edges(
     "atomic_fact_check",
     atomic_fact_condition,

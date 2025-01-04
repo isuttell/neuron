@@ -35,8 +35,6 @@ Use this tool to import text into the knowledge graph for long term memory.
         config: RunnableConfig,
     ) -> str:
         try:
-            personality_id = config["configurable"].get("personality_id")
-            assert personality_id is not None
             start_time = time.perf_counter()
             # Process the document and add it to the graph
             doc_result = await process_document(

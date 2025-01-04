@@ -26,8 +26,6 @@ import matplotlib
 from astroplan.plots import dark_style_sheet
 import pandas as pd
 
-matplotlib.use("Agg")
-
 
 def plot_sky_plot(targets: List[FixedTarget], time: Time, observer: Observer) -> str:
     cmap = cm.Set1

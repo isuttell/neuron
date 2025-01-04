@@ -5,6 +5,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { store } from "./store";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { AppState, Auth0Provider, User } from "@auth0/auth0-react";
+import { useNavigate } from "react-router-dom";
 import Root from "./routes/root.tsx";
 import Chat from "./routes/thread.tsx";
 import Personalities from "./routes/personalities.tsx";
@@ -64,12 +66,37 @@ const router = createBrowserRouter(
   { basename: "/" }
 );
 
+const Auth0ProviderWithNavigate = ({
+  children,
+}: {
+  children: React.ReactNode;
+}) => {
+  const onRedirectCallback = (appState: any) => {
+    router.navigate(appState?.returnTo || window.location.pathname);
+  };
+
+  return (
+    <Auth0Provider
+      domain={"dev-c33mi6x6gyem2l5o.us.auth0.com"}
+      clientId={"LYSbL0a44J1McAObzNLfSRdoBZ7KwfPR"}
+      authorizationParams={{
+        redirect_uri: window.location.origin,
+        audience: "https://neuron.zaks.io/api",
+      }}
+      onRedirectCallback={onRedirectCallback}
+    >
+      {children}
+    </Auth0Provider>
+  );
+};
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <Provider store={store}>
       <TooltipProvider>
-        <RouterProvider router={router} />
-        <Toaster />
+        <Auth0ProviderWithNavigate>
+          <RouterProvider router={router} />
+          <Toaster />
+        </Auth0ProviderWithNavigate>
       </TooltipProvider>
     </Provider>
   </StrictMode>

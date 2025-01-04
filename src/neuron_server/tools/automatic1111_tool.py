@@ -103,7 +103,7 @@ class Automatic1111Tool(BaseTool):
                 adetailer_enabled=adetailer_enabled,
                 enable_hr=enable_hr,
             )
-            url = f"{config.static_content_url}/images/{os.path.basename(file_path)}"
+            url = f"{config.static_content_url}/{os.path.basename(file_path)}"
             logger.debug(f"Saved generated image to {file_path} <{url}>")
             return f"![{prompt}]({url})"
         except Exception as e:

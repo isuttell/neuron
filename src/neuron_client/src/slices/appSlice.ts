@@ -1,44 +1,99 @@
-import { createSlice } from "@reduxjs/toolkit";
+import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import type { PayloadAction } from "@reduxjs/toolkit";
 import type { RootState } from "../store";
+import { getAccessToken } from "../actions/getToken";
 
-interface TokenStatsPayload {
-  input_tokens: number;
-  output_tokens: number;
+// Constants for localStorage keys
+const STORAGE_KEY = "neuron_app_settings";
+
+interface Config {
+  sidebar_image: string;
+  api: {
+    baseUrl: string;
+    wsEndpoint: string;
+  };
 }
 
 // Define a type for the slice state
 interface AppState {
-  stats: {
-    inputTokenCount: number;
-    outputTokenCount: number;
+  sidebar_image: string;
+  api?: {
+    baseUrl: string;
+    wsEndpoint: string;
   };
+  isLoading: boolean;
+  error: string | null;
 }
 
-// Define the initial state using that type
-const initialState: AppState = {
-  stats: {
-    inputTokenCount: -1,
-    outputTokenCount: -1,
-  },
+// Load initial state from localStorage
+const loadInitialState = (): AppState => {
+  try {
+    const savedState = localStorage.getItem(STORAGE_KEY);
+    if (savedState) {
+      return JSON.parse(savedState) as AppState;
+    }
+  } catch (error) {
+    console.error("Failed to load app state from localStorage:", error);
+  }
+  return {
+    sidebar_image: "",
+    api: undefined,
+    isLoading: false,
+    error: null,
+  };
 };
+
+// Save state to localStorage
+const saveState = (state: AppState) => {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch (error) {
+    console.error("Failed to save app state to localStorage:", error);
+  }
+};
+
+export const fetchConfig = createAsyncThunk("app/fetchConfig", async () => {
+  const response = await fetch("/api/app/config");
+  if (!response.ok) {
+    throw new Error("Failed to fetch config");
+  }
+  return (await response.json()) as Config;
+});
 
 export const appSlice = createSlice({
   name: "app",
-  initialState,
+  initialState: loadInitialState(),
   reducers: {
-    updateTokenStats: (state, action: PayloadAction<TokenStatsPayload>) => {
-      state.stats.inputTokenCount = action.payload.input_tokens;
-      state.stats.outputTokenCount = action.payload.output_tokens;
+    setSidebarImage: (state, action: PayloadAction<string>) => {
+      state.sidebar_image = action.payload;
+      saveState(state);
     },
+  },
+  extraReducers: (builder) => {
+    builder
+      .addCase(fetchConfig.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(fetchConfig.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.sidebar_image = action.payload.sidebar_image;
+        state.api = action.payload.api;
+        saveState(state);
+      })
+      .addCase(fetchConfig.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.error.message || "Failed to fetch config";
+        saveState(state);
+      });
   },
 });
 
-export const { updateTokenStats } = appSlice.actions;
+export const { setSidebarImage } = appSlice.actions;
 
-export const getTotalInputTokens = (state: RootState) =>
-  state.app.stats.inputTokenCount;
-export const getTotalOutputTokens = (state: RootState) =>
-  state.app.stats.outputTokenCount;
+export const getSidebarImage = (state: RootState) => state.app.sidebar_image;
+export const getApiConfig = (state: RootState) => state.app.api;
+export const getConfigLoadingState = (state: RootState) => state.app.isLoading;
+export const getConfigError = (state: RootState) => state.app.error;
 
 export default appSlice.reducer;

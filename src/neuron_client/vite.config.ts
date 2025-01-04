@@ -20,6 +20,9 @@ export default defineConfig(({ mode }) => ({
       "/api": {
         target: "http://localhost:5002",
       },
+      "/static": {
+        target: "http://localhost:5002",
+      },
       "/ws": {
         target: "ws://localhost:5002",
         ws: true,

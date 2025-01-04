@@ -16,6 +16,7 @@ import {
   TooltipContent,
 } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
+import { AspectRatio } from "@/components/ui/aspect-ratio";
 interface ImageContentProps {
   url: string;
   alt?: string;
@@ -23,6 +24,7 @@ interface ImageContentProps {
   height?: number;
   thumbnail_size?: "t" | "l" | "xl";
   preload?: boolean;
+  showControls?: boolean;
 }
 
 const ImageContent: React.FC<ImageContentProps> = ({
@@ -32,6 +34,7 @@ const ImageContent: React.FC<ImageContentProps> = ({
   height,
   thumbnail_size = "t",
   preload = false,
+  showControls = false,
 }) => {
   const [imageLoaded, setImageLoaded] = useState(!preload);
   const { toast } = useToast();
@@ -63,55 +66,57 @@ const ImageContent: React.FC<ImageContentProps> = ({
           {!imageLoaded && (
             <Spinner className="absolute top-2 right-2 opacity-50" size={8} />
           )}
-          <div className="absolute bottom-2 right-2 space-x-2">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  className=""
-                  variant="outline"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    navigator.clipboard.writeText(url);
-                    toast({
-                      title: "Image URL copied to clipboard",
-                    });
-                  }}
-                >
-                  <Copy />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Copy image URL</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  className=""
-                  variant="outline"
-                  asChild
-                  onClick={(e) => {
-                    e.stopPropagation();
-                  }}
-                >
-                  <a
-                    className="text-primary"
-                    href={url}
-                    download
-                    target="_blank"
-                    rel="noopener noreferrer"
+          {showControls && (
+            <div className="absolute bottom-2 right-2 space-x-2">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    className=""
+                    variant="outline"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      navigator.clipboard.writeText(url);
+                      toast({
+                        title: "Image URL copied to clipboard",
+                      });
+                    }}
                   >
-                    <Download />
-                  </a>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Download image</TooltipContent>
-            </Tooltip>
-          </div>
+                    <Copy />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Copy image URL</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    className=""
+                    variant="outline"
+                    asChild
+                    onClick={(e) => {
+                      e.stopPropagation();
+                    }}
+                  >
+                    <a
+                      className="text-primary"
+                      href={url}
+                      download
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Download />
+                    </a>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Download image</TooltipContent>
+              </Tooltip>
+            </div>
+          )}
         </div>
       </DialogTrigger>
       <DialogContent className="max-w-[95vw] max-h-[95vh] mx-auto box-border h-full flex-1 flex flex-col">
         <DialogHeader>
           <DialogTitle>Image Details</DialogTitle>
-          <DialogDescription>{alt}</DialogDescription>
+          {alt && <DialogDescription>{alt}</DialogDescription>}
         </DialogHeader>
         <div className="w-full overflow-hidden">
           <img

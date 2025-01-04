@@ -2,7 +2,6 @@ import { createSlice } from "@reduxjs/toolkit";
 import type { PayloadAction } from "@reduxjs/toolkit";
 import type { RootState } from "../store";
 import { fetchMessagesByThread } from "../actions/messageActions";
-
 interface Content {
   text: string;
   type: string;
@@ -63,6 +62,16 @@ interface MessageState {
 const initialState: MessageState = {
   messages: [],
 };
+
+export function getTextContent(content: Content[] | string): string {
+  if (typeof content === "string") {
+    return content;
+  }
+  return content
+    .filter((item) => item.type === "text" && typeof item.text === "string")
+    .map((item) => item.text)
+    .join("\n");
+}
 
 /**
  * Parses an incoming message dates and returns a Message object

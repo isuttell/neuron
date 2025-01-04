@@ -6,7 +6,7 @@ from typing import List, Literal, Type
 import os
 import subprocess
 from pydantic import BaseModel, Field
-import re
+from neuron_server.util.slug import slugify
 
 
 class FFmpegToolError(Exception):
@@ -56,7 +56,7 @@ This tool is designed to manipulate video and audio using ffmpeg. Do not show th
         process: subprocess.CompletedProcess
         try:
             # Remove any non-alphanumeric characters and limit to 255 characters
-            slug = re.sub(r"[^a-z0-9-_]", "", slug)[:255].lower().replace(" ", "-")
+            slug = slugify(slug)
 
             # Concatenate all audio files using ffmpeg
             filename = f"ffmpeg_{uuid4().hex[:8]}_{slug}.{extension}"

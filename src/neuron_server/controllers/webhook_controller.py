@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from typing import Optional
 from werkzeug.exceptions import BadRequest
 from neuron_server.tools.code_interpreter_api import run_code_interpreter
+from neuron_server.controllers.auth import requires_auth
 
 blueprint = Blueprint(
     "webhooks",
@@ -40,6 +41,7 @@ class CodeInterpreterRequest(BaseModel):
 
 
 @blueprint.post("/code-interpreter")
+@requires_auth
 async def code_interpreter():
     body = await request.get_json()
     if not body:
