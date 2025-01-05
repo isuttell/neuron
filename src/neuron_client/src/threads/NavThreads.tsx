@@ -21,9 +21,9 @@ import {
 } from "@/components/ui/sidebar";
 
 const selectThreads = (state: RootState, personalityId?: string) =>
-  state.threads.threads.filter(
-    (thread) => thread.personality_id === personalityId
-  );
+  state.threads.threads
+    .filter((thread) => thread.personality_id === personalityId)
+    .sort((a, b) => b.updated_at - a.updated_at);
 
 interface NavThreadsProps {
   activePathname?: string;
@@ -82,25 +82,23 @@ export default function NavThreads({ activePathname }: NavThreadsProps) {
             <SidebarMenuButton>No threads yet...</SidebarMenuButton>
           </SidebarMenuItem>
         )}
-        {threads
-          .sort((a, b) => b.updated_at - a.updated_at)
-          .map((thread) => (
-            <SidebarMenuItem key={thread.id} className="gap-2 space-y-1">
-              <SidebarMenuButton
-                isActive={activePathname === `/thread/${thread.id}`}
-                asChild
-              >
-                <NavLink to={`/thread/${thread.id}`} className="text-gray-300">
-                  {thread.status === "idle" ? (
-                    <MessageCircle className="size-4 min-w-[20px]" />
-                  ) : (
-                    <MessageCircleDashed className="size-4 min-w-[20px] text-accent" />
-                  )}
-                  <span>{thread.name || "Start conversation"}</span>
-                </NavLink>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          ))}
+        {threads.map((thread) => (
+          <SidebarMenuItem key={thread.id} className="gap-2 space-y-1">
+            <SidebarMenuButton
+              isActive={activePathname === `/thread/${thread.id}`}
+              asChild
+            >
+              <NavLink to={`/thread/${thread.id}`} className="text-gray-300">
+                {thread.status === "idle" ? (
+                  <MessageCircle className="size-4 min-w-[20px]" />
+                ) : (
+                  <MessageCircleDashed className="size-4 min-w-[20px] text-accent" />
+                )}
+                <span>{thread.name || "Start conversation"}</span>
+              </NavLink>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        ))}
       </SidebarGroupContent>
     </SidebarGroup>
   );

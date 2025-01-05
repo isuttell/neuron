@@ -25,6 +25,7 @@ from neuron_server.logger import logger
 import matplotlib
 from astroplan.plots import dark_style_sheet
 import pandas as pd
+import os
 
 
 def plot_sky_plot(targets: List[FixedTarget], time: Time, observer: Observer) -> str:
@@ -44,13 +45,13 @@ def plot_sky_plot(targets: List[FixedTarget], time: Time, observer: Observer) ->
     unique_legend = dict(zip(labels, handles))
     ax.legend(unique_legend.values(), unique_legend.keys(), loc="best")
     filename = f"ast_sky_{uuid4().hex}.png"
-    file_path = f"{config.static_folder}/images/{filename}"
+    file_path = os.path.abspath(os.path.join(config.static_folder, filename))
     plt.title(
         f"Sky Plot from {time[0].strftime('%Y-%m-%d')} to {time[-1].strftime('%Y-%m-%d')}"
     )
     plt.savefig(file_path)
     plt.close()
-    url = f"{config.static_content_url}/images/{filename}"
+    url = f"{config.static_content_url}/{filename}"
     return f"![Sky Plot]({url})"
 
 
@@ -68,10 +69,10 @@ def plot_airmass_plot(
     )
     ax.legend(loc="best")
     filename = f"ast_airmass_{uuid4().hex}.png"
-    file_path = f"{config.static_folder}/images/{filename}"
+    file_path = os.path.abspath(os.path.join(config.static_folder, filename))
     plt.savefig(file_path)
     plt.close()
-    url = f"{config.static_content_url}/images/{filename}"
+    url = f"{config.static_content_url}/{filename}"
     return f"![Airmass Plot]({url})"
 
 
@@ -92,10 +93,10 @@ def plot_parallactic_plot(
     assert ax is not None
     ax.legend(loc="lower center")
     filename = f"apt_parallactic_{uuid4().hex}.png"
-    file_path = f"{config.static_folder}/images/{filename}"
+    file_path = os.path.abspath(os.path.join(config.static_folder, filename))
     plt.savefig(file_path)
     plt.close()
-    url = f"{config.static_content_url}/images/{filename}"
+    url = f"{config.static_content_url}/{filename}"
     return f"![Parallactic Plot]({url})"
 
 

@@ -59,14 +59,18 @@ const BaseAudioPlayer: React.FC<BaseAudioPlayerProps> = ({
 
       const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
       const channelData = audioBuffer.getChannelData(0);
+
+      // Set canvas dimensions before processing data
+      canvas.width = canvas.clientWidth;
+      canvas.height = canvas.clientHeight;
+
       const points = Math.floor(canvas.width);
 
       waveformDataRef.current = processAudioData(channelData, points);
 
+      // Only draw after we have all the data
       const ctx = canvas.getContext("2d");
       if (ctx) {
-        canvas.width = canvas.clientWidth;
-        canvas.height = canvas.clientHeight;
         drawWaveform(ctx, canvas, progress, waveformDataRef.current);
       }
 
@@ -283,7 +287,7 @@ const BaseAudioPlayer: React.FC<BaseAudioPlayerProps> = ({
           autoPlay={autoPlay}
           loop={loop}
           preload={preload}
-          className={cn("rounded-md w-full", className)}
+          className={cn("rounded-md w-full bg-gray-900", className)}
         >
           <source src={src} type="audio/mpeg" />
           Your browser does not support the audio element.

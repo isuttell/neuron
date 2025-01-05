@@ -10,23 +10,20 @@ from neuron_server.config import config as neuron_config
 import aiofiles
 import aiohttp
 from PIL import PngImagePlugin, Image
-from datetime import datetime, timezone
-import re
+from datetime import datetime
 import shutil
 from neuron_server.util.image_utilities import create_thumbnails
-from neuron_server.cache import set_cache_key
-from neuron_server.pubsub import pubsub
-from neuron_server.controllers.events.app_events import SidebarImageEvent
 import time
 import logging
 from io import BytesIO
 import base64
-from langchain.schema import SystemMessage, HumanMessage
-from langchain_core.output_parsers import StrOutputParser
-from langchain_core.runnables import RunnableConfig
+from langchain.schema import HumanMessage
 from langchain_anthropic import ChatAnthropic
+from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from neuron_server.util.slug import safe_filename
+import random
 
 logger = logging.getLogger(__name__)
 
@@ -39,9 +36,37 @@ class ImageDescription(BaseModel):
     )
 
 
-async def describe_image(
-    prompt: str, image: Image.Image, max_tokens: int = 1000
-) -> ImageDescription:
+# Inspect the image
+# model = ChatAnthropic(
+#     model="claude-3-5-sonnet-20241022", temperature=0, max_tokens=max_tokens
+# )
+
+
+model = ChatOpenAI(
+    model="gpt-4o",
+    temperature=0,
+    max_tokens=1000,
+)
+
+chain = (
+    ChatPromptTemplate.from_messages(
+        [
+            (
+                "system",
+                """\
+You are an intelligent assistant that inspects AI generated images and returns descriptions of them to better understand what the image what was actually generated. Be long, descriptive and detailed in your description. Make sure to include the style of the image, the composition, the lighting, the mood, the subject, and any other relevant details. Use the prompt give context but do not use it as a direct source of information as it may not be what was actually generated. Explain your thoughts.
+
+The prompt was: <prompt>{prompt}</prompt>
+""".strip(),
+            ),
+            MessagesPlaceholder(variable_name="messages"),
+        ]
+    )
+    | model.with_structured_output(ImageDescription)
+)
+
+
+async def describe_image(prompt: str, image: Image.Image) -> ImageDescription:
     # Get image as base64
     buffered = BytesIO()
     resized = image.copy()
@@ -49,28 +74,6 @@ async def describe_image(
     resized.thumbnail((1024, 1024))
     resized.save(buffered, format="JPEG")
     image_base64 = base64.b64encode(buffered.getvalue()).decode("utf-8")
-
-    # Inspect the image
-    model = ChatAnthropic(
-        model="claude-3-5-sonnet-20241022", temperature=0, max_tokens=max_tokens
-    )
-
-    chain = (
-        ChatPromptTemplate.from_messages(
-            [
-                (
-                    "system",
-                    """\
-You are an intelligent assistant that inspects AI generated images and returns descriptions of them to better understand what the image what was actually generated. Be long, descriptive and detailed in your description. Make sure to include the style of the image, the composition, the lighting, the mood, the subject, and any other relevant details. Use the prompt give context but do not use it as a direct source of information as it may not be what was actually generated. Explain your thoughts.
-
-The prompt was: <prompt>{prompt}</prompt>
-""".strip(),
-                ),
-                MessagesPlaceholder(variable_name="messages"),
-            ]
-        )
-        | model.with_structured_output(ImageDescription)
-    )
 
     return await chain.ainvoke(
         {
@@ -87,7 +90,7 @@ The prompt was: <prompt>{prompt}</prompt>
                     ],
                 ),
             ],
-        }
+        },
     )
 
 
@@ -270,8 +273,7 @@ Use this tool to generate an image using a text prompt on replicate.com and has 
                 input_args["image_prompt"] = image_prompt
                 input_args["image_prompt_strength"] = image_prompt_strength
 
-            if seed:
-                input_args["seed"] = seed
+            input_args["seed"] = seed if seed else random.randint(0, 2**32 - 1)
 
             if style:
                 input_args["style"] = style
@@ -285,6 +287,9 @@ Use this tool to generate an image using a text prompt on replicate.com and has 
                     model,
                     input=input_args,
                 )
+                logger.debug(
+                    f"Image generation job took {time.perf_counter() - start_time:.2f} seconds"
+                )
             finally:
                 if image_prompt:
                     image_prompt.close()
@@ -295,12 +300,13 @@ Use this tool to generate an image using a text prompt on replicate.com and has 
                 output = [output]
             results = []
 
-            # Remove any non-alphanumeric characters and limit to 255 characters
-            slug = re.sub(r"[^a-z0-9-_]", "", slug)[:255].lower().replace(" ", "-")
-
             for i, result in enumerate(output):
                 # Ensure a unique filename
-                filename = f"replicate_{uuid4().hex[:8]}_{slug}.png"
+                filename = safe_filename(
+                    "replicate",
+                    f"{uuid4().hex[:8]}_{slug}",
+                    "png",
+                )
                 file_path = os.path.abspath(
                     os.path.join(neuron_config.static_folder, filename)
                 )
@@ -328,6 +334,7 @@ Use this tool to generate an image using a text prompt on replicate.com and has 
                 image = Image.open(file_path)
                 described_image: Optional[ImageDescription] = None
                 if describe:
+                    logger.debug(f"Describing image #{i + 1}")
                     described_image = await describe_image(prompt, image)
                     pnginfo.add_text("Description", described_image.description)
                     pnginfo.add_text("Caption", described_image.caption)
@@ -362,7 +369,7 @@ Use this tool to generate an image using a text prompt on replicate.com and has 
                     )
             end_time = time.perf_counter()
             logger.debug(
-                f"Image generation job took {end_time - start_time:.2f} seconds"
+                f"Image generation tool took {end_time - start_time:.2f} seconds"
             )
             return f"<images>\n" + "\n".join(results) + "\n</images>"
         except Exception as e:

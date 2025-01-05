@@ -155,11 +155,11 @@ Guidelines:
             if not os.path.exists(output_filename):
                 raise Exception("chart.png not found")
             result_filename = f"chart_{uuid4().hex}.png"
-            result_file_path = os.path.join(
-                config.static_folder, "images", result_filename
+            result_file_path = os.path.abspath(
+                os.path.join(config.static_folder, result_filename)
             )
             shutil.move(output_filename, result_file_path)
-            url = f"{config.static_content_url}/images/{result_filename}"
+            url = f"{config.static_content_url}/{result_filename}"
             logger.debug(
                 f"Saved chart to {result_file_path} <{url}> in {time.perf_counter() - start_time:.2f} seconds"
             )

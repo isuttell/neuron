@@ -2,14 +2,13 @@ from langchain.tools import BaseTool
 from typing import Type, Optional
 from pydantic import BaseModel, Field
 from neuron_server.logger import logger
-from datetime import datetime, timezone
-from zoneinfo import ZoneInfo
 from uuid import uuid4
 from neuron_server.config import config
-from starplot import OpticPlot, DSO
+from starplot import OpticPlot
 from starplot.callables import color_by_bv
 from starplot.optics import Camera
 from starplot.styles import PlotStyle, extensions
+import os
 
 
 class StarplotOpticToolArgs(BaseModel):
@@ -102,8 +101,8 @@ Generates an optic plot to visualize the given target through a camera lens. Thi
                 },
             )
             filename = f"ast_starplot_optic_{uuid4().hex}.png"
-            file_path = f"{config.static_folder}/images/{filename}"
-            url = f"{config.static_content_url}/images/{filename}"
+            file_path = os.path.abspath(os.path.join(config.static_folder, filename))
+            url = config.static_content_url + "/" + filename
             p.export(file_path, padding=0, transparent=True)
             return f"![Optic Plot]({url})"
         except Exception as e:

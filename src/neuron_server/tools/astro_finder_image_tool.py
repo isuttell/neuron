@@ -12,6 +12,7 @@ from neuron_server.logger import logger
 import matplotlib
 from astroplan.plots import dark_style_sheet
 from uuid import uuid4
+import os
 
 matplotlib.use("Agg")
 
@@ -42,8 +43,8 @@ def create_finder_images(targets: List[FixedTarget], fov_radius: float = 10) -> 
     images = []
     for target in targets:
         filename = f"ast_finder_image_{uuid4().hex}.png"
-        file_path = f"{config.static_folder}/images/{filename}"
-        url = f"{config.static_content_url}/images/{filename}"
+        file_path = os.path.abspath(os.path.join(config.static_folder, filename))
+        url = config.static_content_url + "/" + filename
         plot_finder_image(
             target=target,
             reticle=True,

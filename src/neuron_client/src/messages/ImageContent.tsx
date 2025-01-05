@@ -52,7 +52,7 @@ const ImageContent: React.FC<ImageContentProps> = ({
       <DialogTrigger asChild>
         <div className="relative max-h-[1024px] max-w-[1024px]">
           <img
-            className="rounded-lg w-full h-full object-contain  border border-gray-900 cursor-pointer bg-black"
+            className="rounded-lg w-full  object-contain cursor-pointer bg-black"
             src={
               url.endsWith(".gif")
                 ? url

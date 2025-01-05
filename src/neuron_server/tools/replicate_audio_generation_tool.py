@@ -153,7 +153,7 @@ async def main():
         "--image_url",
         type=str,
         help="The URL of the image to use for the first frame of the video generation.",
-        default="http://192.168.1.211:5002/static/images/dalle_generated_image_20241222174012_t_t.png",
+        default="http://192.168.1.211:5002/static/dalle_generated_image_20241222174012_t_t.png",
     )
     parser.add_argument(
         "--prompt",

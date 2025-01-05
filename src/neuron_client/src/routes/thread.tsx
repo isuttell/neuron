@@ -71,7 +71,7 @@ export default function Thread() {
       if (lastMessageRef.current) {
         lastMessageRef.current.scrollIntoView({ behavior: "smooth" });
       }
-    }, 0);
+    }, 100);
   }, [lastMessageRef.current]);
 
   const mediaItems = getMediaItems(messages);
@@ -107,12 +107,10 @@ export default function Thread() {
       ].every((condition) => condition)
     );
 
-  const lastUserMessage =
-    filteredMessages.length -
-    1 -
-    [...filteredMessages]
-      .reverse()
-      .findIndex((message) => message.type === "human");
+  const lastUserMessage = filteredMessages
+    .slice()
+    .reverse()
+    .find((message) => message.type === "human");
 
   return (
     <MediaPlayerProvider>
@@ -135,13 +133,11 @@ export default function Thread() {
             <div className="flex-1 overflow-y-auto relative">
               <div className="absolute top-0 left-0 right-0 bottom-0 flex flex-1 flex-col flex-nowrap max-h-full mx-auto overflow-y-auto">
                 <div className="max-w-[1170px] w-full mx-auto">
-                  {filteredMessages.map((message, index, array) => (
+                  {filteredMessages.map((message) => (
                     <div
                       key={message.id}
                       ref={
-                        index === lastUserMessage ||
-                        (index === array.length - 1 &&
-                          index === lastUserMessage)
+                        message.id === lastUserMessage?.id
                           ? lastMessageRef
                           : null
                       }

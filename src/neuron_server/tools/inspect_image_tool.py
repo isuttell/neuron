@@ -7,7 +7,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.messages import BaseMessage
 from neuron_server.llms.clean_eos_tokens import clean_eos_tokens
 from pydantic import BaseModel, Field
-from typing import Type, Dict, Any
+from typing import Type, Dict, Any, Optional
 import aiohttp
 import piexif
 from langchain_core.output_parsers import StrOutputParser
@@ -41,9 +41,9 @@ class InspectImageToolArgs(BaseModel):
     prompt: str = Field(
         description="This should be a prompt with detailed and specific question(s) to be answered about the image."
     )
-    max_tokens: int = Field(
-        description="The maximum number of tokens allowed in the response. A higher token count enables a more detailed answer. The maximum limit is 1000 tokens.",
-        default=300,
+    max_tokens: Optional[int] = Field(
+        description="The maximum number of tokens allowed in the response. A higher token count enables but not guarantees a more detailed answer.",
+        default=4000,
     )
 
 
@@ -172,13 +172,15 @@ class InspectImageTool(BaseTool):
     )
     args_schema: Type[InspectImageToolArgs] = InspectImageToolArgs
 
-    def _run(
-        self, image_url: str, prompt: str, config: RunnableConfig, max_tokens: int = 300
-    ) -> str:
-        return asyncio.run(self._arun(image_url, prompt, config, max_tokens))
+    def _run(self, *args, **kwargs) -> str:
+        return asyncio.run(self._arun(*args, **kwargs))
 
     async def _arun(
-        self, image_url: str, prompt: str, config: RunnableConfig, max_tokens: int = 300
+        self,
+        image_url: str,
+        prompt: str,
+        config: RunnableConfig,
+        max_tokens: int = 4000,
     ) -> str:
         """
         Inspect an image using multi-modal vision capabilities.
@@ -232,7 +234,7 @@ class InspectImageTool(BaseTool):
             content: str = await model.ainvoke(
                 [
                     SystemMessage(
-                        content="You are a tool that inspects images and returns a description of the image based on a given prompt. Be descriptive and detailed. Just return the description, no other text. Do not ask for clarification."
+                        content="You are a tool that inspects images and returns a description of the image based on a given prompt. Be descriptive and detailed. The parent will handle the metadata your job is to return the description. Just return the description, no other text. Do not ask for clarification."
                     ),
                     HumanMessage(
                         content=[
@@ -260,7 +262,7 @@ class InspectImageTool(BaseTool):
                 f"Response: {content} - {round(time.perf_counter() - start_time, 2):.2f}s"
             )
 
-            return f"{content}\n\n## Metadata\n\n{df.to_markdown(index=False)}"
+            return f"<description>{content}</description>\n{df.to_xml(index=False,root_name='metadata')}"
         except Exception as e:
             logger.exception(e)
             raise e

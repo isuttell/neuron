@@ -148,9 +148,9 @@ class HuggingFaceServerlessImageGenerationTool(BaseTool):
                 "DateTimeOriginal",
                 now.isoformat(timespec="seconds"),
             )
-            file_path = os.path.join(config.static_folder, "images", filename)
+            file_path = os.path.abspath(os.path.join(config.static_folder, filename))
             image.save(file_path, format="png", pnginfo=pnginfo)
-            url = f"{config.static_content_url}/images/{filename}"
+            url = f"{config.static_content_url}/{filename}"
             logger.debug(f"Saved generated image to {file_path} <{url}>")
             if update_tablet:
                 shutil.copy(file_path, config.tablet_image_filename)

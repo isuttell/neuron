@@ -7,7 +7,7 @@ import {
 } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import AudioBarPlayer from "./AudioBarPlayer";
-
+import { cn } from "@/lib/utils";
 interface AudioContentProps {
   url: string;
   className?: string;
@@ -32,10 +32,9 @@ const AudioContent: React.FC<AudioContentProps> = ({
   const { toast } = useToast();
 
   return (
-    <div className="flex gap-2">
+    <div className={cn("flex gap-2 justify-center items-center", className)}>
       <AudioBarPlayer
         autoPlay={autoPlay}
-        className={className}
         preload={preload}
         src={url}
         onEnded={onEnded}

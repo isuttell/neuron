@@ -73,10 +73,10 @@ class HuggingFaceImageGenerationTool(BaseTool):
         )
         timestamp = datetime.now(timezone.utc).astimezone().strftime("%Y%m%d%H%M%S")
         filename = f"generated_image_{timestamp}.png"
-        file_path = f"{config.static_folder}/images/{filename}"
+        file_path = os.path.abspath(os.path.join(config.static_folder, filename))
         image.save(file_path, format="png")
         logger.debug(f"Saved image to {file_path}")
-        return f"{config.static_content_url}/images/{filename}"
+        return f"{config.static_content_url}/{filename}"
 
 
 flux_tool = HuggingFaceImageGenerationTool(

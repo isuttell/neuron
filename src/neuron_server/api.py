@@ -149,6 +149,21 @@ async def index(**kwargs):
 @cors(allowed_methods=["GET", "OPTIONS"], allowed_headers=["Authorization"])
 @cache_control(max_age=31536000)
 async def get_static(path):
+    match = re.match(r".*_(t|l|xl)\.(jpe?g|png)$", path)
+    if (
+        match
+        and not os.path.exists(os.path.join(config.static_folder, path))
+        and os.path.exists(
+            os.path.join(config.static_folder, path.replace(f"_{match.group(1)}.", "."))
+        )
+        and len(re.findall(r"(_t|_l|_xl)", path)) == 1  # Only proceed if single suffix
+    ):
+        create_thumbnails(
+            os.path.join(
+                config.static_folder, path.replace(f"_{match.group(1)}.", ".")
+            ),
+            config.static_folder,
+        )
     return await send_from_directory(config.static_folder, path, as_attachment=True)
 
 

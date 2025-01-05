@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useState, memo } from "react";
 import { cn } from "@/lib/utils";
 import AudioContent from "./AudioContent";
 import ImageContent from "./ImageContent";
@@ -88,7 +88,7 @@ interface MediaListProps {
   autoPlay?: boolean;
 }
 
-export function MediaList({
+function MediaList({
   className,
   mediaItems,
   threadId,
@@ -238,4 +238,4 @@ export function MediaList({
   );
 }
 
-export default MediaList;
+export default memo(MediaList);

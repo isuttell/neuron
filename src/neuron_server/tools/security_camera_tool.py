@@ -21,6 +21,7 @@ from io import BytesIO
 from langchain_core.runnables import Runnable
 from typing import Literal
 from langchain_core.runnables import RunnableConfig
+import os
 
 
 class CameraName(Enum):
@@ -51,7 +52,7 @@ async def inspect_images(
     image_urls: List[str],
     start_time: datetime,
     fps: float,
-    max_tokens: int = 1024,
+    max_tokens: int = 4000,
     config: Optional[RunnableConfig] = None,
 ):
     logger.debug(f"Inspecting {len(image_urls)} images with prompt: {prompt}")
@@ -160,11 +161,11 @@ def save_images(
         filename = (
             f"{camera}_capture_{capture_time.strftime('%Y-%m-%d_%H-%M-%S-%f')}.png"
         )
-        file_path = f"{config.static_folder}/images/{filename}"
+        file_path = os.path.abspath(os.path.join(config.static_folder, filename))
         image.save(file_path, format="png", pnginfo=pnginfo)
-        url = f"{config.static_content_url}/images/{filename}"
+        url = f"{config.static_content_url}/{filename}"
         results.append(
-            f"![{camera} at {capture_time.astimezone().isoformat(timespec='milliseconds')}]({url})"
+            f"![{camera} at {capture_time.astimezone().isoformat(timespec='seconds')}]({url})"
         )
     return results
 
@@ -176,11 +177,11 @@ class SecurityCameraToolArgs(BaseModel):
     camera_name: CameraName = Field(
         description="The camera to use. Must be one of: front_door, backyard, garage, kitty_cam"
     )
-    frame_count: int = Field(
-        description="The number of frames to capture. Defaults to 3. Max is 120. If you do not neet to understand changes over time use a value of 1 here.",
+    frame_count: Optional[int] = Field(
+        description="The number of frames to capture. Defaults to 3. Max is 120.",
         default=3,
     )
-    fps: float = Field(
+    fps: Optional[float] = Field(
         description="The number of frames per second to capture. Defaults to 1.",
         default=1,
     )
@@ -195,25 +196,19 @@ class SecurityCameraTool(BaseTool):
 
     def _run(
         self,
-        prompt: str,
-        camera_name: CameraName,
-        config: RunnableConfig,
-        frame_count: int = 3,
-        fps: float = 1,
-        provider: Literal["openai", "anthropic"] = "anthropic",
+        *args,
+        **kwargs,
     ) -> str:
-        return asyncio.run(
-            self._arun(prompt, camera_name, config, frame_count, fps, provider)
-        )
+        return asyncio.run(self._arun(*args, **kwargs))
 
     async def _arun(
         self,
         prompt: str,
         camera_name: CameraName,
         config: RunnableConfig,
-        frame_count: int = 3,
-        fps: float = 1,
-        provider: Literal["openai", "anthropic"] = "anthropic",
+        frame_count: Optional[int] = 3,
+        fps: Optional[float] = 1,
+        provider: Optional[Literal["openai", "anthropic"]] = "openai",
     ) -> str:
         try:
             camera: str = (
@@ -229,12 +224,12 @@ class SecurityCameraTool(BaseTool):
             model = (
                 ChatAnthropic(
                     model="claude-3-5-sonnet-20241022",
-                    temperature=0.7,
+                    temperature=0,
                 )
                 if provider == "anthropic"
                 else ChatOpenAI(
                     model="gpt-4o",
-                    temperature=0.7,
+                    temperature=0,
                 )
             )
             # Ask the AI to analyze the images and save the results while we wait

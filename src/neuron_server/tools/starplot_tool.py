@@ -8,7 +8,7 @@ from zoneinfo import ZoneInfo
 from uuid import uuid4
 from neuron_server.config import config
 from typing import Optional
-from starplot import MapPlot, Projection, DSO, Star
+import os
 
 
 class Marker(BaseModel):
@@ -123,8 +123,8 @@ Generate a star plot for the given parameters. Zenith is the default projection 
                         },
                     )
             filename = f"ast_starplot_{uuid4().hex}.png"
-            file_path = f"{config.static_folder}/images/{filename}"
-            url = f"{config.static_content_url}/images/{filename}"
+            file_path = os.path.abspath(os.path.join(config.static_folder, filename))
+            url = config.static_content_url + "/" + filename
             plot.export(file_path, padding=0)
             return f"![Starplot]({url})"
         except Exception as e:

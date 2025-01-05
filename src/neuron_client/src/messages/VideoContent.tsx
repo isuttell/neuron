@@ -37,7 +37,7 @@ const VideoContent: React.FC<VideoContentProps> = ({
       <DialogTrigger asChild>
         <div className="w-full relative overflow-hidden max-h-[1024px] max-w-[1024px]">
           <video
-            className="rounded-lg w-full h-full object-contain border border-gray-900 cursor-pointer bg-black"
+            className="rounded-lg w-full h-full object-contain cursor-pointer bg-black"
             src={url}
             autoPlay={autoPlay}
             muted={muted}
