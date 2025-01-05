@@ -2,63 +2,66 @@ from langchain.tools import BaseTool
 from neuron_server.config import config
 from neuron_server.logger import logger
 from uuid import uuid4
-from typing import TypedDict, List
-from openai import OpenAI
+from neuron_server.util.script_parser import parse_script
 import os
 import shutil
 import subprocess
+from neuron_server.util.slug import safe_filename
+from openai import AsyncOpenAI
+from typing import List, Type
+import asyncio
+from pydantic import BaseModel, Field
+import aiofiles
+
+client = AsyncOpenAI(api_key=config.openai_api_key)
 
 
-class SpokenLine(TypedDict):
-    voice: str
-    text: str
+class OpenAITTSToolArgs(BaseModel):
+    script: str = Field(
+        description="""
+The script to generate audio from. The script should be formatted as a list of spoken lines, with each line containing a voice identifier and the text to be spoken.
 
+Supported voices:
+<voices>
+    <voice>alloy</voice>
+    <voice>echo</voice>
+    <voice>fable</voice>
+    <voice>onyx</voice>
+    <voice>nova</voice>
+    <voice>shimmer</voice>
+</voices>
 
-def parse_script(script: str) -> List[SpokenLine]:
-    """
-    Parses a script string and returns a list of dictionaries with 'voice' and 'message' keys.
+<example>
+[nova]
+Welcome! I'm here to demonstrate our text-to-speech voices.
 
-    Args:
-        script (str): The script string to parse.
-
-    Returns:
-        list[dict[str, str]]: A list of dictionaries containing 'voice' and 'message' keys.
-    """
-    lines = script.strip().split("\n")
-    parsed_lines = []
-    current_voice = None
-
-    for line in lines:
-        line = line.strip()
-        if line.startswith("[") and line.endswith("]"):
-            current_voice = line[1:-1]
-        elif current_voice and len(line.strip()) > 0:
-            parsed_lines.append({"voice": current_voice, "text": line})
-    return parsed_lines
+[alloy]
+And I'll help explain how they sound different.
+</example>
+""".strip(),
+    )
+    speed: float = Field(
+        description="The speed of the audio. 1 is normal speed. 0.5 is half speed. 2 is double speed. If the user wants it slightly faster user a value of 1.04 or in that range without distorting the audio.",
+        default=1,
+    )
+    slug: str = Field(
+        description="A unique identifier. Must be all lower case with no special characters or spaces. Use dashes for spaces. Keep it short and descriptive. Must be less than 256 characters",
+    )
 
 
 class OpenAITTSTool(BaseTool):
     name: str = "openai_tts"
     description: str = (
         """
-This tool generates audio from a provided script. The input format should consist of speaker identifiers followed by their respective dialogues, formatted as the example below:
-
-Supported voices: alloy, echo, fable, onyx, nova, and shimmer
-
-Example:
-```
-[alloy]
-Hello, how are you?
-
-[echo]
-I'm great!
-```
-
-The tool will use OpenAI's TTS API to generate the audio and return a link to the combined audio file. Each block should be short enough to be processed in a single call to the API. Write your input text to mimic natural, conversational speech. Use punctuation like commas and periods to create pauses and guide the intonation, and add words like "Hmm," "Ah," or "Oh" for a more human touch. Use this tool to generate audio when the users requests it. The result should be an playable <audio> tag but not the filename.
+The tool will use OpenAI's TTS API to generate the audio and return a link to the combined audio file. Each block should be short enough to be processed in a single call to the API. Write your input text to mimic natural, conversational speech. Use punctuation like commas and periods to create pauses and guide the intonation, and add words like "Hmm," "Ah," or "Oh" for a more human touch. Use this tool to generate audio when the users requests it.
 """.strip()
     )
+    args_schema: Type[OpenAITTSToolArgs] = OpenAITTSToolArgs
 
-    def _run(self, script: str, speed: float = 1) -> str:
+    async def _run(self, *args, **kwargs):
+        return asyncio.run(self._arun(*args, **kwargs))
+
+    async def _arun(self, script: str, slug: str, speed: float = 1) -> str:
         """
         Generates audio from a provided script. In the format of:
         ```
@@ -69,34 +72,37 @@ The tool will use OpenAI's TTS API to generate the audio and return a link to th
         I'm great!
         ```
         """
+        working_dir: str
         try:
-            client = OpenAI(api_key=config.openai_api_key)
-            id = str(uuid4())
-            working_dir = config.temp_folder + "/" + id
-            os.makedirs(working_dir, exist_ok=True)
-            audio_files: str = []
+            working_dir = os.path.abspath(os.path.join(config.temp_folder, uuid4().hex))
+            os.makedirs(working_dir)
+            audio_files: List[str] = []
             for index, line in enumerate(parse_script(script)):
                 logger.debug(
                     f"Generating openai audio for line: [{line['voice']}] {line['text']}"
                 )
-                response = client.audio.speech.create(
+                response = await client.audio.speech.create(
                     model="tts-1-hd",
                     voice=line["voice"],
                     input=line["text"],
                     speed=speed,
                 )
-                audio_file_path = working_dir + "/" + f"line-{index}.mp3"
-                response.stream_to_file(audio_file_path)
+                audio_file_path = os.path.abspath(
+                    os.path.join(working_dir, f"line-{index}.mp3")
+                )
+                async with aiofiles.open(audio_file_path, "wb") as f:
+                    for chunk in response.iter_bytes():
+                        await f.write(chunk)
                 audio_files.append(audio_file_path)
                 logger.debug(f"Saved generated audio chunk at {audio_file_path}")
             # Concatenate all audio files using ffmpeg
-            output_dir = config.static_folder + "/tts"
-            if not os.path.exists(output_dir):
-                os.makedirs(output_dir, exist_ok=True)
-            filename = f"{id}.mp3"
-            output = output_dir + "/" + filename
+            filename = safe_filename("openai_tts", slug, "mp3")
+            output = os.path.join(config.static_folder, filename)
             ffmpeg_command = [
                 "ffmpeg",
+                "-loglevel",
+                "error",
+                "-hide_banner",
                 "-y",
                 "-i",
                 "concat:" + "|".join(audio_files),
@@ -105,17 +111,15 @@ The tool will use OpenAI's TTS API to generate the audio and return a link to th
                 output,
             ]
             subprocess.run(ffmpeg_command, check=True)
-            url = config.static_content_url + "/tts/" + filename
-            logger.info(f"Generated audio file at {output} <{url}>")
-            return f"""
-<audio src="{url}"></audio>
-Filename: {output}
-""".strip()
+            url = config.static_content_url + "/" + filename
+            logger.debug(f"Generated audio file at {output} <{url}>")
+            return f"""<audio src="{url}"></audio>""".strip()
         except Exception as e:
             logger.exception(e)
-            return f"Error generating audio: {str(e)}"
+            raise e
         finally:
-            shutil.rmtree(working_dir)
+            if os.path.exists(working_dir):
+                shutil.rmtree(working_dir)
 
 
 def main():

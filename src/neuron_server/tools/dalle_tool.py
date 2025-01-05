@@ -67,10 +67,6 @@ When creating prompts for images, include specific visual details, such as color
         description="The size of the image to generate. Default to square. Use wide images for cinematic effect.",
         default="1024x1024",
     )
-    update_tablet: bool = Field(
-        description="Whether to update the smart home tablet dashboard with the generated image. Only use this if the user explicitly asks for it. Only works if n=1.",
-        default=False,
-    )
     n: int = Field(
         description="The number of images to generate. Default to 1.",
         default=1,
@@ -86,20 +82,16 @@ class DalleTool(BaseTool):
 
     def _run(
         self,
-        prompt: str,
-        style: Literal["natural", "vivid"] = "vivid",
-        size: Literal["1024x1024", "1792x1024", "1024x1792"] = "1024x1024",
-        update_tablet: bool = False,
-        n: int = 1,
+        *args,
+        **kwargs,
     ) -> str:
-        return asyncio.run(self._arun(prompt, style, size, update_tablet, n))
+        return asyncio.run(self._arun(*args, **kwargs))
 
     async def _arun(
         self,
         prompt: str,
         style: Literal["natural", "vivid"] = "vivid",
         size: Literal["1024x1024", "1792x1024", "1024x1792"] = "1024x1024",
-        update_tablet: bool = False,
         n: int = 1,
     ) -> str:
         """
@@ -117,6 +109,7 @@ class DalleTool(BaseTool):
                 prompt=prompt,
                 style=style,
                 size=size,
+                n=n,
             )
             now = datetime.now(timezone.utc).astimezone()
             timestamp = now.strftime("%Y%m%d%H%M%S")
@@ -144,14 +137,15 @@ class DalleTool(BaseTool):
                 )
                 url = f"{config.static_content_url}/{filename}"
                 logger.debug(f"Saved generated image to {file_path} <{url}>")
-                results.append(url)
+                results.append(
+                    f"""\
+<image>
+    <display>![{prompt}]({url})</display>
+</image>
+"""
+                )
 
-                if update_tablet and n == 1:
-                    shutil.copy(file_path, config.tablet_image_filename)
-                    logger.debug(
-                        f"Copied generated image to {config.tablet_image_filename}"
-                    )
-            return "\n".join([f"![{prompt}]({url})" for url in results])
+            return f"<images>\n" + "\n".join(results) + "\n</images>"
         except Exception as e:
             logger.exception(e)
             return f"Error generating image: {str(e)}"

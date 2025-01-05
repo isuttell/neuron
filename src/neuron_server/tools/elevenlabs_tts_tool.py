@@ -2,7 +2,7 @@ from langchain.tools import BaseTool
 from neuron_server.config import config
 from neuron_server.logger import logger
 from uuid import uuid4
-from typing import TypedDict, List, Type
+from typing import Type
 import os
 import shutil
 import subprocess
@@ -11,6 +11,7 @@ from neuron_server.logger import logger
 import asyncio
 from pydantic import BaseModel, Field
 from neuron_server.util.slug import safe_filename
+from neuron_server.util.script_parser import parse_script
 
 
 class ElevenLabsTTSToolArgs(BaseModel):
@@ -65,44 +66,6 @@ Isaac
     slug: str = Field(
         description="A unique identifier. Must be all lower case with no special characters or spaces. Use dashes for spaces. Keep it short and descriptive. Must be less than 256 characters",
     )
-
-
-class SpokenLine(TypedDict):
-    voice: str
-    text: str
-
-
-def parse_script(script: str) -> List[SpokenLine]:
-    """
-    Parses a script string and returns a list of dictionaries with 'voice' and 'message' keys.
-
-    Args:
-        script (str): The script string to parse.
-
-    Returns:
-        list[dict[str, str]]: A list of dictionaries containing 'voice' and 'message' keys.
-    """
-    lines = script.strip().split("\n")
-    parsed_lines = []
-    current_voice = None
-    current_text = []
-
-    for line in lines:
-        line = line.strip()
-        if line.startswith("[") and line.endswith("]"):
-            if current_voice and current_text:
-                parsed_lines.append(
-                    {"voice": current_voice, "text": "\n".join(current_text)}
-                )
-            current_voice = line[1:-1]
-            current_text = []
-        elif current_voice and len(line.strip()) > 0:
-            current_text.append(line)
-
-    if current_voice and current_text:
-        parsed_lines.append({"voice": current_voice, "text": "\n".join(current_text)})
-
-    return parsed_lines
 
 
 class ElevenLabsTTSTool(BaseTool):

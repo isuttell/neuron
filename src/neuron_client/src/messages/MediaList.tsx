@@ -30,12 +30,33 @@ export function getMediaItems(messages: Message[]): MediaItem[] {
             .join("\n")
         : message.content;
 
-      // Find markdown image and link tags ![alt](url) and [alt](url)
-      const matches = body.matchAll(/\[([^\]]*)\]\(([^)]+)\)/g);
-      for (const match of matches) {
-        const key = `${message.tool_call_id}-${match[2]}`;
-        let alt = match[1];
-        let url = match[2];
+      // Find any markdown image syntax within image tags, regardless of format
+      const imageMatches = body.matchAll(
+        /<image>.*?!\[([^\]]*)\]\(([^)]+)\).*?<\/image>/gs
+      );
+      for (const match of imageMatches) {
+        const [_, alt, url] = match;
+        const key = `${message.tool_call_id}-${url}`;
+
+        items.push({
+          key,
+          type: "image",
+          alt,
+          url,
+          toolCallId: message.tool_call_id,
+          messageId: message.id,
+        });
+      }
+
+      // Find markdown image and link tags ![alt](url) and [alt](url) surrounded by optional <link> or <image> tags
+      const markdownMatches = body.matchAll(
+        /<(link|image)>\s*\[([^\]]*)\]\(([^)]+)\)\s*<\/\1>/g
+      );
+      for (const match of markdownMatches) {
+        const type = match[1];
+        const key = `${message.tool_call_id}-${match[3]}`;
+        let alt = match[2];
+        let url = match[3];
 
         if (alt.match(/\.(py|js|txt|md)$/)) {
           alt = "View " + alt;
@@ -44,7 +65,7 @@ export function getMediaItems(messages: Message[]): MediaItem[] {
 
         items.push({
           key,
-          type: /\.(jpeg|jpg|png|gif|svg)$/.test(url) ? "image" : "link",
+          type: type === "image" ? "image" : "link",
           alt,
           url,
           toolCallId: message.tool_call_id,

@@ -104,7 +104,7 @@ Generates an optic plot to visualize the given target through a camera lens. Thi
             file_path = os.path.abspath(os.path.join(config.static_folder, filename))
             url = config.static_content_url + "/" + filename
             p.export(file_path, padding=0, transparent=True)
-            return f"![Optic Plot]({url})"
+            return f"<image>![Optic Plot]({url})</image>"
         except Exception as e:
             logger.exception(e)
             return f"Error generating optic starplot: {str(e)}"

@@ -10,7 +10,6 @@ import Loading from "@/lib/loading";
 import { getActivePersonalityId } from "../slices/personalitiesSlice";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { getSocket } from "../slices/socketSlice";
 import { Spinner } from "@/components/ui/spinner";
 import { Input } from "@/components/ui/input";
 import { setActivePersonality } from "../slices/personalitiesSlice";
@@ -20,11 +19,14 @@ import {
   deletePersonality,
 } from "../actions/personalityActions";
 import EditPersonalityDialog from "../personalities/EditPersonalityDialog";
+import { getAccessToken } from "../actions/getToken";
+import { useToast } from "@/hooks/use-toast";
+
 const selectPersonality = (state: RootState, personalityId?: string) =>
   state.personalities.personalities.find((per) => per.id === personalityId);
 
 export default function Personality() {
-  const socket = useAppSelector(getSocket);
+  const { toast } = useToast();
   const [updatedContext, setUpdatedContext] = useState("");
   const [updatedName, setUpdatedName] = useState("");
   const [prompt, setPrompt] = useState("");
@@ -74,28 +76,53 @@ export default function Personality() {
     setIsSaving(false);
   };
 
-  const handleSubmitPrompt = (
+  const handleSubmitPrompt = async (
     e:
       | React.FormEvent<HTMLFormElement>
       | React.FormEvent<HTMLButtonElement>
       | React.KeyboardEvent<HTMLTextAreaElement>
   ) => {
     e.preventDefault();
-    if (!socket || prompt.trim().length === 0 || !personality?.id) {
+    if (prompt.trim().length === 0 || !personality?.id) {
       return;
     }
-    socket.sendMessage({
-      type: "PostPersonalityPrompt",
-      context: updatedContext,
-      prompt,
-      personality_id: personality.id,
-    });
-    setIsLoading(true);
-    socket.once("personality_prompt_response", (data) => {
+
+    try {
+      setIsLoading(true);
+      const accessToken = await getAccessToken();
+      const response = await fetch(
+        `/api/personalities/${personality.id}/context`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({
+            context: updatedContext,
+            prompt,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
       setUpdatedContext(data.context);
-      setIsLoading(false);
       setPrompt("");
-    });
+      toast({
+        title: "Context updated",
+      });
+    } catch (error) {
+      toast({
+        title: "Failed to update personality context",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (!personality) {

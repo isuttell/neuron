@@ -199,13 +199,13 @@ async def run_code_interpreter(
                 continue
             url = f"{config.static_content_url}/artifacts/{folder_name}/{file}"
             if media_type == "image":
-                artifacts.append(f"![{file}]({url})")
+                artifacts.append(f"<image>![{file}]({url})</image>")
             elif media_type == "video":
                 artifacts.append(f'<video src="{url}" controls />')
             elif media_type == "audio":
                 artifacts.append(f'<audio src="{url}" controls />')
             else:
-                artifacts.append(f"[{file}]({url})")
+                artifacts.append(f"<link>[{file}]({url})</link>")
         return process.stdout.strip() if process.stdout else "", artifacts
     except asyncio.TimeoutError:
         force_stop_code_interpreter()

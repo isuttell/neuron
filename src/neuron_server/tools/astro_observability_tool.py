@@ -52,7 +52,7 @@ def plot_sky_plot(targets: List[FixedTarget], time: Time, observer: Observer) ->
     plt.savefig(file_path)
     plt.close()
     url = f"{config.static_content_url}/{filename}"
-    return f"![Sky Plot]({url})"
+    return f"<image>![Sky Plot]({url})</image>"
 
 
 def plot_airmass_plot(
@@ -73,7 +73,7 @@ def plot_airmass_plot(
     plt.savefig(file_path)
     plt.close()
     url = f"{config.static_content_url}/{filename}"
-    return f"![Airmass Plot]({url})"
+    return f"<image>![Airmass Plot]({url})</image>"
 
 
 def plot_parallactic_plot(
@@ -97,7 +97,7 @@ def plot_parallactic_plot(
     plt.savefig(file_path)
     plt.close()
     url = f"{config.static_content_url}/{filename}"
-    return f"![Parallactic Plot]({url})"
+    return f"<image>![Parallactic Plot]({url})</image>"
 
 
 class Target(BaseModel):

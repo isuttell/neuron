@@ -140,20 +140,17 @@ async def _debounced_publish(channel: str, event: Any):
     await debounce_publish.call(pubsub.publish, channel, event)
 
 
-async def save_thread(thread: ThreadModel):
-    async def task():
-        await thread.save()
-        await _debounced_publish("app", GetThreadResponse(thread=thread))
-
-    asyncio.create_task(task())
-
-
 async def update_thread_status(
     thread: ThreadModel, status: str, force_update: bool = True
 ):
     if thread.status != status or force_update:
         thread.status = status
-        await save_thread(thread)
+
+        async def task():
+            await ThreadModel.set(thread.id, "status", status)
+            await _debounced_publish("app", GetThreadResponse(thread=thread))
+
+        asyncio.create_task(task())
 
 
 async def astream(
@@ -233,6 +230,7 @@ async def astream(
 
                 if name == "update_title" and kind == "on_chain_end":
                     thread.name = data["output"]["title"]
+                    await ThreadModel.set(thread.id, "name", thread.name)
 
                 values = list(set(active_runs.values()))
                 await update_thread_status(
@@ -307,14 +305,12 @@ async def astream(
     except Exception as e:
         logger.exception(e)
         logger.error(f"AgentError: {e!r}")
-        thread.status = "error"
-        await save_thread(thread)
+        await update_thread_status(thread, status="error")
         await pubsub.publish("app", ErrorEvent(message=str(e)))
     finally:
         state = await aget_state(thread_id=thread_id)
         thread.message_count = len(state.values.get("messages", []))
-        thread.status = "idle"
-        await save_thread(thread)
+        await update_thread_status(thread, status="idle")
         logger.debug(f"Agent completed for {thread.id}")
         last_message: Optional[AIMessage] = (
             state.values.get("messages", [])[-1]

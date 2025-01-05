@@ -28,6 +28,7 @@ export const store = configureStore({
           "socket/connect",
           "messages/postMessageByThread",
           "threads/createThread/pending",
+          "threads/createThread/fulfilled",
         ],
         // Ignore these field paths in all actions
         ignoredActionPaths: ["payload.socket"],

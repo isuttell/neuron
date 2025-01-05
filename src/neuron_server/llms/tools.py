@@ -64,10 +64,10 @@ from neuron_server.tools.inspect_image_tool import InspectImageTool
 from neuron_server.tools.replicate_sound_effect_generation_tool import (
     ReplicateSoundEffectGenerationTool,
 )
-from neuron_server.tools.update_logo_tool import UpdateLogoTool
 from neuron_server.tools.inspect_document_tool import DocumentInspectTool
 from neuron_server.tools.document_query_tool import DocumentQueryTool
-from neuron_server.tools.set_sidebar_image_tool import SetImageTool
+from neuron_server.tools.app_image_tool import AppImageTool
+from neuron_server.tools.openai_tts_tool import OpenAITTSTool
 
 homeassistant_api = HomeAssistantAPI(token=config.homeassistant.token)
 
@@ -97,8 +97,7 @@ tool_sets: Dict[str, List[BaseTool]] = {
         # ),
         ReplicateImageGenerationTool(),
         InspectImageTool(),
-        UpdateLogoTool(),
-        SetImageTool(),
+        AppImageTool(),
     ],
     "video": [
         FFmpegTool(),
@@ -109,7 +108,8 @@ tool_sets: Dict[str, List[BaseTool]] = {
         # ReplicateSoundEffectGenerationTool(),
     ],
     "tts": [
-        ElevenLabsTTSTool(),
+        OpenAITTSTool(),
+        # ElevenLabsTTSTool(),
         ReplicateMusicGenerationTool(),
         # ElevenLabsSoundEffectsTool(),
         FFmpegTool(),
@@ -142,7 +142,6 @@ tool_sets: Dict[str, List[BaseTool]] = {
         AstroObjectSearchTool(),
         AstroObservabilityTool(),
         AstroFinderImageTool(),
-        AstrophotonsRecommendationTool(),
         HomeAssistantSensorTool(api=homeassistant_api),
         OpenWeatherMapOverviewTool(),
         OpenWeatherMapForecastTool(),

@@ -5,6 +5,7 @@ from sqlalchemy import select
 from pydantic import BaseModel, Field
 from uuid import uuid4
 from datetime import datetime, timezone
+from typing import Any
 
 
 class PersonalityModel(BaseModel):
@@ -82,6 +83,17 @@ class PersonalityModel(BaseModel):
             personality.memory = memory
             personality.tool_set = tool_set
             personality.logo = logo
+            session.add(personality)
+            await session.commit()
+            return cls(**personality.__dict__)
+
+    @classmethod
+    async def set(cls, id: UUID, key: str, value: Any) -> Self:
+        async with get_session() as session:
+            personality = await session.get(Personality, id)
+            if not personality:
+                raise ValueError(f"Personality with ID {str(id)} not found")
+            setattr(personality, key, value)
             session.add(personality)
             await session.commit()
             return cls(**personality.__dict__)

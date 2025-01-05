@@ -105,7 +105,7 @@ class Automatic1111Tool(BaseTool):
             )
             url = f"{config.static_content_url}/{os.path.basename(file_path)}"
             logger.debug(f"Saved generated image to {file_path} <{url}>")
-            return f"![{prompt}]({url})"
+            return f"<image>![{prompt}]({url})</image>"
         except Exception as e:
             logger.exception(e)
             return f"Error generating image: {str(e)}"

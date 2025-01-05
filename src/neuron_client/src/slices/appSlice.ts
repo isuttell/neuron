@@ -1,7 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import type { PayloadAction } from "@reduxjs/toolkit";
 import type { RootState } from "../store";
-import { getAccessToken } from "../actions/getToken";
 
 // Constants for localStorage keys
 const STORAGE_KEY = "neuron_app_settings";

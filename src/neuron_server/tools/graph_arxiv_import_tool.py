@@ -57,6 +57,7 @@ Use this tool to import arXiv articles into the knowledge graph or check if an a
         config: RunnableConfig,
     ) -> str:
         try:
+            personality_id = config["configurable"].get("personality_id")
             # Record the start time for performance measurement
             start_time = time.perf_counter()
             logger.debug(f"Searching arXiv with: id_list=[{arxiv_id}]")

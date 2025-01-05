@@ -6,7 +6,7 @@ import {
   CardContent,
   CardFooter,
 } from "@/components/ui/card";
-import { Pencil, ArrowLeft } from "lucide-react";
+import { Pencil } from "lucide-react";
 import EditPersonalityDialog from "./EditPersonalityDialog";
 import { Personality } from "@/slices/personalitiesSlice";
 import { Button } from "@/components/ui/button";

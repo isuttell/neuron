@@ -262,7 +262,7 @@ class InspectImageTool(BaseTool):
                 f"Response: {content} - {round(time.perf_counter() - start_time, 2):.2f}s"
             )
 
-            return f"<description>{content}</description>\n{df.to_xml(index=False,root_name='metadata')}"
+            return f"<description>{content}</description>\n<metadata>\n{df.to_markdown(index=False)}\n</metadata>"
         except Exception as e:
             logger.exception(e)
             raise e

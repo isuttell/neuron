@@ -165,7 +165,7 @@ def save_images(
         image.save(file_path, format="png", pnginfo=pnginfo)
         url = f"{config.static_content_url}/{filename}"
         results.append(
-            f"![{camera} at {capture_time.astimezone().isoformat(timespec='seconds')}]({url})"
+            f"<image>![{camera} at {capture_time.astimezone().isoformat(timespec='seconds')}]({url})</image>"
         )
     return results
 

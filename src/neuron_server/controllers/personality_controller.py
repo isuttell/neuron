@@ -1,10 +1,6 @@
 from neuron_server.models import PersonalityModel
 from quart import websocket, Blueprint, request, Response
 from neuron_server.event_router import EventRouter
-from neuron_server.controllers.events.personality_events import (
-    PostPersonalityPrompt,
-    PersonalityPromptResponse,
-)
 from neuron_server.models.provider_model import ProviderModelModel
 from neuron_server.llms.prompts import (
     personality_update_prompt,
@@ -163,17 +159,24 @@ async def delete_personality(personality_id: UUID):
     return Response(status=204)
 
 
-@router.on(PostPersonalityPrompt)
+class PostPersonalityContext(BaseModel):
+    context: str
+    prompt: str
+
+
+@blueprint.post("/<uuid:personality_id>/context")
 @requires_auth
-async def post_personality_prompt(event: PostPersonalityPrompt):
+async def post_personality_context(personality_id: UUID):
+    body = await request.get_json()
+    payload = PostPersonalityContext(**body)
     llm: LLM = ProviderModelModel.get_llm()
-    personality = await PersonalityModel.get(event.personality_id)
+    personality = await PersonalityModel.get(personality_id)
     if personality is None:
         raise BadRequest("Personality not found")
-    content = await ainvoke_update_personality(
+    context = await ainvoke_update_personality(
         llm=llm,
         personality=personality,
-        context=personality.context,
-        prompt=event.prompt,
+        context=payload.context,
+        prompt=payload.prompt,
     )
-    await websocket.send(PersonalityPromptResponse(context=content).model_dump_json())
+    return {"context": context}

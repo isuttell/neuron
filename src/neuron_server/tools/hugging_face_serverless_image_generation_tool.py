@@ -34,10 +34,6 @@ class HuggingFaceServerlessImageGenerationToolArgs(BaseModel):
         description="Minimum Inference Steps refers to the number of iterations or steps the model uses to create the image. More steps generally improve image quality and detail, but also increase computation time. Fewer steps lead to faster results with potentially less detail or accuracy. The default value works for most cases.",
         default=25,
     )
-    update_tablet: bool = Field(
-        description="Whether to update the smart home tablet dashboard with the generated image. Only use this if the user explicitly asks for it.",
-        default=False,
-    )
 
 
 class HuggingFaceServerlessImageGenerationTool(BaseTool):
@@ -98,14 +94,10 @@ class HuggingFaceServerlessImageGenerationTool(BaseTool):
 
     def _run(
         self,
-        prompt: str,
-        repo_id: HuggingFaceRepoId = HuggingFaceRepoId.FLUX_1_DEV,
-        guidance_scale: float = 3.5,
-        num_inference_steps: int = 25,
+        *args,
+        **kwargs,
     ) -> str:
-        return asyncio.run(
-            self._arun(prompt, repo_id, guidance_scale, num_inference_steps)
-        )
+        return asyncio.run(self._arun(*args, **kwargs))
 
     async def _arun(
         self,
@@ -113,7 +105,6 @@ class HuggingFaceServerlessImageGenerationTool(BaseTool):
         repo_id: HuggingFaceRepoId = HuggingFaceRepoId.FLUX_1_DEV,
         guidance_scale: float = 3.5,
         num_inference_steps: int = 25,
-        update_tablet: bool = False,
     ) -> str:
         """
         Run the tool to generate an image based on the given prompt.
@@ -152,25 +143,7 @@ class HuggingFaceServerlessImageGenerationTool(BaseTool):
             image.save(file_path, format="png", pnginfo=pnginfo)
             url = f"{config.static_content_url}/{filename}"
             logger.debug(f"Saved generated image to {file_path} <{url}>")
-            if update_tablet:
-                shutil.copy(file_path, config.tablet_image_filename)
-                create_thumbnails(
-                    config.tablet_image_filename,
-                    config.static_folder,
-                )
-                logger.debug(
-                    f"Copied generated image to {config.tablet_image_filename}"
-                )
-                static_table_image = os.path.abspath(
-                    os.path.join(config.static_folder, "smart_dashboard_image.png"),
-                )
-                shutil.copy(file_path, static_table_image)
-                create_thumbnails(
-                    static_table_image,
-                    config.static_folder,
-                )
-                logger.debug(f"Copied generated image to {static_table_image}")
-            return f"![{prompt}]({url})"
+            return f"<image>![{prompt}]({url})</image>"
         except Exception as e:
             logger.exception(e)
             return f"Error generating image: {str(e)}"

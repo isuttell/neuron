@@ -16,7 +16,7 @@ import {
   TooltipContent,
 } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
-import { AspectRatio } from "@/components/ui/aspect-ratio";
+
 interface ImageContentProps {
   url: string;
   alt?: string;

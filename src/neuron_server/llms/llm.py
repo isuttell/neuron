@@ -181,9 +181,7 @@ class LLM:
                 "recall_memories": (
                     state["recall_memories"] if "recall_memories" in state else ""
                 ),
-                "now": datetime.now(timezone.utc)
-                .astimezone()
-                .strftime("%Y-%m-%d %H:%M:%S %Z"),
+                "now": datetime.now().astimezone().isoformat(timespec="seconds"),
             },
             config,
         )

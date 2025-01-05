@@ -128,15 +128,6 @@ Use this tool to generate an image using a text prompt on replicate.com and has 
                 image = Image.open(file_path)
                 image.save(file_path, format="png", pnginfo=pnginfo, quality=95)
                 url = f"{neuron_config.static_content_url}/{filename}"
-                if update_tablet and i == 0:
-                    shutil.copy(file_path, neuron_config.tablet_image_filename)
-                    create_thumbnails(
-                        neuron_config.tablet_image_filename,
-                        neuron_config.static_folder,
-                    )
-                    logger.debug(
-                        f"Copied generated image to {neuron_config.tablet_image_filename}"
-                    )
 
                 results.append(f"![{prompt}]({url})")
             return "\n".join(results)

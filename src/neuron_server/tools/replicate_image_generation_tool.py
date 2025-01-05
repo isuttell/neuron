@@ -196,10 +196,6 @@ Prompt Tips:
         description="Random seed. Set for reproducible generation",
         default=None,
     )
-    update_tablet: Optional[bool] = Field(
-        description="Whether to update the smart home tablet dashboard with the generated image. Only use this if the user explicitly asks for it",
-        default=False,
-    )
     describe: Optional[bool] = Field(
         description="Whether to describe the image in detail. Use this when you want to understand better what generated image looks like. Use this while telling stories to better incorporate the image into the story.",
         default=True,
@@ -242,7 +238,6 @@ Use this tool to generate an image using a text prompt on replicate.com and has 
         raw: bool = False,
         image_prompt_strength: Optional[float] = None,
         seed: Optional[int] = None,
-        update_tablet: bool = False,
         describe: bool = True,
     ) -> str:
         start_time = time.perf_counter()
@@ -273,7 +268,7 @@ Use this tool to generate an image using a text prompt on replicate.com and has 
                 input_args["image_prompt"] = image_prompt
                 input_args["image_prompt_strength"] = image_prompt_strength
 
-            input_args["seed"] = seed if seed else random.randint(0, 2**32 - 1)
+            input_args["seed"] = seed if seed else random.randint(0, 2147483647)
 
             if style:
                 input_args["style"] = style
@@ -344,11 +339,6 @@ Use this tool to generate an image using a text prompt on replicate.com and has 
                     neuron_config.static_folder,
                 )
                 url = f"{neuron_config.static_content_url}/{filename}"
-                if update_tablet and i == 0:
-                    shutil.copy(file_path, neuron_config.tablet_image_filename)
-                    logger.debug(
-                        f"Copied generated image to {neuron_config.tablet_image_filename}"
-                    )
                 if described_image:
                     results.append(
                         f"""\
