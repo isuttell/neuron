@@ -2,7 +2,7 @@ from langchain.tools import BaseTool
 from neuron_server.config import config
 from neuron_server.logger import logger
 from uuid import uuid4
-from typing import Type
+from typing import Type, List, Literal, Optional
 import os
 import shutil
 import subprocess
@@ -67,12 +67,17 @@ Isaac
         description="A unique identifier. Must be all lower case with no special characters or spaces. Use dashes for spaces. Keep it short and descriptive. Must be less than 256 characters",
     )
 
+    model: Optional[Literal["eleven_flash_v2_5", "eleven_multilingual_v2"]] = Field(
+        description="The model to use for the TTS. Defaults to eleven_multilingual_v2 for quality and eleven_flash_v2_5 for speed.",
+        default="eleven_multilingual_v2",
+    )
+
 
 class ElevenLabsTTSTool(BaseTool):
     name: str = "elevenlabs_tts"
     description: str = (
         """
-This tool generates audio from a provided script using ElevenLabs' TTS APIs and returns a link to the final audio file. Use this tool to generate audio when the users requests it. This returns an audio tag to be shown to the user so they can play it. Hide the filename as the user will not need it.
+This tool generates audio from a provided script using ElevenLabs' TTS APIs and returns a link to the final audio file. Use this tool to generate high quality audio for characters when the users requests it. This returns an audio tag to be shown to the user so they can play it. Hide the filename as the user will not need it.
 """.strip()
     )
     args_schema: Type[ElevenLabsTTSToolArgs] = ElevenLabsTTSToolArgs
@@ -80,7 +85,14 @@ This tool generates audio from a provided script using ElevenLabs' TTS APIs and 
     def _run(self, *args, **kwargs) -> str:
         return asyncio.run(self._arun(*args, **kwargs))
 
-    async def _arun(self, script: str, slug: str) -> str:
+    async def _arun(
+        self,
+        script: str,
+        slug: str,
+        model: Optional[
+            Literal["eleven_flash_v2_5", "eleven_multilingual_v2"]
+        ] = "eleven_multilingual_v2",
+    ) -> str:
         try:
             client = AsyncElevenLabs(api_key=config.elevenlabs_api_key)
             working_dir = os.path.abspath(os.path.join(config.temp_folder, uuid4().hex))
@@ -93,7 +105,7 @@ This tool generates audio from a provided script using ElevenLabs' TTS APIs and 
                 response = await client.generate(
                     text=line["text"],
                     voice=line["voice"],
-                    model="eleven_multilingual_v2",
+                    model=model,
                 )
                 audio_file_path = os.path.abspath(
                     os.path.join(working_dir, f"line-{index}.mp3")

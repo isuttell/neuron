@@ -109,7 +109,7 @@ tool_sets: Dict[str, List[BaseTool]] = {
     ],
     "tts": [
         OpenAITTSTool(),
-        # ElevenLabsTTSTool(),
+        ElevenLabsTTSTool(),
         ReplicateMusicGenerationTool(),
         # ElevenLabsSoundEffectsTool(),
         FFmpegTool(),

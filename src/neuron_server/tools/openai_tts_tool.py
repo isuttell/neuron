@@ -53,7 +53,7 @@ class OpenAITTSTool(BaseTool):
     name: str = "openai_tts"
     description: str = (
         """
-The tool will use OpenAI's TTS API to generate the audio and return a link to the combined audio file. Each block should be short enough to be processed in a single call to the API. Write your input text to mimic natural, conversational speech. Use punctuation like commas and periods to create pauses and guide the intonation, and add words like "Hmm," "Ah," or "Oh" for a more human touch. Use this tool to generate audio when the users requests it.
+The tool will use OpenAI's TTS API to generate the audio and return a link to the audio file. Write your input text to mimic natural, conversational speech. Use this tool by default over other TTS tools when the user requests you generate spoken audio.
 """.strip()
     )
     args_schema: Type[OpenAITTSToolArgs] = OpenAITTSToolArgs
