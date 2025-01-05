@@ -17,6 +17,7 @@ import DeleteThreadButton from "@/components/DeleteThreadButton";
 import ToggleSystemMessages from "@/components/ToggleSystemMessages";
 import MediaPanelWidth, { WidthMode } from "@/components/MediaPanelWidth";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { MediaPlayerProvider } from "@/contexts/MediaPlayerContext";
 
 const selectThread = (state: RootState, threadId?: string) =>
   state.threads.threads.find((thread) => thread.id === threadId);
@@ -114,113 +115,117 @@ export default function Thread() {
       .findIndex((message) => message.type === "human");
 
   return (
-    <div className="flex flex-1 p-4 flex-col flex-nowrap max-h-screen">
-      <div className="flex justify-between mb-2 border-b pb-2">
-        <SidebarTrigger className="size-10 mr-2" />
-        <h1 className="text-lg lg:text-2xl font-bold ">
-          {thread.name || "Welcome..."}
-        </h1>
-        <div className="flex-1" />
-        <ToggleSystemMessages
-          showTools={showTools}
-          onToggle={() => setShowTools(!showTools)}
-        />
-        <MediaPanelWidth widthMode={widthMode} onChange={setWidthMode} />
-        <DeleteThreadButton threadId={thread.id} />
-      </div>
-      <div className="flex flex-row flex-1">
-        <div className="flex flex-col flex-1">
-          <div className="flex-1 overflow-y-auto relative">
-            <div className="absolute top-0 left-0 right-0 bottom-0 flex flex-1 flex-col flex-nowrap max-h-full mx-auto overflow-y-auto">
-              <div className="max-w-[1170px] w-full mx-auto">
-                {filteredMessages.map((message, index, array) => (
-                  <div
-                    key={message.id}
-                    ref={
-                      index === lastUserMessage ||
-                      (index === array.length - 1 && index === lastUserMessage)
-                        ? lastMessageRef
-                        : null
-                    }
-                  >
-                    <MessageItem
-                      message={message}
-                      showTools={showTools}
-                      onPromptClick={debounce((prompt) => {
-                        if (!activePersonalityId) {
-                          return;
-                        }
-                        dispatch(
-                          postMessageByThread({
-                            threadId: thread.id,
-                            prompt,
-                            personalityId: activePersonalityId,
-                          })
-                        );
-                      }, 100)}
-                    />
-                  </div>
-                ))}
-                {thread.message_count === 0 && messages.length === 0 ? (
-                  <div className="m-4 text-center text-muted-foreground">
-                    No messages
-                  </div>
-                ) : null}
-                <div className="h-screen" />
+    <MediaPlayerProvider>
+      <div className="flex flex-1 p-4 flex-col flex-nowrap max-h-screen">
+        <div className="flex justify-between mb-2 border-b pb-2">
+          <SidebarTrigger className="size-10 mr-2" />
+          <h1 className="text-lg lg:text-2xl font-bold ">
+            {thread.name || "Welcome..."}
+          </h1>
+          <div className="flex-1" />
+          <ToggleSystemMessages
+            showTools={showTools}
+            onToggle={() => setShowTools(!showTools)}
+          />
+          <MediaPanelWidth widthMode={widthMode} onChange={setWidthMode} />
+          <DeleteThreadButton threadId={thread.id} />
+        </div>
+        <div className="flex flex-row flex-1">
+          <div className="flex flex-col flex-1">
+            <div className="flex-1 overflow-y-auto relative">
+              <div className="absolute top-0 left-0 right-0 bottom-0 flex flex-1 flex-col flex-nowrap max-h-full mx-auto overflow-y-auto">
+                <div className="max-w-[1170px] w-full mx-auto">
+                  {filteredMessages.map((message, index, array) => (
+                    <div
+                      key={message.id}
+                      ref={
+                        index === lastUserMessage ||
+                        (index === array.length - 1 &&
+                          index === lastUserMessage)
+                          ? lastMessageRef
+                          : null
+                      }
+                    >
+                      <MessageItem
+                        message={message}
+                        showTools={showTools}
+                        onPromptClick={debounce((prompt) => {
+                          if (!activePersonalityId) {
+                            return;
+                          }
+                          dispatch(
+                            postMessageByThread({
+                              threadId: thread.id,
+                              prompt,
+                              personalityId: activePersonalityId,
+                            })
+                          );
+                        }, 100)}
+                      />
+                    </div>
+                  ))}
+                  {thread.message_count === 0 && messages.length === 0 ? (
+                    <div className="m-4 text-center text-muted-foreground">
+                      No messages
+                    </div>
+                  ) : null}
+                  <div className="h-screen" />
+                </div>
               </div>
             </div>
+            <div className="bottom-0">
+              <MessageForm
+                status={thread.status}
+                className="max-w-[1170px] w-full mx-auto mt-2"
+                onSubmit={() => {}}
+              />
+            </div>
           </div>
-          <div className="bottom-0">
-            <MessageForm
-              status={thread.status}
-              className="max-w-[1170px] w-full mx-auto mt-2"
-              onSubmit={() => {}}
-            />
-          </div>
+          <Tabs
+            defaultValue={activeTab}
+            className={cn(
+              "ml-4 pl-4  flex-shrink-0 border-l flex-col flex",
+              widthMode === "narrow" && "max-w-[512px] w-1/4",
+              widthMode === "wide" && "max-w-[1024px] w-1/2",
+              widthMode === "hidden" && "hidden"
+            )}
+            onValueChange={(value) => {
+              setActiveTab(value as "media");
+            }}
+          >
+            <TabsList>
+              <TabsTrigger value="media">
+                Media
+                {mediaItems.length > 0 && (
+                  <span className="ml-2 text-xs text-muted-foreground">
+                    ({mediaItems.length})
+                  </span>
+                )}
+              </TabsTrigger>
+            </TabsList>
+            <div className="flex flex-col flex-1 relative overflow-y-auto">
+              <TabsContent
+                value="media"
+                className={cn(
+                  "flex flex-col flex-1 absolute top-0 left-0 right-0 bottom-0",
+                  activeTab === "media" ? "flex" : "hidden"
+                )}
+              >
+                {widthMode !== "hidden" ? (
+                  <MediaList
+                    className="flex-col gap-2 flex-1"
+                    threadId={thread.id}
+                    mediaItems={mediaItems}
+                    thumbnail_size={widthMode === "narrow" ? "t" : "xl"}
+                    showControls={true}
+                    autoPlay={true}
+                  />
+                ) : null}
+              </TabsContent>
+            </div>
+          </Tabs>
         </div>
-        <Tabs
-          defaultValue={activeTab}
-          className={cn(
-            "ml-4 pl-4  flex-shrink-0 border-l flex-col flex",
-            widthMode === "narrow" && "max-w-[512px] w-1/4",
-            widthMode === "wide" && "max-w-[1024px] w-1/2",
-            widthMode === "hidden" && "hidden"
-          )}
-          onValueChange={(value) => {
-            setActiveTab(value as "media");
-          }}
-        >
-          <TabsList>
-            <TabsTrigger value="media">
-              Media
-              {mediaItems.length > 0 && (
-                <span className="ml-2 text-xs text-muted-foreground">
-                  ({mediaItems.length})
-                </span>
-              )}
-            </TabsTrigger>
-          </TabsList>
-          <div className="flex flex-col flex-1 relative overflow-y-auto">
-            <TabsContent
-              value="media"
-              className={cn(
-                "flex flex-col flex-1 absolute top-0 left-0 right-0 bottom-0",
-                activeTab === "media" ? "flex" : "hidden"
-              )}
-            >
-              {widthMode !== "hidden" ? (
-                <MediaList
-                  className="flex-col gap-2"
-                  threadId={thread.id}
-                  mediaItems={mediaItems}
-                  thumbnail_size={widthMode === "narrow" ? "t" : "xl"}
-                  showControls={true}
-                />
-              ) : null}
-            </TabsContent>
-          </div>
-        </Tabs>
       </div>
-    </div>
+    </MediaPlayerProvider>
   );
 }

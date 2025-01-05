@@ -9,7 +9,7 @@ import {
 import Content from "../messages/Content";
 import { ArtifactVersion } from "./extractArtifacts";
 import VideoPlayer from "../messages/VideoPlayer";
-import AudioPlayer from "../messages/AudioPlayer";
+import AudioPlayer from "../messages/AudioWavePlayer";
 
 const TypeMap = {
   "text/plain": "plain",

@@ -14,7 +14,7 @@ import ErrorPage from "./error-page.tsx";
 import NotFoundPage from "./not-found-page.tsx";
 import Gallery from "./routes/gallery.tsx";
 import Personality from "./routes/personality.tsx";
-import Index from "./index.tsx";
+import Index from "./routes/index.tsx";
 import CodeViewer from "./routes/code-viewer.tsx";
 import Prompts from "./routes/prompts.tsx";
 

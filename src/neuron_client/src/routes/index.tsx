@@ -1,25 +1,25 @@
 import { useState, useEffect } from "react";
-import { useAppSelector, useAppDispatch } from "./hooks";
+import { useAppSelector, useAppDispatch } from "../hooks";
 import { CornerDownLeft, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { createThread } from "./actions/threadActions";
+import { createThread } from "../actions/threadActions";
 import { Spinner } from "@/components/ui/spinner";
 import { useNavigate, Link } from "react-router-dom";
 import {
   getActivePersonalityId,
   getActivePersonality,
-} from "./slices/personalitiesSlice";
+} from "../slices/personalitiesSlice";
 import logo from "@/assets/logo.svg";
 import { useToast } from "@/hooks/use-toast";
-import { RootState } from "./store";
+import { RootState } from "../store";
 import FuzzyTimeAgo from "@/components/FuzzyTimeAgo";
-import { fetchRecentThreads } from "./actions/threadActions";
-import { StatusMessage } from "./messages/StatusMessage";
+import { fetchRecentThreads } from "../actions/threadActions";
+import { StatusMessage } from "../messages/StatusMessage";
 import { PromptDropdown } from "@/components/PromptDropdown";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { cn } from "./lib/utils";
+import { cn } from "../lib/utils";
 
 const selectRecentThreads = (state: RootState) => {
   return Object.values(state.threads.threads)

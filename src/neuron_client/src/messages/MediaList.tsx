@@ -1,9 +1,11 @@
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import AudioContent from "./AudioContent";
 import ImageContent from "./ImageContent";
 import VideoContent from "./VideoContent";
 import { Message } from "../slices/messagesSlice";
+import { Button } from "@/components/ui/button";
+
 interface MediaItem {
   key: string;
   type: string;
@@ -83,6 +85,7 @@ interface MediaListProps {
   threadId: string;
   thumbnail_size?: "t" | "l" | "xl";
   showControls?: boolean;
+  autoPlay?: boolean;
 }
 
 export function MediaList({
@@ -93,9 +96,51 @@ export function MediaList({
   showControls = false,
 }: MediaListProps) {
   const endRef = useRef<HTMLDivElement | null>(null);
-
+  const [currentPlayingIndex, setCurrentPlayingIndex] = useState<number | null>(
+    null
+  );
+  const [autoPlay, setAutoPlay] = useState<boolean>(false);
+  const audioItems = mediaItems.filter((item) => item.type === "audio");
+  const [isPlaying, setIsPlaying] = useState<boolean>(false);
   useEffect(() => {
-    // Scroll to the bottom of the messages when they change
+    setCurrentPlayingIndex(null);
+  }, [threadId]);
+  // Update when new items are added
+  useEffect(() => {
+    if (
+      autoPlay &&
+      !isPlaying &&
+      currentPlayingIndex === null &&
+      audioItems.length > 0
+    ) {
+      // Set to play the last audio item if it's new
+      setCurrentPlayingIndex(audioItems.length - 1);
+    }
+  }, [audioItems.length, isPlaying, autoPlay]);
+
+  const handleAudioPlay = (index: number) => {
+    setCurrentPlayingIndex(index);
+    setIsPlaying(true);
+  };
+
+  const handleAudioPause = () => {
+    setIsPlaying(false);
+  };
+
+  const handleAudioComplete = (index: number) => {
+    setIsPlaying(false);
+    if (!autoPlay) return;
+
+    const nextIndex = index + 1;
+    if (nextIndex < audioItems.length) {
+      setCurrentPlayingIndex(nextIndex);
+    } else {
+      setCurrentPlayingIndex(null);
+    }
+  };
+
+  // Scroll effect remains the same...
+  useEffect(() => {
     setTimeout(() => {
       if (endRef.current) {
         endRef.current.scrollIntoView({ behavior: "smooth" });
@@ -109,7 +154,7 @@ export function MediaList({
   ]);
 
   return (
-    <div className={cn("flex", className)}>
+    <div className={cn("flex flex-col", className)}>
       {mediaItems.map((item) => {
         if (item.type === "image") {
           return (
@@ -137,6 +182,9 @@ export function MediaList({
           );
         }
         if (item.type === "audio") {
+          const audioIndex = audioItems.findIndex(
+            (audio) => audio.key === item.key
+          );
           return (
             <AudioContent
               className="w-full"
@@ -144,6 +192,10 @@ export function MediaList({
               url={item.url}
               key={item.key}
               showControls={showControls}
+              autoPlay={audioIndex === currentPlayingIndex}
+              onPlay={() => handleAudioPlay(audioIndex)}
+              onPause={handleAudioPause}
+              onEnded={() => handleAudioComplete(audioIndex)}
             />
           );
         }
@@ -167,7 +219,21 @@ export function MediaList({
           No media found
         </div>
       )}
+      <div className="flex-1" />
       <div ref={endRef} />
+      {showControls && (
+        <div className="w-full flex">
+          <Button
+            variant="outline"
+            className={cn(autoPlay ? "bg-accent text-accent-foreground" : null)}
+            onClick={() => {
+              setAutoPlay(!autoPlay);
+            }}
+          >
+            {autoPlay ? "Stop Auto Play" : "Start Auto Play"}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

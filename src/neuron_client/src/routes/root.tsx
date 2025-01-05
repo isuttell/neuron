@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Outlet } from "react-router-dom";
 import { useAppSelector } from "../hooks";
 import { getConnectionStatus } from "../slices/socketSlice";
@@ -6,12 +6,12 @@ import { Spinner } from "@/components/ui/spinner";
 import { useAppDispatch } from "../hooks";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { MainSidebar } from "@/components/layout/MainSidebar";
-import { useAuth0 } from "@auth0/auth0-react";
+import { useAuth0, withAuthenticationRequired } from "@auth0/auth0-react";
 import { Button } from "@/components/ui/button";
 import { setGetAccessTokenSilently } from "../actions/getToken";
 import { fetchConfig } from "@/slices/appSlice";
 
-export default function Root() {
+function Root() {
   const {
     loginWithRedirect,
     isAuthenticated,
@@ -86,3 +86,11 @@ export default function Root() {
     </SidebarProvider>
   );
 }
+
+export default withAuthenticationRequired(Root, {
+  onRedirecting: () => (
+    <div className="flex flex-1 items-center justify-center h-screen w-screen">
+      <Spinner />
+    </div>
+  ),
+});
