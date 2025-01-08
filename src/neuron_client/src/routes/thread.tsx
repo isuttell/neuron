@@ -171,7 +171,7 @@ export default function Thread() {
             </div>
             <div className="bottom-0">
               <MessageForm
-                status={thread.status}
+                thread={thread}
                 className="max-w-[1170px] w-full mx-auto mt-2"
                 onSubmit={() => {}}
               />
@@ -209,7 +209,7 @@ export default function Thread() {
               >
                 {widthMode !== "hidden" ? (
                   <MediaList
-                    className="flex-col gap-2 flex-1"
+                    className="flex-col gap-2"
                     threadId={thread.id}
                     mediaItems={mediaItems}
                     thumbnail_size={widthMode === "narrow" ? "t" : "xl"}

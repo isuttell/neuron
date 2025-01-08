@@ -11,6 +11,8 @@ import os
 from neuron_server.config import config as neuron_config
 import aiofiles
 import re
+import random
+from neuron_server.util.slug import safe_filename
 
 
 class ReplicateAudioGenerationToolArgs(BaseModel):
@@ -37,7 +39,8 @@ class ReplicateAudioGenerationToolArgs(BaseModel):
         description="The seed to use for the audio generation", default=-1
     )
     negative_prompt: Optional[str] = Field(
-        description="Negative prompt to avoid certain sounds", default="music, ethereal"
+        description="Negative prompt to avoid certain sounds",
+        default="music, voice, ethereal",
     )
 
 
@@ -45,7 +48,7 @@ class ReplicateAudioGenerationTool(BaseTool):
     name: str = "replicate_audio_generation"
     description: str = (
         """
-Use this tool to add realistic foley sound effects synced to a video using the zsxkib/mmaudio model. It can even do speech, if you're not too worried about the words making sense. It uses an advanced AI model that synthesizes high-quality audio from video content, enabling seamless video-to-audio transformation. Use this tool to add foley sounds to a video. Avoid ethereal sounds.
+Use this tool to add realistic foley sound effects synced to a video using the zsxkib/mmaudio model on Replicate. It can even do speech, if you're not too worried about the words making sense. It uses an advanced AI model that synthesizes high-quality audio from video content, enabling seamless video-to-audio transformation. Use this tool to add foley sounds to a video. Avoid ethereal sounds.
 """.strip()
     )
 
@@ -59,24 +62,13 @@ Use this tool to add realistic foley sound effects synced to a video using the z
 
     def _run(
         self,
-        video_url: str,
-        slug: str,
-        prompt: str = "",
-        duration: int = 6,
-        num_steps: int = 25,
-        cfg_strength: float = 4.5,
-        seed: int = -1,
-        negative_prompt: str = "music",
+        *args,
+        **kwargs,
     ) -> str:
         return asyncio.run(
             self._arun(
-                video_url,
-                prompt,
-                duration,
-                num_steps,
-                cfg_strength,
-                seed,
-                negative_prompt,
+                *args,
+                **kwargs,
             )
         )
 
@@ -88,8 +80,8 @@ Use this tool to add realistic foley sound effects synced to a video using the z
         duration: int = 6,
         num_steps: int = 25,
         cfg_strength: float = 4.5,
-        seed: int = -1,
-        negative_prompt: str = "music",
+        seed: Optional[int] = None,
+        negative_prompt: str = "music, voice, ethereal",
     ) -> str:
         logger.debug(f"Generating audio for {video_url} with prompt: {prompt}")
         tmp_upload_file = os.path.abspath(
@@ -108,7 +100,7 @@ Use this tool to add realistic foley sound effects synced to a video using the z
                 "duration": duration,
                 "num_steps": num_steps,
                 "cfg_strength": cfg_strength,
-                "seed": seed,
+                "seed": seed if seed else random.randint(0, 2147483647),
                 "negative_prompt": negative_prompt,
             }
 
@@ -125,7 +117,9 @@ Use this tool to add realistic foley sound effects synced to a video using the z
                 )
                 logger.debug(f"Generated <{output.url}>")
             slug = re.sub(r"[^a-z0-9-_]", "", slug)[:255].lower().replace(" ", "-")
-            filename = f"{self.ref.split(':')[0].replace('/', '_')}_{uuid4().hex[:8]}_{slug}.mp4"
+            filename = safe_filename(
+                self.ref.split(":")[0].replace("/", "_"), slug, "mp4"
+            )
             file_path = os.path.abspath(
                 os.path.join(neuron_config.static_folder, filename)
             )

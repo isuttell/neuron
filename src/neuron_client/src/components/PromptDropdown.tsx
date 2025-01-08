@@ -45,7 +45,7 @@ export function PromptDropdown({
           type="button"
           size="sm"
           variant="outline"
-          className="mr-2"
+          className="mr-2 size-10"
           disabled={disabled}
         >
           <ScrollText className="size-3.5" />

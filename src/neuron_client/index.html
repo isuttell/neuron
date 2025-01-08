@@ -1,14 +1,17 @@
 <!doctype html>
 <html lang="en" class="dark text-foreground bg-background">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="format-detection" content="telephone=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
     <base href="%BASE_URL%" />
     <link rel="icon" href="data:;base64,iVBORw0KGgo=">
     <title>Neuron</title>
   </head>
   <body>
-    <div id="root"></div>
+    <div class="px-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]" id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

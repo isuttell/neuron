@@ -12,6 +12,7 @@ from datetime import datetime
 import time
 import aiohttp
 from neuron_server.util.image_utilities import create_thumbnails
+from neuron_server.util.slug import safe_filename
 
 
 class ImageGenerationOverrideSettings(BaseModel):
@@ -101,7 +102,7 @@ class Automatic1111API:
         endpoint: str = "http://192.168.1.211:7860",
     ) -> None:
         self.endpoint = endpoint
-        self.output_directory = output_directory
+        self.output_directory = os.path.abspath(output_directory)
 
     async def generate(
         self,
@@ -195,7 +196,10 @@ class Automatic1111API:
             ),
         )
         pnginfo.add_text("Parameters", params.get("info", ""))
-        filename = os.path.join(self.output_directory, f"{uuid4()}.png")
+        filename = os.path.join(
+            self.output_directory,
+            safe_filename("automatic1111", "image", "png"),
+        )
         image.save(filename, quality=95, pnginfo=pnginfo)
         create_thumbnails(
             filename,

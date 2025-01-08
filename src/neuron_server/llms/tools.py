@@ -65,36 +65,37 @@ from neuron_server.tools.replicate_sound_effect_generation_tool import (
     ReplicateSoundEffectGenerationTool,
 )
 from neuron_server.tools.inspect_document_tool import DocumentInspectTool
-from neuron_server.tools.document_query_tool import DocumentQueryTool
 from neuron_server.tools.app_image_tool import AppImageTool
 from neuron_server.tools.openai_tts_tool import OpenAITTSTool
+from neuron_server.tools.personality_prompt_tool import PersonalityPromptTool
 
 homeassistant_api = HomeAssistantAPI(token=config.homeassistant.token)
 
 tool_sets: Dict[str, List[BaseTool]] = {
     "nasa": [],
     "charts": [],
+    "kepler": [
+        Automatic1111Tool(
+            api=Automatic1111API(
+                output_directory=config.static_folder,
+                endpoint=config.automatic1111_endpoint,
+            )
+        ),
+    ],
     "graph": [
         ArxivSearchTool(),
         GraphQuestionTool(),
         GraphArxivImportTool(),
         GraphImportTool(),
         GraphWebsiteImportTool(),
-        DocumentInspectTool(),
     ],
-    "document_query": [
+    "inspect": [
         InspectImageTool(),
-        DocumentQueryTool(),
         DocumentInspectTool(),
     ],
+    "document_query": [],
     "image": [
         DalleTool(),
-        # Automatic1111Tool(
-        #     api=Automatic1111API(
-        #         output_directory=os.path.join(config.static_folder),
-        #         endpoint=config.automatic1111_endpoint,
-        #     )
-        # ),
         ReplicateImageGenerationTool(),
         InspectImageTool(),
         AppImageTool(),
@@ -189,4 +190,5 @@ def get_tools(query: str) -> List[BaseTool]:
     if config.memory_enabled:
         ts.append(MemoryRecallTool())
         ts.append(MemoryStoreTool())
+    ts.append(PersonalityPromptTool())
     return list({tool.name: tool for tool in ts}.values())

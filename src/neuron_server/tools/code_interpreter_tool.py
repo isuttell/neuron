@@ -51,8 +51,8 @@ This tool executes Python code in a restricted environment for data analysis, pr
     timeout: int = 300
     code_interpreter_image: str = "192.168.1.160:5000/code-interpreter:latest"
 
-    def _run(self, description: str, python_code: str) -> str:
-        return asyncio.run(self._arun(description, python_code))
+    def _run(self, *args, **kwargs) -> str:
+        return asyncio.run(self._arun(*args, **kwargs))
 
     async def _arun(self, python_code: str) -> str:
         try:

@@ -34,7 +34,7 @@ class Automatic1111ToolArgs(BaseModel):
         default="sdxl\\sdxlNuclearGeneralPurposeV3Semi_v30BakedVAE",
     )
     cfg_scale: Optional[float] = Field(
-        description="The CFG scale to use for generation.", default=6
+        description="The CFG scale to use for generation.", default=4
     )
     enable_hr: Optional[bool] = Field(
         description="Whether to enable high resolution (HR) upscaling. May introduce artifacts. Defaults to False."
@@ -67,16 +67,17 @@ class Automatic1111Tool(BaseTool):
 
     def _run(
         self,
-        prompt: str,
+        *args,
+        **kwargs,
     ) -> str:
-        return asyncio.run(self._arun(prompt))
+        return asyncio.run(self._arun(*args, **kwargs))
 
     async def _arun(
         self,
         prompt: str,
         negative_prompt: Optional[str] = None,
         steps: Optional[int] = 30,
-        cfg_scale: Optional[float] = 6,
+        cfg_scale: Optional[float] = 4,
         sd_model_checkpoint: Optional[Automatic1111Checkpoints] = None,
         adetailer_enabled: Optional[bool] = False,
         enable_hr: Optional[bool] = False,

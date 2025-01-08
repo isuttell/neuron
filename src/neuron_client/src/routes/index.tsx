@@ -10,6 +10,8 @@ import { useNavigate, Link } from "react-router-dom";
 import {
   getActivePersonalityId,
   getActivePersonality,
+  setActivePersonality,
+  getPersonalities,
 } from "../slices/personalitiesSlice";
 import logo from "@/assets/logo.svg";
 import { useToast } from "@/hooks/use-toast";
@@ -20,6 +22,14 @@ import { StatusMessage } from "../messages/StatusMessage";
 import { PromptDropdown } from "@/components/PromptDropdown";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { cn } from "../lib/utils";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { fetchPersonalities } from "../actions/personalityActions";
 
 const selectRecentThreads = (state: RootState) => {
   return Object.values(state.threads.threads)
@@ -44,8 +54,13 @@ export default function Index() {
   const activePersonalityId = useAppSelector(getActivePersonalityId);
   const activePersonality = useAppSelector(getActivePersonality);
   const recentThreads = useAppSelector(selectRecentThreads);
+  const personalities = useAppSelector(getPersonalities);
+  const personalitiesLoading = useAppSelector(
+    (state) => state.personalities.loading
+  );
 
   useEffect(() => {
+    dispatch(fetchPersonalities());
     dispatch(fetchRecentThreads());
   }, []);
 
@@ -94,19 +109,10 @@ export default function Index() {
     <div className="flex flex-1 p-4 flex-col justify-center items-center flex-nowrap max-h-screen overflow-auto gap-2 relative">
       <SidebarTrigger className="m-2 size-10 absolute top-2 left-2" />
       <div className="flex flex-col w-full h-full justify-center items-center">
-        <div className="flex justify-center items-center">
+        <div className="flex justify-center items-center m-6">
           <img src={logo} alt="Neuron" className="w-[120px]" />
         </div>
         <div className="flex flex-col gap-2 max-w-[768px] mx-auto w-full">
-          {activePersonality ? (
-            <div className="text-md text-center mb-6 font-bold">
-              {activePersonality.name}
-            </div>
-          ) : (
-            <div className="text-sm text-center mb-6">
-              Select a personality to start chatting
-            </div>
-          )}
           <form
             className=""
             onSubmit={(e) => {
@@ -119,7 +125,11 @@ export default function Index() {
             </Label>
             <Textarea
               id="prompt"
-              placeholder="Type your prompt here..."
+              placeholder={
+                activePersonality
+                  ? "Type your prompt here..."
+                  : "Select a personality first"
+              }
               className="flex min-h-[60px] w-full rounded-md border border-input bg-transparent text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 p-4"
               value={prompt}
               disabled={isDisabled}
@@ -131,12 +141,47 @@ export default function Index() {
                 }
               }}
             />
-            <div className="flex flex-row gap-2 pt-2 justify-end">
+            <div className="flex flex-row gap-2 pt-2">
+              <Select
+                value={activePersonalityId}
+                onValueChange={(value) => dispatch(setActivePersonality(value))}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue
+                    placeholder={
+                      personalitiesLoading
+                        ? "Loading personalities..."
+                        : "Select a personality"
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {personalitiesLoading ? (
+                    <div className="flex items-center justify-center p-2">
+                      <Spinner className="size-4" />
+                    </div>
+                  ) : personalities.length === 0 ? (
+                    <div className="text-sm text-muted-foreground text-center p-2">
+                      No personalities found
+                    </div>
+                  ) : (
+                    personalities
+                      .slice()
+                      .sort((a, b) => a.name.localeCompare(b.name))
+                      .map((personality) => (
+                        <SelectItem key={personality.id} value={personality.id}>
+                          {personality.name}
+                        </SelectItem>
+                      ))
+                  )}
+                </SelectContent>
+              </Select>
+              <div className="flex-1" />
               <Button
                 type="button"
                 size="sm"
                 variant={file ? "default" : "outline"}
-                className="mr-2 gap-1.5"
+                className="mr-2 size-10 gap-1.5"
                 disabled={isDisabled}
                 onClick={() => {
                   if (file) {
@@ -169,14 +214,14 @@ export default function Index() {
                   className="gap-1.5"
                   disabled={isDisabled}
                 >
-                  Greet
+                  Get Started
                 </Button>
               ) : null}
               <Button
                 onClick={() => handleSubmit(false)}
                 type="submit"
                 disabled={isDisabled || prompt.trim().length === 0}
-                className="gap-1.5 bg-primary text-primary-foreground"
+                className="gap-1.5 bg-accent text-accent-foreground"
               >
                 {isLoading ? (
                   <>
@@ -184,7 +229,7 @@ export default function Index() {
                   </>
                 ) : (
                   <>
-                    Prompt
+                    Send
                     <CornerDownLeft className="size-3.5" />
                   </>
                 )}
@@ -193,7 +238,7 @@ export default function Index() {
           </form>
           {recentThreads.length > 0 ? (
             <>
-              <div className="text-sm font-bold text-muted-foreground">
+              <div className="text-sm font-bold text-muted-foreground mt-6">
                 Recent updates
               </div>
               <div className="flex flex-col gap-2 mt-2">
@@ -205,6 +250,9 @@ export default function Index() {
                       className={cn(
                         "border-b border-border pb-2 last:pb-0 last:border-b-0"
                       )}
+                      onClick={() => {
+                        dispatch(setActivePersonality(thread.personality?.id));
+                      }}
                     >
                       <div className="flex flex-row gap-2 text-sm">
                         <div className="font-bold">

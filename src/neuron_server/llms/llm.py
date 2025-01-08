@@ -203,9 +203,7 @@ class LLM:
             {
                 "messages": get_buffer_string(messages),
                 "last_title": state.get("title", ""),
-                "now": datetime.now(timezone.utc)
-                .astimezone()
-                .strftime("%Y-%m-%d %H:%M:%S %Z"),
+                "now": datetime.now().astimezone().isoformat(),
             },
             config,
         )

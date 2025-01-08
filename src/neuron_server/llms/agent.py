@@ -180,6 +180,28 @@ async def astream(
 
         human_message = HumanMessage(content=prompt, id=str(uuid4()))
         human_message.created_at = datetime.now().isoformat()
+
+        if not thread.name:
+            logger.debug("Generating thread name...")
+            title_response = await llm.call_title(
+                state={
+                    "title": thread.name,
+                    "messages": [
+                        human_message,
+                    ],
+                },
+                config={
+                    "configurable": {
+                        "thread_id": str(thread.id),
+                        "personality_id": str(personality_id),
+                        "user_id": str(user_id),
+                    },
+                },
+            )
+            thread.name = title_response["title"]
+            await ThreadModel.set(thread.id, "name", thread.name)
+            await _debounced_publish("app", GetThreadResponse(thread=thread))
+
         await pubsub.publish(
             "app",
             MessageEvent(
@@ -198,7 +220,7 @@ async def astream(
                     human_message,
                 ],
                 "personality": personality.context,
-                "title": thread.name or "",
+                "title": thread.name,
                 "location": location,
                 "username": username,
                 "now": start_time.astimezone().isoformat(timespec="seconds"),

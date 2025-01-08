@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useAppDispatch, useAppSelector } from "../hooks";
 import {
   fetchPrompts,
@@ -16,12 +16,26 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { PromptForm } from "@/components/PromptForm";
-import { Pencil, Trash2 } from "lucide-react";
-import { getActivePersonalityId } from "@/slices/personalitiesSlice";
+import { CornerDownLeft, Pencil, FilePlus, Trash2 } from "lucide-react";
+import {
+  setActivePersonality,
+  getActivePersonalityId,
+} from "@/slices/personalitiesSlice";
 import { useToast } from "../hooks/use-toast";
 import { Spinner } from "@/components/ui/spinner";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { getPersonalities } from "@/slices/personalitiesSlice";
+import { createThread } from "../actions/threadActions";
+import { useNavigate } from "react-router-dom";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+
 export default function PromptsPage() {
+  const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { toast } = useToast();
   const prompts = useAppSelector(selectPrompts);
@@ -30,19 +44,30 @@ export default function PromptsPage() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [selectedPrompt, setSelectedPrompt] = useState<string | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const personalities = useAppSelector(getPersonalities);
+  const personalitiiesMap = useMemo(
+    () => new Map(personalities.map((p) => [p.id, p])),
+    [personalities]
+  );
 
   useEffect(() => {
-    if (activePersonalityId) {
-      dispatch(fetchPrompts(activePersonalityId));
-    }
-  }, [activePersonalityId]);
+    dispatch(fetchPrompts());
+  }, []);
 
-  const handleCreate = async (values: { name: string; text: string }) => {
+  const handleCreate = async (values: {
+    name: string;
+    text: string;
+    personalityId?: string;
+  }) => {
     setIsUpdating(true);
     setIsCreateOpen(false);
     try {
       await dispatch(
-        createPrompt({ ...values, personality_id: activePersonalityId })
+        createPrompt({
+          name: values.name,
+          text: values.text,
+          personality_id: values.personalityId || activePersonalityId,
+        })
       );
       setIsUpdating(false);
       toast({
@@ -58,7 +83,11 @@ export default function PromptsPage() {
     }
   };
 
-  const handleUpdate = async (values: { name: string; text: string }) => {
+  const handleUpdate = async (values: {
+    name: string;
+    text: string;
+    personalityId?: string;
+  }) => {
     if (selectedPrompt) {
       setIsUpdating(true);
       setIsCreateOpen(false);
@@ -66,8 +95,9 @@ export default function PromptsPage() {
         await dispatch(
           updatePrompt({
             id: selectedPrompt,
-            personality_id: activePersonalityId,
-            ...values,
+            personality_id: values.personalityId || activePersonalityId,
+            name: values.name,
+            text: values.text,
           })
         );
         setSelectedPrompt(null);
@@ -105,6 +135,18 @@ export default function PromptsPage() {
     }
   };
 
+  const groupedPrompts = useMemo(() => {
+    const groups: { [key: string]: typeof prompts } = {};
+    prompts.forEach((prompt) => {
+      const personalityId = prompt.personality_id || "default";
+      if (!groups[personalityId]) {
+        groups[personalityId] = [];
+      }
+      groups[personalityId].push(prompt);
+    });
+    return groups;
+  }, [prompts]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-full w-full">
@@ -114,48 +156,150 @@ export default function PromptsPage() {
   }
 
   return (
-    <div className="container mx-auto p-4 space-y-6 max-w-screen-md">
-      <div className="flex justify-between items-center">
+    <div className="flex flex-1 p-4 flex-col flex-nowrap max-h-screen overflow-auto">
+      <div className="flex justify-between mb-2 border-b pb-2">
         <SidebarTrigger className="size-10 mr-2" />
         <h1 className="text-2xl font-bold">Prompts</h1>
         <div className="flex-1" />
-        <Button onClick={() => setIsCreateOpen(true)}>Create New Prompt</Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" onClick={() => setIsCreateOpen(true)}>
+              <FilePlus className="size-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Create new prompt</TooltipContent>
+        </Tooltip>
       </div>
-
-      <div className="space-y-4">
-        {prompts.map((prompt) => (
-          <div
-            key={prompt.id}
-            className="p-4 border rounded-lg flex justify-between items-start"
-          >
-            <div className="space-y-2">
-              <h3 className="font-medium">{prompt.name}</h3>
-              <p className="text-sm text-gray-600">{prompt.text}</p>
+      <ScrollArea className="flex-1 overflow-y-auto">
+        <div className="space-y-8 max-w-[768px] mx-auto">
+          {Object.entries(groupedPrompts)
+            .sort(([a], [b]) => {
+              const nameA = personalitiiesMap.get(a)?.name || "";
+              const nameB = personalitiiesMap.get(b)?.name || "";
+              return nameA.localeCompare(nameB);
+            })
+            .map(([personalityId, personalityPrompts]) => (
+              <div key={personalityId} className="space-y-4">
+                <div className="flex border-b pb-2 px-4">
+                  {personalitiiesMap.get(personalityId)?.logo ? (
+                    <img
+                      src={personalitiiesMap
+                        .get(personalityId)
+                        ?.logo?.replace(/\.(?=[^.]*$)/, `_t.`)}
+                      alt={personalitiiesMap.get(personalityId)?.name}
+                      className="size-8 rounded-sm mr-4"
+                    />
+                  ) : null}
+                  <h2 className="text-xl font-semibold ">
+                    {personalitiiesMap.get(personalityId)?.name || "General"}
+                  </h2>
+                  <div className="flex-1" />
+                  {personalitiiesMap.get(personalityId) ? (
+                    <Button
+                      variant={
+                        activePersonalityId === personalityId
+                          ? "default"
+                          : "outline"
+                      }
+                      onClick={() => {
+                        dispatch(
+                          setActivePersonality(
+                            personalityId !== activePersonalityId
+                              ? personalityId
+                              : undefined
+                          )
+                        );
+                      }}
+                    >
+                      {activePersonalityId === personalityId
+                        ? "Deactivate"
+                        : "Activate"}
+                    </Button>
+                  ) : null}
+                </div>
+                <div className="space-y-4">
+                  {personalityPrompts
+                    .sort((a, b) => a.name.localeCompare(b.name))
+                    .map((prompt) => (
+                      <div
+                        key={prompt.id}
+                        className="p-4 border rounded-lg flex justify-between items-start"
+                      >
+                        <div className="space-y-2">
+                          <h3 className="font-medium">{prompt.name}</h3>
+                          <p className="text-sm text-gray-400 whitespace-pre-wrap">
+                            {prompt.text}
+                          </p>
+                        </div>
+                        <div className="flex flex-col space-y-2 ml-2">
+                          <Button
+                            size="icon"
+                            className="bg-accent text-accent-foreground"
+                            onClick={() => {
+                              const personalityId =
+                                prompt.personality_id || activePersonalityId;
+                              if (!personalityId) {
+                                toast({
+                                  title: "No personality selected",
+                                  variant: "destructive",
+                                });
+                                return;
+                              }
+                              dispatch(
+                                createThread({
+                                  personalityId,
+                                  prompt: prompt.text,
+                                })
+                              )
+                                .unwrap()
+                                .then(({ thread }) => {
+                                  if (prompt.personality_id) {
+                                    dispatch(
+                                      setActivePersonality(personalityId)
+                                    );
+                                  }
+                                  navigate(`/thread/${thread.id}`);
+                                })
+                                .catch((error) => {
+                                  toast({
+                                    variant: "destructive",
+                                    title: "Failed to create thread",
+                                    description:
+                                      error?.message ||
+                                      "An unexpected error occurred",
+                                  });
+                                });
+                            }}
+                          >
+                            <CornerDownLeft className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setSelectedPrompt(prompt.id)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDelete(prompt.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            ))}
+          {prompts.length === 0 && (
+            <div className="p-4 flex justify-center items-center">
+              <p className="text-sm text-gray-600">No saved prompts</p>
             </div>
-            <div className="flex space-x-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setSelectedPrompt(prompt.id)}
-              >
-                <Pencil className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => handleDelete(prompt.id)}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        ))}
-        {prompts.length === 0 && (
-          <div className="p-4 flex justify-center items-center">
-            <p className="text-sm text-gray-600">No saved prompts</p>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      </ScrollArea>
 
       {/* Edit Dialog */}
       <Dialog
@@ -186,6 +330,7 @@ export default function PromptsPage() {
           <PromptForm
             onSubmit={handleCreate}
             onCancel={() => setIsCreateOpen(false)}
+            disabled={isUpdating}
           />
         </DialogContent>
       </Dialog>

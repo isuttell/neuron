@@ -3,6 +3,8 @@ import type { PayloadAction } from "@reduxjs/toolkit";
 import type { RootState } from "../store";
 import * as actions from "../actions/personalityActions";
 import * as threadActions from "../actions/threadActions";
+import * as promptsSlice from "./promptsSlice";
+
 export interface Personality {
   id: string;
   name: string;
@@ -143,6 +145,22 @@ export const personalitiesSlice = createSlice({
         (state, action: PayloadAction<IncomingPersonalitiesEvent>) => {
           for (const personality of action.payload.personalities) {
             upsert(state, personality);
+          }
+        }
+      )
+      .addCase(
+        promptsSlice.fetchPrompts.fulfilled,
+        (
+          state,
+          action: PayloadAction<{
+            prompts: promptsSlice.Prompt[];
+            personalities: Personality[];
+          }>
+        ) => {
+          if (action.payload.personalities) {
+            for (const personality of action.payload.personalities) {
+              upsert(state, personality);
+            }
           }
         }
       );

@@ -11,14 +11,12 @@ import aiofiles
 import aiohttp
 from PIL import PngImagePlugin, Image
 from datetime import datetime
-import shutil
 from neuron_server.util.image_utilities import create_thumbnails
 import time
 import logging
 from io import BytesIO
 import base64
 from langchain.schema import HumanMessage
-from langchain_anthropic import ChatAnthropic
 from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
@@ -26,6 +24,19 @@ from neuron_server.util.slug import safe_filename
 import random
 
 logger = logging.getLogger(__name__)
+
+RECRAFT_ASPECT_RATIO_TO_SIZE = {
+    "1:1": "1024x1024",
+    "16:9": "1820x1024",
+    "3:2": "1536x1024",
+    "2:3": "1024x1536",
+    "4:3": "1365x1024",
+    "3:4": "1024x1365",
+    "5:4": "1280x1024",
+    "4:5": "1024x1280",
+    "2:1": "2048x1024",
+    "1:2": "1024x2048",
+}
 
 
 class ImageDescription(BaseModel):
@@ -127,7 +138,6 @@ Prompt Tips:
         Literal[
             "1:1",
             "16:9",
-            "21:9",
             "3:2",
             "2:3",
             "4:5",
@@ -135,7 +145,6 @@ Prompt Tips:
             "3:4",
             "4:3",
             "9:16",
-            "9:21",
         ]
     ] = Field(
         description="The aspect ratio to use for the image generation.",
@@ -258,12 +267,20 @@ Use this tool to generate an image using a text prompt on replicate.com and has 
             input_args = {
                 "raw": raw,
                 "prompt": prompt,
-                "aspect_ratio": aspect_ratio,
                 "output_format": "png",
                 "safety_tolerance": 6,
                 "disable_safety_checker": True,
                 "num_inference_steps": num_inference_steps,
             }
+
+            # Add size parameter for recraft model, otherwise use aspect_ratio
+            if "recraft" in model:
+                input_args["size"] = RECRAFT_ASPECT_RATIO_TO_SIZE.get(
+                    aspect_ratio, "1024x1024"
+                )
+            else:
+                input_args["aspect_ratio"] = aspect_ratio
+
             if image_prompt:
                 input_args["image_prompt"] = image_prompt
                 input_args["image_prompt_strength"] = image_prompt_strength
@@ -296,11 +313,13 @@ Use this tool to generate an image using a text prompt on replicate.com and has 
             results = []
 
             for i, result in enumerate(output):
+                assert isinstance(result, replicate.helpers.FileOutput)
+                logger.debug(f"Generated <{result.url}>")
                 # Ensure a unique filename
                 filename = safe_filename(
-                    "replicate",
-                    f"{uuid4().hex[:8]}_{slug}",
-                    "png",
+                    model.replace("/", "_").split(":")[0],
+                    slug,
+                    "png",  # We overwrite the file and convert to png regardless to embed the metadata
                 )
                 file_path = os.path.abspath(
                     os.path.join(neuron_config.static_folder, filename)
@@ -333,7 +352,9 @@ Use this tool to generate an image using a text prompt on replicate.com and has 
                     described_image = await describe_image(prompt, image)
                     pnginfo.add_text("Description", described_image.description)
                     pnginfo.add_text("Caption", described_image.caption)
-                image.save(file_path, format="png", pnginfo=pnginfo, quality=95)
+                image.save(
+                    file_path, format="png", pnginfo=pnginfo, quality=90, optimize=True
+                )
                 create_thumbnails(
                     file_path,
                     neuron_config.static_folder,

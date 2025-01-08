@@ -6,6 +6,7 @@ from typing import Optional
 from neuron_server.event_router import EventRouter
 from werkzeug.exceptions import NotFound
 from neuron_server.controllers.auth import requires_auth
+from neuron_server.models.personality_model import PersonalityModel
 
 router = EventRouter()
 blueprint = Blueprint("prompt", __name__)
@@ -33,11 +34,13 @@ async def get_prompt(prompt_id: UUID):
 @blueprint.get("/")
 @requires_auth
 async def list_prompts():
-    personality_id = request.args.get("personality_id")
-    prompts = await PromptModel.list(
-        personality_id=UUID(personality_id) if personality_id else None
-    )
-    return {"prompts": [prompt.model_dump() for prompt in prompts]}
+    prompts = await PromptModel.list()
+    personality_ids = list(set([prompt.personality_id for prompt in prompts]))
+    personalities = await PersonalityModel.get_many(personality_ids)
+    return {
+        "prompts": [prompt.model_dump() for prompt in prompts],
+        "personalities": [personality.model_dump() for personality in personalities],
+    }
 
 
 @blueprint.post("/")

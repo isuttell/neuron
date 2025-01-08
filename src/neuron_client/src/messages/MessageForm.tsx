@@ -12,20 +12,20 @@ import { cn } from "@/lib/utils";
 import { useToast } from "../hooks/use-toast";
 import { StatusMessage } from "./StatusMessage";
 import { PromptDropdown } from "@/components/PromptDropdown";
-
+import { Thread } from "../slices/threadsSlice";
 interface MessageFormProps {
-  status: string;
   disabled?: boolean;
   onSubmit: (value: string) => void;
   className?: string;
   lastMessageAt?: number;
+  thread: Thread;
 }
 
 export default function MessageForm({
   disabled = false,
-  status,
   onSubmit,
   className = "",
+  thread,
 }: MessageFormProps) {
   const { toast } = useToast();
   const dispatch = useAppDispatch();
@@ -50,7 +50,7 @@ export default function MessageForm({
       postMessageByThread({
         threadId,
         prompt: value,
-        personalityId: activePersonalityId,
+        personalityId: thread.personality_id,
         file,
       })
     ).catch((error) => {
@@ -93,7 +93,7 @@ export default function MessageForm({
       />
       <div className="flex items-center gap-2 pt-2">
         <StatusMessage
-          status={status}
+          status={thread.status}
           tagClassName="text-sm text-muted-foreground capitalize inline-flex items-center rounded-md bg-muted px-2 py-1 font-medium ring-1 ring-inset ring-gray-100/10"
         />
         <div className="flex-1" />
@@ -132,19 +132,19 @@ export default function MessageForm({
           size="sm"
           className={cn(
             "ml-auto gap-1.5",
-            status === "idle"
+            thread.status === "idle"
               ? "bg-accent text-accent-foreground"
               : "bg-primary text-primary-foreground"
           )}
           disabled={disabled || value.length === 0}
         >
-          {status !== "idle" ? (
+          {thread.status !== "idle" ? (
             <>
               <Spinner className="size-3.5" />
             </>
           ) : (
             <>
-              Send Message
+              Send
               <CornerDownLeft className="size-3.5" />
             </>
           )}

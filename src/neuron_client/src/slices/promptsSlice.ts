@@ -1,4 +1,4 @@
-import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 import { RootState } from "../store";
 import { getAccessToken } from "../actions/getToken";
 export interface Prompt {
@@ -8,6 +8,11 @@ export interface Prompt {
   personality_id: string | null;
   created_at: string;
   updated_at: string;
+}
+
+interface IncomingPromptEvent {
+  type: "prompt";
+  prompt: Prompt;
 }
 
 interface PromptsState {
@@ -26,8 +31,8 @@ export const fetchPrompts = createAsyncThunk(
   "prompts/fetchPrompts",
   async (personalityId?: string) => {
     const url = personalityId
-      ? `/api/prompts?personality_id=${personalityId}`
-      : "/api/prompts";
+      ? `/api/prompts/?personality_id=${personalityId}`
+      : "/api/prompts/";
     const accessToken = await getAccessToken();
     const response = await fetch(url, {
       headers: {
@@ -38,7 +43,10 @@ export const fetchPrompts = createAsyncThunk(
       throw new Error("Failed to fetch prompts");
     }
     const data = await response.json();
-    return data.prompts;
+    return {
+      prompts: data.prompts,
+      personalities: data.personalities,
+    };
   }
 );
 
@@ -46,7 +54,7 @@ export const createPrompt = createAsyncThunk(
   "prompts/createPrompt",
   async (prompt: { name: string; text: string; personality_id?: string }) => {
     const accessToken = await getAccessToken();
-    const response = await fetch("/api/prompts", {
+    const response = await fetch("/api/prompts/", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -106,6 +114,9 @@ const promptsSlice = createSlice({
     clearPrompts: (state) => {
       state.prompts = {};
     },
+    upsertPrompt: (state, action: PayloadAction<IncomingPromptEvent>) => {
+      state.prompts[action.payload.prompt.id] = action.payload.prompt;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -116,7 +127,7 @@ const promptsSlice = createSlice({
       })
       .addCase(fetchPrompts.fulfilled, (state, action) => {
         state.loading = false;
-        state.prompts = action.payload.reduce(
+        state.prompts = action.payload.prompts.reduce(
           (acc: Record<string, Prompt>, prompt: Prompt) => {
             acc[prompt.id] = prompt;
             return acc;
@@ -146,7 +157,7 @@ const promptsSlice = createSlice({
   },
 });
 
-export const { clearPrompts } = promptsSlice.actions;
+export const { clearPrompts, upsertPrompt } = promptsSlice.actions;
 
 // Selectors
 export const selectPrompts = (state: RootState) =>

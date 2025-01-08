@@ -120,16 +120,17 @@ function MediaList({
   const [currentPlayingIndex, setCurrentPlayingIndex] = useState<number | null>(
     null
   );
-  const [autoPlay, setAutoPlay] = useState<boolean>(false);
+  const [audioAutoPlay, setAudioAutoPlay] = useState<boolean>(false);
   const audioItems = mediaItems.filter((item) => item.type === "audio");
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   useEffect(() => {
     setCurrentPlayingIndex(null);
   }, [threadId]);
+
   // Update when new items are added
   useEffect(() => {
     if (
-      autoPlay &&
+      audioAutoPlay &&
       !isPlaying &&
       currentPlayingIndex === null &&
       audioItems.length > 0
@@ -137,7 +138,7 @@ function MediaList({
       // Set to play the last audio item if it's new
       setCurrentPlayingIndex(audioItems.length - 1);
     }
-  }, [audioItems.length, isPlaying, autoPlay]);
+  }, [audioItems.length, isPlaying, audioAutoPlay]);
 
   const handleAudioPlay = (index: number) => {
     setCurrentPlayingIndex(index);
@@ -150,7 +151,7 @@ function MediaList({
 
   const handleAudioComplete = (index: number) => {
     setIsPlaying(false);
-    if (!autoPlay) return;
+    if (!audioAutoPlay) return;
 
     const nextIndex = index + 1;
     if (nextIndex < audioItems.length) {
@@ -187,6 +188,7 @@ function MediaList({
               height={1024}
               thumbnail_size={thumbnail_size}
               showControls={showControls}
+              objectFit="contain"
             />
           );
         }
@@ -246,12 +248,15 @@ function MediaList({
         <div className="w-full flex">
           <Button
             variant="outline"
-            className={cn(autoPlay ? "bg-accent text-accent-foreground" : null)}
+            className={cn(
+              "w-full",
+              audioAutoPlay ? "bg-accent text-accent-foreground" : null
+            )}
             onClick={() => {
-              setAutoPlay(!autoPlay);
+              setAudioAutoPlay(!audioAutoPlay);
             }}
           >
-            {autoPlay ? "Stop Auto Play" : "Start Auto Play"}
+            {audioAutoPlay ? "Stop Audio Auto Play" : "Start Audio Auto Play"}
           </Button>
         </div>
       )}

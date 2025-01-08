@@ -22,22 +22,21 @@ class OpenAITTSToolArgs(BaseModel):
 The script to generate audio from. The script should be formatted as a list of spoken lines, with each line containing a voice identifier and the text to be spoken.
 
 Supported voices:
-<voices>
-    <voice>alloy</voice>
-    <voice>echo</voice>
-    <voice>fable</voice>
-    <voice>onyx</voice>
-    <voice>nova</voice>
-    <voice>shimmer</voice>
-</voices>
+alloy
+echo
+fable
+onyx
+nova
+shimmer
 
-<example>
+Example:
+\"\"\"
 [nova]
 Welcome! I'm here to demonstrate our text-to-speech voices.
 
 [alloy]
 And I'll help explain how they sound different.
-</example>
+\"\"\"
 """.strip(),
     )
     speed: float = Field(

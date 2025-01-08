@@ -23,7 +23,8 @@ import { ChevronUp } from "lucide-react";
 import { useAuth0 } from "@auth0/auth0-react";
 import { getSidebarImage } from "@/slices/appSlice";
 import { useAppSelector } from "@/hooks";
-
+import { AspectRatio } from "@/components/ui/aspect-ratio";
+import { ThreadsUpdating } from "@/components/ThreadsUpdating";
 const links = [
   {
     to: "/",
@@ -36,14 +37,14 @@ const links = [
     Icon: CircleUser,
   },
   {
-    to: "/gallery",
-    label: "Gallery",
-    Icon: GalleryThumbnails,
-  },
-  {
     to: "/prompts",
     label: "Prompts",
     Icon: FileText,
+  },
+  {
+    to: "/gallery",
+    label: "Gallery",
+    Icon: GalleryThumbnails,
   },
 ];
 
@@ -55,13 +56,16 @@ export function MainSidebar() {
   return (
     <Sidebar>
       <SidebarHeader className="border-b">
-        <div className="flex justify-center items-center p-2">
+        <AspectRatio
+          ratio={1}
+          className="flex justify-center rounded-lg bg-muted items-center m-2"
+        >
           <ImageContent
             url={sidebarImage || `/static/smart_dashboard_image.png`}
             width={256}
             height={256}
           />
-        </div>
+        </AspectRatio>
         <div>
           <Link
             to="/"
@@ -69,6 +73,8 @@ export function MainSidebar() {
           >
             <img src={logo} alt="Neuron" className="size-6 -ml-1" />
             <span>Neuron</span>
+            <div className="flex-1" />
+            <ThreadsUpdating />
           </Link>
         </div>
         <SidebarMenu>

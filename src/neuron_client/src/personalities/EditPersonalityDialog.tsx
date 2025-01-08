@@ -29,20 +29,20 @@ interface EditPersonalityDialogProps {
 }
 
 const ToolSetLabels = {
-  arxiv: "Arxiv",
   astro: "Astro",
   code_interpreter: "Code Interpreter",
   dice: "Dice",
   hd2: "Hell Divers 2",
   homeassistant: "Smart Home",
   image: "Image Generation",
-  graph: "Graph",
+  graph: "Knowledge Graph",
   notifications: "Notifications",
+  inspect: "Inspect",
   search: "Search",
   tts: "Audio Generation",
   weather: "Weather",
   video: "Video Generation",
-  document_query: "Document Query",
+  kepler: "Kepler",
 };
 
 const EditPersonalityDialog: React.FC<EditPersonalityDialogProps> = ({

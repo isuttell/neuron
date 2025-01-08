@@ -19,13 +19,14 @@ class ElevenLabsTTSToolArgs(BaseModel):
         description="""
 The script format should consist of speaker identifiers followed by their respective dialogues, formatted as the example below:
 
-<example>
+Example:
+\"\"\"
 [Chris]
 Hello, how are you?
 
 [Jessica]
 I'm great!
-</example>
+\"\"\"
 
 Each script block should be short enough to be processed in a single call to the API.
 
@@ -55,7 +56,6 @@ Sarah
 Character Voices:
 Callum (male, middle-aged, intense)
 Charlotte (female, Swedish)
-Oxley - Evil Character
 Sexy Female Villain Voice
 
 Voice Clones:
@@ -94,6 +94,7 @@ This tool generates audio from a provided script using ElevenLabs' TTS APIs and 
         ] = "eleven_multilingual_v2",
     ) -> str:
         try:
+            logger.debug(f"Generating elevenlabs audio using {model}...")
             client = AsyncElevenLabs(api_key=config.elevenlabs_api_key)
             working_dir = os.path.abspath(os.path.join(config.temp_folder, uuid4().hex))
             os.makedirs(working_dir)

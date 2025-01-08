@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Download, Copy } from "lucide-react";
 import {
   Dialog,
@@ -16,7 +16,7 @@ import {
   TooltipContent,
 } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
-
+import { cn } from "@/lib/utils";
 interface ImageContentProps {
   url: string;
   alt?: string;
@@ -25,6 +25,7 @@ interface ImageContentProps {
   thumbnail_size?: "t" | "l" | "xl";
   preload?: boolean;
   showControls?: boolean;
+  objectFit?: "cover" | "contain";
 }
 
 const ImageContent: React.FC<ImageContentProps> = ({
@@ -35,9 +36,15 @@ const ImageContent: React.FC<ImageContentProps> = ({
   thumbnail_size = "t",
   preload = false,
   showControls = false,
+  objectFit = "cover",
 }) => {
   const [imageLoaded, setImageLoaded] = useState(!preload);
+  const [thumbnailLoaded, setThumbnailLoaded] = useState(false);
   const { toast } = useToast();
+  const thumbnailRef = useRef<HTMLImageElement>(null);
+  const thumbnailUrl = url.endsWith(".gif")
+    ? url
+    : url.replace(/\.(?=[^.]*$)/, `_${thumbnail_size}.`);
   useEffect(() => {
     if (preload) {
       const img = new Image();
@@ -47,17 +54,26 @@ const ImageContent: React.FC<ImageContentProps> = ({
       };
     }
   }, [url]);
+
+  useEffect(() => {
+    if (thumbnailRef.current) {
+      thumbnailRef.current.onload = () => {
+        setThumbnailLoaded(true);
+      };
+    }
+  }, [thumbnailUrl]);
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <div className="relative max-h-[1024px] max-w-[1024px]">
+        <div className="relative max-h-[1024px] max-w-[1024px] w-full h-full">
           <img
-            className="rounded-lg w-full  object-contain cursor-pointer bg-black"
-            src={
-              url.endsWith(".gif")
-                ? url
-                : url.replace(/\.(?=[^.]*$)/, `_${thumbnail_size}.`)
-            }
+            ref={thumbnailRef}
+            className={cn(
+              "rounded-lg w-full h-full cursor-pointer bg-black transition-opacity duration-500",
+              thumbnailLoaded ? "opacity-100" : "opacity-50",
+              objectFit === "cover" ? "object-cover" : "object-contain"
+            )}
+            src={thumbnailUrl}
             alt={alt}
             width={width}
             height={height}
@@ -119,11 +135,7 @@ const ImageContent: React.FC<ImageContentProps> = ({
           {alt && <DialogDescription>{alt}</DialogDescription>}
         </DialogHeader>
         <div className="w-full overflow-hidden">
-          <img
-            src={url}
-            alt={alt}
-            className="w-full h-full rounded-lg bg-black object-contain"
-          />
+          <img src={url} alt={alt} className="w-full h-full object-contain" />
         </div>
         <Button className="w-full" variant="outline" asChild>
           <a

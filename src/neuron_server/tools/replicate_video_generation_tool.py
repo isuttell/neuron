@@ -1,5 +1,5 @@
 from langchain.tools import BaseTool
-from typing import Type, Optional
+from typing import Type, Optional, Literal
 from pydantic import BaseModel, Field
 import replicate.helpers
 from neuron_server.logger import logger
@@ -24,13 +24,20 @@ class ReplicateVideoGenerationToolArgs(BaseModel):
     slug: str = Field(
         description="A unique identifier. Must be all lower case with no special characters or spaces. Use dashes for spaces. Keep it short and descriptive. Must be less than 256 characters",
     )
+    ref: Literal[
+        "minimax/video-01",
+        "minimax/video-01-live",
+    ] = Field(
+        description="The model to use for the video generation. minimax/video-01 is for general use and minimax/video-01-live is for 2d animation and digital illustrations",
+        default="minimax/video-01",
+    )
 
 
 class ReplicateVideoGenerationTool(BaseTool):
     name: str = "replicate_video_generation"
     description: str = (
         """
-This tool uses the video generation model minimax/video-01, also known as Hailuo, on replicate.com to generate a video from a text prompt, or from an image, that is 6 seconds long. This model supports high-definition videos at 720p resolution and 25fps, featuring cinematic camera movement effects. It can quickly create visually striking content based on text descriptions. This tool can't handle overly complex scenes or changes so focus on subtly bringing the scene to life like a living photo. Only use this tool when the user specifically asks for it as it costs extra each time to run. This tool may take several minutes or more to complete.
+This tool uses the video generation model minimax/video-01, also known as Hailuo, on Replicate to generate a video from a text prompt, or from an image, that is 6 seconds long. This model supports high-definition videos at 720p resolution and 25fps, featuring cinematic camera movement effects. It can quickly create visually striking content based on text descriptions and supports facial animation. This tool can't handle overly complex scenes or action. Only use this tool when the user specifically asks for it as it costs extra each time to run. This tool may take several minutes or more to complete.
 """.strip()
     )
 
@@ -38,13 +45,15 @@ This tool uses the video generation model minimax/video-01, also known as Hailuo
         ReplicateVideoGenerationToolArgs
     )
 
-    ref: str = "minimax/video-01"
-
-    def _run(self, prompt: str, slug: str, image_url: Optional[str] = None) -> str:
-        return asyncio.run(self._arun(prompt, slug, image_url))
+    def _run(self, *args, **kwargs) -> str:
+        return asyncio.run(self._arun(*args, **kwargs))
 
     async def _arun(
-        self, prompt: str, slug: str, image_url: Optional[str] = None
+        self,
+        ref: Literal["minimax/video-01", "minimax/video-01-live"],
+        prompt: str,
+        slug: str,
+        image_url: Optional[str] = None,
     ) -> str:
         start_time = time.perf_counter()
         source = f" from {image_url}" if image_url else ""
@@ -68,7 +77,7 @@ This tool uses the video generation model minimax/video-01, also known as Hailuo
                 input_args["first_frame_image"] = open(tmp_upload_file, "rb")
             try:
                 output: replicate.helpers.FileOutput = await replicate.async_run(
-                    self.ref, input=input_args
+                    ref, input=input_args
                 )
                 logger.debug(f"Generated <{output.url}>")
             finally:
@@ -79,7 +88,7 @@ This tool uses the video generation model minimax/video-01, also known as Hailuo
                     input_args["first_frame_image"].close()
 
             slug = re.sub(r"[^a-z0-9-_]", "", slug)[:255].lower().replace(" ", "-")
-            filename = f"{self.ref.replace('/', '_')}_{uuid4().hex[:8]}_{slug}.mp4"
+            filename = f"{ref .replace('/', '_')}_{uuid4().hex[:8]}_{slug}.mp4"
             file_path = os.path.abspath(
                 os.path.join(neuron_config.static_folder, filename)
             )

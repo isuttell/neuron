@@ -10,6 +10,7 @@ import { useAuth0, withAuthenticationRequired } from "@auth0/auth0-react";
 import { Button } from "@/components/ui/button";
 import { setGetAccessTokenSilently } from "../actions/getToken";
 import { fetchConfig } from "@/slices/appSlice";
+import { ThreadTitleUpdater } from "@/components/ThreadTitleUpdater";
 
 function Root() {
   const {
@@ -69,6 +70,7 @@ function Root() {
 
   return (
     <SidebarProvider>
+      <ThreadTitleUpdater />
       <main className="flex flex-1">
         {!isLoading && isAuthenticated && isConnected ? (
           <>
