@@ -8,6 +8,7 @@ import personalities from "./slices/personalitiesSlice";
 import images from "./slices/imagesSlice";
 import app from "./slices/appSlice";
 import promptsReducer from "./slices/promptsSlice";
+import embeddingsReducer from "./slices/embeddingsSlice";
 
 export const store = configureStore({
   reducer: {
@@ -18,6 +19,7 @@ export const store = configureStore({
     personalities,
     images,
     prompts: promptsReducer,
+    embeddings: embeddingsReducer,
   },
   // @ts-ignore
   middleware: (getDefaultMiddleware) =>

@@ -23,6 +23,8 @@ import {
   TooltipTrigger,
   TooltipContent,
 } from "@/components/ui/tooltip";
+import EmbeddingsButton from "./EmbeddingsButton";
+
 interface PersonalityItemProps {
   personality: Personality;
   className?: string;
@@ -80,6 +82,7 @@ const PersonalityItem: React.FC<PersonalityItemProps> = ({
         )}
       </CardContent>
       <CardFooter className="flex gap-2 justify-end">
+        <EmbeddingsButton personalityId={personality.id} />
         <EditPersonalityDialog personality={personality} />
         <Tooltip delayDuration={0}>
           <TooltipTrigger asChild>

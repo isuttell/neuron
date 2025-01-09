@@ -7,11 +7,14 @@ Neuron is a realtime chat application built with LangChain and LangGraph to allo
 - **src/neuron_client** React frontend application.
 - **src/neuron_client/src/components/ui** Shadcn UI components
 - **src/neuron_client/src/actions** Redux actions
+- **src/neuron_client/src/main.tsx** React router configuration.
+- **src/neuron_client/src/store.ts** Redux store configuration.
 - **src/neuron_server** Python backend application.
 - **src/neuron_server/tools** LangChain tools
 - **src/neuron_server/controllers** Quart controllers with WebSocket and REST endpoints.
 - **src/neuron_server/models** Database models; follow SQLAlchemy ORM conventions.
 - **src/neuron_server/llms** LangChain LLM integrations.
+- **src/neuron_server/api.py** Quart app initialization, controller registration and event router, backend router configuration.
 
 ## Code Style and Structure
 

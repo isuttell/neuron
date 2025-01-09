@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, JSON, func
 from sqlalchemy.dialects.postgresql import UUID as pgUUID, JSONB
 from pgvector.sqlalchemy import Vector
@@ -108,6 +108,9 @@ class LangchainPGCollection(Base):
     uuid = Column(pgUUID, primary_key=True, nullable=False)
     name = Column(String, nullable=False, unique=True)
     cmetadata = Column(JSON, nullable=True)
+    embeddings: Mapped[List["LangchainPGEmbedding"]] = relationship(
+        back_populates="collection", cascade="all, delete-orphan"
+    )
 
 
 class LangchainPGEmbedding(Base):
@@ -122,6 +125,9 @@ class LangchainPGEmbedding(Base):
     embedding = Column(Vector(), nullable=True)
     document = Column(String, nullable=True)
     cmetadata = Column(JSONB, nullable=True)
+    collection: Mapped[Optional["LangchainPGCollection"]] = relationship(
+        back_populates="embeddings"
+    )
 
 
 class Prompt(Base):

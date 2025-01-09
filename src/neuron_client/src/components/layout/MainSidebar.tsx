@@ -51,10 +51,9 @@ const links = [
 export function MainSidebar() {
   const location = useLocation();
   const { logout, user } = useAuth0();
-
   const sidebarImage = useAppSelector(getSidebarImage);
   return (
-    <Sidebar>
+    <Sidebar className="z-50">
       <SidebarHeader className="border-b">
         <AspectRatio
           ratio={1}

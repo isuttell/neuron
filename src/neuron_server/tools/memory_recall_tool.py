@@ -166,7 +166,7 @@ class MemoryRecallTool(BaseTool):
             return NO_MEMORIES_FOUND
         results: List[Document] = []
         for doc, score in doc_scores:
-            doc.metadata["score"] = round(score * 100)  # calculate_score(doc, score)
+            doc.metadata["score"] = calculate_score(doc, score)
             results.append(doc)
 
         # Filter out memories that don't meet the score threshold after calculating

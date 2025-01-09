@@ -36,7 +36,8 @@ from neuron_server.config import config
 from neuron_server.logger import logger
 from neuron_server.models.embedding_model import EmbeddingModel
 from neuron_server.llms.tools import default_tools
-
+import asyncio
+import time
 
 tokenizer = tiktoken.encoding_for_model("gpt-4o")
 
@@ -65,9 +66,6 @@ class MemoryRecallRanking(BaseModel):
 class MemoryResponse(BaseModel):
     memory_recall_rankings: List[MemoryRecallRanking] = Field(
         description="A list of existing recall memories ranked by usefulness to the response"
-    )
-    new_memories: List[str] = Field(
-        description="A list of new details and novel information to save for later recall"
     )
 
 
@@ -109,7 +107,7 @@ class LLM:
 
         if config.memory_enabled:
             workflow.add_node("load_memory", self.load_memory)
-
+            workflow.add_node("update_memory", self.call_update_memory)
         # Entry point
         if config.memory_enabled:
             workflow.set_entry_point("load_memory")
@@ -127,7 +125,18 @@ class LLM:
         )
         workflow.add_edge("tools", "agent")
 
-        workflow.add_edge("update_title", END)
+        if config.memory_enabled:
+            workflow.add_conditional_edges(
+                "update_title",
+                self.should_call_update_memory,
+                {
+                    "update_memory": "update_memory",
+                    "continue": END,
+                },
+            )
+            workflow.add_edge("update_memory", END)
+        else:
+            workflow.add_edge("update_title", END)
 
         return workflow.compile()
 
@@ -185,7 +194,7 @@ class LLM:
             },
             config,
         )
-        response.created_at = datetime.now(timezone.utc).isoformat()
+        response.created_at = datetime.now().isoformat()
         # We return a list, because this will get added to the existing list
         return {"messages": [response]}
 
@@ -211,25 +220,17 @@ class LLM:
         title = re.sub(r'^([\'"])(.*)\1$', r"\2", title)
         return {"title": title}
 
-    async def call_update_memory(
+    async def rank_memories(
         self,
         state: AgentState,
         config: RunnableConfig,
     ):
-        message_trimmer: Runnable = trim_messages(
-            max_tokens=1024,
-            strategy="last",
-            token_counter=self.memory_model,
-            include_system=False,
-            allow_partial=True,
-            start_on="human",
-        )
-        assert isinstance(message_trimmer, Runnable)
-        messages: List[BaseMessage] = await message_trimmer.ainvoke(
-            state["messages"],
-            config,
-        )
-        assert isinstance(messages, list)
+        start_time = time.perf_counter()
+        messages = [
+            msg
+            for msg in state["messages"]
+            if not isinstance(msg, ToolMessage) and getattr(msg, "tool_calls", []) == []
+        ]
 
         model: Runnable = memory_prompt | self.memory_model.with_structured_output(
             MemoryResponse
@@ -239,15 +240,10 @@ class LLM:
             {
                 "messages": get_buffer_string(messages),
                 "recall_memories": state["recall_memories"],
-                "now": datetime.now(timezone.utc)
-                .astimezone()
-                .strftime("%Y-%m-%d %H:%M:%S %Z"),
+                "now": datetime.now().astimezone().isoformat(),
             },
             config,
         )
-        if not response:
-            logger.error("No response from memory model")
-            return
 
         if len(response.memory_recall_rankings) > 0:
             for ranking in response.memory_recall_rankings:
@@ -277,28 +273,18 @@ class LLM:
                     stats["scores"].append(ranking.score)
                     stats["scores"] = stats["scores"][-100:]
                     document.cmetadata["stats"] = stats
-                    logger.debug(
-                        "Updating memory {document_id}: {useful_percentage}%".format(
-                            document_id=ranking.document_id,
-                            useful_percentage=round(
-                                (stats["useful"] / stats["total"]) * 100
-                            ),
-                        )
-                    )
                     await document.save()
+        logger.debug(
+            f"{len(response.memory_recall_rankings) } memories ranked - {time.perf_counter() - start_time:.2f}s"
+        )
 
-        if len(response.new_memories) > 0:
-            new_memories: List[str] = []
-            for memory in response.new_memories:
-                matches = await MemoryRecallTool()._arun(
-                    query=memory, config=config, score_threshold=0.9, k=1
-                )
-                if matches == NO_MEMORIES_FOUND:
-                    # If there are no matches, then we add the memory to the list
-                    # to be saved later
-                    new_memories.append(memory)
-            if len(new_memories) > 0:
-                await MemoryStoreTool().ainvoke({"memories": new_memories})
+    async def call_update_memory(
+        self,
+        state: AgentState,
+        config: RunnableConfig,
+    ):
+        # call but don't wait for it to finish
+        asyncio.create_task(self.rank_memories(state, config))
 
     def should_call_tools(self, state: AgentState) -> Literal["tools", "continue"]:
         messages = state["messages"]
@@ -314,7 +300,7 @@ class LLM:
     def should_call_update_memory(
         self, state: AgentState
     ) -> Literal["update_memory", "continue"]:
-        if len(state["messages"]) > 1:
+        if len(state["recall_memories"]) > 0:
             return "update_memory"
         else:
             return "continue"

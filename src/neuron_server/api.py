@@ -29,6 +29,9 @@ from neuron_server.controllers.prompt_controller import (
 from neuron_server.controllers.app_controller import (
     blueprint as app_blueprint,
 )
+from neuron_server.controllers.embedding_controller import (
+    blueprint as embedding_blueprint,
+)
 from functools import wraps
 from quart import Response
 from typing import Optional
@@ -37,7 +40,6 @@ from neuron_server.database import pool
 from neuron_server.pubsub import client
 import re
 import os
-from PIL import Image
 import logging
 from neuron_server.util.image_utilities import create_thumbnails
 from neuron_server.controllers.auth import decode_token
@@ -135,6 +137,7 @@ blueprint = Blueprint(
 @blueprint.get("/thread/<thread_id>")
 @blueprint.get("/personalities")
 @blueprint.get("/personality/<personality_id>")
+@blueprint.get("/personality/<personality_id>/embeddings")
 @blueprint.get("/gallery")
 @blueprint.get("/code-viewer")
 @blueprint.get("/stats")
@@ -226,13 +229,16 @@ app.register_blueprint(image_blueprint, url_prefix="/api/images")
 app.register_blueprint(graph_blueprint, url_prefix="/api/graph")
 app.register_blueprint(prompt_blueprint, url_prefix="/api/prompts")
 app.register_blueprint(app_blueprint, url_prefix="/api/app")
+app.register_blueprint(embedding_blueprint, url_prefix="/api/embeddings")
 
 
 @app.errorhandler(Exception)
 async def internal_error(error):
+    logger.error(error, exc_info=True)
     return {"error": "Internal Server Error", "message": str(error)}, 500
 
 
 @app.errorhandler(HTTPException)
 async def http_error(error):
+    logger.error(error, exc_info=True)
     return {"error": error.name, "message": error.description}, error.code

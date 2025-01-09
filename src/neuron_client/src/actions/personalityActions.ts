@@ -1,5 +1,7 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import { getAccessToken } from "./getToken";
+import { Embedding } from "@/slices/embeddingsSlice";
+import { Personality } from "../slices/personalitiesSlice";
 
 export const fetchPersonality = createAsyncThunk(
   "personalities/fetchPersonality",
@@ -111,6 +113,89 @@ export const deletePersonality = createAsyncThunk(
         },
       });
       return personalityId;
+    } catch (error: any) {
+      return thunkAPI.rejectWithValue(error.message);
+    }
+  }
+);
+
+interface EmbeddingsResponse {
+  personalities: Personality[];
+  embeddings: Embedding[];
+}
+
+export const fetchPersonalityEmbeddings = createAsyncThunk(
+  "personalities/fetchEmbeddings",
+  async (personalityId: string, thunkAPI) => {
+    try {
+      const accessToken = await getAccessToken();
+      const response = await fetch(
+        `/api/personalities/${personalityId}/embeddings`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      );
+      const data = await response.json();
+      return data as EmbeddingsResponse;
+    } catch (error: any) {
+      return thunkAPI.rejectWithValue(error.message);
+    }
+  }
+);
+
+export const uploadEmbeddings = createAsyncThunk(
+  "personalities/uploadEmbeddings",
+  async (
+    { personalityId, file }: { personalityId: string; file: File },
+    thunkAPI
+  ) => {
+    try {
+      const accessToken = await getAccessToken();
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch(
+        `/api/personalities/${personalityId}/embeddings`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: formData,
+        }
+      );
+
+      const data = await response.json();
+      return data;
+    } catch (error: any) {
+      return thunkAPI.rejectWithValue(error.message);
+    }
+  }
+);
+
+export const deleteEmbedding = createAsyncThunk(
+  "personalities/deleteEmbedding",
+  async (
+    {
+      personalityId,
+      embeddingId,
+    }: { personalityId: string; embeddingId: string },
+    thunkAPI
+  ) => {
+    try {
+      const accessToken = await getAccessToken();
+      await fetch(
+        `/api/personalities/${personalityId}/embeddings/${embeddingId}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      );
+      return { personalityId, embeddingId };
     } catch (error: any) {
       return thunkAPI.rejectWithValue(error.message);
     }

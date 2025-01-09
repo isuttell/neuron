@@ -1,6 +1,10 @@
 from uuid import UUID
 from typing import List, Optional
-from neuron_server.database import get_session, LangchainPGEmbedding
+from neuron_server.database import (
+    get_session,
+    LangchainPGEmbedding,
+    LangchainPGCollection,
+)
 from pydantic import BaseModel, Field
 from uuid import uuid4
 from datetime import datetime, timezone
@@ -15,6 +19,9 @@ class EmbeddingModel(BaseModel):
     id: str = Field(description="The ID of the embedding")
     collection_id: Optional[UUID] = Field(
         description="The collection ID associated with the embedding"
+    )
+    collection_name: Optional[str] = Field(
+        description="The name of the collection this embedding belongs to", default=None
     )
     embedding: Optional[List[float]] = Field(
         description="The vector representation of the embedding"
@@ -87,11 +94,33 @@ class EmbeddingModel(BaseModel):
     async def list(cls, collection_id: UUID) -> List[Self]:
         async with get_session() as session:
             results = await session.execute(
-                select(LangchainPGEmbedding).where(
-                    LangchainPGEmbedding.collection_id == collection_id
+                select(
+                    LangchainPGEmbedding.id,
+                    LangchainPGEmbedding.collection_id,
+                    LangchainPGEmbedding.embedding,
+                    LangchainPGEmbedding.document,
+                    LangchainPGEmbedding.cmetadata,
+                    LangchainPGCollection.name.label("collection_name"),
                 )
+                .join(
+                    LangchainPGCollection,
+                    LangchainPGEmbedding.collection_id == LangchainPGCollection.uuid,
+                    isouter=True,
+                )
+                .where(LangchainPGEmbedding.collection_id == collection_id)
             )
-            return [cls(**embedding.__dict__) for embedding in results.scalars().all()]
+            embeddings = []
+            for row in results.all():
+                embedding_dict = {
+                    "id": row.id,
+                    "collection_id": row.collection_id,
+                    "embedding": row.embedding,
+                    "document": row.document,
+                    "cmetadata": row.cmetadata,
+                    "collection_name": row.collection_name,
+                }
+                embeddings.append(cls(**embedding_dict))
+            return embeddings
 
     async def save(self) -> None:
         async with get_session() as session:
@@ -117,15 +146,96 @@ class EmbeddingModel(BaseModel):
     async def filter_by_metadata(cls, key: str, value: str) -> List[Self]:
         async with get_session() as session:
             results = await session.execute(
-                select(LangchainPGEmbedding).where(
+                select(
+                    LangchainPGEmbedding.id,
+                    LangchainPGEmbedding.collection_id,
+                    LangchainPGEmbedding.embedding,
+                    LangchainPGEmbedding.document,
+                    LangchainPGEmbedding.cmetadata,
+                    LangchainPGCollection.name.label("collection_name"),
+                )
+                .join(
+                    LangchainPGCollection,
+                    LangchainPGEmbedding.collection_id == LangchainPGCollection.uuid,
+                    isouter=True,
+                )
+                .where(
                     func.jsonb_extract_path_text(LangchainPGEmbedding.cmetadata, key)
                     == str(value)
                 )
             )
-            return [cls(**embedding.__dict__) for embedding in results.scalars().all()]
+            embeddings = []
+            for row in results.all():
+                embedding_dict = {
+                    "id": row.id,
+                    "collection_id": row.collection_id,
+                    "embedding": row.embedding,
+                    "document": row.document,
+                    "cmetadata": row.cmetadata,
+                    "collection_name": row.collection_name,
+                }
+                embeddings.append(cls(**embedding_dict))
+            return embeddings
 
-    async def delete(self) -> None:
+    @staticmethod
+    async def delete(id: str) -> None:
         async with get_session() as session:
-            embedding_instance = await session.get(LangchainPGEmbedding, self.id)
+            embedding_instance = await session.get(LangchainPGEmbedding, id)
             await session.delete(embedding_instance)
+            await session.commit()
+
+    @classmethod
+    async def get_many(cls, ids: List[str]) -> List[Self]:
+        """Get multiple embeddings by their IDs.
+
+        Args:
+            ids: List of embedding IDs to retrieve
+
+        Returns:
+            List of found embeddings
+        """
+        async with get_session() as session:
+            results = await session.execute(
+                select(
+                    LangchainPGEmbedding.id,
+                    LangchainPGEmbedding.collection_id,
+                    LangchainPGEmbedding.embedding,
+                    LangchainPGEmbedding.document,
+                    LangchainPGEmbedding.cmetadata,
+                    LangchainPGCollection.name.label("collection_name"),
+                )
+                .join(
+                    LangchainPGCollection,
+                    LangchainPGEmbedding.collection_id == LangchainPGCollection.uuid,
+                    isouter=True,
+                )
+                .where(LangchainPGEmbedding.id.in_(ids))
+            )
+
+            embeddings = []
+            for row in results.all():
+                embedding_dict = {
+                    "id": row.id,
+                    "collection_id": row.collection_id,
+                    "embedding": row.embedding,
+                    "document": row.document,
+                    "cmetadata": row.cmetadata,
+                    "collection_name": row.collection_name,
+                }
+                embeddings.append(cls(**embedding_dict))
+            return embeddings
+
+    @classmethod
+    async def delete_many(cls, ids: List[str]) -> None:
+        """Delete multiple embeddings by their IDs.
+
+        Args:
+            ids: List of embedding IDs to delete
+        """
+        async with get_session() as session:
+            await session.execute(
+                LangchainPGEmbedding.__table__.delete().where(
+                    LangchainPGEmbedding.id.in_(ids)
+                )
+            )
             await session.commit()

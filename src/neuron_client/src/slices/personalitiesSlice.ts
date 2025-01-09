@@ -163,6 +163,16 @@ export const personalitiesSlice = createSlice({
             }
           }
         }
+      )
+      .addCase(
+        actions.fetchPersonalityEmbeddings.fulfilled,
+        (state, action) => {
+          if (action.payload.personalities) {
+            for (const personality of action.payload.personalities) {
+              upsert(state, personality);
+            }
+          }
+        }
       );
   },
 });

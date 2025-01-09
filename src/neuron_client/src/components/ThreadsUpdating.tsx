@@ -8,7 +8,11 @@ export function ThreadsUpdating() {
   const [isUpdating, setIsUpdating] = useState(true);
 
   useEffect(() => {
-    const hasActiveThreads = threads.some((thread) => thread.status !== "idle");
+    const hasActiveThreads = threads.some((thread) => {
+      const lastHour = Date.now() - 60 * 60 * 1000;
+      const lastUpdated = new Date(thread.updated_at).getTime();
+      return thread.status !== "idle" && lastUpdated > lastHour;
+    });
     if (hasActiveThreads) {
       setIsUpdating(true);
     } else {

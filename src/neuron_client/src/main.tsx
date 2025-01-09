@@ -16,6 +16,7 @@ import Personality from "./routes/personality.tsx";
 import Index from "./routes/index.tsx";
 import CodeViewer from "./routes/code-viewer.tsx";
 import Prompts from "./routes/prompts.tsx";
+import { EmbeddingsView } from "./components/EmbeddingsView";
 
 import "./index.css";
 
@@ -48,11 +49,15 @@ const router = createBrowserRouter(
           element: <Personality />,
         },
         {
-          path: "gallery",
+          path: "/personality/:personalityId/embeddings",
+          element: <EmbeddingsView />,
+        },
+        {
+          path: "/gallery",
           element: <Gallery />,
         },
         {
-          path: "prompts",
+          path: "/prompts",
           element: <Prompts />,
         },
       ],
