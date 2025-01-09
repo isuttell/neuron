@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { setGetAccessTokenSilently } from "../actions/getToken";
 import { fetchConfig } from "@/slices/appSlice";
 import { ThreadTitleUpdater } from "@/components/ThreadTitleUpdater";
+import { GlobalAudioPlayer } from "@/components/GlobalAudioPlayer";
 
 function Root() {
   const {
@@ -85,6 +86,7 @@ function Root() {
           </div>
         )}
       </main>
+      <GlobalAudioPlayer />
     </SidebarProvider>
   );
 }

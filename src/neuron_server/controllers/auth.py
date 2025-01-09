@@ -80,6 +80,7 @@ async def decode_token(token: str) -> TokenPayload:
             algorithms=["RS256"],
             audience=config.auth0_api_audience,
             issuer="https://" + config.auth0_domain + "/",
+            leeway=10,
         )
         return TokenPayload(
             roles=payload.get("neuron/roles"),

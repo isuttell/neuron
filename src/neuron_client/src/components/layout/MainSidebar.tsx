@@ -22,36 +22,42 @@ import { ChevronUp } from "lucide-react";
 
 import { useAuth0 } from "@auth0/auth0-react";
 import { getSidebarImage } from "@/slices/appSlice";
-import { useAppSelector } from "@/hooks";
+import { useAppSelector, useAppDispatch } from "@/hooks";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { ThreadsUpdating } from "@/components/ThreadsUpdating";
-const links = [
-  {
-    to: "/",
-    label: "Home",
-    Icon: Home,
-  },
-  {
-    to: "/personalities",
-    label: "Personalities",
-    Icon: CircleUser,
-  },
-  {
-    to: "/prompts",
-    label: "Prompts",
-    Icon: FileText,
-  },
-  {
-    to: "/gallery",
-    label: "Gallery",
-    Icon: GalleryThumbnails,
-  },
-];
+import { useGlobalAudio } from "@/contexts/GlobalAudioContext";
+import { togglePlayer } from "@/slices/audioSlice";
 
 export function MainSidebar() {
   const location = useLocation();
   const { logout, user } = useAuth0();
   const sidebarImage = useAppSelector(getSidebarImage);
+  const { queue } = useGlobalAudio();
+  const dispatch = useAppDispatch();
+
+  const links = [
+    {
+      to: "/",
+      label: "Home",
+      Icon: Home,
+    },
+    {
+      to: "/personalities",
+      label: "Personalities",
+      Icon: CircleUser,
+    },
+    {
+      to: "/prompts",
+      label: "Prompts",
+      Icon: FileText,
+    },
+    {
+      to: "/gallery",
+      label: "Gallery",
+      Icon: GalleryThumbnails,
+    },
+  ];
+
   return (
     <Sidebar className="z-50">
       <SidebarHeader className="border-b">
@@ -81,12 +87,25 @@ export function MainSidebar() {
             <SidebarMenuItem key={link.to}>
               <SidebarMenuButton
                 isActive={location.pathname === link.to}
-                asChild
+                asChild={!link.onClick}
+                onClick={link.onClick && (() => link.onClick())}
               >
-                <NavLink to={link.to} className="text-gray-300">
-                  <link.Icon className="h-4 w-4" />
-                  <span>{link.label}</span>
-                </NavLink>
+                {link.onClick ? (
+                  <div className="flex items-center gap-2 text-gray-300">
+                    <link.Icon className="h-4 w-4" />
+                    <span>{link.label}</span>
+                    {queue.length > 0 && (
+                      <span className="ml-auto text-xs bg-primary/20 text-primary px-1.5 rounded-full">
+                        {queue.length}
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <NavLink to={link.to} className="text-gray-300">
+                    <link.Icon className="h-4 w-4" />
+                    <span>{link.label}</span>
+                  </NavLink>
+                )}
               </SidebarMenuButton>
             </SidebarMenuItem>
           ))}

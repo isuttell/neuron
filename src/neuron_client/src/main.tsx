@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { Provider } from "react-redux";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { MediaPlayerProvider } from "@/contexts/MediaPlayerContext";
 import { store } from "./store";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import { Auth0Provider } from "@auth0/auth0-react";
@@ -17,6 +18,7 @@ import Index from "./routes/index.tsx";
 import CodeViewer from "./routes/code-viewer.tsx";
 import Prompts from "./routes/prompts.tsx";
 import { EmbeddingsView } from "./components/EmbeddingsView";
+import { GlobalAudioProvider } from "./contexts/GlobalAudioContext";
 
 import "./index.css";
 
@@ -97,10 +99,14 @@ createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <Provider store={store}>
       <TooltipProvider>
-        <Auth0ProviderWithNavigate>
-          <RouterProvider router={router} />
-          <Toaster />
-        </Auth0ProviderWithNavigate>
+        <MediaPlayerProvider>
+          <GlobalAudioProvider>
+            <Auth0ProviderWithNavigate>
+              <RouterProvider router={router} />
+              <Toaster />
+            </Auth0ProviderWithNavigate>
+          </GlobalAudioProvider>
+        </MediaPlayerProvider>
       </TooltipProvider>
     </Provider>
   </StrictMode>

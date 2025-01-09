@@ -14,14 +14,14 @@ from datetime import datetime, timezone
 
 class MemoryStoreToolArgs(BaseModel):
     memories: List[str] = Field(
-        description="A detailed list of memories to save. Be specific. It will be used for in a semantic text search and RAG."
+        description="A detailed list of memories to save. Be specific. It will be used for in a semantic text search and RAG. Do not use pronouns. Include all relevant details and references. Each memory must be self contained. Provide quotes for any specific information."
     )
 
 
 class MemoryStoreTool(BaseTool):
     name: str = "store_memory"
     description: str = (
-        "This tool allows you to save memories for later retrieval. Used when the user asks for you to remember something."
+        "This tool allows you to save memories for later retrieval. Use this when the user asks for you to remember something or you otherwise need to remember something novel."
     )
 
     args_schema: Type[MemoryStoreToolArgs] = MemoryStoreToolArgs
@@ -54,9 +54,11 @@ class MemoryStoreTool(BaseTool):
                 for memory in memories
             ]
             await memories_store.aadd_documents(documents)
-            memories_str = "\n".join(memories)
+            memories_str = "\n".join(
+                [f"- {memory.page_content}" for memory in documents]
+            )
             logger.debug(f"Saved memories:\n{memories_str}")
-            return f"Saved memories:\n{memories_str}"
+            return f"Memories saved"
         except Exception as e:
-            logger.exception(e)
-            return f"Error saving memories: {e}"
+            logger.error(e, exc_info=True)
+            raise

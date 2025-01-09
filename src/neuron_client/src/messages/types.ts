@@ -23,4 +23,5 @@ export interface AudioBarPlayerProps {
   onEnded?: () => void;
   onPlay?: () => void;
   onPause?: () => void;
+  title?: string;
 }

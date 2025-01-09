@@ -55,6 +55,7 @@ export default function Index() {
   const activePersonality = useAppSelector(getActivePersonality);
   const recentThreads = useAppSelector(selectRecentThreads);
   const personalities = useAppSelector(getPersonalities);
+
   const personalitiesLoading = useAppSelector(
     (state) => state.personalities.loading
   );

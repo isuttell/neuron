@@ -54,6 +54,7 @@ const MessageItem: React.FC<MessageItemProps> = ({
         className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 ml-[5.5rem]"
         mediaItems={getMediaItems([message])}
         threadId={message.thread_id}
+        showControls
       />
     );
   }

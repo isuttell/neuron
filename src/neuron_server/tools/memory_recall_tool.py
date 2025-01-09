@@ -18,11 +18,13 @@ def format_memory(document: Document) -> str:
         else None
     )
     return f"""
-Document ID: {document.id}
+Document ID: {str(document.id)}
 Relevance Score: {document.metadata.get("score", 0)}%
 Recorded: {created_at.isoformat(timespec='seconds') if created_at else 'Unknown'}
-
+Document:
+\"\"\"
 {document.page_content}
+\"\"\"
 """.strip()
 
 
@@ -179,5 +181,5 @@ class MemoryRecallTool(BaseTool):
         if len(results) == 0:
             return "No memories found"
         results.sort(key=lambda doc: doc.metadata.get("score"), reverse=True)
-        response = "\n--------\n".join([format_memory(doc) for doc in results])
+        response = "\n\n---\n\n".join([format_memory(doc) for doc in results])
         return response

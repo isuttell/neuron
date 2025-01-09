@@ -199,7 +199,7 @@ export const getActivePersonality = (
   state.personalities.activePersonalityId
     ? state.personalities.personalities.find(
         (personality) =>
-          personality.id === state.personalities.activePersonalityId
+          personality?.id === state.personalities.activePersonalityId
       )
     : undefined;
 

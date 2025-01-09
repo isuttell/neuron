@@ -117,49 +117,6 @@ function MediaList({
   showControls = false,
 }: MediaListProps) {
   const endRef = useRef<HTMLDivElement | null>(null);
-  const [currentPlayingIndex, setCurrentPlayingIndex] = useState<number | null>(
-    null
-  );
-  const [audioAutoPlay, setAudioAutoPlay] = useState<boolean>(false);
-  const audioItems = mediaItems.filter((item) => item.type === "audio");
-  const [isPlaying, setIsPlaying] = useState<boolean>(false);
-  useEffect(() => {
-    setCurrentPlayingIndex(null);
-  }, [threadId]);
-
-  // Update when new items are added
-  useEffect(() => {
-    if (
-      audioAutoPlay &&
-      !isPlaying &&
-      currentPlayingIndex === null &&
-      audioItems.length > 0
-    ) {
-      // Set to play the last audio item if it's new
-      setCurrentPlayingIndex(audioItems.length - 1);
-    }
-  }, [audioItems.length, isPlaying, audioAutoPlay]);
-
-  const handleAudioPlay = (index: number) => {
-    setCurrentPlayingIndex(index);
-    setIsPlaying(true);
-  };
-
-  const handleAudioPause = () => {
-    setIsPlaying(false);
-  };
-
-  const handleAudioComplete = (index: number) => {
-    setIsPlaying(false);
-    if (!audioAutoPlay) return;
-
-    const nextIndex = index + 1;
-    if (nextIndex < audioItems.length) {
-      setCurrentPlayingIndex(nextIndex);
-    } else {
-      setCurrentPlayingIndex(null);
-    }
-  };
 
   // Scroll effect remains the same...
   useEffect(() => {
@@ -205,20 +162,12 @@ function MediaList({
           );
         }
         if (item.type === "audio") {
-          const audioIndex = audioItems.findIndex(
-            (audio) => audio.key === item.key
-          );
           return (
             <AudioContent
-              className="w-full"
+              className="w-full h-[200px]"
               preload="auto"
               url={item.url}
               key={item.key}
-              showControls={showControls}
-              autoPlay={audioIndex === currentPlayingIndex}
-              onPlay={() => handleAudioPlay(audioIndex)}
-              onPause={handleAudioPause}
-              onEnded={() => handleAudioComplete(audioIndex)}
             />
           );
         }
@@ -244,22 +193,6 @@ function MediaList({
       )}
       <div className="flex-1" />
       <div ref={endRef} />
-      {showControls && (
-        <div className="w-full flex">
-          <Button
-            variant="outline"
-            className={cn(
-              "w-full",
-              audioAutoPlay ? "bg-accent text-accent-foreground" : null
-            )}
-            onClick={() => {
-              setAudioAutoPlay(!audioAutoPlay);
-            }}
-          >
-            {audioAutoPlay ? "Stop Audio Auto Play" : "Start Audio Auto Play"}
-          </Button>
-        </div>
-      )}
     </div>
   );
 }

@@ -18,6 +18,9 @@ import ToggleSystemMessages from "@/components/ToggleSystemMessages";
 import MediaPanelWidth, { WidthMode } from "@/components/MediaPanelWidth";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { MediaPlayerProvider } from "@/contexts/MediaPlayerContext";
+import { Music2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { togglePlayer } from "@/slices/audioSlice";
 
 const selectThread = (state: RootState, threadId?: string) =>
   state.threads.threads.find((thread) => thread.id === threadId);
@@ -121,6 +124,14 @@ export default function Thread() {
             {thread.name || "Welcome..."}
           </h1>
           <div className="flex-1" />
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => dispatch(togglePlayer())}
+            className="size-10"
+          >
+            <Music2 className="size-4" />
+          </Button>
           <ToggleSystemMessages
             showTools={showTools}
             onToggle={() => setShowTools(!showTools)}
