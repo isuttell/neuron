@@ -109,6 +109,7 @@ tool_sets: Dict[str, List[BaseTool]] = {
         # ReplicateSoundEffectGenerationTool(),
     ],
     "audio": [
+        FFmpegTool(),
         ElevenLabsSoundEffectsTool(),
         ReplicateMusicGenerationTool(),
     ],
@@ -121,8 +122,6 @@ tool_sets: Dict[str, List[BaseTool]] = {
         TavilySearchResults(
             max_results=5, include_raw_content=True, search_depth="advanced"
         ),
-        InspectImageTool(),
-        DocumentInspectTool(),
     ],
     "arxiv": [
         ArxivSearchTool(),
