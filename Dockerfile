@@ -8,8 +8,7 @@ RUN npm ci --no-audit --no-fund
 
 COPY ["src/neuron_client/", "."]
 
-RUN NODE_ENV=development npx vite build --mode development && \
-  rm -rf src/ node_modules/
+RUN NODE_ENV=development npx vite build --mode development
 
 FROM python:3.11.10-slim-bookworm AS server-builder
 
@@ -22,8 +21,7 @@ RUN apt-get update && \
   apt-get -y upgrade && \
   apt-get -y install \
   curl \
-  git \
-  ffmpeg && \
+  git && \
   rm -rf /var/lib/apt/lists/*
 
 # Install Poetry
@@ -48,10 +46,15 @@ ENV PATH="/app/.venv/bin:$PATH"
 ENV PORT=5000
 
 RUN apt-get update && \
+  apt-get install -qy ca-certificates curl ffmpeg && \
+  install -m 0755 -d /etc/apt/keyrings && \
+  curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc && \
+  chmod a+r /etc/apt/keyrings/docker.asc && \
+  echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian \
+  $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null && \
+  apt-get update && \
   apt-get -qy upgrade && \
-  apt-get -qy install \
-  curl \
-  ffmpeg && \
+  apt-get -qy install docker-ce docker-ce-cli containerd.io && \
   rm -rf /var/lib/apt/lists/*
 
 # Set working directory
@@ -64,7 +67,7 @@ COPY --from=client-builder /app/src/neuron_client/dist /app/src/neuron_client/di
 
 RUN pip install -e .
 
-RUN useradd -m neuron -d /app && \
+RUN useradd -m neuron -d /app -G systemd-journal && \
   chown neuron /app
 
 USER neuron
