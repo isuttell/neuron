@@ -104,7 +104,7 @@ export function AudioBarVisualization({
         drawFrame(ctx, canvas, progress, waveformDataRef.current);
       }
     }
-  }, [progress, canvasRef.current?.parentElement?.clientWidth]);
+  }, [progress]);
 
   const processAudioData = useCallback(
     (channelData: Float32Array) => {
@@ -195,7 +195,7 @@ export function AudioBarVisualization({
     };
 
     loadAudioData();
-  }, [src, processAudioData, updateCanvasDimensions]);
+  }, [src]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
