@@ -200,7 +200,7 @@ Queries Simbad astronomical database to find celestial objects within a specifie
     {df.to_markdown() if df.size > 0 else 'No results found'}
     """.strip()
         except Exception as e:
-            logger.exception(e)
+            logger.error(e, exc_info=True)
             raise e
 
 

@@ -57,5 +57,5 @@ This tool provides an 81-hour astronomical forecast using Astrospheric's API, up
                 latitude=latitude, longitude=longitude
             )
         except Exception as e:
-            logger.exception(e)
+            logger.error(e, exc_info=True)
             return f"Error fetching astronomy forecast: {str(e)}"

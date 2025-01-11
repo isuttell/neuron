@@ -255,7 +255,7 @@ Images:
 {markdown_urls_str}
     """.strip()
         except Exception as e:
-            logger.exception(e)
+            logger.error(e, exc_info=True)
             return f"Error capturing images from {camera}: {e}"
 
 

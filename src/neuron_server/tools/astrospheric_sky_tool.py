@@ -58,5 +58,5 @@ Provided a Latitude, Longitude, and time (in UTC), this function will return the
                 latitude=latitude, longitude=longitude, mssinceepoch=mssinceepoch
             )
         except Exception as e:
-            logger.exception(e)
+            logger.error(e, exc_info=True)
             return f"Error fetching astronomy sky: {str(e)}"

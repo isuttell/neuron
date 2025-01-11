@@ -101,7 +101,7 @@ This tool uses the video generation model minimax/video-01, also known as Hailuo
             )
             return f'<video src="{url}"></video>\nFilename: {file_path}'
         except Exception as e:
-            logger.exception(e)
+            logger.error(e, exc_info=True)
             raise
         finally:
             if os.path.exists(tmp_upload_file):

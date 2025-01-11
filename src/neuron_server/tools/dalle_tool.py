@@ -147,7 +147,7 @@ class DalleTool(BaseTool):
 
             return f"<images>\n" + "\n".join(results) + "\n</images>"
         except Exception as e:
-            logger.exception(e)
+            logger.error(e, exc_info=True)
             return f"Error generating image: {str(e)}"
 
 

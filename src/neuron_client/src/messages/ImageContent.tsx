@@ -123,7 +123,7 @@ const ImageContent: React.FC<ImageContentProps> = ({
                     </a>
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Download image</TooltipContent>
+                <TooltipContent>Download</TooltipContent>
               </Tooltip>
             </div>
           )}
@@ -137,18 +137,38 @@ const ImageContent: React.FC<ImageContentProps> = ({
         <div className="w-full overflow-hidden">
           <img src={url} alt={alt} className="w-full h-full object-contain" />
         </div>
-        <Button className="w-full" variant="outline" asChild>
-          <a
-            className="text-primary"
-            href={url}
-            download
-            target="_blank"
-            rel="noopener noreferrer"
+        <div className="flex justify-end gap-2">
+          <Button
+            className=""
+            variant="outline"
+            onClick={(e) => {
+              e.preventDefault();
+              navigator.clipboard.writeText(url);
+              toast({
+                title: "Image URL copied to clipboard",
+              });
+            }}
           >
-            <Download className="w-4 h-4" />
-            Download
-          </a>
-        </Button>
+            <Copy /> Copy
+          </Button>
+          <Button variant="outline" asChild>
+            <a
+              className="text-primary"
+              href={url}
+              download
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => {
+                toast({
+                  title: "Image downloaded",
+                });
+              }}
+            >
+              <Download className="w-4 h-4" />
+              Download
+            </a>
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );

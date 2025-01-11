@@ -16,15 +16,16 @@ export default defineConfig(({ mode }) => ({
     },
   },
   server: {
+    port: 5174,
     proxy: {
       "/api": {
-        target: "http://localhost:5002",
+        target: "http://localhost:5003",
       },
       "/static": {
-        target: "http://localhost:5002",
+        target: "http://localhost:5003",
       },
       "/ws": {
-        target: "ws://localhost:5002",
+        target: "ws://localhost:5003",
         ws: true,
         rewriteWsOrigin: true,
       },

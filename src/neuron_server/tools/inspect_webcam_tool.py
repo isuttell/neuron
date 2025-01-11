@@ -158,7 +158,7 @@ class InspectWebcamTool(BaseTool):
             )
             return content
         except Exception as e:
-            logger.exception(e)
+            logger.error(e, exc_info=True)
             return f"I'm sorry, I couldn't inspect the webcam feed. {str(e)}"
 
 

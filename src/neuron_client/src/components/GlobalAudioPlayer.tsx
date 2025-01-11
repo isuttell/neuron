@@ -96,7 +96,7 @@ export function GlobalAudioPlayer() {
           {error}
         </div>
       )}
-      <div className="h-[100px] border-b">
+      <div className="h-[101px] border-b">
         {currentUrl && (
           <AudioBarVisualization
             key={currentUrl}

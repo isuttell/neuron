@@ -83,7 +83,7 @@ This tool accepts a list of targets and plots finder images for each target. The
             ]
             return create_finder_images(targets=sky_targets, fov_radius=fov_radius)
         except Exception as e:
-            logger.exception(e)
+            logger.error(e, exc_info=True)
             return f"Error: {str(e)}"
 
 

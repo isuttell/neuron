@@ -106,20 +106,18 @@ tool_sets: Dict[str, List[BaseTool]] = {
         ReplicateVideoGenerationTool(),
         ReplicateAudioGenerationTool(),
         ReplicateMusicGenerationTool(),
+        # ElevenLabsSoundEffectsTool(),
         # ReplicateSoundEffectGenerationTool(),
     ],
     "tts": [
         OpenAITTSTool(),
         ElevenLabsTTSTool(),
-        ReplicateMusicGenerationTool(),
-        # ElevenLabsSoundEffectsTool(),
         FFmpegTool(),
     ],
     "search": [
         TavilySearchResults(
             max_results=5, include_raw_content=True, search_depth="advanced"
         ),
-        WikipediaQueryRun(api_wrapper=WikipediaAPIWrapper()),
         InspectImageTool(),
         DocumentInspectTool(),
     ],
@@ -177,8 +175,7 @@ default_tools: List[BaseTool] = list(
     {
         tool.name: tool
         for tool in [
-            *tool_sets["image"],
-            *tool_sets["search"],
+            *tool_sets["inspect"],
             *tool_sets["tts"],
         ]
     }.values()

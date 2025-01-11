@@ -224,7 +224,21 @@ class InspectImageTool(BaseTool):
             buffered = BytesIO()
             # Resize image to 1024x1024 to ensure it's not too large
             image.thumbnail((1024, 1024))
-            image.save(buffered, format="JPEG")
+
+            # Convert to RGB if image has alpha channel
+            if image.mode in ("RGBA", "LA") or (
+                image.mode == "P" and "transparency" in image.info
+            ):
+                # Create a white background image
+                background = Image.new("RGB", image.size, (255, 255, 255))
+                if image.mode == "P":
+                    image = image.convert("RGBA")
+                # Composite the image onto the background
+                background.paste(image, mask=image.split()[-1])
+                image = background
+
+            # Save as JPEG
+            image.save(buffered, format="JPEG", quality=95)
             image_base64 = base64.b64encode(buffered.getvalue()).decode("utf-8")
             from neuron_server.models.provider_model import ProviderModelModel
 
@@ -264,7 +278,7 @@ class InspectImageTool(BaseTool):
 
             return f"<description>{content}</description>\n<metadata>\n{df.to_markdown(index=False)}\n</metadata>"
         except Exception as e:
-            logger.exception(e)
+            logger.error(e, exc_info=True)
             raise e
 
 

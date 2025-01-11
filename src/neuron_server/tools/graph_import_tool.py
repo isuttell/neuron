@@ -66,7 +66,7 @@ Added text to knowledge graph in {round(duration)} seconds
 {doc_result.analysis}
 """
         except Exception as e:
-            logger.exception(e)
+            logger.error(e, exc_info=True)
             raise e
 
 

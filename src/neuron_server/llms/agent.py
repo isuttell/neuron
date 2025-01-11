@@ -325,7 +325,7 @@ async def astream(
             elif kind == "error":
                 logger.error(data)
     except Exception as e:
-        logger.exception(e)
+        logger.error(e, exc_info=True)
         logger.error(f"AgentError: {e!r}")
         await update_thread_status(thread, status="error")
         await pubsub.publish("app", ErrorEvent(message=str(e)))

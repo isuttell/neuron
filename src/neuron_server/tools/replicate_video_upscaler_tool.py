@@ -83,7 +83,7 @@ Real-ESRGAN Video Upscaler tool. Use this tool to upscale a generated video to a
             logger.debug(f"Saved generated video to {file_path} <{url}>")
             return f'<video src="{url}"></video>\nFilename: {file_path}'
         except Exception as e:
-            logger.exception(e)
+            logger.error(e, exc_info=True)
             raise
         finally:
             if os.path.exists(tmp_upload_file):

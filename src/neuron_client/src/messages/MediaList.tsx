@@ -19,7 +19,7 @@ interface MediaItem {
 export function getMediaItems(messages: Message[]): MediaItem[] {
   // Extract media URLs from markdown image syntax and HTML audio/video tags
   const mediaItems = messages
-    .filter((message) => message.type === "tool")
+    .filter((message) => message.type === "tool" || message.type === "human")
     .flatMap((message) => {
       const items: MediaItem[] = [];
 
@@ -91,7 +91,10 @@ export function getMediaItems(messages: Message[]): MediaItem[] {
           });
         }
       }
-
+      // @HACK to workaround the cursor port locking issue
+      for (const item of items) {
+        item.url = item.url.replace("5002", "5003");
+      }
       return items;
     });
 
@@ -164,7 +167,7 @@ function MediaList({
         if (item.type === "audio") {
           return (
             <AudioContent
-              className="w-full h-[200px]"
+              className="w-full h-36"
               preload="auto"
               url={item.url}
               key={item.key}

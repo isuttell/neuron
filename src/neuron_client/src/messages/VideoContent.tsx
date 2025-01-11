@@ -35,7 +35,7 @@ const VideoContent: React.FC<VideoContentProps> = ({
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <div className="w-full relative overflow-hidden max-h-[1024px] max-w-[1024px]">
+        <div className="w-full relative max-h-[1024px] max-w-[1024px]">
           <video
             className="rounded-lg w-full h-full object-contain cursor-pointer bg-black"
             src={url}
@@ -92,7 +92,7 @@ const VideoContent: React.FC<VideoContentProps> = ({
       </DialogTrigger>
       <DialogContent className="max-w-[95vw] max-h-[95vh] mx-auto box-border h-full flex-1 flex flex-col">
         <DialogHeader>
-          <DialogTitle>Video</DialogTitle>
+          <DialogTitle>Video Details</DialogTitle>
         </DialogHeader>
         <div className="flex-1 overflow-hidden">
           <video
@@ -106,18 +106,32 @@ const VideoContent: React.FC<VideoContentProps> = ({
             <source src={url} type="video/mp4" />
           </video>
         </div>
-        <Button className="w-full" variant="outline" asChild>
-          <a
-            className="text-primary"
-            href={url}
-            download
-            target="_blank"
-            rel="noopener noreferrer"
+        <div className="flex justify-end gap-2">
+          <Button
+            variant="outline"
+            onClick={(e) => {
+              e.preventDefault();
+              navigator.clipboard.writeText(url);
+              toast({
+                title: "Image URL copied to clipboard",
+              });
+            }}
           >
-            <Download className="w-4 h-4" />
-            Download
-          </a>
-        </Button>
+            <Copy /> Copy
+          </Button>
+          <Button variant="outline" asChild>
+            <a
+              className="text-primary"
+              href={url}
+              download
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Download className="w-4 h-4" />
+              Download
+            </a>
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );

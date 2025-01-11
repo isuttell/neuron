@@ -1,14 +1,14 @@
 import { cn } from "@/lib/utils";
 import { useRef, useEffect, useCallback } from "react";
 
-const DESIRED_BAR_WIDTH = 2;
-const GAP = 1;
-
 interface AudioBarVisualizationProps {
   src: string;
   progress: number;
   className?: string;
   onSeek?: (progress: number) => void;
+  backgroundColor?: string;
+  barWidth?: number;
+  gap?: number;
 }
 
 export function AudioBarVisualization({
@@ -16,9 +16,13 @@ export function AudioBarVisualization({
   progress,
   className,
   onSeek,
+  backgroundColor = "#111111",
+  barWidth = 2,
+  gap = 1,
 }: AudioBarVisualizationProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const waveformDataRef = useRef<number[]>([]);
+  const rawChannelDataRef = useRef<Float32Array | null>(null);
   const isDraggingRef = useRef(false);
   const animationFrameRef = useRef<number>();
   const lastProgressRef = useRef<number>(0);
@@ -76,19 +80,23 @@ export function AudioBarVisualization({
     const parent = canvas.parentElement;
     if (!parent) return;
 
-    const { width, height } = parent.getBoundingClientRect();
-
     const dpr = window.devicePixelRatio || 1;
-    canvas.width = width * dpr;
-    canvas.height = height * dpr;
-
+    canvas.width = parent.clientWidth * dpr;
+    canvas.height = parent.clientHeight * dpr;
     const ctx = canvas.getContext("2d");
     if (ctx) {
       ctx.scale(dpr, dpr);
     }
 
-    canvas.style.width = `${width}px`;
-    canvas.style.height = `${height}px`;
+    canvas.style.width = `${parent.clientWidth}px`;
+    canvas.style.height = `${parent.clientHeight}px`;
+
+    if (rawChannelDataRef.current) {
+      waveformDataRef.current = processAudioData(rawChannelDataRef.current);
+      if (ctx) {
+        drawFrame(ctx, canvas, progress, waveformDataRef.current);
+      }
+    }
 
     if (waveformDataRef.current.length > 0) {
       const ctx = canvas.getContext("2d");
@@ -96,18 +104,15 @@ export function AudioBarVisualization({
         drawFrame(ctx, canvas, progress, waveformDataRef.current);
       }
     }
-  }, [progress]);
+  }, [progress, canvasRef.current?.parentElement?.clientWidth]);
 
   const processAudioData = useCallback(
     (channelData: Float32Array) => {
       const canvas = canvasRef.current;
       if (!canvas) return [];
-      const points = Math.floor(
-        canvas.clientWidth /
-          ((DESIRED_BAR_WIDTH + GAP) * (window.devicePixelRatio || 1))
-      );
+      const points = Math.floor(canvas.clientWidth / (barWidth + gap));
       const blockSize = Math.floor(channelData.length / points);
-      const waveformData = [];
+      const waveformData: number[] = [];
 
       for (let i = 0; i < points; i++) {
         const start = i * blockSize;
@@ -127,7 +132,7 @@ export function AudioBarVisualization({
 
       return waveformData;
     },
-    [canvasRef.current?.clientWidth]
+    [barWidth, gap]
   );
 
   const drawFrame = (
@@ -136,14 +141,13 @@ export function AudioBarVisualization({
     progress: number,
     waveformData: number[]
   ) => {
-    ctx.fillStyle = "#111111";
+    ctx.fillStyle = backgroundColor;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     const centerY = canvas.height / 2;
     const barCount = waveformData.length;
     const progressPosition = Math.floor((progress / 100) * barCount);
-    const barWidth = DESIRED_BAR_WIDTH;
-    const totalWidth = (barWidth + GAP) * barCount;
+    const totalWidth = (barWidth + gap) * barCount;
     const startX = (canvas.width - totalWidth) / 2;
 
     let x = startX;
@@ -152,12 +156,12 @@ export function AudioBarVisualization({
       const barHeight = Math.ceil(amplitude * (canvas.height / 2));
 
       const isPlayed = i <= progressPosition && progress > 0;
-      ctx.fillStyle = isPlayed ? "rgb(6, 197, 255)" : "rgba(255, 255, 255, 1)";
+      ctx.fillStyle = isPlayed ? "rgb(6, 197, 255)" : "rgb(255, 255, 255)";
 
       ctx.fillRect(x, centerY - barHeight, barWidth, barHeight);
       ctx.fillRect(x, centerY, barWidth, barHeight);
 
-      x += barWidth + GAP;
+      x += barWidth + gap;
     }
   };
 
@@ -176,6 +180,8 @@ export function AudioBarVisualization({
         const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
         const channelData = audioBuffer.getChannelData(0);
 
+        rawChannelDataRef.current = channelData;
+
         waveformDataRef.current = processAudioData(channelData);
 
         if (ctx) {
@@ -189,7 +195,7 @@ export function AudioBarVisualization({
     };
 
     loadAudioData();
-  }, [src]);
+  }, [src, processAudioData, updateCanvasDimensions]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -257,7 +263,7 @@ export function AudioBarVisualization({
       observer.disconnect();
       window.removeEventListener("resize", handleResize);
     };
-  }, [canvasRef.current]);
+  }, [updateCanvasDimensions]);
 
   return (
     <canvas
@@ -265,6 +271,7 @@ export function AudioBarVisualization({
       className={cn("w-full h-full", className)}
       onMouseDown={onSeek ? handleMouseDown : undefined}
       style={{
+        backgroundColor,
         cursor: onSeek ? "pointer" : "default",
       }}
     />

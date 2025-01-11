@@ -244,7 +244,7 @@ This tool accepts a list of targets and plots the observability of the targets o
 {plot_airmass_plot(targets=sky_targets, time=local_time, observer=observer)}
  """.strip()
         except Exception as e:
-            logger.exception(e)
+            logger.error(e, exc_info=True)
             return f"Error: {str(e)}"
 
 

@@ -145,7 +145,7 @@ This is very slow so confirm with the user that they want to use this tool.
             logger.debug(f"Saved generated video to {file_path} <{url}>")
             return f'<video src="{url}"></video>\nFilename: {file_path}'
         except Exception as e:
-            logger.exception(e)
+            logger.error(e, exc_info=True)
             raise
         finally:
             if os.path.exists(tmp_image_file):

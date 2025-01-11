@@ -76,7 +76,6 @@ export function GlobalAudioProvider({
         audioRef.current.src = currentItem.url;
         audioRef.current.preload = "auto";
       }
-      console.log("playing audio", currentItem.url);
       const playPromise = audioRef.current.play();
       if (playPromise) {
         playPromise

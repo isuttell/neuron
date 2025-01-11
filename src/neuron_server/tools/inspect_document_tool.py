@@ -180,7 +180,7 @@ pdf
             docs = "\n\n".join(results)
             return f"<documents>\n{docs}\n</documents>"
         except Exception as e:
-            logger.exception(e)
+            logger.error(e, exc_info=True)
             raise e
 
 

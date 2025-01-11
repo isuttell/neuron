@@ -167,7 +167,10 @@ async def get_static(path):
             ),
             config.static_folder,
         )
-    return await send_from_directory(config.static_folder, path, as_attachment=True)
+    is_html = path.endswith(".html") or path.endswith(".htm")
+    return await send_from_directory(
+        config.static_folder, path, as_attachment=not is_html
+    )
 
 
 async def sending():
@@ -188,7 +191,7 @@ async def receiving():
             body = json.loads(data)
             await router.dispatch(body)
         except Exception as e:
-            logger.exception(e)
+            logger.error(e, exc_info=True)
 
 
 @blueprint.websocket("/ws")

@@ -106,7 +106,7 @@ Generates an optic plot to visualize the given target through a camera lens. Thi
             p.export(file_path, padding=0, transparent=True)
             return f"<image>![Optic Plot]({url})</image>"
         except Exception as e:
-            logger.exception(e)
+            logger.error(e, exc_info=True)
             return f"Error generating optic starplot: {str(e)}"
 
 

@@ -128,7 +128,7 @@ Generate a star plot for the given parameters. Zenith is the default projection 
             plot.export(file_path, padding=0)
             return f"<image>![Starplot]({url})</image>"
         except Exception as e:
-            logger.exception(e)
+            logger.error(e, exc_info=True)
             return f"Error generating starplot: {str(e)}"
 
 

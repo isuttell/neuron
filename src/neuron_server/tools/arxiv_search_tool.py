@@ -119,7 +119,7 @@ This tool searches arXiv for research articles, and retrieves short summaries. E
                 )
             return "\n\n--------------\n\n".join(articles)
         except Exception as e:
-            logger.exception(e)
+            logger.error(e, exc_info=True)
             return f"arXiv error: {str(e)}"
 
 

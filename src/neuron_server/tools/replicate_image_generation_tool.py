@@ -384,7 +384,7 @@ Use this tool to generate an image using a text prompt on replicate.com and has 
             )
             return f"<images>\n" + "\n".join(results) + "\n</images>"
         except Exception as e:
-            logger.exception(e)
+            logger.error(e, exc_info=True)
             raise
 
 

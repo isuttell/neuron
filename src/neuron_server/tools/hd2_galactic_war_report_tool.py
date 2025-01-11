@@ -364,7 +364,7 @@ War Time: {war_status["time"]}
         """.strip()
 
         except Exception as e:
-            logger.exception(e)
+            logger.error(e, exc_info=True)
             return f"Error getting HD2 Galactic War Report: {str(e)}"
 
 

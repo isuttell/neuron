@@ -80,5 +80,5 @@ class ArxivRecallTool(BaseTool):
                 [format_document(doc, score) for doc, score in docs_scores]
             )
         except Exception as e:
-            logger.exception(e)
+            logger.error(e, exc_info=True)
             return f"Error searching arxiv memories: {str(e)}"

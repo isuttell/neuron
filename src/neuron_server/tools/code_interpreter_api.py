@@ -10,6 +10,7 @@ import subprocess
 import time
 import shutil
 from typing import List
+from neuron_server.util.image_utilities import create_thumbnails
 
 
 class RestrictedKeywordError(Exception):
@@ -122,45 +123,47 @@ async def run_code_interpreter(
         check_for_restricted_keywords(python_code)
         script_filename = "main.py"
         folder_name = uuid4().hex
-        temp_folder = os.path.join(config.temp_folder, folder_name)
-        artifacts_folder = os.path.join(
-            config.static_folder,
-            "artifacts",
-            folder_name,
-        )
-        os.makedirs(os.path.join(temp_folder, "artifacts"))
+        temp_folder = os.path.abspath(os.path.join(config.temp_folder, folder_name))
+        temp_artifacts_folder = os.path.join(temp_folder, "artifacts")
+        os.makedirs(temp_artifacts_folder, mode=0o755)
         script_file = os.path.join(temp_folder, script_filename)
         with open(script_file, "w", encoding="utf-8") as f:
             f.write(python_code)
         logger.info(f"Saved python code to {script_file} and executing...")
         loop = asyncio.get_running_loop()
+        # This needs to point to the host's filesystem and not the container's
+        docker_folder_reference = os.path.abspath(
+            os.path.join(config.parent_temp_folder, folder_name)
+        )
+        args = [
+            "docker",
+            "run",
+            "--name",
+            "neuron-code-interpreter",
+            "--memory",
+            f"{memory_limit}",
+            "--cpus",
+            f"{cpu_limit}",
+            "--read-only",
+            "--rm",
+            "--cap-drop",
+            "ALL",
+            # "--user",
+            # "nobody",
+            "--network=none",
+            "-v",
+            "tmpfs:/tmp",
+            "-v",
+            f"{docker_folder_reference}:/app",
+            code_interpreter_image,
+            script_filename,
+        ]
+        logger.info(f"Running code interpreter with args: {' '.join(args)}")
         process = await asyncio.wait_for(
             loop.run_in_executor(
                 None,
                 lambda: subprocess.run(
-                    [
-                        "docker",
-                        "run",
-                        "--name",
-                        "neuron-code-interpreter",
-                        "--memory",
-                        f"{memory_limit}",
-                        "--cpus",
-                        f"{cpu_limit}",
-                        "--read-only",
-                        "--rm",
-                        "--cap-drop",
-                        "ALL",
-                        "--user",
-                        "nobody",
-                        "--network=none",
-                        "-v",
-                        "tmpfs:/tmp",
-                        "-v",
-                        f"{temp_folder}:/app",
-                        code_interpreter_image,
-                        script_filename,
-                    ],
+                    args,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                     text=True,
@@ -172,13 +175,17 @@ async def run_code_interpreter(
         duration = time.perf_counter() - start_time
         if process.returncode != 0:
             raise Exception(f"Error executing script: stderr={process.stderr.strip()}")
-        logger.info(f"Code interpreter tool execution time: {duration:.2f} seconds")
-        temp_artifacts_folder = os.path.join(temp_folder, "artifacts")
+        logger.info(f"Code interpreter tool execution time: {duration:.2f}s")
+
+        artifacts_folder = os.path.join(
+            config.static_folder,
+            "artifacts",
+            folder_name,
+        )
         shutil.copytree(
             temp_artifacts_folder,
             artifacts_folder,
         )
-
         artifacts: List[str] = []
 
         # Copy the source code to the artifacts folder
@@ -200,6 +207,9 @@ async def run_code_interpreter(
             url = f"{config.static_content_url}/artifacts/{folder_name}/{file}"
             if media_type == "image":
                 artifacts.append(f"<image>![{file}]({url})</image>")
+                create_thumbnails(
+                    os.path.join(artifacts_folder, file), artifacts_folder
+                )
             elif media_type == "video":
                 artifacts.append(f'<video src="{url}" controls />')
             elif media_type == "audio":

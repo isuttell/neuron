@@ -54,7 +54,7 @@ RA: {round(ra, 7)} deg
 Dec: {round(dec, 7)} deg
  """.strip()
         except Exception as e:
-            logger.exception(e)
+            logger.error(e, exc_info=True)
             return f"Error: {str(e)}"
 
 

@@ -166,7 +166,7 @@ This tool imports documents, or scrapes a website using Firecrawl, and adds it t
             logger.debug(f"Processed '{url}' - {duration:.2f}s")
             return result.strip()
         except Exception as e:
-            logger.exception(e)
+            logger.error(e, exc_info=True)
             raise e
 
 

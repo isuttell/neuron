@@ -92,7 +92,7 @@ Filename: {output}
                 url=url
             )
         except Exception as e:
-            logger.exception(e)
+            logger.error(e, exc_info=True)
             if process:
                 logger.error(process.stderr)
                 raise FFmpegToolError(str(e), process.stderr)

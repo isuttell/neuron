@@ -132,7 +132,7 @@ Use this tool to generate an image using a text prompt on replicate.com and has 
                 results.append(f"![{prompt}]({url})")
             return "\n".join(results)
         except Exception as e:
-            logger.exception(e)
+            logger.error(e, exc_info=True)
             raise
 
 

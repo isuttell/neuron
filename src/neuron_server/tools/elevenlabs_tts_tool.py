@@ -99,7 +99,7 @@ This tool generates audio from a provided script using ElevenLabs' TTS APIs and 
             working_dir = os.path.abspath(os.path.join(config.temp_folder, uuid4().hex))
             os.makedirs(working_dir)
             audio_files: List[str] = []
-            for index, line in enumerate(parse_script(script)):
+            for index, line in enumerate(parse_script(script, remove_actions=True)):
                 logger.debug(
                     f"Generating elevenlabs audio for line: [{line['voice']}] {line['text']}"
                 )

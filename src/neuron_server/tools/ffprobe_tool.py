@@ -31,6 +31,6 @@ ffprobe STDOUT:
 {stdout}
 """.strip()
         except Exception as e:
-            logger.exception(e)
+            logger.error(e, exc_info=True)
             stderr_output = process.stderr.decode("utf-8") if process else "None"
             return f"Error executing ffprobe: {str(e)}\n\nSTDERR:\n{stderr_output}"

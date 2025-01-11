@@ -145,7 +145,7 @@ class HuggingFaceServerlessImageGenerationTool(BaseTool):
             logger.debug(f"Saved generated image to {file_path} <{url}>")
             return f"<image>![{prompt}]({url})</image>"
         except Exception as e:
-            logger.exception(e)
+            logger.error(e, exc_info=True)
             return f"Error generating image: {str(e)}"
 
 

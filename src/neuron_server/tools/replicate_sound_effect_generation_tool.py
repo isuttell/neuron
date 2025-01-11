@@ -216,7 +216,7 @@ This tool is optimized for generating short audio samples, sound effects, and pr
             logger.debug(f"Saved generated video to {output_file_path} <{url}>")
             return f'<video src="{url}"></video>\nFilename: {output_file_path}'
         except Exception as e:
-            logger.exception(e)
+            logger.error(e, exc_info=True)
             raise
         finally:
             for file in tmp_files:

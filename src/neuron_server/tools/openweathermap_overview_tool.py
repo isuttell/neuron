@@ -57,5 +57,5 @@ Get a human-readable weather summary for today or tomorrow's forecast, utilizing
         try:
             return await get_openweathermap_overview(lat, lon, date)
         except Exception as e:
-            logger.exception(e)
+            logger.error(e, exc_info=True)
             return f"Error fetching forecast: {str(e)}"

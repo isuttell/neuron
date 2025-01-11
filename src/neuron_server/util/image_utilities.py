@@ -1,6 +1,9 @@
 from PIL import Image
 from typing import Tuple, List, Dict
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def resize_with_padding(
@@ -30,6 +33,7 @@ def create_thumbnails(
     directory: str,
     sizes: Dict[str, int] = {"t": 512, "l": 768, "xl": 1024},
 ):
+    logger.debug(f"Creating thumbnails for {filename} in {directory}")
     image = Image.open(filename)
     ext = os.path.splitext(filename)[1]
     basename = os.path.splitext(os.path.basename(filename))[0]

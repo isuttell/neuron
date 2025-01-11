@@ -26,14 +26,12 @@ import { useAppSelector, useAppDispatch } from "@/hooks";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { ThreadsUpdating } from "@/components/ThreadsUpdating";
 import { useGlobalAudio } from "@/contexts/GlobalAudioContext";
-import { togglePlayer } from "@/slices/audioSlice";
 
 export function MainSidebar() {
   const location = useLocation();
   const { logout, user } = useAuth0();
   const sidebarImage = useAppSelector(getSidebarImage);
   const { queue } = useGlobalAudio();
-  const dispatch = useAppDispatch();
 
   const links = [
     {

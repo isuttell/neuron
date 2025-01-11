@@ -93,9 +93,6 @@ export default function Thread() {
             .join("\n")
         : message.content;
 
-      if (!showTools) {
-        content = (content || "").replace(/<\|AI\|>.*?<\|AI\|>/g, "").trim();
-      }
       return {
         ...message,
         content,

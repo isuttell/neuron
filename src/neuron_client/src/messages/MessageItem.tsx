@@ -14,6 +14,8 @@ import { formatNumber } from "../utils/numberFormat";
 import TokenMetadataTable from "./TokenMetadataTable";
 import { getMediaItems } from "./MediaList";
 import MediaList from "./MediaList";
+import { useAuth0 } from "@auth0/auth0-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface MessageItemProps {
   message: Message;
@@ -38,9 +40,15 @@ const MessageItem: React.FC<MessageItemProps> = ({
   onPromptClick,
   showTools = false,
 }) => {
+  const { user } = useAuth0();
   const { type: role, content, node, status = undefined } = message;
   const isTool = role === "tool" || node === "tools";
-  const body = getTextContent(content);
+  let body = getTextContent(content);
+
+  if (!showTools) {
+    body = body.replace(/<\|AI\|>.*?<\|AI\|>/g, "").trim();
+  }
+
   const mediaItems = getMediaItems([message]);
 
   if (!showTools && isTool) {
@@ -75,7 +83,12 @@ const MessageItem: React.FC<MessageItemProps> = ({
               } rounded-full flex items-center justify-center min-w-[40px]`}
             >
               {role === "human" ? (
-                <User className="text-muted-foreground" size={20} />
+                <Avatar>
+                  <AvatarImage src={user?.picture} />
+                  <AvatarFallback>
+                    <User className="text-muted-foreground" size={20} />
+                  </AvatarFallback>
+                </Avatar>
               ) : null}
               {role === "ai" || role === "system" ? (
                 <Bot className="text-primary-foreground" size={20} />

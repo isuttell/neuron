@@ -181,7 +181,7 @@ Time: Time of the twilight
 {twilights.to_markdown(index=False) if len(twilights) > 0 else "No twilights found"}
 """.strip()
         except Exception as e:
-            logger.exception(e)
+            logger.error(e, exc_info=True)
             raise e
 
 

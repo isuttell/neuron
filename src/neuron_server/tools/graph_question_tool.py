@@ -77,7 +77,7 @@ This tool answers questions, and looks for related information from a knowledge 
 </research_analysis>
 """.strip()
         except Exception as e:
-            logger.exception(e)
+            logger.error(e, exc_info=True)
             return f"Failed to answer question: {str(e)}"
 
 

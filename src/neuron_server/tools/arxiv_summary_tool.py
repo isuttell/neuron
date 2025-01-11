@@ -128,7 +128,7 @@ This tool provides detailed, page-by-page summaries of research articles by thei
             logger.debug(f"Summary saved to {summary_file_path}")
             return report
         except Exception as e:
-            logger.exception(e)
+            logger.error(e, exc_info=True)
             return f"Failed to summarize article: {str(e)}"
 
 

@@ -21,6 +21,8 @@ from neuron_server.config import config as neuron_config
 import hashlib
 import aiofiles
 from neuron_server.controllers.auth import requires_auth
+from neuron_server.util.image_utilities import create_thumbnails
+
 
 router = EventRouter()
 
@@ -88,8 +90,17 @@ async def post_thread_message(thread_id: UUID):
             os.makedirs(os.path.dirname(file_path), exist_ok=True)
             async with aiofiles.open(file_path, "wb") as f:
                 await f.write(file_contents)
+            if ext in [".jpg", ".jpeg", ".png", ".webp"]:
+                create_thumbnails(
+                    file_path,
+                    os.path.abspath(os.path.join(neuron_config.static_folder, "user")),
+                )
         # inform the agent that the user has uploaded a file
-        prompt = f"<|AI|>The user has uploaded a file called '{file.filename}' to <{url}> as part the request<|AI|>\n{prompt}"
+        if ext in [".jpg", ".jpeg", ".png", ".webp", ".gif"]:
+            url = f"<image>![{file.filename}]({url})</image>"
+        else:
+            url = f"<{url}>"
+        prompt = f"<|AI|>The user has uploaded a file called '{file.filename}' to {url} as part the request<|AI|>\n{prompt}"
 
     await agent.astream(
         thread_id=thread.id,

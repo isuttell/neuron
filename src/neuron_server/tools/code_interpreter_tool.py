@@ -90,5 +90,5 @@ This tool executes Python code in a restricted environment for data analysis, pr
                 duration=duration,
             ).strip()
         except Exception as e:
-            logger.error(e)
+            logger.error(e, exc_info=True)
             raise e

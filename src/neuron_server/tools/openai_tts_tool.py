@@ -76,7 +76,7 @@ The tool will use OpenAI's TTS API to generate the audio and return a link to th
             working_dir = os.path.abspath(os.path.join(config.temp_folder, uuid4().hex))
             os.makedirs(working_dir)
             audio_files: List[str] = []
-            for index, line in enumerate(parse_script(script)):
+            for index, line in enumerate(parse_script(script, remove_actions=True)):
                 logger.debug(
                     f"Generating openai audio for line: [{line['voice']}] {line['text']}"
                 )
@@ -114,7 +114,7 @@ The tool will use OpenAI's TTS API to generate the audio and return a link to th
             logger.debug(f"Generated audio file at {output} <{url}>")
             return f"""<audio src="{url}"></audio>""".strip()
         except Exception as e:
-            logger.exception(e)
+            logger.error(e, exc_info=True)
             raise e
         finally:
             if os.path.exists(working_dir):

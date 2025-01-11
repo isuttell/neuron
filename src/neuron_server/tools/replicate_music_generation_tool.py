@@ -141,7 +141,7 @@ generate high-quality stereo audio output.
             return f'<audio controls src="{url}"></audio>\nFilename: {file_path}'
 
         except Exception as e:
-            logger.exception(e)
+            logger.error(e, exc_info=True)
             raise
         finally:
             if tmp_audio_file and os.path.exists(tmp_audio_file):
