@@ -22,6 +22,11 @@ import {
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "../hooks/use-toast";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface EditPersonalityDialogProps {
   personality?: Personality;
@@ -39,7 +44,8 @@ const ToolSetLabels = {
   notifications: "Notifications",
   inspect: "Inspect",
   search: "Search",
-  tts: "Audio Generation",
+  audio: "Audio Generation",
+  tts: "Text to Speech",
   weather: "Weather",
   video: "Video Generation",
   kepler: "Kepler",
@@ -131,17 +137,24 @@ const EditPersonalityDialog: React.FC<EditPersonalityDialogProps> = ({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="ghost" size="icon">
-          {personality ? (
-            <UserPen className="size-4" />
-          ) : (
-            <UserPlus className="size-4" />
-          )}
+          <Tooltip>
+            <TooltipTrigger>
+              {personality ? (
+                <UserPen className="m-3" />
+              ) : (
+                <UserPlus className="m-3" />
+              )}
+            </TooltipTrigger>
+            <TooltipContent>
+              {personality ? "Edit" : "Create"} Personality
+            </TooltipContent>
+          </Tooltip>
           <span className="sr-only">
             {personality ? "Edit" : "Create"} Personality
           </span>
         </Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="max-w-[768px]">
         <form onSubmit={handleSubmit}>
           <DialogHeader className="mb-4">
             <DialogTitle>
@@ -161,6 +174,7 @@ const EditPersonalityDialog: React.FC<EditPersonalityDialogProps> = ({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Description"
+              rows={4}
             />
           </div>
           <div className="mb-4">
@@ -176,6 +190,7 @@ const EditPersonalityDialog: React.FC<EditPersonalityDialogProps> = ({
               value={context}
               onChange={(e) => setContext(e.target.value)}
               placeholder="Context"
+              rows={10}
             />
           </div>
           <div className="mb-4">

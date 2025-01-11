@@ -6,7 +6,9 @@ from typing import List, Literal, Type
 import os
 import subprocess
 from pydantic import BaseModel, Field
-from neuron_server.util.slug import slugify
+from neuron_server.util.slug import safe_filename
+from neuron_server.util.subprocess_runner import run_subprocess
+import asyncio
 
 
 class FFmpegToolError(Exception):
@@ -50,16 +52,15 @@ This tool is designed to manipulate video and audio using ffmpeg. Do not show th
 
     args_schema: Type[FFmpegToolArgs] = FFmpegToolArgs
 
-    def _run(
+    def _run(self, *args, **kwargs) -> str:
+        return asyncio.run(self._arun(*args, **kwargs))
+
+    async def _arun(
         self, args: List[str], extension: Literal["mp3", "mp4", "wav"], slug: str
     ) -> str:
-        process: subprocess.CompletedProcess
+        process: subprocess.CompletedProcess[str]
         try:
-            # Remove any non-alphanumeric characters and limit to 255 characters
-            slug = slugify(slug)
-
-            # Concatenate all audio files using ffmpeg
-            filename = f"ffmpeg_{uuid4().hex[:8]}_{slug}.{extension}"
+            filename = safe_filename("ffmpeg", slug, extension)
             output = os.path.abspath(os.path.join(config.static_folder, filename))
             args = (
                 [
@@ -73,9 +74,8 @@ This tool is designed to manipulate video and audio using ffmpeg. Do not show th
                 + args
                 + [output]
             )
-            process = subprocess.run(
+            process = await run_subprocess(
                 args,
-                check=True,
                 text=True,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,

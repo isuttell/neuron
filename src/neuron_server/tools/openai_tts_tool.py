@@ -12,6 +12,7 @@ from typing import List, Type
 import asyncio
 from pydantic import BaseModel, Field
 import aiofiles
+from neuron_server.util.subprocess_runner import run_subprocess
 
 client = AsyncOpenAI(api_key=config.openai_api_key)
 
@@ -109,7 +110,9 @@ The tool will use OpenAI's TTS API to generate the audio and return a link to th
                 "copy",
                 output,
             ]
-            subprocess.run(ffmpeg_command, check=True)
+            await run_subprocess(
+                ffmpeg_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            )
             url = config.static_content_url + "/" + filename
             logger.debug(f"Generated audio file at {output} <{url}>")
             return f"""<audio src="{url}"></audio>""".strip()

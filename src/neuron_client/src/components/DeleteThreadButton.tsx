@@ -14,6 +14,11 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface DeleteThreadButtonProps {
   threadId: string;
@@ -30,8 +35,13 @@ export default function DeleteThreadButton({
     <Dialog>
       <DialogTrigger asChild>
         <Button variant="ghost" size="icon">
-          <Trash className="size-4" />
-          <span className="sr-only">Delete</span>
+          <Tooltip>
+            <TooltipTrigger>
+              <Trash className="m-3" />
+            </TooltipTrigger>
+            <TooltipContent>Delete Thread</TooltipContent>
+          </Tooltip>
+          <span className="sr-only">Delete Thread</span>
         </Button>
       </DialogTrigger>
       <DialogContent>

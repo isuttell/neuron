@@ -12,6 +12,7 @@ import asyncio
 from pydantic import BaseModel, Field
 from neuron_server.util.slug import safe_filename
 from neuron_server.util.script_parser import parse_script
+from neuron_server.util.subprocess_runner import run_subprocess
 
 
 class ElevenLabsTTSToolArgs(BaseModel):
@@ -53,9 +54,15 @@ News Presenter Voices:
 Alice
 Sarah
 
+Social Media Voices:
+Laura
+River
+Roger
+Will
+
 Character Voices:
 Callum (male, middle-aged, intense)
-Charlotte (female, Swedish)
+Charlotte (female, Swedish, seductive)
 Sexy Female Villain Voice
 
 Voice Clones:
@@ -69,7 +76,7 @@ Isaac
 
     model: Optional[Literal["eleven_flash_v2_5", "eleven_multilingual_v2"]] = Field(
         description="The model to use for the TTS. Defaults to eleven_multilingual_v2 for quality and eleven_flash_v2_5 for speed.",
-        default="eleven_multilingual_v2",
+        default="eleven_flash_v2_5",
     )
 
 
@@ -91,7 +98,7 @@ This tool generates audio from a provided script using ElevenLabs' TTS APIs and 
         slug: str,
         model: Optional[
             Literal["eleven_flash_v2_5", "eleven_multilingual_v2"]
-        ] = "eleven_multilingual_v2",
+        ] = "eleven_flash_v2_5",
     ) -> str:
         try:
             logger.debug(f"Generating elevenlabs audio using {model}...")
@@ -131,7 +138,7 @@ This tool generates audio from a provided script using ElevenLabs' TTS APIs and 
                 "copy",
                 output,
             ]
-            subprocess.run(
+            await run_subprocess(
                 ffmpeg_command,
                 check=True,
                 stdout=subprocess.PIPE,

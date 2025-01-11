@@ -156,7 +156,9 @@ export function AudioBarVisualization({
       const barHeight = Math.ceil(amplitude * (canvas.height / 2));
 
       const isPlayed = i <= progressPosition && progress > 0;
-      ctx.fillStyle = isPlayed ? "rgb(6, 197, 255)" : "rgb(255, 255, 255)";
+      ctx.fillStyle = isPlayed
+        ? "rgb(6, 197, 255)"
+        : "rgba(255, 255, 255, 0.86)";
 
       ctx.fillRect(x, centerY - barHeight, barWidth, barHeight);
       ctx.fillRect(x, centerY, barWidth, barHeight);

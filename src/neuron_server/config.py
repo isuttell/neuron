@@ -132,9 +132,7 @@ class Config(BaseModel):
     )
     # Workaround for Docker container access to the host's filesystem
     parent_temp_folder: str = Field(
-        default=os.path.abspath(
-            os.environ.get("PARENT_TEMP_FOLDER", "/opt/lib/neuron/tmp")
-        ),
+        default=os.path.abspath(os.environ.get("PARENT_TEMP_FOLDER", "./tmp")),
         description="Parent temp folder",
     )
     tablet_image_filename: str = Field(

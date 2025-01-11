@@ -12,11 +12,12 @@ from neuron_server.config import config as neuron_config
 import aiofiles
 import subprocess
 import re
+from neuron_server.util.subprocess_runner import run_subprocess
 
 
-def join_video_audio(video_file: str, audio_file: str, output_file: str):
+async def join_video_audio(video_file: str, audio_file: str, output_file: str):
     logger.debug(f"Joining video {video_file} with audio {audio_file} to {output_file}")
-    process = subprocess.run(
+    process: subprocess.CompletedProcess[str] = await run_subprocess(
         [
             "ffmpeg",
             "-hide_banner",
@@ -37,7 +38,6 @@ def join_video_audio(video_file: str, audio_file: str, output_file: str):
             "mp4",
             output_file,
         ],
-        check=True,
         text=True,
         stdout=None,
         stderr=None,
@@ -107,38 +107,10 @@ This tool is optimized for generating short audio samples, sound effects, and pr
 
     def _run(
         self,
-        video_url: str,
-        prompt: str,
-        slug: str,
-        seed: int = -1,
-        steps: int = 25,
-        cfg_scale: float = 4.5,
-        sigma_max: int = 500,
-        sigma_min: float = 0.03,
-        batch_size: int = 1,
-        sampler_type: str = "dpmpp-3m-sde",
-        seconds_start: int = 0,
-        seconds_total: int = 8,
-        negative_prompt: str = "",
-        init_noise_level: float = 1,
+        *args,
+        **kwargs,
     ) -> str:
-        return asyncio.run(
-            self._arun(
-                video_url,
-                prompt,
-                seed,
-                steps,
-                cfg_scale,
-                sigma_max,
-                sigma_min,
-                batch_size,
-                sampler_type,
-                seconds_start,
-                seconds_total,
-                negative_prompt,
-                init_noise_level,
-            )
-        )
+        return asyncio.run(self._arun(*args, **kwargs))
 
     async def _arun(
         self,

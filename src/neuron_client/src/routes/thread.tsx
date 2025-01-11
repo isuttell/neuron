@@ -6,7 +6,10 @@ import { useAppSelector, useAppDispatch } from "../hooks";
 import { shallowEqual } from "react-redux";
 import { RootState } from "../store";
 import Loading from "@/lib/loading";
-import { getActivePersonalityId } from "../slices/personalitiesSlice";
+import {
+  getActivePersonalityId,
+  getActivePersonality,
+} from "../slices/personalitiesSlice";
 import MediaList, { getMediaItems } from "../messages/MediaList";
 import { fetchMessagesByThread } from "../actions/messageActions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -18,9 +21,8 @@ import ToggleSystemMessages from "@/components/ToggleSystemMessages";
 import MediaPanelWidth, { WidthMode } from "@/components/MediaPanelWidth";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { MediaPlayerProvider } from "@/contexts/MediaPlayerContext";
-import { Music2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { togglePlayer } from "@/slices/audioSlice";
+import TogglePlayerButton from "@/components/TogglePlayerButton";
+import EditPersonalityDialog from "@/personalities/EditPersonalityDialog";
 
 const selectThread = (state: RootState, threadId?: string) =>
   state.threads.threads.find((thread) => thread.id === threadId);
@@ -32,7 +34,7 @@ export default function Thread() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const activePersonalityId = useAppSelector(getActivePersonalityId);
-
+  const activePersonality = useAppSelector(getActivePersonality);
   const [activeTab, setActiveTab] = useState<"media">("media");
   const lastMessageRef = useRef<HTMLDivElement | null>(null);
   const { threadId } = useParams();
@@ -121,19 +123,15 @@ export default function Thread() {
             {thread.name || "Welcome..."}
           </h1>
           <div className="flex-1" />
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => dispatch(togglePlayer())}
-            className="size-10"
-          >
-            <Music2 className="size-4" />
-          </Button>
+          <TogglePlayerButton />
           <ToggleSystemMessages
             showTools={showTools}
             onToggle={() => setShowTools(!showTools)}
           />
           <MediaPanelWidth widthMode={widthMode} onChange={setWidthMode} />
+          {activePersonality && (
+            <EditPersonalityDialog personality={activePersonality} />
+          )}
           <DeleteThreadButton threadId={thread.id} />
         </div>
         <div className="flex flex-row flex-1">

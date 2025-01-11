@@ -1,6 +1,3 @@
-from langchain.tools import BaseTool
-from typing import Type
-from pydantic import BaseModel, Field
 from neuron_server.logger import logger
 import asyncio
 from neuron_server.config import config
@@ -11,6 +8,7 @@ import time
 import shutil
 from typing import List
 from neuron_server.util.image_utilities import create_thumbnails
+from neuron_server.util.subprocess_runner import run_subprocess
 
 
 class RestrictedKeywordError(Exception):
@@ -105,8 +103,8 @@ def get_media_type(file_path: str) -> str:
     return "unknown"
 
 
-def force_stop_code_interpreter():
-    subprocess.run(
+async def force_stop_code_interpreter():
+    await run_subprocess(
         ["docker", "rm", "-v", "-f", "neuron-code-interpreter"],
     )
 
@@ -130,7 +128,6 @@ async def run_code_interpreter(
         with open(script_file, "w", encoding="utf-8") as f:
             f.write(python_code)
         logger.info(f"Saved python code to {script_file} and executing...")
-        loop = asyncio.get_running_loop()
         # This needs to point to the host's filesystem and not the container's
         docker_folder_reference = os.path.abspath(
             os.path.join(config.parent_temp_folder, folder_name)
@@ -158,19 +155,13 @@ async def run_code_interpreter(
             code_interpreter_image,
             script_filename,
         ]
-        logger.info(f"Running code interpreter with args: {' '.join(args)}")
-        process = await asyncio.wait_for(
-            loop.run_in_executor(
-                None,
-                lambda: subprocess.run(
-                    args,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    text=True,
-                    encoding="utf-8",
-                ),
-            ),
+        process = await run_subprocess(
+            args=args,
             timeout=timeout,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            encoding="utf-8",
         )
         duration = time.perf_counter() - start_time
         if process.returncode != 0:
@@ -218,5 +209,5 @@ async def run_code_interpreter(
                 artifacts.append(f"<link>[{file}]({url})</link>")
         return process.stdout.strip() if process.stdout else "", artifacts
     except asyncio.TimeoutError:
-        force_stop_code_interpreter()
+        await force_stop_code_interpreter()
         raise Exception(f"python code execution timed out after {timeout} seconds")
