@@ -41,107 +41,106 @@ const AudioContent: React.FC<AudioContentProps> = ({ url, className }) => {
 
   return (
     <div
-      className={cn(
-        "flex gap-2 rounded-lg justify-center items-center flex-col w-full relative py-6",
-        className
-      )}
+      className={cn("flex rounded-lg flex-col w-full", className)}
       style={{
         aspectRatio: "3/1",
         backgroundColor: "#111111",
       }}
     >
+      <div className="w-full relative">
+        <AudioBarVisualization
+          src={url}
+          progress={isActive ? progress : 0}
+          className="w-full rounded-md"
+          onSeek={isActive ? seek : undefined}
+        />
+
+        <div className="flex flex-row gap-2 w-full justify-end absolute bottom-2 right-2">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="sm"
+                onClick={() => {
+                  if (currentUrl === url && isPlaying) {
+                    toggleAudio();
+                  } else {
+                    playAudio(url, title, true);
+                  }
+                }}
+              >
+                {currentUrl === url && isPlaying ? (
+                  <Pause className="size-4" />
+                ) : (
+                  <Play className="size-4" />
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              {currentUrl === url && isPlaying ? "Pause" : "Play Now"}
+            </TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => playAudio(url, title, false)}
+              >
+                <Plus className="size-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Add to Queue</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={(e) => {
+                  e.preventDefault();
+                  navigator.clipboard.writeText(url);
+                  toast({
+                    title: "Audio URL copied to clipboard",
+                  });
+                }}
+              >
+                <Copy className="size-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Copy audio URL</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="sm"
+                variant="outline"
+                asChild
+                onClick={(e) => {
+                  e.stopPropagation();
+                }}
+              >
+                <a
+                  className="text-primary"
+                  href={url}
+                  download
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Download className="size-4" />
+                </a>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Download audio</TooltipContent>
+          </Tooltip>
+        </div>
+      </div>
       <div
-        className="text-sm text-gray-500 absolute p-2 top-0 left-0"
+        className="text-sm text-gray-500 truncate p-2 pt-0"
         style={{
           backgroundColor: "#111111",
         }}
       >
         {title}
-      </div>
-      <AudioBarVisualization
-        src={url}
-        progress={isActive ? progress : 0}
-        className="w-full rounded-md"
-        onSeek={isActive ? seek : undefined}
-      />
-
-      <div className="flex flex-row gap-2 w-full justify-end absolute bottom-2 right-2">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              size="sm"
-              onClick={() => {
-                if (currentUrl === url && isPlaying) {
-                  toggleAudio();
-                } else {
-                  playAudio(url, title, true);
-                }
-              }}
-            >
-              {currentUrl === url && isPlaying ? (
-                <Pause className="size-4" />
-              ) : (
-                <Play className="size-4" />
-              )}
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            {currentUrl === url && isPlaying ? "Pause" : "Play Now"}
-          </TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => playAudio(url, title, false)}
-            >
-              <Plus className="size-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Add to Queue</TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={(e) => {
-                e.preventDefault();
-                navigator.clipboard.writeText(url);
-                toast({
-                  title: "Audio URL copied to clipboard",
-                });
-              }}
-            >
-              <Copy className="size-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Copy audio URL</TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              size="sm"
-              variant="outline"
-              asChild
-              onClick={(e) => {
-                e.stopPropagation();
-              }}
-            >
-              <a
-                className="text-primary"
-                href={url}
-                download
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Download className="size-4" />
-              </a>
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Download audio</TooltipContent>
-        </Tooltip>
       </div>
     </div>
   );
