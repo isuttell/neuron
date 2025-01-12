@@ -33,7 +33,6 @@ def check_for_restricted_keywords(python_code: str) -> None:
         "subprocess",
         "shutil",
         "currentframe()",
-        "open(",
         "socket",
         "requests",
         "http",

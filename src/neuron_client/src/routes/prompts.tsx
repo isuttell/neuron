@@ -187,7 +187,7 @@ export default function PromptsPage() {
                         .get(personalityId)
                         ?.logo?.replace(/\.(?=[^.]*$)/, `_t.`)}
                       alt={personalitiiesMap.get(personalityId)?.name}
-                      className="size-8 rounded-sm mr-4"
+                      className="size-8 rounded-sm mr-4 max-w-8 max-h-8 overflow-hidden bg-muted"
                     />
                   ) : null}
                   <h2 className="text-xl font-semibold ">
@@ -225,13 +225,10 @@ export default function PromptsPage() {
                         key={prompt.id}
                         className="p-4 border rounded-lg flex justify-between items-start"
                       >
-                        <div className="space-y-2">
-                          <h3 className="font-medium">{prompt.name}</h3>
-                          <p className="text-sm text-gray-400 whitespace-pre-wrap">
-                            {prompt.text}
-                          </p>
+                        <div className="space-y-2 flex justify-center items-center">
+                          <h3 className="font-medium text-lg">{prompt.name}</h3>
                         </div>
-                        <div className="flex flex-col space-y-2 ml-2">
+                        <div className="flex flex-row-reverse gap-2 mr-2">
                           <Button
                             size="icon"
                             className="bg-accent text-accent-foreground"

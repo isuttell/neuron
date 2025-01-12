@@ -42,7 +42,7 @@ class CodeInterpreterTool(BaseTool):
     name: str = "code_interpreter"
     description: str = (
         """
-This tool executes Python code in a restricted environment for data analysis, precise computations, graphing, and visualizations for enhanced response generation. It leverages libraries such as pandas, numpy, scipy, and statsmodels for tasks like data cleaning, statistical modeling, and numerical computations. It also uses Matplotlib, Seaborn, and Plotly for customized, visually rich charts. Use this for precise calculations, data analysis, and data visualizations. The code is executed in a sandboxed, headless, noninteractive environment with no internet access. Use of eval, exec, open, and input is also blocked. Code must complete within 300 seconds.
+This tool executes Python code in a restricted environment for data analysis, precise computations, graphing, and visualizations for enhanced response generation. It leverages libraries such as pandas, numpy, scipy, and statsmodels for tasks like data cleaning, statistical modeling, and numerical computations. It also uses Matplotlib, Seaborn, and Plotly for customized, visually rich charts. Use this for precise calculations, data analysis, and data visualizations. The code is executed in a sandboxed, headless, noninteractive environment with no internet access. Use of eval, exec, and input is blocked. Code must complete within 300 seconds.
 """.strip()
     )
 

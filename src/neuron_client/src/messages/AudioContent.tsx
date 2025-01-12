@@ -32,7 +32,7 @@ const AudioContent: React.FC<AudioContentProps> = ({ url, className }) => {
     toggleAudio,
     addToQueue,
   } = useGlobalAudio();
-  const title = url.split("/").pop() || "";
+  const title = url.split("/").pop()?.split(".")[0] || "";
   const isActive = currentUrl === url;
 
   useEffect(() => {
@@ -42,10 +42,22 @@ const AudioContent: React.FC<AudioContentProps> = ({ url, className }) => {
   return (
     <div
       className={cn(
-        "flex gap-2 justify-center items-center flex-col w-full relative",
+        "flex gap-2 rounded-lg justify-center items-center flex-col w-full relative py-6",
         className
       )}
+      style={{
+        aspectRatio: "3/1",
+        backgroundColor: "#111111",
+      }}
     >
+      <div
+        className="text-sm text-gray-500 absolute p-2 top-0 left-0"
+        style={{
+          backgroundColor: "#111111",
+        }}
+      >
+        {title}
+      </div>
       <AudioBarVisualization
         src={url}
         progress={isActive ? progress : 0}

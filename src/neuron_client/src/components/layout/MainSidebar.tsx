@@ -1,4 +1,4 @@
-import { Home, CircleUser, GalleryThumbnails, FileText } from "lucide-react";
+import { Home, CircleUser, LayoutGrid, FileText } from "lucide-react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import {
   Sidebar,
@@ -51,8 +51,8 @@ export function MainSidebar() {
     },
     {
       to: "/gallery",
-      label: "Gallery",
-      Icon: GalleryThumbnails,
+      label: "Recent Media",
+      Icon: LayoutGrid,
     },
   ];
 

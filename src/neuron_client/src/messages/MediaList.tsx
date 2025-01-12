@@ -167,7 +167,7 @@ function MediaList({
         if (item.type === "audio") {
           return (
             <AudioContent
-              className="w-full h-36"
+              className="w-full"
               preload="auto"
               url={item.url}
               key={item.key}

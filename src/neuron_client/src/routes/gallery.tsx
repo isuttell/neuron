@@ -26,14 +26,15 @@ export default function Gallery() {
       <div className="flex flex-1 p-4 flex-col flex-nowrap max-h-screen overflow-auto">
         <div className="flex justify-between mb-2 border-b pb-2">
           <SidebarTrigger className="size-10 mr-2" />
-          <h1 className="text-2xl font-bold">Gallery</h1>
+          <h1 className="text-2xl font-bold">Recent Media</h1>
           <div className="flex-1" />
         </div>
         <div className="overflow-y-auto grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-2 lg:gap-4">
           {sortedImages.map((image) => (
             <AspectRatio
+              key={image.id}
               ratio={1}
-              className="max-h-[1024px] max-w-[1024px] rounded-lg border border-gray-900"
+              className="max-h-[1024px] max-w-[1024px] rounded-lg border border-gray-900 flex justify-center items-center"
             >
               {image.media_type === "image" ? (
                 <ImageContent
@@ -49,7 +50,7 @@ export default function Gallery() {
               ) : null}
               {image.media_type === "audio" ? (
                 <AudioContent
-                  className="w-full p-2"
+                  className="w-full"
                   key={image.id}
                   url={image.url}
                   preload="metadata"

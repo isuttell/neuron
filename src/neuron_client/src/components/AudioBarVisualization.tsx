@@ -80,16 +80,12 @@ export function AudioBarVisualization({
     const parent = canvas.parentElement;
     if (!parent) return;
 
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = parent.clientWidth * dpr;
-    canvas.height = parent.clientHeight * dpr;
+    canvas.width = parent.clientWidth;
+    canvas.height = canvas.clientHeight;
     const ctx = canvas.getContext("2d");
-    if (ctx) {
-      ctx.scale(dpr, dpr);
-    }
 
     canvas.style.width = `${parent.clientWidth}px`;
-    canvas.style.height = `${parent.clientHeight}px`;
+    canvas.style.height = `${canvas.clientHeight}px`;
 
     if (rawChannelDataRef.current) {
       waveformDataRef.current = processAudioData(rawChannelDataRef.current);
@@ -144,7 +140,7 @@ export function AudioBarVisualization({
     ctx.fillStyle = backgroundColor;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    const centerY = canvas.height / 2;
+    const centerY = Math.round(canvas.height / 2);
     const barCount = waveformData.length;
     const progressPosition = Math.floor((progress / 100) * barCount);
     const totalWidth = (barWidth + gap) * barCount;
@@ -203,16 +199,13 @@ export function AudioBarVisualization({
     const canvas = canvasRef.current;
     if (!canvas || waveformDataRef.current.length === 0) return;
 
-    if (Math.abs(progress - lastProgressRef.current) > 5) {
-      lastProgressRef.current = progress;
-    }
     targetProgressRef.current = progress;
 
     if (!animationFrameRef.current) {
       const animate = () => {
         const diff = targetProgressRef.current - lastProgressRef.current;
-        if (Math.abs(diff) > 0.01) {
-          lastProgressRef.current += diff * 0.15;
+        if (Math.abs(diff) > 0.001) {
+          lastProgressRef.current += diff * 0.25;
 
           const ctx = canvas.getContext("2d");
           if (ctx) {

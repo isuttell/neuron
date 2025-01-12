@@ -1,7 +1,15 @@
 import React, { useRef, useCallback } from "react";
 import { useGlobalAudio } from "@/contexts/GlobalAudioContext";
 import { Button } from "@/components/ui/button";
-import { X, Pause, Play, SkipBack, SkipForward, Repeat } from "lucide-react";
+import {
+  X,
+  Pause,
+  Play,
+  SkipBack,
+  SkipForward,
+  Repeat,
+  ListVideo,
+} from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -29,6 +37,8 @@ export function GlobalAudioPlayer() {
     seek,
     autoAdvance,
     toggleAutoAdvance,
+    loop,
+    toggleLoop,
   } = useGlobalAudio();
 
   const progressRef = useRef<HTMLDivElement>(null);
@@ -96,7 +106,10 @@ export function GlobalAudioPlayer() {
           {error}
         </div>
       )}
-      <div className="h-[101px] border-b">
+      <div
+        className="h-[101px] border-b"
+        style={{ backgroundColor: "#111111" }}
+      >
         {currentUrl && (
           <AudioBarVisualization
             key={currentUrl}
@@ -110,9 +123,15 @@ export function GlobalAudioPlayer() {
       <div className="p-4 flex items-center gap-4">
         <div className="flex flex-col min-w-[200px] flex-1">
           <div className="text-sm font-medium">
-            <div>Now Playing</div>
-            {currentTrack?.title && (
-              <div className="text-muted-foreground">{currentTrack.title}</div>
+            {currentTrack?.title ? (
+              <>
+                <div>Now Playing</div>
+                <div className="text-muted-foreground">
+                  {currentTrack.title}
+                </div>
+              </>
+            ) : (
+              <div>No track selected</div>
             )}
           </div>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -156,7 +175,7 @@ export function GlobalAudioPlayer() {
                 size="sm"
                 variant="ghost"
                 onClick={toggleAudio}
-                disabled={isLoading}
+                disabled={isLoading || !currentTrack}
               >
                 {isLoading ? (
                   <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
@@ -193,12 +212,25 @@ export function GlobalAudioPlayer() {
                 variant={autoAdvance ? "default" : "ghost"}
                 onClick={toggleAutoAdvance}
               >
-                <Repeat className="h-4 w-4" />
+                <ListVideo className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>
               {autoAdvance ? "Auto Advance On" : "Auto Advance Off"}
             </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="sm"
+                variant={loop ? "default" : "ghost"}
+                onClick={toggleLoop}
+              >
+                <Repeat className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{loop ? "Loop On" : "Loop Off"}</TooltipContent>
           </Tooltip>
 
           <QueueSheet />

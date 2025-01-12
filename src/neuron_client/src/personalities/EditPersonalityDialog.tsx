@@ -51,10 +51,10 @@ const ToolSetLabels = {
   kepler: "Kepler",
 };
 
-const EditPersonalityDialog: React.FC<EditPersonalityDialogProps> = ({
+export default function EditPersonalityDialog({
   personality,
   default_tools = ["image", "search", "tts"],
-}) => {
+}: EditPersonalityDialogProps) {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -135,25 +135,25 @@ const EditPersonalityDialog: React.FC<EditPersonalityDialogProps> = ({
   const active_tools = tool_set.length > 0 ? tool_set : default_tools;
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="ghost" size="icon">
-          <Tooltip>
-            <TooltipTrigger>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <DialogTrigger asChild>
+            <Button variant="ghost" size="icon">
               {personality ? (
                 <UserPen className="m-3" />
               ) : (
                 <UserPlus className="m-3" />
               )}
-            </TooltipTrigger>
-            <TooltipContent>
-              {personality ? "Edit" : "Create"} Personality
-            </TooltipContent>
-          </Tooltip>
-          <span className="sr-only">
-            {personality ? "Edit" : "Create"} Personality
-          </span>
-        </Button>
-      </DialogTrigger>
+              <span className="sr-only">
+                {personality ? "Edit" : "Create"} Personality
+              </span>
+            </Button>
+          </DialogTrigger>
+        </TooltipTrigger>
+        <TooltipContent>
+          {personality ? "Edit" : "Create"} Personality
+        </TooltipContent>
+      </Tooltip>
       <DialogContent className="max-w-[768px]">
         <form onSubmit={handleSubmit}>
           <DialogHeader className="mb-4">
@@ -252,6 +252,4 @@ const EditPersonalityDialog: React.FC<EditPersonalityDialogProps> = ({
       </DialogContent>
     </Dialog>
   );
-};
-
-export default EditPersonalityDialog;
+}

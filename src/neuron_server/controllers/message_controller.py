@@ -13,8 +13,6 @@ from neuron_server.llms.agent import aget_state
 from werkzeug.exceptions import NotFound, BadRequest
 import neuron_server.llms.agent as agent
 from neuron_server.pubsub import pubsub
-from pydantic import BaseModel
-import asyncio
 from uuid import uuid4
 import os
 from neuron_server.config import config as neuron_config
@@ -46,6 +44,19 @@ async def get_thread_messages(thread_id: UUID):
         "threads": [thread.model_dump()],
         "messages": [message.model_dump() for message in messages],
     }
+
+
+def format_ai_uploaded_file(filename: str, ext: str, url: str) -> str:
+    # inform the agent that the user has uploaded a file
+    if ext in [".jpg", ".jpeg", ".png", ".webp", ".gif"]:
+        url = f"<image>![{filename}]({url})</image>"
+    elif ext in [".mp3", ".wav", ".ogg", ".flac"]:
+        url = f'<audio src="{url}"></audio>'
+    elif ext in [".mp4", ".mov", ".avi", ".mkv"]:
+        url = f'<video src="{url}"></video>'
+    else:
+        url = f"<{url}>"
+    return f"<|AI|>The user has uploaded a file called '{filename}' to {url} as part the request<|AI|>"
 
 
 @blueprint.post("/thread/<uuid:thread_id>")
@@ -95,12 +106,8 @@ async def post_thread_message(thread_id: UUID):
                     file_path,
                     os.path.abspath(os.path.join(neuron_config.static_folder, "user")),
                 )
-        # inform the agent that the user has uploaded a file
-        if ext in [".jpg", ".jpeg", ".png", ".webp", ".gif"]:
-            url = f"<image>![{file.filename}]({url})</image>"
-        else:
-            url = f"<{url}>"
-        prompt = f"<|AI|>The user has uploaded a file called '{file.filename}' to {url} as part the request<|AI|>\n{prompt}"
+
+        prompt = f"{format_ai_uploaded_file(file.filename, ext, url)}\n{prompt}"
 
     await agent.astream(
         thread_id=thread.id,

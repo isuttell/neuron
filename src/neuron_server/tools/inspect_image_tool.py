@@ -41,10 +41,10 @@ class InspectImageToolArgs(BaseModel):
     prompt: str = Field(
         description="This should be a prompt with detailed and specific question(s) to be answered about the image."
     )
-    max_tokens: Optional[int] = Field(
-        description="The maximum number of tokens allowed in the response. A higher token count enables but not guarantees a more detailed answer.",
-        default=4000,
-    )
+    # max_tokens: Optional[int] = Field(
+    #     description="The maximum number of tokens allowed in the response. A higher token count enables but not guarantees a more detailed answer.",
+    #     default=4000,
+    # )
 
 
 async def get_image_bytes(image_url: str) -> bytes:
@@ -248,7 +248,7 @@ class InspectImageTool(BaseTool):
             content: str = await model.ainvoke(
                 [
                     SystemMessage(
-                        content="You are a tool that inspects images and returns a description of the image based on a given prompt. Be descriptive and detailed. The parent will handle the metadata your job is to return the description. Just return the description, no other text. Do not ask for clarification."
+                        content="You inspect images and return a description of the image based on a given prompt. Be long, descriptive and detailed. The another agent will handle the metadata your job is to just return the description and not other text. Do not ask for clarification."
                     ),
                     HumanMessage(
                         content=[

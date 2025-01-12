@@ -37,6 +37,11 @@ services:
     env_file:
       - .env-docker
 
+  # riza:
+  #   restart: unless-stopped
+  #   ports:
+  #     - 3003:3003
+
 volumes:
   database-data:
   redis-data:

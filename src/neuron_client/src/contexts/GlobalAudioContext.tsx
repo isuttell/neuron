@@ -31,6 +31,8 @@ interface GlobalAudioContextType {
   autoAdvance: boolean;
   toggleAutoAdvance: () => void;
   addToQueue: (url: string, title?: string) => void;
+  loop: boolean;
+  toggleLoop: () => void;
 }
 
 const GlobalAudioContext = createContext<GlobalAudioContextType | undefined>(
@@ -58,6 +60,7 @@ export function GlobalAudioProvider({
   const [duration, setDuration] = useState("0:00");
   const [hasEnded, setHasEnded] = useState(false);
   const [autoAdvance, setAutoAdvance] = useState(false);
+  const [loop, setLoop] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(new Audio());
   const queueIndexRef = useRef<number>(0);
 
@@ -191,8 +194,30 @@ export function GlobalAudioProvider({
     setProgress(percentage);
   }, []);
 
+  const toggleLoop = useCallback(() => {
+    setLoop((prev) => {
+      const newLoop = !prev;
+      if (newLoop) {
+        setAutoAdvance(false);
+      }
+      if (audioRef.current) {
+        audioRef.current.loop = newLoop;
+      }
+      return newLoop;
+    });
+  }, []);
+
   const toggleAutoAdvance = useCallback(() => {
-    setAutoAdvance((prev) => !prev);
+    setAutoAdvance((prev) => {
+      const newAutoAdvance = !prev;
+      if (newAutoAdvance) {
+        setLoop(false);
+        if (audioRef.current) {
+          audioRef.current.loop = false;
+        }
+      }
+      return newAutoAdvance;
+    });
   }, []);
 
   const handleTimeUpdate = useCallback(() => {
@@ -298,6 +323,8 @@ export function GlobalAudioProvider({
         autoAdvance,
         toggleAutoAdvance,
         addToQueue,
+        loop,
+        toggleLoop,
       }}
     >
       {children}

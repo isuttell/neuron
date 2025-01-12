@@ -49,10 +49,12 @@ Bill
 Brian
 Lily
 Matilda
+George
 
 News Presenter Voices:
 Alice
 Sarah
+Daniel
 
 Social Media Voices:
 Laura

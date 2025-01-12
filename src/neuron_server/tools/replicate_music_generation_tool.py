@@ -2,7 +2,6 @@ from langchain.tools import BaseTool
 from typing import Type, Optional, Literal
 from pydantic import BaseModel, Field
 import replicate.helpers
-from neuron_server.logger import logger
 import asyncio
 import replicate
 import aiohttp
@@ -11,12 +10,15 @@ import os
 from neuron_server.config import config as neuron_config
 import aiofiles
 import re
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class ReplicateMusicGenerationToolArgs(BaseModel):
     prompt: str = Field(description="A description of the music you want to generate.")
     input_audio: Optional[str] = Field(
-        description="An audio file url that will influence the generated music. If continuation is True, the generated music will be a continuation of the audio file. Otherwise, the generated music will mimic the audio file's melody.",
+        description="An audio file url that will influence the generated music. If continuation is True, the generated music will be a continuation of the audio file. Otherwise, the generated music will mimic the audio file's melody. The input audio duration must be shorter than to requested duration. Use the ffmpeg tool to trim the input audio file to the desired length of approximately 10 seconds for a 60 second clip.",
         default=None,
     )
     duration: Optional[int] = Field(
@@ -74,6 +76,8 @@ class ReplicateMusicGenerationTool(BaseTool):
 Use this tool to generate music using Meta's MusicGen model stereo-melody-large version. It can create original music from text descriptions,
 continue existing audio, or create variations based on input audio. The model supports various styles and can
 generate high-quality stereo audio output.
+
+If you get a "Prompt is longer than audio to generate" error then the input audio is too long and you need to trim it with ffmpeg.
 """.strip()
     )
 
@@ -119,6 +123,13 @@ generate high-quality stereo audio output.
                 if tmp_audio_file and os.path.exists(tmp_audio_file):
                     os.remove(tmp_audio_file)
                 raise
+        try:
+            for key, value in input_args.items():
+                logger.debug(
+                    f"{key}={True if key == 'input_audio' and value else value}"
+                )
+        except Exception as e:
+            logger.warning(e, exc_info=True)
 
         try:
             output = await replicate.async_run(self.ref, input=input_args)

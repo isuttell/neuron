@@ -16,6 +16,7 @@ services:
   #   image: rizaio/code-interpreter
   #   environment:
   #     - RIZA_API_KEY=${RIZA_API_KEY}
+  #     - RIZA_LICENSE_KEY=${RIZA_LICENSE_KEY}
 
   neo4j:
     restart: unless-stopped

@@ -33,17 +33,17 @@ export default function DeleteThreadButton({
 
   return (
     <Dialog>
-      <DialogTrigger asChild>
-        <Button variant="ghost" size="icon">
-          <Tooltip>
-            <TooltipTrigger>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <DialogTrigger asChild>
+            <Button variant="ghost" size="icon">
               <Trash className="m-3" />
-            </TooltipTrigger>
-            <TooltipContent>Delete Thread</TooltipContent>
-          </Tooltip>
-          <span className="sr-only">Delete Thread</span>
-        </Button>
-      </DialogTrigger>
+              <span className="sr-only">Delete Thread</span>
+            </Button>
+          </DialogTrigger>
+        </TooltipTrigger>
+        <TooltipContent>Delete Thread</TooltipContent>
+      </Tooltip>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Are you absolutely sure?</DialogTitle>
