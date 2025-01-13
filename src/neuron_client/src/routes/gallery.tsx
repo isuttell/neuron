@@ -13,7 +13,8 @@ import { VirtuosoGrid } from "react-virtuoso";
 import { forwardRef } from "react";
 import type { GridComponents } from "react-virtuoso";
 import TogglePlayerButton from "@/components/TogglePlayerButton";
-
+import { Spinner } from "@/components/ui/spinner";
+import { getImagesLoading } from "../slices/imagesSlice";
 // Ensure that this stays out of the component,
 // Otherwise the grid will remount with each render due to new component instances.
 const gridComponents: GridComponents = {
@@ -35,6 +36,7 @@ const gridComponents: GridComponents = {
 
 export default function Gallery() {
   const images = useAppSelector(getImages);
+  const loading = useAppSelector(getImagesLoading);
   const dispatch = useAppDispatch();
 
   useEffect(() => {
@@ -44,6 +46,15 @@ export default function Gallery() {
   const sortedImages = [...images].sort((a, b) =>
     a.created_at > b.created_at ? -1 : 1
   );
+
+  if (loading && sortedImages.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-full w-full">
+        <Spinner />
+      </div>
+    );
+  }
+
   return (
     <MediaPlayerProvider>
       <div className="flex flex-1 p-4 flex-col flex-nowrap max-h-screen overflow-auto">
@@ -71,6 +82,7 @@ export default function Gallery() {
                     alt={image.prompt ?? ""}
                     width={256}
                     height={256}
+                    objectFit="contain"
                   />
                 ) : null}
                 {image.media_type === "video" ? (

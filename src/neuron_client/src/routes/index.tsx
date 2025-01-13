@@ -157,7 +157,7 @@ export default function Index() {
                   />
                 </SelectTrigger>
                 <SelectContent>
-                  {personalitiesLoading ? (
+                  {personalitiesLoading && personalities.length < 1 ? (
                     <div className="flex items-center justify-center p-2">
                       <Spinner className="size-4" />
                     </div>

@@ -9,6 +9,7 @@ interface AudioBarVisualizationProps {
   backgroundColor?: string;
   barWidth?: number;
   gap?: number;
+  onLoadingChange?: (isLoading: boolean) => void;
 }
 
 export function AudioBarVisualization({
@@ -19,6 +20,7 @@ export function AudioBarVisualization({
   backgroundColor = "#111111",
   barWidth = 2,
   gap = 1,
+  onLoadingChange,
 }: AudioBarVisualizationProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const waveformDataRef = useRef<number[]>([]);
@@ -168,6 +170,7 @@ export function AudioBarVisualization({
       const canvas = canvasRef.current;
       if (!canvas) return;
 
+      onLoadingChange?.(true);
       updateCanvasDimensions();
       const ctx = canvas.getContext("2d");
 
@@ -179,7 +182,6 @@ export function AudioBarVisualization({
         const channelData = audioBuffer.getChannelData(0);
 
         rawChannelDataRef.current = channelData;
-
         waveformDataRef.current = processAudioData(channelData);
 
         if (ctx) {
@@ -187,8 +189,10 @@ export function AudioBarVisualization({
         }
 
         await audioContext.close();
+        onLoadingChange?.(false);
       } catch (err) {
         console.error("Audio loading error:", err);
+        onLoadingChange?.(false);
       }
     };
 

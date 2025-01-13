@@ -1,4 +1,4 @@
-import React, { useRef, useCallback } from "react";
+import React, { useRef, useCallback, useState } from "react";
 import { useGlobalAudio } from "@/contexts/GlobalAudioContext";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,6 +19,8 @@ import { AudioBarVisualization } from "./AudioBarVisualization";
 import { useAppSelector, useAppDispatch } from "@/hooks";
 import { getShowPlayer, togglePlayer } from "@/slices/audioSlice";
 import { QueueSheet } from "./QueueSheet";
+import { Spinner } from "./ui/spinner";
+import { cn } from "@/lib/utils";
 
 export function GlobalAudioPlayer() {
   const dispatch = useAppDispatch();
@@ -40,6 +42,8 @@ export function GlobalAudioPlayer() {
     loop,
     toggleLoop,
   } = useGlobalAudio();
+
+  const [isWaveDataLoading, setIsWaveDataLoading] = useState(false);
 
   const progressRef = useRef<HTMLDivElement>(null);
   const isDraggingRef = useRef(false);
@@ -107,16 +111,25 @@ export function GlobalAudioPlayer() {
         </div>
       )}
       <div
-        className="h-[101px] border-b"
+        className="h-[101px] border-b relative"
         style={{ backgroundColor: "#111111" }}
       >
+        {isWaveDataLoading && (
+          <div className="absolute inset-0 flex items-center justify-center z-10">
+            <Spinner size={48} />
+          </div>
+        )}
         {currentUrl && (
           <AudioBarVisualization
             key={currentUrl}
             src={currentUrl}
             progress={progress}
-            className="w-full h-full"
+            className={cn(
+              "w-full h-full transition-opacity",
+              isWaveDataLoading && "opacity-0"
+            )}
             onSeek={seek}
+            onLoadingChange={setIsWaveDataLoading}
           />
         )}
       </div>

@@ -147,7 +147,7 @@ export default function PromptsPage() {
     return groups;
   }, [prompts]);
 
-  if (isLoading) {
+  if (isLoading && prompts.length === 0) {
     return (
       <div className="flex items-center justify-center h-full w-full">
         <Spinner />

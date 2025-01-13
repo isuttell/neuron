@@ -23,7 +23,7 @@ export default function Personalities() {
     dispatch(fetchPersonalities());
   }, []);
 
-  if (loading) {
+  if (loading && personalities.length < 1) {
     return (
       <div className="flex items-center justify-center h-full w-full">
         <Spinner />

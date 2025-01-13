@@ -25,11 +25,15 @@ interface DeleteImagePayload {
 // Define a type for the slice state
 interface ImageState {
   images: MediaFile[];
+  error: string | null;
+  loading: boolean;
 }
 
 // Define the initial state using that type
 const initialState: ImageState = {
   images: [],
+  loading: false,
+  error: null,
 };
 
 function upsert(state: ImageState, image: MediaFile) {
@@ -57,7 +61,16 @@ export const imagesSlice = createSlice({
     },
   },
   extraReducers: (builder) => {
+    builder.addCase(actions.fetchImages.pending, (state) => {
+      state.loading = true;
+      state.error = null;
+    });
+    builder.addCase(actions.fetchImages.rejected, (state, action) => {
+      state.loading = false;
+      state.error = action.error.message || "Failed to fetch images";
+    });
     builder.addCase(actions.fetchImages.fulfilled, (state, action) => {
+      state.loading = false;
       for (const image of action.payload) {
         upsert(state, image);
       }
@@ -68,5 +81,6 @@ export const imagesSlice = createSlice({
 export const { upsertImage, deleteImage } = imagesSlice.actions;
 
 export const getImages = (state: RootState) => state.images.images;
-
+export const getImagesLoading = (state: RootState) => state.images.loading;
+export const getImagesError = (state: RootState) => state.images.error;
 export default imagesSlice.reducer;
