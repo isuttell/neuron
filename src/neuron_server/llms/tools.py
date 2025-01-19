@@ -4,12 +4,7 @@ import os
 from langchain.tools import BaseTool
 from langchain_community.tools.tavily_search import TavilySearchResults
 from neuron_server.tools.dice_tool import DiceTool
-from neuron_server.tools.hugging_face_serverless_image_generation_tool import (
-    HuggingFaceServerlessImageGenerationTool,
-)
 from neuron_server.tools.automatic1111_tool import Automatic1111Tool, Automatic1111API
-from langchain_community.tools import WikipediaQueryRun
-from langchain_community.utilities import WikipediaAPIWrapper
 from neuron_server.tools.security_camera_tool import SecurityCameraTool
 from neuron_server.tools.homeassistant_api import HomeAssistantAPI
 from neuron_server.tools.arxiv_summary_tool import ArxivSummaryTool
@@ -33,9 +28,6 @@ from neuron_server.tools.astro_observability_tool import AstroObservabilityTool
 from neuron_server.tools.astro_object_search_tool import AstroObjectSearchTool
 from neuron_server.tools.astro_finder_image_tool import AstroFinderImageTool
 from neuron_server.tools.astro_coordinates_tool import AstroCoordinatesTool
-from neuron_server.tools.astrophotons_recommendation_tool import (
-    AstrophotonsRecommendationTool,
-)
 from neuron_server.tools.memory_recall_tool import MemoryRecallTool
 from neuron_server.tools.memory_store_tool import MemoryStoreTool
 from neuron_server.tools.arxiv_recall_tool import ArxivRecallTool
@@ -68,6 +60,9 @@ from neuron_server.tools.inspect_document_tool import DocumentInspectTool
 from neuron_server.tools.app_image_tool import AppImageTool
 from neuron_server.tools.openai_tts_tool import OpenAITTSTool
 from neuron_server.tools.personality_prompt_tool import PersonalityPromptTool
+from neuron_server.tools.schedule_prompt_tool import SchedulePromptTool
+from neuron_server.tools.schedule_list_tool import ScheduleListTool
+from neuron_server.tools.schedule_remove_tool import ScheduleRemoveTool
 
 homeassistant_api = HomeAssistantAPI(token=config.homeassistant.token)
 
@@ -190,4 +185,7 @@ def get_tools(query: str) -> List[BaseTool]:
         ts.append(MemoryRecallTool())
         ts.append(MemoryStoreTool())
     ts.append(PersonalityPromptTool())
+    ts.append(SchedulePromptTool())
+    ts.append(ScheduleListTool())
+    ts.append(ScheduleRemoveTool())
     return list({tool.name: tool for tool in ts}.values())

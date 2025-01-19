@@ -1,19 +1,20 @@
 from langchain.tools import BaseTool
-import requests
 from PIL import Image, PngImagePlugin
 from io import BytesIO
 from datetime import datetime, timezone
-from neuron_server.config import config
+from neuron_server.config import config as neuron_config
 from neuron_server.logger import logger
 from openai import AsyncOpenAI
 from typing import Literal, Type
 from pydantic import BaseModel, Field
 import asyncio
 import aiohttp
-import shutil
 import os
 from typing import List
 from neuron_server.util.image_utilities import create_thumbnails
+from neuron_server.models.media_item_model import MediaItemModel
+from langchain_core.runnables import RunnableConfig
+from neuron_server.util.slug import safe_filename
 
 
 async def generate_images(
@@ -32,7 +33,7 @@ async def generate_images(
         Image.ImageFile: The generated image.
     """
 
-    client = AsyncOpenAI(api_key=config.openai_api_key)
+    client = AsyncOpenAI(api_key=neuron_config.openai_api_key)
     response = await client.images.generate(
         model="dall-e-3",
         prompt=prompt,
@@ -53,6 +54,9 @@ async def generate_images(
 
 
 class DalleArgs(BaseModel):
+    name: str = Field(
+        description="A unique display name for the image generation less than 256 characters"
+    )
     prompt: str = Field(
         description="""
 The prompt to generate the image from.
@@ -89,7 +93,9 @@ class DalleTool(BaseTool):
 
     async def _arun(
         self,
+        name: str,
         prompt: str,
+        config: RunnableConfig,
         style: Literal["natural", "vivid"] = "vivid",
         size: Literal["1024x1024", "1792x1024", "1024x1792"] = "1024x1024",
         n: int = 1,
@@ -112,10 +118,9 @@ class DalleTool(BaseTool):
                 n=n,
             )
             now = datetime.now(timezone.utc).astimezone()
-            timestamp = now.strftime("%Y%m%d%H%M%S")
             results = []
             for i, image in enumerate(images):
-                filename = f"dalle_generated_image_{timestamp}_{i}.png"
+                filename = safe_filename("dalle", f"{name}_{i}", "png")
                 pnginfo = PngImagePlugin.PngInfo()
                 pnginfo.add_text("Description", prompt)
                 pnginfo.add_text(
@@ -123,7 +128,7 @@ class DalleTool(BaseTool):
                     now.isoformat(timespec="seconds"),
                 )
                 file_path = os.path.abspath(
-                    os.path.join(config.static_folder, filename)
+                    os.path.join(neuron_config.static_folder, filename)
                 )
                 image.save(
                     file_path,
@@ -133,9 +138,16 @@ class DalleTool(BaseTool):
                 )
                 create_thumbnails(
                     file_path,
-                    config.static_folder,
                 )
-                url = f"{config.static_content_url}/{filename}"
+                url = f"{neuron_config.static_content_url}/{filename}"
+                await MediaItemModel.create(
+                    thread_id=config["configurable"].get("thread_id"),
+                    user_id=config["configurable"].get("user_id"),
+                    url=url,
+                    type="image",
+                    name=name,
+                    description=f"Prompt: {prompt}",
+                )
                 logger.debug(f"Saved generated image to {file_path} <{url}>")
                 results.append(
                     f"""\

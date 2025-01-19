@@ -3,9 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useParams } from "react-router-dom";
 import { useState } from "react";
-import { useAppSelector, useAppDispatch } from "../hooks";
+import { useAppDispatch } from "../hooks";
 import { CornerDownLeft, Upload } from "lucide-react";
-import { getActivePersonalityId } from "../slices/personalitiesSlice";
 import { Spinner } from "@/components/ui/spinner";
 import { postMessageByThread } from "../actions/messageActions";
 import { cn } from "@/lib/utils";
@@ -13,9 +12,10 @@ import { useToast } from "../hooks/use-toast";
 import { StatusMessage } from "./StatusMessage";
 import { PromptDropdown } from "@/components/PromptDropdown";
 import { Thread } from "../slices/threadsSlice";
+
 interface MessageFormProps {
   disabled?: boolean;
-  onSubmit: (value: string) => void;
+  onSubmit?: (value: string) => void;
   className?: string;
   lastMessageAt?: number;
   thread: Thread;
@@ -29,7 +29,6 @@ export default function MessageForm({
 }: MessageFormProps) {
   const { toast } = useToast();
   const dispatch = useAppDispatch();
-  const activePersonalityId = useAppSelector(getActivePersonalityId);
   const [value, setValue] = useState("");
   const { threadId } = useParams();
   const [file, setFile] = useState<File | undefined>(undefined);
@@ -40,10 +39,10 @@ export default function MessageForm({
       | React.KeyboardEvent<HTMLTextAreaElement>
   ) => {
     e.preventDefault();
-    if (value.trim().length === 0 || !activePersonalityId || !threadId) {
+    if (value.trim().length === 0 || !threadId) {
       return;
     }
-    onSubmit(value);
+    onSubmit?.(value);
     setValue("");
     setFile(undefined);
     dispatch(
@@ -120,7 +119,7 @@ export default function MessageForm({
           type="file"
           className="hidden"
           onChange={handleFileUpload}
-          accept=".png,.jpg,.jpeg,.gif,.webp,.pdf,.md,.txt,.csv,.srt,.vtt,.mp3,.wav,.mp4"
+          accept=".png,.jpg,.jpeg,.gif,.webp,.pdf,.md,.txt,.csv,.srt,.vtt,.mp3,.wav,.mp4,.heic,.heif"
         />
         <PromptDropdown
           disabled={disabled}

@@ -10,13 +10,12 @@ from typing import Literal, Self
 from neuron_server.llms.llm import LLM
 from neuron_server.llms.openai import OpenAILLM
 from neuron_server.llms.anthropic import AnthropicLLM
-from neuron_server.llms.huggingface import HuggingFaceLLM
-from neuron_server.llms.huggingface_toolless import HuggingFaceToollessLLM
+from neuron_server.llms.cohere import CohereLLM
+from neuron_server.llms.openrouter import OpenRouterLLM
 from neuron_server.config import config
 from neuron_server.database import get_session, ProviderModel
-from neuron_server.llms.cohere import CohereLLM
 
-Provider = Literal["openai", "anthropic", "huggingface", "cohere"]
+Provider = Literal["openai", "anthropic", "cohere", "openrouter"]
 
 
 class ProviderModelModel(BaseModel):
@@ -63,13 +62,13 @@ class ProviderModelModel(BaseModel):
             provider_model.model_id = self.model_id
             await session.commit()
 
-    def to_llm(self) -> AnthropicLLM | HuggingFaceToollessLLM | OpenAILLM:
+    def to_llm(self):
         if self.provider == "anthropic":
             return AnthropicLLM(model_id=self.model_id)
-        elif self.provider == "huggingface":
-            return HuggingFaceToollessLLM(repo_id=self.model_id)
         elif self.provider == "openai":
             return OpenAILLM(model_id=self.model_id)
+        elif self.provider == "openrouter":
+            return OpenRouterLLM(model_id=self.model_id)
         elif self.provider == "cohere":
             return CohereLLM(model_id=self.model_id)
         else:

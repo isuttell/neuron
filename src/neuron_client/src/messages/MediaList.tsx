@@ -1,10 +1,9 @@
-import { useRef, useEffect, useState, memo } from "react";
+import { useRef, useEffect, memo } from "react";
 import { cn } from "@/lib/utils";
 import AudioContent from "./AudioContent";
 import ImageContent from "./ImageContent";
 import VideoContent from "./VideoContent";
 import { Message } from "../slices/messagesSlice";
-import { Button } from "@/components/ui/button";
 
 interface MediaItem {
   key: string;

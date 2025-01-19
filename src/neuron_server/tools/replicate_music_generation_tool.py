@@ -11,11 +11,17 @@ from neuron_server.config import config as neuron_config
 import aiofiles
 import re
 import logging
+from langchain_core.runnables import RunnableConfig
+from neuron_server.models.media_item_model import MediaItemModel
+from neuron_server.util.slug import safe_filename
 
 logger = logging.getLogger(__name__)
 
 
 class ReplicateMusicGenerationToolArgs(BaseModel):
+    name: str = Field(
+        description="A unique display name for the audio generation less than 256 characters"
+    )
     prompt: str = Field(description="A description of the music you want to generate.")
     input_audio: Optional[str] = Field(
         description="An audio file url that will influence the generated music. If continuation is True, the generated music will be a continuation of the audio file. Otherwise, the generated music will mimic the audio file's melody. The input audio duration must be shorter than to requested duration. Use the ffmpeg tool to trim the input audio file to the desired length of approximately 10 seconds for a 60 second clip.",
@@ -64,9 +70,6 @@ class ReplicateMusicGenerationToolArgs(BaseModel):
         description="Seed for random number generator. If None or -1, a random seed will be used.",
         default=-1,
     )
-    slug: str = Field(
-        description="A unique identifier. Must be all lower case with no special characters or spaces. Use dashes for spaces. Keep it short and descriptive. Must be less than 256 characters",
-    )
 
 
 class ReplicateMusicGenerationTool(BaseTool):
@@ -93,7 +96,12 @@ If you get a "Prompt is longer than audio to generate" error then the input audi
         return asyncio.run(self._arun(**kwargs))
 
     async def _arun(
-        self, prompt: str, slug: str, input_audio: Optional[str] = None, **kwargs
+        self,
+        prompt: str,
+        name: str,
+        config: RunnableConfig,
+        input_audio: Optional[str] = None,
+        **kwargs,
     ) -> str:
         logger.debug(f"Generating music with prompt: {prompt}")
 
@@ -135,9 +143,7 @@ If you get a "Prompt is longer than audio to generate" error then the input audi
             output = await replicate.async_run(self.ref, input=input_args)
 
             # Clean slug and prepare filename
-            slug = re.sub(r"[^a-z0-9-_]", "", slug)[:255].lower().replace(" ", "-")
-
-            filename = f"musicgen_{uuid4().hex[:8]}_{slug}.{extension}"
+            filename = safe_filename(self.ref.replace("/", "_"), name, extension)
             file_path = os.path.abspath(
                 os.path.join(neuron_config.static_folder, filename)
             )
@@ -148,6 +154,14 @@ If you get a "Prompt is longer than audio to generate" error then the input audi
                     await file.write(chunk)
 
             url = f"{neuron_config.static_content_url}/{filename}"
+            await MediaItemModel.create(
+                thread_id=config["configurable"].get("thread_id"),
+                user_id=config["configurable"].get("user_id"),
+                url=url,
+                type="audio",
+                name=name,
+                description=f"Prompt: {prompt}",
+            )
             logger.debug(f"Saved generated audio to {file_path} <{url}>")
             return f'<audio controls src="{url}"></audio>\nFilename: {file_path}'
 

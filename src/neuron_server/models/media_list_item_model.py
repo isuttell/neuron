@@ -1,0 +1,125 @@
+from uuid import UUID
+from neuron_server.database import get_session, MediaListItem
+from typing import Optional, List, Self
+from sqlalchemy import select
+from pydantic import BaseModel, Field
+from uuid import uuid4
+from datetime import datetime, timezone
+
+
+class MediaListItemModel(BaseModel):
+    id: UUID = Field(default_factory=lambda: uuid4())
+    media_list_id: UUID = Field(description="ID of the parent media list")
+    media_item_id: UUID = Field(description="ID of the associated media item")
+    index: int = Field(description="Index of the media item in the list")
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc).astimezone()
+    )
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc).astimezone()
+    )
+
+    @classmethod
+    async def create(
+        cls,
+        media_list_id: UUID,
+        media_item_id: UUID,
+        index: int,
+        id: Optional[UUID] = None,
+    ) -> Self:
+        async with get_session() as session:
+            media_list_item = MediaListItem(
+                id=id,
+                media_list_id=media_list_id,
+                media_item_id=media_item_id,
+            )
+            session.add(media_list_item)
+            await session.commit()
+            return cls(**media_list_item.__dict__)
+
+    @staticmethod
+    async def delete(id: UUID) -> None:
+        async with get_session() as session:
+            await session.delete(await session.get(MediaListItem, id))
+            await session.commit()
+
+    @classmethod
+    async def update(
+        cls,
+        id: UUID,
+        index: int,
+        media_list_id: UUID,
+        media_item_id: UUID,
+    ) -> Self:
+        async with get_session() as session:
+            media_list_item = await session.get(MediaListItem, id)
+            media_list_item.index = index
+            media_list_item.media_list_id = media_list_id
+            media_list_item.media_item_id = media_item_id
+            session.add(media_list_item)
+            await session.commit()
+            return cls(**media_list_item.__dict__)
+
+    @classmethod
+    async def list(cls) -> List[Self]:
+        async with get_session() as session:
+            results = await session.execute(select(MediaListItem))
+            records = results.scalars().all()
+            return [cls(**item.__dict__) for item in records]
+
+    @classmethod
+    async def get(cls, id: UUID) -> Optional[Self]:
+        async with get_session() as session:
+            data = await session.get(MediaListItem, id)
+            if data:
+                return cls(**data.__dict__)
+            return None
+
+    async def save(self) -> None:
+        async with get_session() as session:
+            media_list_item = await session.get(MediaListItem, self.id)
+            media_list_item.index = self.index
+            media_list_item.media_list_id = self.media_list_id
+            media_list_item.media_item_id = self.media_item_id
+            await session.commit()
+
+    @classmethod
+    async def get_many(cls, ids: List[UUID]) -> List[Self]:
+        async with get_session() as session:
+            results = await session.execute(
+                select(MediaListItem).where(MediaListItem.id.in_(ids))
+            )
+            records = results.scalars().all()
+            return [cls(**item.__dict__) for item in records]
+
+    @classmethod
+    async def get_by_media_list(cls, media_list_id: UUID) -> List[Self]:
+        async with get_session() as session:
+            results = await session.execute(
+                select(MediaListItem).where(
+                    MediaListItem.media_list_id == media_list_id
+                )
+            )
+            records = results.scalars().all()
+            return [cls(**item.__dict__) for item in records]
+
+    @classmethod
+    async def get_by_media_item(cls, media_item_id: UUID) -> List[Self]:
+        async with get_session() as session:
+            results = await session.execute(
+                select(MediaListItem).where(
+                    MediaListItem.media_item_id == media_item_id
+                )
+            )
+            records = results.scalars().all()
+            return [cls(**item.__dict__) for item in records]
+
+    @classmethod
+    async def get_by_list(cls, list_id: UUID) -> List[Self]:
+        async with get_session() as session:
+            results = await session.execute(
+                select(MediaListItem)
+                .where(MediaListItem.media_list_id == list_id)
+                .order_by(MediaListItem.index)
+            )
+            return [cls(**item.__dict__) for item in results.scalars().all()]

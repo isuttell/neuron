@@ -185,7 +185,7 @@ export default function PromptsPage() {
                     <img
                       src={personalitiiesMap
                         .get(personalityId)
-                        ?.logo?.replace(/\.(?=[^.]*$)/, `_t.`)}
+                        ?.logo?.replace(/\.[^.]+$/, `_t.webp`)}
                       alt={personalitiiesMap.get(personalityId)?.name}
                       className="size-8 rounded-sm mr-4 max-w-8 max-h-8 overflow-hidden bg-muted"
                     />

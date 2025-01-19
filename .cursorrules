@@ -9,12 +9,14 @@ Neuron is a realtime chat application built with LangChain and LangGraph to allo
 - **src/neuron_client/src/actions** Redux actions
 - **src/neuron_client/src/main.tsx** React router configuration.
 - **src/neuron_client/src/store.ts** Redux store configuration.
+- **src/neuron_client/src/lib/api.ts** Authenticated API requests
+- **src/neuron_client/src/components/layout/MainSidebar.tsx** Sidebar component
 - **src/neuron_server** Python backend application.
 - **src/neuron_server/tools** LangChain tools
 - **src/neuron_server/controllers** Quart controllers with WebSocket and REST endpoints.
 - **src/neuron_server/models** Database models; follow SQLAlchemy ORM conventions.
 - **src/neuron_server/llms** LangChain LLM integrations.
-- **src/neuron_server/api.py** Quart app initialization, controller registration and event router, backend router configuration.
+- **src/neuron_server/api.py** Quart app initialization, controller registration and event router, backend router configuration, additional frontend router configuration.
 
 ## Code Style and Structure
 
@@ -31,7 +33,7 @@ Neuron is a realtime chat application built with LangChain and LangGraph to allo
 - Use Tailwind CSS for styling; avoid inline styles.
 - Use Shadcn UI components for consistency; prefer reusable components.
 - Use Redux for state management; favor slice reducers and avoid storing derived state.
-- Use WebSockets for real-time communication.
+- Use fetch for API requests.
 - Use `camelCase` for variable names.
 
 #### Frontend Testing
@@ -43,6 +45,7 @@ Neuron is a realtime chat application built with LangChain and LangGraph to allo
 
 - Write concise, technical Python code.
 - Use Postgres and PGVector for database and vector storage.
+- Use Neo4j for knowledge graph.
 - Use Pydantic for data validation; ensure all models are strongly typed.
 - Use SQLAlchemy ORM for database interactions; avoid raw SQL unless necessary.
 - Use Quart for the web server and WebSocket handling; prioritize async operations.

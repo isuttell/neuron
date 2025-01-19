@@ -307,7 +307,10 @@ Get's the latest report on the in universe Hell Divers 2 Galactic War. Includes 
     ) -> str:
         try:
             war_status = await get_war_status()
-            assert war_status["layoutVersion"] == 24
+            if war_status["layoutVersion"] != 25:
+                logger.warning(
+                    f"Layout version is not 25: {war_status['layoutVersion']}"
+                )
             planets = await get_planets()
             campaigns = await get_campaigns()
             major_orders = await get_major_orders()

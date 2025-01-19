@@ -153,6 +153,28 @@ async def update_thread_status(
         asyncio.create_task(task())
 
 
+async def wait_for_idle(thread_id: UUID, timeout: int = 300):
+    """
+    Wait for thread status to become idle, checking every second for up to 5 minutes by default.
+
+    Args:
+        thread_id: The thread id to monitor
+        timeout: Maximum time to wait in seconds (default 300 seconds / 5 minutes)
+
+    Raises:
+        asyncio.TimeoutError: If thread doesn't become idle within timeout period
+    """
+    start_time = asyncio.get_event_loop().time()
+    thread = await ThreadModel.get(thread_id)
+    while thread and thread.status != "idle":
+        if asyncio.get_event_loop().time() - start_time > timeout:
+            raise asyncio.TimeoutError(
+                f"Thread {thread.id} did not become idle within {timeout} seconds"
+            )
+        await asyncio.sleep(1)
+        thread = await ThreadModel.get(thread_id)
+
+
 async def astream(
     thread_id: UUID,
     personality_id: UUID,
@@ -167,6 +189,12 @@ async def astream(
         thread = await ThreadModel.get(thread_id)
         if not thread:
             raise Exception("Thread not found")
+        if thread.status != "idle" and thread.status != "error":
+            # Wait for thread to become idle
+            # otherwise the order of the messages will be incorrect
+            # and the agent will not be able to respond
+            await wait_for_idle(thread_id)
+
         await update_thread_status(thread, "thinking")
 
         personality = await PersonalityModel.get(personality_id)
@@ -179,7 +207,7 @@ async def astream(
         graph.checkpointer = AsyncPostgresSaver(pool)
 
         human_message = HumanMessage(content=prompt, id=str(uuid4()))
-        human_message.created_at = datetime.now().isoformat()
+        human_message.created_at = datetime.now().astimezone().isoformat()
 
         if not thread.name:
             logger.debug("Generating thread name...")
@@ -230,6 +258,7 @@ async def astream(
                 "configurable": {
                     "thread_id": str(thread.id),
                     "personality_id": str(personality_id),
+                    "username": username,
                     "user_id": str(user_id),
                 },
             },

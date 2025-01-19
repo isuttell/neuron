@@ -12,6 +12,9 @@ import os
 from neuron_server.config import config as neuron_config
 import aiofiles
 import re
+from langchain_core.runnables import RunnableConfig
+from neuron_server.models.media_item_model import MediaItemModel
+from neuron_server.util.slug import safe_filename
 
 
 class ReplicateVideoGenerationToolArgs(BaseModel):
@@ -21,8 +24,8 @@ class ReplicateVideoGenerationToolArgs(BaseModel):
     prompt: str = Field(
         description="To create effective prompts for MiniMax's Video-01 model, define the subject, setting, and any actions or movements clearly. Include dynamic camera effects like panning, zooming, or handheld motion to enhance engagement. Combine these elements for complex scenes while maintaining character consistency by specifying attributes like clothing, hair, and environment. Example: A noir detective in a trench coat stands under a dim streetlight in a rainy alley, with the camera zooming in slowly."
     )
-    slug: str = Field(
-        description="A unique identifier. Must be all lower case with no special characters or spaces. Use dashes for spaces. Keep it short and descriptive. Must be less than 256 characters",
+    name: str = Field(
+        description="A unique display name for the video generation less than 256 characters"
     )
     ref: Literal[
         "minimax/video-01",
@@ -52,7 +55,8 @@ This tool uses the video generation model minimax/video-01, also known as Hailuo
         self,
         ref: Literal["minimax/video-01", "minimax/video-01-live"],
         prompt: str,
-        slug: str,
+        name: str,
+        config: RunnableConfig,
         image_url: Optional[str] = None,
     ) -> str:
         start_time = time.perf_counter()
@@ -87,8 +91,7 @@ This tool uses the video generation model minimax/video-01, also known as Hailuo
                 ):
                     input_args["first_frame_image"].close()
 
-            slug = re.sub(r"[^a-z0-9-_]", "", slug)[:255].lower().replace(" ", "-")
-            filename = f"{ref .replace('/', '_')}_{uuid4().hex[:8]}_{slug}.mp4"
+            filename = safe_filename(ref.replace("/", "_"), name, "mp4")
             file_path = os.path.abspath(
                 os.path.join(neuron_config.static_folder, filename)
             )
@@ -96,6 +99,14 @@ This tool uses the video generation model minimax/video-01, also known as Hailuo
                 async for chunk in output:
                     await file.write(chunk)
             url = f"{neuron_config.static_content_url}/{filename}"
+            await MediaItemModel.create(
+                thread_id=config["configurable"].get("thread_id"),
+                user_id=config["configurable"].get("user_id"),
+                url=url,
+                type="video",
+                name=name,
+                description=f"Prompt: {prompt}",
+            )
             logger.debug(
                 f"Saved generated video to {file_path} <{url}> - {time.perf_counter() - start_time:.2f}s"
             )

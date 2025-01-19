@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/card";
 import { Pencil } from "lucide-react";
 import EditPersonalityDialog from "./EditPersonalityDialog";
-import { Personality } from "@/slices/personalitiesSlice";
+import { Personality } from "@/slices/personalitiesSlice.d";
 import { Button } from "@/components/ui/button";
 import { useAppDispatch, useAppSelector } from "@/hooks";
 import {
@@ -63,7 +63,7 @@ const PersonalityItem: React.FC<PersonalityItemProps> = ({
       <CardContent className="flex-1">
         {(personality.logo && (
           <img
-            src={personality.logo.replace(/(\.[^.]+)$/, "_t$1")}
+            src={personality.logo.replace(/\.[^.]+$/, "_t.webp")}
             className="rounded-md w-full cursor-pointer hover:scale-105 transition-all duration-100"
             alt={`${personality.name} logo`}
             width={256}

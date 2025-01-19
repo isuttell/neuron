@@ -1,4 +1,12 @@
-import { Home, CircleUser, LayoutGrid, FileText } from "lucide-react";
+import {
+  Home,
+  CircleUser,
+  LayoutGrid,
+  FileText,
+  List,
+  Calendar,
+  LogOut,
+} from "lucide-react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import {
   Sidebar,
@@ -22,10 +30,17 @@ import { ChevronUp } from "lucide-react";
 
 import { useAuth0 } from "@auth0/auth0-react";
 import { getSidebarImage } from "@/slices/appSlice";
-import { useAppSelector, useAppDispatch } from "@/hooks";
+import { useAppSelector } from "@/hooks";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { ThreadsUpdating } from "@/components/ThreadsUpdating";
 import { useGlobalAudio } from "@/contexts/GlobalAudioContext";
+
+interface SidebarLink {
+  to: string;
+  label: string;
+  Icon: React.ComponentType<any>;
+  onClick?: () => void;
+}
 
 export function MainSidebar() {
   const location = useLocation();
@@ -33,7 +48,7 @@ export function MainSidebar() {
   const sidebarImage = useAppSelector(getSidebarImage);
   const { queue } = useGlobalAudio();
 
-  const links = [
+  const links: SidebarLink[] = [
     {
       to: "/",
       label: "Home",
@@ -45,14 +60,14 @@ export function MainSidebar() {
       Icon: CircleUser,
     },
     {
-      to: "/prompts",
-      label: "Prompts",
-      Icon: FileText,
-    },
-    {
       to: "/gallery",
       label: "Recent Media",
       Icon: LayoutGrid,
+    },
+    {
+      to: "/media-lists",
+      label: "Media Lists",
+      Icon: List,
     },
   ];
 
@@ -86,7 +101,7 @@ export function MainSidebar() {
               <SidebarMenuButton
                 isActive={location.pathname === link.to}
                 asChild={!link.onClick}
-                onClick={link.onClick && (() => link.onClick())}
+                onClick={link.onClick && (() => link.onClick?.())}
               >
                 {link.onClick ? (
                   <div className="flex items-center gap-2 text-gray-300">
@@ -99,7 +114,7 @@ export function MainSidebar() {
                     )}
                   </div>
                 ) : (
-                  <NavLink to={link.to} className="text-gray-300">
+                  <NavLink to={link.to} className="text-gray-300 ">
                     <link.Icon className="h-4 w-4" />
                     <span>{link.label}</span>
                   </NavLink>
@@ -145,13 +160,32 @@ export function MainSidebar() {
                     <div className="text-xs text-gray-500">{user?.email}</div>
                   </div>
                 </div>
-
+                <DropdownMenuItem asChild>
+                  <NavLink
+                    to="/prompts"
+                    className="text-gray-300 hover:text-accent-foreground flex items-center gap-2 block"
+                  >
+                    <FileText className="h-4 w-4" />
+                    <span>Prompts</span>
+                  </NavLink>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <NavLink
+                    to="/scheduled"
+                    className="text-gray-300 hover:text-accent-foreground flex items-center gap-2"
+                  >
+                    <Calendar className="h-4 w-4" />
+                    <span>Scheduled</span>
+                  </NavLink>
+                </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => {
                     logout();
                   }}
+                  className="flex items-center gap-2"
                 >
-                  Logout
+                  <LogOut className="h-4 w-4" />
+                  <span>Logout</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

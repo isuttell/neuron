@@ -1,5 +1,5 @@
 from langchain.tools import BaseTool
-from neuron_server.config import config
+from neuron_server.config import config as neuron_config
 from neuron_server.logger import logger
 import os
 from elevenlabs import AsyncElevenLabs
@@ -8,6 +8,8 @@ from typing import Optional, Type
 from pydantic import Field, BaseModel
 import asyncio
 from neuron_server.util.slug import safe_filename
+from langchain_core.runnables import RunnableConfig
+from neuron_server.models.media_item_model import MediaItemModel
 
 tool_promp_types = """
 Prompt Tips:
@@ -18,6 +20,9 @@ Prompt Tips:
 
 
 class ElevenLabsSoundEffectsToolArgs(BaseModel):
+    name: str = Field(
+        description="A unique display name for the audio file to be generated. Must be less than 256 characters",
+    )
     prompt: str = Field(
         description="The prompt used to generate the sound effect.\n\n{tool_promp_types}"
     )
@@ -28,9 +33,6 @@ class ElevenLabsSoundEffectsToolArgs(BaseModel):
     prompt_influence: Optional[float] = Field(
         description="The influence of the prompt on the sound effect. Must be between 0 and 1. Defaults to 0.3",
         default=0.3,
-    )
-    slug: str = Field(
-        description="A unique identifier. Must be all lower case with no special characters or spaces. Use dashes for spaces. Keep it short and descriptive. Must be less than 256 characters",
     )
 
 
@@ -49,7 +51,8 @@ This tool generates sound effects using the Eleven Labs sound effect API from te
     async def _arun(
         self,
         prompt: str,
-        slug: str,
+        name: str,
+        config: RunnableConfig,
         duration_seconds: Optional[float] = None,
         prompt_influence: Optional[float] = None,
     ) -> str:
@@ -57,22 +60,29 @@ This tool generates sound effects using the Eleven Labs sound effect API from te
             logger.debug(
                 f"Generating sound effect for prompt {prompt} with duration {duration_seconds}"
             )
-            client = AsyncElevenLabs(api_key=config.elevenlabs_api_key)
+            client = AsyncElevenLabs(api_key=neuron_config.elevenlabs_api_key)
             response = client.text_to_sound_effects.convert(
                 text=prompt,
                 prompt_influence=prompt_influence,
                 duration_seconds=duration_seconds,
             )
-            filename = safe_filename("elevenlabs_soundeffect", slug, "mp3")
+            filename = safe_filename("elevenlabs_soundeffect", name, "mp3")
             audio_file_path = os.path.abspath(
-                os.path.join(config.static_folder, filename)
+                os.path.join(neuron_config.static_folder, filename)
             )
             with open(audio_file_path, "wb") as file:
                 async for chunk in response:
                     file.write(chunk)
-            url = config.static_content_url + "/" + filename
+            url = neuron_config.static_content_url + "/" + filename
             logger.debug(f"Saved generated audio to {audio_file_path} <{url}>")
-
+            await MediaItemModel.create(
+                url=url,
+                type="audio",
+                user_id=config["configurable"].get("user_id"),
+                thread_id=config["configurable"].get("thread_id"),
+                name=name,
+                description=prompt,
+            )
             return f'<audio src="{url}"></audio>'
         except Exception as e:
             logger.error(e, exc_info=True)

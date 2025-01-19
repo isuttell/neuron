@@ -24,7 +24,7 @@ const ImageCard: React.FC<ImageCardProps> = ({ image }) => {
         {image.url ? (
           <img
             className="w-full h-auto object-cover rounded-lg"
-            src={image.url.replace(/\.(?=[^.]*$)/, "_t.")}
+            src={image.url.replace(/\.[^.]+$/, `_t.webp`)}
             alt={image.prompt ?? ""}
           />
         ) : (

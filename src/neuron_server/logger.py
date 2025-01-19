@@ -15,6 +15,7 @@ logging.getLogger("anthropic").setLevel(logging.INFO)
 logging.getLogger("openai").setLevel(logging.INFO)
 logging.getLogger("urllib3").setLevel(logging.WARNING)
 logging.getLogger("PIL").setLevel(logging.WARNING)
+logging.getLogger("neo4j.notifications").setLevel(logging.ERROR)
 
 log_level = getattr(logging, config.log_level.upper(), logging.INFO)
 

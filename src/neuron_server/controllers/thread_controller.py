@@ -7,13 +7,9 @@ from pydantic import BaseModel
 from neuron_server.llms.agent import astream
 import asyncio
 from werkzeug.exceptions import BadRequest
-import hashlib
-import os
-import aiofiles
-from neuron_server.config import config as neuron_config
 from neuron_server.controllers.auth import requires_auth
 from neuron_server.controllers.message_controller import format_ai_uploaded_file
-from neuron_server.util.image_utilities import create_thumbnails
+from neuron_server.util.file_utilities import process_uploaded_file
 
 router = EventRouter()
 blueprint = Blueprint("thread", __name__)
@@ -80,38 +76,8 @@ async def post_create_thread():
         raise ValueError("Personality not found")
 
     if "file" in files:
-        file = files["file"]
-        ext = os.path.splitext(file.filename)[1]
-        if ext not in neuron_config.allowed_file_types:
-            raise BadRequest("Invalid file type")
-
-        # Create hash of file contents
-        hasher = hashlib.sha256()
-        file_contents: bytes = file.read()
-        assert isinstance(file_contents, bytes)
-        if len(file_contents) > neuron_config.max_file_size:
-            raise BadRequest("File too large")
-        hasher.update(file_contents)
-        content_hash = hasher.hexdigest()
-
-        filename = f"{content_hash}{ext}"
-        file_path = os.path.abspath(
-            os.path.join(neuron_config.static_folder, "user", filename)
-        )
-        url = f"{neuron_config.static_content_url}/user/{filename}"
-
-        # Only save if file doesn't already exist
-        if not os.path.exists(file_path):
-            os.makedirs(os.path.dirname(file_path), exist_ok=True)
-            async with aiofiles.open(file_path, "wb") as f:
-                await f.write(file_contents)
-            if ext in [".jpg", ".jpeg", ".png", ".webp"]:
-                create_thumbnails(
-                    file_path,
-                    os.path.abspath(os.path.join(neuron_config.static_folder, "user")),
-                )
-
-        prompt = f"{format_ai_uploaded_file(file.filename, ext, url)}\n{prompt}"
+        filename, ext, url = await process_uploaded_file(files["file"])
+        prompt = f"{format_ai_uploaded_file(filename, ext, url)}\n{prompt}"
 
     thread = await ThreadModel.create(
         personality_id=personality.id,

@@ -23,6 +23,7 @@ interface DataTableProps<TData> {
   state?: {
     rowSelection?: Record<string, boolean>;
   };
+  initialSorting?: SortingState;
 }
 
 export function DataTable<TData>({
@@ -30,8 +31,9 @@ export function DataTable<TData>({
   data,
   onRowSelectionChange,
   state,
+  initialSorting,
 }: DataTableProps<TData>) {
-  const [sorting, setSorting] = useState<SortingState>([]);
+  const [sorting, setSorting] = useState<SortingState>(initialSorting || []);
 
   const table = useReactTable({
     data,

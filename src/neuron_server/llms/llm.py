@@ -194,7 +194,7 @@ class LLM:
             },
             config,
         )
-        response.created_at = datetime.now().isoformat()
+        response.created_at = datetime.now().astimezone().isoformat()
         # We return a list, because this will get added to the existing list
         return {"messages": [response]}
 

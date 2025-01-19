@@ -7,14 +7,15 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.messages import BaseMessage
 from neuron_server.llms.clean_eos_tokens import clean_eos_tokens
 from pydantic import BaseModel, Field
-from typing import Type, Dict, Any, Optional
+from typing import Type, Dict, Any
 import aiohttp
 import piexif
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnableConfig
-from PIL import Image, ExifTags
+from PIL import Image
 from io import BytesIO
 import pandas as pd
+from neuron_server.util.image_utilities import create_image_url
 
 
 def get_message_content(message: BaseMessage):
@@ -41,10 +42,6 @@ class InspectImageToolArgs(BaseModel):
     prompt: str = Field(
         description="This should be a prompt with detailed and specific question(s) to be answered about the image."
     )
-    # max_tokens: Optional[int] = Field(
-    #     description="The maximum number of tokens allowed in the response. A higher token count enables but not guarantees a more detailed answer.",
-    #     default=4000,
-    # )
 
 
 async def get_image_bytes(image_url: str) -> bytes:
@@ -133,9 +130,8 @@ def get_exif_data(image: Image.Image) -> Dict[str, Any]:
                 logger.error(f"Error decoding EXIF value for {tag_name}: {e}")
 
     # Extract GPS coordinates if available
-    gps_info = exif_dict.get("GPS", {})
+    gps_info: Dict[str, Any] = exif_dict.get("GPS", {})
     if gps_info:
-
         latitude = gps_info.get(piexif.GPSIFD.GPSLatitude)
         latitude_ref = gps_info.get(piexif.GPSIFD.GPSLatitudeRef)
         longitude = gps_info.get(piexif.GPSIFD.GPSLongitude)
@@ -180,7 +176,7 @@ class InspectImageTool(BaseTool):
         image_url: str,
         prompt: str,
         config: RunnableConfig,
-        max_tokens: int = 4000,
+        max_tokens: int = 8000,
     ) -> str:
         """
         Inspect an image using multi-modal vision capabilities.
@@ -220,26 +216,7 @@ class InspectImageTool(BaseTool):
 
             df = pd.DataFrame(metadata.items(), columns=["Key", "Value"])
 
-            # Get image as base64
-            buffered = BytesIO()
-            # Resize image to 1024x1024 to ensure it's not too large
-            image.thumbnail((1024, 1024))
-
-            # Convert to RGB if image has alpha channel
-            if image.mode in ("RGBA", "LA") or (
-                image.mode == "P" and "transparency" in image.info
-            ):
-                # Create a white background image
-                background = Image.new("RGB", image.size, (255, 255, 255))
-                if image.mode == "P":
-                    image = image.convert("RGBA")
-                # Composite the image onto the background
-                background.paste(image, mask=image.split()[-1])
-                image = background
-
-            # Save as JPEG
-            image.save(buffered, format="JPEG", quality=95)
-            image_base64 = base64.b64encode(buffered.getvalue()).decode("utf-8")
+            image_url = create_image_url(image)
             from neuron_server.models.provider_model import ProviderModelModel
 
             # Inspect the image
@@ -255,9 +232,7 @@ class InspectImageTool(BaseTool):
                             {"type": "text", "text": prompt},
                             {
                                 "type": "image_url",
-                                "image_url": {
-                                    "url": f"data:image/jpeg;base64,{image_base64}"
-                                },
+                                "image_url": {"url": image_url},
                             },
                         ],
                     ),

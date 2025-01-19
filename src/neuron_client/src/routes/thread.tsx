@@ -6,11 +6,8 @@ import { useAppSelector, useAppDispatch } from "../hooks";
 import { shallowEqual } from "react-redux";
 import { RootState } from "../store";
 import Loading from "@/lib/loading";
-import {
-  getActivePersonalityId,
-  getActivePersonality,
-} from "../slices/personalitiesSlice";
-import MediaList, { getMediaItems } from "../messages/MediaList";
+import { getActivePersonality } from "../slices/personalitiesSlice";
+import MediaItemList from "../messages/MediaItemList";
 import { fetchMessagesByThread } from "../actions/messageActions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
@@ -23,6 +20,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { MediaPlayerProvider } from "@/contexts/MediaPlayerContext";
 import TogglePlayerButton from "@/components/TogglePlayerButton";
 import EditPersonalityDialog from "@/personalities/EditPersonalityDialog";
+import { selectAllMedia } from "../slices/mediaSlice";
 
 const selectThread = (state: RootState, threadId?: string) =>
   state.threads.threads.find((thread) => thread.id === threadId);
@@ -32,8 +30,6 @@ const selectMessages = (state: RootState, threadId?: string) =>
 
 export default function Thread() {
   const dispatch = useAppDispatch();
-  const navigate = useNavigate();
-  const activePersonalityId = useAppSelector(getActivePersonalityId);
   const activePersonality = useAppSelector(getActivePersonality);
   const [activeTab, setActiveTab] = useState<"media">("media");
   const lastMessageRef = useRef<HTMLDivElement | null>(null);
@@ -56,6 +52,14 @@ export default function Thread() {
       : "hidden"
   );
 
+  const mediaItems = useAppSelector(selectAllMedia);
+  const threadMediaItems = mediaItems
+    .filter((item) => item.thread_id === threadId)
+    .sort(
+      (a, b) =>
+        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
+
   useEffect(() => {
     if (!threadId) {
       return;
@@ -64,22 +68,16 @@ export default function Thread() {
   }, [threadId]);
 
   useEffect(() => {
-    // If no personality is selected, redirect to the personalities page as its required
-    if (!activePersonalityId) {
-      navigate("/personalities");
-    }
-  }, [activePersonalityId]);
-
-  useEffect(() => {
     // Scroll to the bottom of the messages when they change
     setTimeout(() => {
       if (lastMessageRef.current) {
-        lastMessageRef.current.scrollIntoView({ behavior: "smooth" });
+        lastMessageRef.current.scrollIntoView({
+          behavior: "instant",
+          block: "start",
+        });
       }
-    }, 100);
+    }, 0);
   }, [lastMessageRef.current]);
-
-  const mediaItems = getMediaItems(messages);
 
   if (!thread || (thread.message_count > 0 && messages.length === 0)) {
     return <Loading />;
@@ -152,14 +150,11 @@ export default function Thread() {
                         message={message}
                         showTools={showTools}
                         onPromptClick={debounce((prompt) => {
-                          if (!activePersonalityId) {
-                            return;
-                          }
                           dispatch(
                             postMessageByThread({
                               threadId: thread.id,
                               prompt,
-                              personalityId: activePersonalityId,
+                              personalityId: thread.personality_id,
                             })
                           );
                         }, 100)}
@@ -179,7 +174,6 @@ export default function Thread() {
               <MessageForm
                 thread={thread}
                 className="max-w-[1170px] w-full mx-auto mt-2"
-                onSubmit={() => {}}
               />
             </div>
           </div>
@@ -198,9 +192,9 @@ export default function Thread() {
             <TabsList>
               <TabsTrigger value="media">
                 Media
-                {mediaItems.length > 0 && (
+                {threadMediaItems.length > 0 && (
                   <span className="ml-2 text-xs text-muted-foreground">
-                    ({mediaItems.length})
+                    ({threadMediaItems.length})
                   </span>
                 )}
               </TabsTrigger>
@@ -214,10 +208,9 @@ export default function Thread() {
                 )}
               >
                 {widthMode !== "hidden" ? (
-                  <MediaList
+                  <MediaItemList
                     className="flex-col gap-2"
-                    threadId={thread.id}
-                    mediaItems={mediaItems}
+                    mediaItems={threadMediaItems}
                     thumbnail_size={widthMode === "narrow" ? "t" : "xl"}
                     showControls={true}
                     autoPlay={true}

@@ -89,6 +89,9 @@ class Config(BaseModel):
     openai_api_key: str = Field(
         default=os.environ.get("OPENAI_API_KEY"), description="OpenAI API key"
     )
+    openrouter_api_key: str = Field(
+        default=os.environ.get("OPENROUTER_API_KEY"), description="OpenRouter API key"
+    )
     anthropic_api_key: str = Field(
         default=os.environ.get("ANTHROPIC_API_KEY"), description="Anthropic API key"
     )
@@ -176,6 +179,8 @@ class Config(BaseModel):
             ".mp3",
             ".wav",
             ".mp4",
+            ".heic",
+            ".heif",
         ],
         description="Allowed file types",
     )

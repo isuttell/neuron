@@ -34,7 +34,7 @@ import { fetchPersonalities } from "../actions/personalityActions";
 const selectRecentThreads = (state: RootState) => {
   return Object.values(state.threads.threads)
     .sort((a, b) => b.updated_at - a.updated_at)
-    .filter((thread) => thread.updated_at > Date.now() - 1000 * 60 * 60 * 12) // Only show threads from last day
+    .filter((thread) => thread.updated_at > Date.now() - 1000 * 60 * 60 * 24) // Only show threads from last day
     .slice(0, 5)
     .map((thread) => ({
       ...thread,
@@ -206,7 +206,7 @@ export default function Index() {
                 type="file"
                 className="hidden"
                 onChange={handleFileUpload}
-                accept=".png,.jpg,.jpeg,.gif,.webp,.pdf,.md,.txt,.csv,.srt,.vtt,.mp3,.wav,.mp4"
+                accept=".png,.jpg,.jpeg,.gif,.webp,.pdf,.md,.txt,.csv,.srt,.vtt,.mp3,.wav,.mp4,.heic,.heif"
               />
               {!isLoading ? (
                 <Button
@@ -271,7 +271,7 @@ export default function Index() {
                           </div>
                         ) : null}
                         <div className="text-muted-foreground lowercase">
-                          <FuzzyTimeAgo ago timestamp={thread.created_at} />
+                          <FuzzyTimeAgo ago timestamp={thread.updated_at} />
                         </div>
                       </div>
                     </Link>

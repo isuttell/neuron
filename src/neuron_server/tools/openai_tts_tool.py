@@ -1,5 +1,5 @@
 from langchain.tools import BaseTool
-from neuron_server.config import config
+from neuron_server.config import config as neuron_config
 from neuron_server.logger import logger
 from uuid import uuid4
 from neuron_server.util.script_parser import parse_script
@@ -13,8 +13,11 @@ import asyncio
 from pydantic import BaseModel, Field
 import aiofiles
 from neuron_server.util.subprocess_runner import run_subprocess
+from langchain_core.runnables import RunnableConfig
+from neuron_server.models.media_item_model import MediaItemModel
 
-client = AsyncOpenAI(api_key=config.openai_api_key)
+
+client = AsyncOpenAI(api_key=neuron_config.openai_api_key)
 
 
 class OpenAITTSToolArgs(BaseModel):
@@ -44,8 +47,8 @@ And I'll help explain how they sound different.
         description="The speed of the audio. 1 is normal speed. 0.5 is half speed. 2 is double speed. If the user wants it slightly faster user a value of 1.04 or in that range without distorting the audio.",
         default=1,
     )
-    slug: str = Field(
-        description="A unique identifier. Must be all lower case with no special characters or spaces. Use dashes for spaces. Keep it short and descriptive. Must be less than 256 characters",
+    name: str = Field(
+        description="A unique display name for the audio file to be generated. Must be less than 256 characters",
     )
 
 
@@ -61,7 +64,9 @@ The tool will use OpenAI's TTS API to generate the audio and return a link to th
     async def _run(self, *args, **kwargs):
         return asyncio.run(self._arun(*args, **kwargs))
 
-    async def _arun(self, script: str, slug: str, speed: float = 1) -> str:
+    async def _arun(
+        self, script: str, name: str, config: RunnableConfig, speed: float = 1
+    ) -> str:
         """
         Generates audio from a provided script. In the format of:
         ```
@@ -74,7 +79,9 @@ The tool will use OpenAI's TTS API to generate the audio and return a link to th
         """
         working_dir: str
         try:
-            working_dir = os.path.abspath(os.path.join(config.temp_folder, uuid4().hex))
+            working_dir = os.path.abspath(
+                os.path.join(neuron_config.temp_folder, uuid4().hex)
+            )
             os.makedirs(working_dir)
             audio_files: List[str] = []
             for index, line in enumerate(parse_script(script, remove_actions=True)):
@@ -96,8 +103,8 @@ The tool will use OpenAI's TTS API to generate the audio and return a link to th
                 audio_files.append(audio_file_path)
                 logger.debug(f"Saved generated audio chunk at {audio_file_path}")
             # Concatenate all audio files using ffmpeg
-            filename = safe_filename("openai_tts", slug, "mp3")
-            output = os.path.join(config.static_folder, filename)
+            filename = safe_filename("openai_tts", name, "mp3")
+            output = os.path.join(neuron_config.static_folder, filename)
             ffmpeg_command = [
                 "ffmpeg",
                 "-loglevel",
@@ -113,7 +120,15 @@ The tool will use OpenAI's TTS API to generate the audio and return a link to th
             await run_subprocess(
                 ffmpeg_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE
             )
-            url = config.static_content_url + "/" + filename
+            url = neuron_config.static_content_url + "/" + filename
+            await MediaItemModel.create(
+                url=url,
+                type="audio",
+                user_id=config["configurable"].get("user_id"),
+                thread_id=config["configurable"].get("thread_id"),
+                name=name,
+                description=script,
+            )
             logger.debug(f"Generated audio file at {output} <{url}>")
             return f"""<audio src="{url}"></audio>""".strip()
         except Exception as e:

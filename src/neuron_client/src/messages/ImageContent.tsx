@@ -17,14 +17,18 @@ import {
 } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { MediaListDropdown } from "@/components/MediaListDropdown";
+import { MediaItem } from "@/slices/mediaSlice";
 interface ImageContentProps {
   url: string;
   alt?: string;
   width?: number;
   height?: number;
-  thumbnail_size?: "t" | "l" | "xl";
+  thumbnail_size?: "o" | "t" | "l" | "xl" | "xxl";
+  display_size?: "o" | "t" | "l" | "xl" | "xxl";
   preload?: boolean;
   showControls?: boolean;
+  mediaItem?: MediaItem;
   objectFit?: "cover" | "contain";
 }
 
@@ -33,10 +37,12 @@ const ImageContent: React.FC<ImageContentProps> = ({
   alt,
   width,
   height,
-  thumbnail_size = "t",
+  thumbnail_size = "l",
+  display_size = "o",
   preload = false,
   showControls = false,
   objectFit = "cover",
+  mediaItem,
 }) => {
   const [imageLoaded, setImageLoaded] = useState(!preload);
   const [thumbnailLoaded, setThumbnailLoaded] = useState(false);
@@ -44,16 +50,20 @@ const ImageContent: React.FC<ImageContentProps> = ({
   const thumbnailRef = useRef<HTMLImageElement>(null);
   const thumbnailUrl = url.endsWith(".gif")
     ? url
-    : url.replace(/\.(?=[^.]*$)/, `_${thumbnail_size}.`);
+    : url.replace(/\.[^.]+$/, `_${thumbnail_size}.webp`);
+
+  const displayUrl = url.endsWith(".gif")
+    ? url
+    : url.replace(/\.[^.]+$/, `_${display_size}.webp`);
   useEffect(() => {
     if (preload) {
       const img = new Image();
-      img.src = url;
+      img.src = displayUrl;
       img.onload = () => {
         setImageLoaded(true);
       };
     }
-  }, [url]);
+  }, [displayUrl]);
 
   useEffect(() => {
     if (thumbnailRef.current) {
@@ -69,7 +79,7 @@ const ImageContent: React.FC<ImageContentProps> = ({
           <img
             ref={thumbnailRef}
             className={cn(
-              "rounded-lg w-full h-full cursor-pointer bg-black transition-opacity duration-500",
+              "rounded-lg w-full h-full cursor-pointer transition-opacity duration-500",
               thumbnailLoaded ? "opacity-100" : "opacity-50",
               objectFit === "cover" ? "object-cover" : "object-contain"
             )}
@@ -84,6 +94,12 @@ const ImageContent: React.FC<ImageContentProps> = ({
           )}
           {showControls && (
             <div className="absolute bottom-2 right-2 space-x-2">
+              {mediaItem && (
+                <MediaListDropdown
+                  variant="outline"
+                  mediaItemId={mediaItem.id}
+                />
+              )}
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
@@ -107,20 +123,32 @@ const ImageContent: React.FC<ImageContentProps> = ({
                   <Button
                     className=""
                     variant="outline"
-                    asChild
-                    onClick={(e) => {
+                    onClick={async (e) => {
                       e.stopPropagation();
+                      try {
+                        const response = await fetch(url);
+                        const blob = await response.blob();
+                        const blobUrl = window.URL.createObjectURL(blob);
+                        const link = document.createElement("a");
+                        link.href = blobUrl;
+                        link.download = url.split("/").pop() || "image";
+                        link.style.display = "none";
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                        window.URL.revokeObjectURL(blobUrl);
+                        toast({
+                          title: "Image downloaded",
+                        });
+                      } catch (error) {
+                        toast({
+                          title: "Download failed",
+                          variant: "destructive",
+                        });
+                      }
                     }}
                   >
-                    <a
-                      className="text-primary"
-                      href={url}
-                      download
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <Download />
-                    </a>
+                    <Download />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>Download</TooltipContent>
@@ -135,9 +163,16 @@ const ImageContent: React.FC<ImageContentProps> = ({
           {alt && <DialogDescription>{alt}</DialogDescription>}
         </DialogHeader>
         <div className="w-full overflow-hidden">
-          <img src={url} alt={alt} className="w-full h-full object-contain" />
+          <img
+            src={displayUrl}
+            alt={alt}
+            className="w-full h-full object-contain"
+          />
         </div>
         <div className="flex justify-end gap-2">
+          {mediaItem && (
+            <MediaListDropdown variant="outline" mediaItemId={mediaItem.id} />
+          )}
           <Button
             className=""
             variant="outline"
@@ -149,24 +184,38 @@ const ImageContent: React.FC<ImageContentProps> = ({
               });
             }}
           >
-            <Copy /> Copy
+            <Copy className="w-4 h-4" />
+            <span className="sr-only">Copy</span>
           </Button>
-          <Button variant="outline" asChild>
-            <a
-              className="text-primary"
-              href={url}
-              download
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => {
+          <Button
+            variant="outline"
+            onClick={async (e) => {
+              e.preventDefault();
+              try {
+                const response = await fetch(url);
+                const blob = await response.blob();
+                const blobUrl = window.URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.href = blobUrl;
+                link.download = url.split("/").pop() || "image";
+                link.style.display = "none";
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(blobUrl);
                 toast({
                   title: "Image downloaded",
                 });
-              }}
-            >
-              <Download className="w-4 h-4" />
-              Download
-            </a>
+              } catch (error) {
+                toast({
+                  title: "Download failed",
+                  variant: "destructive",
+                });
+              }
+            }}
+          >
+            <Download className="w-4 h-4" />
+            <span className="sr-only">Download</span>
           </Button>
         </div>
       </DialogContent>

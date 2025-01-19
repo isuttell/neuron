@@ -80,6 +80,76 @@ class Thread(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
     personality: Mapped["Personality"] = relationship(back_populates="threads")
+    media_items: Mapped[List["MediaItem"]] = relationship(
+        back_populates="thread", cascade="all, delete-orphan"
+    )
+
+
+class MediaItem(Base):
+    __tablename__ = "media_items"
+
+    id = Column(pgUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(Text, default="")
+    description = Column(Text, default="")
+    url = Column(Text, nullable=False)
+    type = Column(String, nullable=False)
+    thread_id = Column(
+        pgUUID(as_uuid=True),
+        ForeignKey("threads.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    user_id = Column(String, nullable=False, index=True)
+    thread: Mapped[Optional["Thread"]] = relationship(back_populates="media_items")
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+    media_list_items: Mapped[List["MediaListItem"]] = relationship(
+        back_populates="media_item", cascade="all, delete-orphan"
+    )
+
+
+class MediaListItem(Base):
+    __tablename__ = "media_list_items"
+
+    id = Column(pgUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    index = Column(Integer, nullable=False)
+    media_list_id = Column(
+        pgUUID(as_uuid=True),
+        ForeignKey("media_lists.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    media_item_id = Column(
+        pgUUID(as_uuid=True),
+        ForeignKey("media_items.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+    media_list: Mapped["MediaList"] = relationship(back_populates="items")
+    media_item: Mapped["MediaItem"] = relationship(back_populates="media_list_items")
+
+
+class MediaList(Base):
+    __tablename__ = "media_lists"
+
+    id = Column(pgUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(Text, nullable=False)
+    description = Column(Text, nullable=False)
+    tags = Column(JSON, nullable=False, default=list)
+    user_id = Column(String, nullable=False, index=True)
+    visibility = Column(String, nullable=False, default="private")
+    shared_with = Column(JSON, nullable=False, default=list)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+    items: Mapped[List["MediaListItem"]] = relationship(
+        back_populates="media_list", cascade="all, delete-orphan"
+    )
 
 
 class Message(Base):

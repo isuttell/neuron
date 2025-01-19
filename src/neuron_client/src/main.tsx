@@ -12,13 +12,15 @@ import Chat from "./routes/thread.tsx";
 import Personalities from "./routes/personalities.tsx";
 import ErrorPage from "./error-page.tsx";
 import NotFoundPage from "./not-found-page.tsx";
-import Gallery from "./routes/gallery.tsx";
+import RecentMedia from "./routes/RecentMedia.tsx";
 import Personality from "./routes/personality.tsx";
 import Index from "./routes/index.tsx";
 import CodeViewer from "./routes/code-viewer.tsx";
 import Prompts from "./routes/prompts.tsx";
 import { EmbeddingsView } from "./components/EmbeddingsView";
 import { GlobalAudioProvider } from "./contexts/GlobalAudioContext";
+import MediaLists from "./routes/media-lists.tsx";
+import ScheduledEvents from "@/components/pages/ScheduledEvents";
 
 import "./index.css";
 
@@ -56,11 +58,19 @@ const router = createBrowserRouter(
         },
         {
           path: "/gallery",
-          element: <Gallery />,
+          element: <RecentMedia />,
         },
         {
           path: "/prompts",
           element: <Prompts />,
+        },
+        {
+          path: "/media-lists",
+          element: <MediaLists />,
+        },
+        {
+          path: "/scheduled",
+          element: <ScheduledEvents />,
         },
       ],
     },

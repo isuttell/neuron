@@ -12,6 +12,12 @@ interface AudioBarVisualizationProps {
   onLoadingChange?: (isLoading: boolean) => void;
 }
 
+// Add this cache outside the component
+const waveformCache = new Map<
+  string,
+  { waveformData: number[]; rawChannelData: Float32Array }
+>();
+
 export function AudioBarVisualization({
   src,
   progress,
@@ -172,6 +178,22 @@ export function AudioBarVisualization({
 
       onLoadingChange?.(true);
       updateCanvasDimensions();
+
+      // Check cache first
+      if (waveformCache.has(src)) {
+        const cached = waveformCache.get(src)!;
+        rawChannelDataRef.current = cached.rawChannelData;
+        // Reprocess waveform data since it depends on canvas dimensions
+        waveformDataRef.current = processAudioData(cached.rawChannelData);
+
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          drawFrame(ctx, canvas, progress, waveformDataRef.current);
+        }
+        onLoadingChange?.(false);
+        return;
+      }
+
       const ctx = canvas.getContext("2d");
 
       try {
@@ -183,6 +205,12 @@ export function AudioBarVisualization({
 
         rawChannelDataRef.current = channelData;
         waveformDataRef.current = processAudioData(channelData);
+
+        // Cache only the raw channel data
+        waveformCache.set(src, {
+          waveformData: waveformDataRef.current,
+          rawChannelData: channelData,
+        });
 
         if (ctx) {
           drawFrame(ctx, canvas, progress, waveformDataRef.current);
@@ -197,6 +225,16 @@ export function AudioBarVisualization({
     };
 
     loadAudioData();
+  }, [src, processAudioData, updateCanvasDimensions]);
+
+  // Add cleanup for cache if needed
+  useEffect(() => {
+    // Optional: Implement cache cleanup strategy
+    if (waveformCache.size > 50) {
+      // Limit cache size
+      const firstKey = waveformCache.keys().next().value;
+      waveformCache.delete(firstKey);
+    }
   }, [src]);
 
   useEffect(() => {

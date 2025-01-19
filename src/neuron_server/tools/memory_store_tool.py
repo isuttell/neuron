@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 
 class MemoryStoreToolArgs(BaseModel):
     memories: List[str] = Field(
-        description="A detailed list of memories to save. Be specific. It will be used for in a semantic text search and RAG. Do not use pronouns. Include all relevant details and references. Each memory must be self contained. Provide quotes for any specific information."
+        description="A detailed list of memories to save. Be specific. It will be used for in a semantic text search and RAG. Do not use pronouns. Include all relevant details and references. Each memory must be self contained and not rely on other memories for context. Provide quotes for any specific information."
     )
 
 

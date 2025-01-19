@@ -7,6 +7,7 @@ import { upsertPersonality } from "../slices/personalitiesSlice";
 import { upsertImage } from "../slices/imagesSlice";
 import { setSidebarImage } from "../slices/appSlice";
 import { upsertPrompt } from "../slices/promptsSlice";
+import { upsertMedia } from "../slices/mediaSlice";
 import { toast } from "../hooks/use-toast";
 interface DeleteThreadAction extends Action {
   type: "DeleteThread";
@@ -38,6 +39,10 @@ const websocketMiddleware =
       if (socket.connect()) {
         socket.on("message", (event) => {
           dispatch(upsertMessage(event));
+        });
+
+        socket.on("media", (event) => {
+          dispatch(upsertMedia(event));
         });
 
         socket.on("partial_message", (event) => {

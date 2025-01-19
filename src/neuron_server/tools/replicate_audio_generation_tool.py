@@ -13,12 +13,14 @@ import aiofiles
 import re
 import random
 from neuron_server.util.slug import safe_filename
+from neuron_server.models.media_item_model import MediaItemModel
+from langchain_core.runnables import RunnableConfig
 
 
 class ReplicateAudioGenerationToolArgs(BaseModel):
     video_url: str = Field(description="The URL of the video to add the audio to")
-    slug: str = Field(
-        description="A unique identifier. Must be all lower case with no special characters or spaces. Use dashes for spaces. Keep it short and descriptive. Must be less than 256 characters",
+    name: str = Field(
+        description="A unique display name for the audio generation less than 256 characters"
     )
     prompt: Optional[str] = Field(
         description="Keywords to guide the audio generation. Only use if the model is not generating the audio you want.",
@@ -75,7 +77,8 @@ Use this tool to add realistic foley sound effects synced to a video using the z
     async def _arun(
         self,
         video_url: str,
-        slug: str,
+        name: str,
+        config: RunnableConfig,
         prompt: str = "",
         duration: int = 6,
         num_steps: int = 25,
@@ -116,9 +119,8 @@ Use this tool to add realistic foley sound effects synced to a video using the z
                     },
                 )
                 logger.debug(f"Generated <{output.url}>")
-            slug = re.sub(r"[^a-z0-9-_]", "", slug)[:255].lower().replace(" ", "-")
             filename = safe_filename(
-                self.ref.split(":")[0].replace("/", "_"), slug, "mp4"
+                self.ref.split(":")[0].replace("/", "_"), name, "mp4"
             )
             file_path = os.path.abspath(
                 os.path.join(neuron_config.static_folder, filename)
@@ -127,6 +129,14 @@ Use this tool to add realistic foley sound effects synced to a video using the z
                 async for chunk in output:
                     await file.write(chunk)
             url = f"{neuron_config.static_content_url}/{filename}"
+            await MediaItemModel.create(
+                thread_id=config["configurable"].get("thread_id"),
+                user_id=config["configurable"].get("user_id"),
+                url=url,
+                type="video",
+                name=name,
+                description=f"Prompt: {prompt}",
+            )
             logger.debug(f"Saved generated video to {file_path} <{url}>")
             return f'<video src="{url}"></video>\nFilename: {file_path}'
         except Exception as e:

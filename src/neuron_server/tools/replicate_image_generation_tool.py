@@ -11,17 +11,19 @@ import aiofiles
 import aiohttp
 from PIL import PngImagePlugin, Image
 from datetime import datetime
-from neuron_server.util.image_utilities import create_thumbnails
+from neuron_server.util.image_utilities import create_thumbnails, create_image_url
 import time
 import logging
 from io import BytesIO
-import base64
 from langchain.schema import HumanMessage
 from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from neuron_server.util.slug import safe_filename
+from neuron_server.models.media_item_model import MediaItemModel
 import random
+from langchain_core.runnables import RunnableConfig
+
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +58,6 @@ class ImageDescription(BaseModel):
 model = ChatOpenAI(
     model="gpt-4o",
     temperature=0,
-    max_tokens=1000,
 )
 
 chain = (
@@ -78,13 +79,7 @@ The prompt was: <prompt>{prompt}</prompt>
 
 
 async def describe_image(prompt: str, image: Image.Image) -> ImageDescription:
-    # Get image as base64
-    buffered = BytesIO()
-    resized = image.copy()
-    # Resize image to 1024x1024 to ensure it's not too large
-    resized.thumbnail((1024, 1024))
-    resized.save(buffered, format="JPEG")
-    image_base64 = base64.b64encode(buffered.getvalue()).decode("utf-8")
+    image_url = create_image_url(image)
 
     return await chain.ainvoke(
         {
@@ -94,9 +89,7 @@ async def describe_image(prompt: str, image: Image.Image) -> ImageDescription:
                     content=[
                         {
                             "type": "image_url",
-                            "image_url": {
-                                "url": f"data:image/jpeg;base64,{image_base64}"
-                            },
+                            "image_url": {"url": image_url},
                         },
                     ],
                 ),
@@ -106,6 +99,9 @@ async def describe_image(prompt: str, image: Image.Image) -> ImageDescription:
 
 
 class ReplicateImageGenerationToolArgs(BaseModel):
+    name: str = Field(
+        description="A unique display title for the image generation less than 256 characters"
+    )
     prompt: str = Field(
         description="""
 Craft prompts that are detailed and specific. Clearly describe the subject, style, composition, lighting, and mood. For instance, specifying camera settings and environmental details can enhance realism. If you need to generate an image of Isaac you must include the TOK keyword. This has no additional context or history access so include all relevant details.
@@ -118,9 +114,6 @@ Prompt Tips:
 - Incorporate Mood and Atmosphere: "Depict a cozy, warmly lit bookstore cafe on a rainy evening."
 - Experiment with Unusual Perspectives: "Illustrate a 'bug's-eye view' of a picnic in a lush garden."
 """.strip(),
-    )
-    slug: str = Field(
-        description="A unique identifier. Must be all lower case with no special characters or spaces. Use dashes for spaces. Keep it short and descriptive. Must be less than 256 characters",
     )
     model: Optional[
         Literal[
@@ -238,7 +231,8 @@ Use this tool to generate an image using a text prompt on replicate.com and has 
     async def _arun(
         self,
         prompt: str,
-        slug: str,
+        name: str,
+        config: RunnableConfig,
         model: str = "black-forest-labs/flux-1.1-pro-ultra",
         aspect_ratio: str = "3:2",
         num_inference_steps: int = 25,
@@ -257,9 +251,11 @@ Use this tool to generate an image using a text prompt on replicate.com and has 
                 async with aiohttp.ClientSession() as session:
                     async with session.get(image_url) as response:
                         response.raise_for_status()
-
-                        async with aiofiles.open(tmp_upload_file, "wb") as file:
-                            await file.write(await response.content.read())
+                        # Read response content into BytesIO buffer first
+                        image_data = BytesIO(await response.content.read())
+                        image = Image.open(image_data)
+                        # Save a jpeg to ensure the image is compatible with the model
+                        image.save(tmp_upload_file, format="jpeg", quality=90)
 
             image_prompt = (
                 open(tmp_upload_file, "rb") if os.path.exists(tmp_upload_file) else None
@@ -318,7 +314,7 @@ Use this tool to generate an image using a text prompt on replicate.com and has 
                 # Ensure a unique filename
                 filename = safe_filename(
                     model.replace("/", "_").split(":")[0],
-                    slug,
+                    name,
                     "png",  # We overwrite the file and convert to png regardless to embed the metadata
                 )
                 file_path = os.path.abspath(
@@ -330,7 +326,7 @@ Use this tool to generate an image using a text prompt on replicate.com and has 
 
                 # Embed the prompt and datetime in the image
                 pnginfo = PngImagePlugin.PngInfo()
-                pnginfo.add_text("Description", prompt)
+                pnginfo.add_text("Description", name)
                 pnginfo.add_text("Software", f"Model: {model}")
                 pnginfo.add_text(
                     "DateTimeOriginal",
@@ -357,9 +353,16 @@ Use this tool to generate an image using a text prompt on replicate.com and has 
                 )
                 create_thumbnails(
                     file_path,
-                    neuron_config.static_folder,
                 )
                 url = f"{neuron_config.static_content_url}/{filename}"
+                await MediaItemModel.create(
+                    thread_id=config["configurable"].get("thread_id"),
+                    user_id=config["configurable"].get("user_id"),
+                    url=url,
+                    type="image",
+                    name=described_image.caption if described_image else prompt,
+                    description=described_image.description if described_image else "",
+                )
                 if described_image:
                     results.append(
                         f"""\

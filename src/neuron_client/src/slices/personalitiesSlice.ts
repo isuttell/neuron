@@ -1,37 +1,17 @@
+/// <reference path="./personalitiesSlice.d.ts" />
 import { createSlice } from "@reduxjs/toolkit";
 import type { PayloadAction } from "@reduxjs/toolkit";
 import type { RootState } from "../store";
 import * as actions from "../actions/personalityActions";
 import * as threadActions from "../actions/threadActions";
 import * as promptsSlice from "./promptsSlice";
-
-export interface Personality {
-  id: string;
-  name: string;
-  description: string;
-  context: string;
-  memory: string;
-  tool_set: string;
-  logo?: string;
-  created_at: string;
-  updated_at: string;
-}
-
-interface IncomingPersonalityEvent {
-  personality: Personality;
-}
-
-interface IncomingPersonalitiesEvent {
-  personalities: Personality[];
-}
-
-// Define a type for the slice state
-interface PersonalityState {
-  activePersonalityId?: string;
-  personalities: Personality[];
-  loading: boolean;
-  error: string | null;
-}
+import * as schedulerSlice from "./schedulerSlice";
+import {
+  Personality,
+  IncomingPersonalityEvent,
+  IncomingPersonalitiesEvent,
+  PersonalityState,
+} from "./personalitiesSlice.d";
 
 // Define the initial state using that type
 const initialState: PersonalityState = {
@@ -173,7 +153,11 @@ export const personalitiesSlice = createSlice({
             }
           }
         }
-      );
+      )
+      .addCase(schedulerSlice.fetchEvents.fulfilled, (state, action) => {
+        state.personalities = action.payload.personalities;
+        state.loading = false;
+      });
   },
 });
 

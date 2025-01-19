@@ -30,6 +30,15 @@
       "envFile": "${workspaceFolder}/.env"
     },
     {
+      "name": "Python Debugger: realtime",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "neuron_server.realtime",
+      "cwd": "${workspaceFolder}",
+      "justMyCode": false,
+      "envFile": "${workspaceFolder}/.env"
+    },
+    {
       "name": "Client Dev Server",
       "request": "launch",
       "runtimeArgs": ["run-script", "dev"],

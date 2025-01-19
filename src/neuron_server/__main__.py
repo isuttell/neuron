@@ -4,11 +4,13 @@ from dotenv import load_dotenv
 # Load environment variables from a .env file
 load_dotenv()
 
+from PIL import Image
+from pi_heif import register_heif_opener
 
-import sys
-
+register_heif_opener()
 
 import asyncio
+import sys
 from neuron_server.api import app
 from neuron_server.config import config
 from neuron_server.logger import logger
@@ -19,7 +21,7 @@ from hypercorn.asyncio import serve
 import time
 
 
-async def start_database():
+async def init():
     start_time = time.perf_counter()
     logger.debug("Starting database...")
     await start()
@@ -31,7 +33,7 @@ if sys.platform.startswith("win"):
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 if __name__ == "__main__":
-    asyncio.run(start_database())
+    asyncio.run(init())
 
     if config.debug:
         app.run(

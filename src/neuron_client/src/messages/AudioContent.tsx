@@ -1,4 +1,4 @@
-import { Download, Copy, Play, Pause, Plus, Loader2 } from "lucide-react";
+import { Download, Copy, Play, Pause, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -11,6 +11,8 @@ import { cn } from "@/lib/utils";
 import { useGlobalAudio } from "@/contexts/GlobalAudioContext";
 import { useEffect, useState } from "react";
 import { Spinner } from "@/components/ui/spinner";
+import { MediaListDropdown } from "@/components/MediaListDropdown";
+import { MediaItem } from "@/slices/mediaSlice";
 
 interface AudioContentProps {
   url: string;
@@ -18,6 +20,7 @@ interface AudioContentProps {
   className?: string;
   preload?: string;
   autoPlay?: boolean;
+  mediaItem?: MediaItem;
   onPlay?: () => void;
   onEnded?: () => void;
   onPause?: () => void;
@@ -27,6 +30,7 @@ const AudioContent: React.FC<AudioContentProps> = ({
   url,
   title,
   className,
+  mediaItem,
 }) => {
   const { toast } = useToast();
   const {
@@ -37,6 +41,8 @@ const AudioContent: React.FC<AudioContentProps> = ({
     seek,
     toggleAudio,
     addToQueue,
+    duration,
+    currentTime,
   } = useGlobalAudio();
   title = title || url.split("/").pop()?.split(".")[0] || "";
   const isActive = currentUrl === url;
@@ -109,7 +115,16 @@ const AudioContent: React.FC<AudioContentProps> = ({
           </TooltipTrigger>
           <TooltipContent>Add to Queue</TooltipContent>
         </Tooltip>
+        {mediaItem && <MediaListDropdown mediaItemId={mediaItem.id} />}
+        {url === currentUrl && (
+          <div className="text-xs text-gray-500 truncate p-2">
+            {currentTime}
+          </div>
+        )}
         <div className="flex-1" />
+        {url === currentUrl && (
+          <div className="text-xs text-gray-500 truncate p-2">{duration}</div>
+        )}
         <Tooltip>
           <TooltipTrigger asChild>
             <Button

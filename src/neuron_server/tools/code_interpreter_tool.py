@@ -5,6 +5,9 @@ from neuron_server.logger import logger
 import asyncio
 import time
 from neuron_server.tools.code_interpreter_api import run_code_interpreter
+import subprocess
+from langchain_core.runnables import RunnableConfig
+from neuron_server.models.media_item_model import MediaItemModel
 
 
 class CodeInterpreterToolArgs(BaseModel):
@@ -54,13 +57,14 @@ This tool executes Python code in a restricted environment for data analysis, pr
     def _run(self, *args, **kwargs) -> str:
         return asyncio.run(self._arun(*args, **kwargs))
 
-    async def _arun(self, python_code: str) -> str:
+    async def _arun(self, python_code: str, config: RunnableConfig) -> str:
         try:
             start_time = time.perf_counter()
             stdout, artifacts = await run_code_interpreter(
                 python_code,
                 code_interpreter_image=self.code_interpreter_image,
                 timeout=self.timeout,
+                config=config,
             )
             duration = time.perf_counter() - start_time
             artifacts_str = (
@@ -91,4 +95,10 @@ This tool executes Python code in a restricted environment for data analysis, pr
             ).strip()
         except Exception as e:
             logger.error(e, exc_info=True)
+            if isinstance(e, subprocess.CalledProcessError):
+                logger.error(
+                    e.stderr.decode("utf-8")
+                    if isinstance(e.stderr, bytes)
+                    else e.stderr
+                )
             raise e

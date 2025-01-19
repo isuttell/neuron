@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch } from "../store";
 import { fetchPersonalityEmbeddings } from "../actions/personalityActions";
@@ -11,7 +11,7 @@ import { RootState } from "../store";
 import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Trash2, Pencil, ArrowUpDown } from "lucide-react";
+import { Trash2, Pencil, ArrowUpDown, ArrowLeft } from "lucide-react";
 import { withAdminAuth } from "./hoc/withAdminAuth";
 import {
   Dialog,
@@ -144,6 +144,7 @@ const formatTimestamp = (timestamp: number | undefined) => {
 
 function EmbeddingsViewComponent() {
   const { personalityId } = useParams();
+  const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
   const embeddings = useSelector((state: RootState) =>
     selectEmbeddingspersonality(state, personalityId!)
@@ -414,7 +415,14 @@ function EmbeddingsViewComponent() {
   return (
     <div className="flex flex-1 p-4 flex-col flex-nowrap max-h-screen">
       <div className="flex justify-between mb-2 border-b pb-2 sticky top-0 bg-background z-10">
-        <SidebarTrigger className="size-10 mr-2" />
+        <Button
+          className="mr-4"
+          variant="ghost"
+          size="icon"
+          onClick={() => navigate(-1)}
+        >
+          <ArrowLeft className="size-4" />
+        </Button>
         <h1 className="text-2xl font-bold">
           Personality Embeddings{" "}
           <span className="text-sm text-muted-foreground ml-2">
@@ -472,6 +480,7 @@ function EmbeddingsViewComponent() {
         data={embeddings}
         onRowSelectionChange={setRowSelection}
         state={{ rowSelection }}
+        initialSorting={[{ id: "created_at", desc: true }]}
       />
     </div>
   );

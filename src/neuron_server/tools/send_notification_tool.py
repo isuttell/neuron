@@ -1,17 +1,18 @@
 from langchain.tools import BaseTool
 from typing import Type, Optional
 from pydantic import BaseModel, Field
-from neuron_server.config import config
+from neuron_server.config import config as neuron_config
 import time
 import aiohttp
 import asyncio
+from langchain_core.runnables import RunnableConfig
 
 
 class SendNotificationToolArgs(BaseModel):
     title: str = Field(description="A short title for the notification")
     message: str = Field(description="A message to be displayed to the user")
     url: Optional[str] = Field(
-        description="This URL will be passed directly to the device client, with a URL title of the supplied title (defaulting to the URL itself if no title given). Supplementary URLs can be useful for presenting long URLs in a notification as well as interacting with 3rd party applications. "
+        description="This URL will be passed directly to the device client. By default links back to the thread."
     )
     url_title: Optional[str] = Field(
         description="A title for the URL to be displayed to the user"
@@ -35,7 +36,7 @@ class SendNotificationTool(BaseTool):
     name: str = "send_notification"
     description: str = (
         """
-Immediately send a notification to the Isaac's phone. Does not support scheduled notifications.
+Immediately send a notification to the Isaac's phone using Pushover.
 """.strip()
     )
 
@@ -48,6 +49,7 @@ Immediately send a notification to the Isaac's phone. Does not support scheduled
         self,
         title: str,
         message: str,
+        config: RunnableConfig,
         url: Optional[str] = None,
         url_title: Optional[str] = None,
         sound: Optional[str] = None,
@@ -56,12 +58,13 @@ Immediately send a notification to the Isaac's phone. Does not support scheduled
             async with session.post(
                 "https://api.pushover.net/1/messages.json",
                 json={
-                    "token": config.pushover.token,
-                    "user": config.pushover.user,
+                    "token": neuron_config.pushover.token,
+                    "user": neuron_config.pushover.user,
                     "title": title,
                     "message": message,
                     "timestamp": int(time.time()),
-                    "url": url,
+                    "url": url
+                    or f"https://neuron.zaks.io/thread/{config['configurable']['thread_id']}",
                     "url_title": url_title,
                     "sound": sound,
                 },

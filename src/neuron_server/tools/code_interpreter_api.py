@@ -1,6 +1,6 @@
 from neuron_server.logger import logger
 import asyncio
-from neuron_server.config import config
+from neuron_server.config import config as neuron_config
 import os
 from uuid import uuid4
 import subprocess
@@ -9,6 +9,8 @@ import shutil
 from typing import List
 from neuron_server.util.image_utilities import create_thumbnails
 from neuron_server.util.subprocess_runner import run_subprocess
+from langchain_core.runnables import RunnableConfig
+from neuron_server.models.media_item_model import MediaItemModel
 
 
 class RestrictedKeywordError(Exception):
@@ -114,13 +116,16 @@ async def run_code_interpreter(
     code_interpreter_image: str = "192.168.1.160:5000/code-interpreter:latest",
     cpu_limit: int = 16,
     memory_limit: int | str = "16g",
+    config: RunnableConfig = None,
 ):
     try:
         start_time = time.perf_counter()
         check_for_restricted_keywords(python_code)
         script_filename = "main.py"
         folder_name = uuid4().hex
-        temp_folder = os.path.abspath(os.path.join(config.temp_folder, folder_name))
+        temp_folder = os.path.abspath(
+            os.path.join(neuron_config.temp_folder, folder_name)
+        )
         temp_artifacts_folder = os.path.join(temp_folder, "artifacts")
         os.makedirs(temp_artifacts_folder, mode=0o755)
         script_file = os.path.join(temp_folder, script_filename)
@@ -129,7 +134,7 @@ async def run_code_interpreter(
         logger.info(f"Saved python code to {script_file} and executing...")
         # This needs to point to the host's filesystem and not the container's
         docker_folder_reference = os.path.abspath(
-            os.path.join(config.parent_temp_folder, folder_name)
+            os.path.join(neuron_config.parent_temp_folder, folder_name)
         )
         args = [
             "docker",
@@ -168,7 +173,7 @@ async def run_code_interpreter(
         logger.info(f"Code interpreter tool execution time: {duration:.2f}s")
 
         artifacts_folder = os.path.join(
-            config.static_folder,
+            neuron_config.static_folder,
             "artifacts",
             folder_name,
         )
@@ -194,12 +199,17 @@ async def run_code_interpreter(
             media_type = get_media_type(file)
             if media_type == "unknown":
                 continue
-            url = f"{config.static_content_url}/artifacts/{folder_name}/{file}"
+            url = f"{neuron_config.static_content_url}/artifacts/{folder_name}/{file}"
+            await MediaItemModel.create(
+                url=url,
+                type=media_type,
+                user_id=config["configurable"].get("user_id"),
+                thread_id=config["configurable"].get("thread_id"),
+                name=file,
+            )
             if media_type == "image":
                 artifacts.append(f"<image>![{file}]({url})</image>")
-                create_thumbnails(
-                    os.path.join(artifacts_folder, file), artifacts_folder
-                )
+                create_thumbnails(os.path.join(artifacts_folder, file))
             elif media_type == "video":
                 artifacts.append(f'<video src="{url}" controls />')
             elif media_type == "audio":

@@ -203,7 +203,6 @@ class Automatic1111API:
         image.save(filename, quality=95, pnginfo=pnginfo)
         create_thumbnails(
             filename,
-            os.path.dirname(filename),
         )
         logging.debug(f"Saved generated image to {filename}")
         return filename

@@ -1,7 +1,5 @@
 from langchain.tools import BaseTool
-from PIL import PngImagePlugin
-from datetime import datetime, timezone
-from neuron_server.config import config
+from neuron_server.config import config as neuron_config
 from neuron_server.logger import logger
 from typing import Literal, Type, Optional
 from pydantic import BaseModel, Field
@@ -10,6 +8,8 @@ from neuron_server.tools.automatic1111_api import Automatic1111API
 import os
 from neuron_server.logger import logger
 import aiohttp
+from neuron_server.models.media_item_model import MediaItemModel
+from langchain_core.runnables import RunnableConfig
 
 Automatic1111Checkpoints = Literal[
     "sdxl\\sdxlNuclearGeneralPurposeV3Semi_v30BakedVAE",
@@ -20,6 +20,9 @@ Automatic1111Checkpoints = Literal[
 
 
 class Automatic1111ToolArgs(BaseModel):
+    name: str = Field(
+        description="The title of the image. This will be used as the name of the media item in the database."
+    )
     prompt: str = Field(
         description="The prompt to generate the image from. When generating prompts, include specific visual details, such as colors, textures, and object placements, to guide the model toward a precise result. Mention the desired style (e.g., photorealistic, cartoonish, or abstract) and add context, like background elements or lighting, for more cohesive images. Focus on clarity and conciseness in each prompt to avoid ambiguity and ensure reproducible results."
     )
@@ -59,7 +62,7 @@ async def check_http_connection(url: str) -> bool:
 class Automatic1111Tool(BaseTool):
     name: str = "automatic1111"
     description: str = (
-        "A tool that generates an image based on a given prompt using a local instance of Automatic1111. Use this when the user asks for an image. Do not use to generate charts. Returns a markdown image tag."
+        "A tool that generates an image based on a given prompt using Automatic1111 hosted on the machine called Kepler on the local network. Use this when the user asks for an image. Do not use to generate charts. Returns a markdown image tag."
     )
     args_schema: Type[Automatic1111ToolArgs] = Automatic1111ToolArgs
 
@@ -75,6 +78,8 @@ class Automatic1111Tool(BaseTool):
     async def _arun(
         self,
         prompt: str,
+        name: str,
+        config: RunnableConfig,
         negative_prompt: Optional[str] = None,
         steps: Optional[int] = 30,
         cfg_scale: Optional[float] = 4,
@@ -104,9 +109,17 @@ class Automatic1111Tool(BaseTool):
                 adetailer_enabled=adetailer_enabled,
                 enable_hr=enable_hr,
             )
-            url = f"{config.static_content_url}/{os.path.basename(file_path)}"
+            url = f"{neuron_config.static_content_url}/{os.path.basename(file_path)}"
+            await MediaItemModel.create(
+                thread_id=config["configurable"].get("thread_id"),
+                user_id=config["configurable"].get("user_id"),
+                url=url,
+                type="image",
+                name=name,
+                description=prompt,
+            )
             logger.debug(f"Saved generated image to {file_path} <{url}>")
-            return f"<image>![{prompt}]({url})</image>"
+            return f"<image>![{name}]({url})</image>"
         except Exception as e:
             logger.error(e, exc_info=True)
             return f"Error generating image: {str(e)}"
@@ -123,7 +136,7 @@ if __name__ == "__main__":
 
     tool = Automatic1111Tool(
         api=Automatic1111API(
-            output_directory=os.path.join(config.static_folder, "images")
+            output_directory=os.path.join(neuron_config.static_folder, "images")
         )
     )
     results = tool._run(

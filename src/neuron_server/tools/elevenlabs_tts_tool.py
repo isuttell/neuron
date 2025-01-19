@@ -1,5 +1,5 @@
 from langchain.tools import BaseTool
-from neuron_server.config import config
+from neuron_server.config import config as neuron_config
 from neuron_server.logger import logger
 from uuid import uuid4
 from typing import Type, List, Literal, Optional
@@ -13,6 +13,8 @@ from pydantic import BaseModel, Field
 from neuron_server.util.slug import safe_filename
 from neuron_server.util.script_parser import parse_script
 from neuron_server.util.subprocess_runner import run_subprocess
+from neuron_server.models.media_item_model import MediaItemModel
+from langchain_core.runnables import RunnableConfig
 
 
 class ElevenLabsTTSToolArgs(BaseModel):
@@ -28,8 +30,6 @@ Hello, how are you?
 [Jessica]
 I'm great!
 \"\"\"
-
-Each script block should be short enough to be processed in a single call to the API.
 
 Do not include action identifiers or cues in the script.
 
@@ -72,13 +72,13 @@ Isaac
 """.strip()
     )
 
-    slug: str = Field(
-        description="A unique identifier. Must be all lower case with no special characters or spaces. Use dashes for spaces. Keep it short and descriptive. Must be less than 256 characters",
+    name: str = Field(
+        description="A unique display title for the audio file to be generated. Must be less than 256 characters",
     )
 
-    model: Optional[Literal["eleven_flash_v2_5", "eleven_multilingual_v2"]] = Field(
-        description="The model to use for the TTS. Defaults to eleven_multilingual_v2 for quality and eleven_flash_v2_5 for speed.",
-        default="eleven_flash_v2_5",
+    model: Optional[Literal["eleven_turbo_v2_5", "eleven_multilingual_v2"]] = Field(
+        description="The model to use for the TTS. Defaults to eleven_multilingual_v2 for quality and eleven_turbo_v2_5 for speed.",
+        default="eleven_turbo_v2_5",
     )
 
 
@@ -97,15 +97,18 @@ This tool generates audio from a provided script using ElevenLabs' TTS APIs and 
     async def _arun(
         self,
         script: str,
-        slug: str,
+        name: str,
+        config: RunnableConfig,
         model: Optional[
-            Literal["eleven_flash_v2_5", "eleven_multilingual_v2"]
-        ] = "eleven_flash_v2_5",
+            Literal["eleven_turbo_v2_5", "eleven_multilingual_v2"]
+        ] = "eleven_turbo_v2_5",
     ) -> str:
         try:
             logger.debug(f"Generating elevenlabs audio using {model}...")
-            client = AsyncElevenLabs(api_key=config.elevenlabs_api_key)
-            working_dir = os.path.abspath(os.path.join(config.temp_folder, uuid4().hex))
+            client = AsyncElevenLabs(api_key=neuron_config.elevenlabs_api_key)
+            working_dir = os.path.abspath(
+                os.path.join(neuron_config.temp_folder, uuid4().hex)
+            )
             os.makedirs(working_dir)
             audio_files: List[str] = []
             for index, line in enumerate(parse_script(script, remove_actions=True)):
@@ -125,8 +128,10 @@ This tool generates audio from a provided script using ElevenLabs' TTS APIs and 
                     async for chunk in response:
                         file.write(chunk)
                 logger.debug(f"Saved generated audio chunk at {audio_file_path}")
-            filename = safe_filename("elevenlabs_tts", slug, "mp3")
-            output = os.path.abspath(os.path.join(config.static_folder, filename))
+            filename = safe_filename("elevenlabs_tts", name, "mp3")
+            output = os.path.abspath(
+                os.path.join(neuron_config.static_folder, filename)
+            )
             ffmpeg_command = [
                 "ffmpeg",
                 "-hide_banner",
@@ -146,7 +151,15 @@ This tool generates audio from a provided script using ElevenLabs' TTS APIs and 
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
             )
-            url = config.static_content_url + "/" + filename
+            url = neuron_config.static_content_url + "/" + filename
+            await MediaItemModel.create(
+                url=url,
+                type="audio",
+                user_id=config["configurable"].get("user_id"),
+                thread_id=config["configurable"].get("thread_id"),
+                name=name,
+                description=script,
+            )
             logger.info(f"Generated audio file saved to {output} <{url}>")
             return f'<audio src="{url}"></audio>'
         except Exception as e:

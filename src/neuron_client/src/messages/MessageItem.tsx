@@ -51,10 +51,10 @@ const MessageItem: React.FC<MessageItemProps> = ({
 
   const mediaItems = getMediaItems([message]);
 
-  if (!showTools && isTool) {
+  if (!showTools && (isTool || body.length === 0)) {
     if (mediaItems.length === 0) {
       // If there are no media items, don't show the tool card
-      return null;
+      return <div />;
     }
     // If there are media items, show the media list but not the raw content
     return (

@@ -32,6 +32,7 @@ from neuron_server.controllers.app_controller import (
 from neuron_server.controllers.embedding_controller import (
     blueprint as embedding_blueprint,
 )
+from neuron_server.controllers.media_controller import blueprint as media_blueprint
 from functools import wraps
 from quart import Response
 from typing import Optional
@@ -44,6 +45,11 @@ import logging
 from neuron_server.util.image_utilities import create_thumbnails
 from neuron_server.controllers.auth import decode_token
 from werkzeug.exceptions import HTTPException
+from neuron_server.task_scheduler import TaskScheduler
+from neuron_server.controllers.scheduler_controller import (
+    blueprint as scheduler_blueprint,
+)
+
 
 logger = logging.getLogger(__name__)
 
@@ -142,6 +148,7 @@ blueprint = Blueprint(
 @blueprint.get("/code-viewer")
 @blueprint.get("/stats")
 @blueprint.get("/prompts")
+@blueprint.get("/scheduled")
 async def index(**kwargs):
     return await blueprint.send_static_file("index.html")
 
@@ -152,25 +159,22 @@ async def index(**kwargs):
 @cors(allowed_methods=["GET", "OPTIONS"], allowed_headers=["Authorization"])
 @cache_control(max_age=31536000)
 async def get_static(path):
-    match = re.match(r".*_(t|l|xl)\.(jpe?g|png)$", path)
-    if (
-        match
-        and not os.path.exists(os.path.join(config.static_folder, path))
-        and os.path.exists(
-            os.path.join(config.static_folder, path.replace(f"_{match.group(1)}.", "."))
-        )
-        and len(re.findall(r"(_t|_l|_xl)", path)) == 1  # Only proceed if single suffix
-    ):
-        create_thumbnails(
-            os.path.join(
-                config.static_folder, path.replace(f"_{match.group(1)}.", ".")
-            ),
-            config.static_folder,
-        )
-    is_html = path.endswith(".html") or path.endswith(".htm")
-    return await send_from_directory(
-        config.static_folder, path, as_attachment=not is_html
-    )
+    match = re.match(r".*_(t|l|xl|xxl|o)\.(jpe?g|png|webp)$", path)
+    if match and not os.path.exists(os.path.join(config.static_folder, path)):
+        size_suffix = match.group(1)
+        # Get the base path without size suffix and with original extension
+        base_path = re.sub(f"_{size_suffix}\\.(jpe?g|png|webp)$", "", path)
+
+        # Check for original file with various extensions
+        for ext in [".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif"]:
+            original_file = os.path.join(config.static_folder, base_path + ext)
+            if os.path.exists(original_file):
+                create_thumbnails(original_file)
+                break
+    if not os.path.exists(os.path.join(config.static_folder, path)):
+        logger.warning(f"File not found: {path}")
+        return Response("File not found", 404)
+    return await send_from_directory(config.static_folder, path)
 
 
 async def sending():
@@ -233,6 +237,8 @@ app.register_blueprint(graph_blueprint, url_prefix="/api/graph")
 app.register_blueprint(prompt_blueprint, url_prefix="/api/prompts")
 app.register_blueprint(app_blueprint, url_prefix="/api/app")
 app.register_blueprint(embedding_blueprint, url_prefix="/api/embeddings")
+app.register_blueprint(media_blueprint, url_prefix="/api/media")
+app.register_blueprint(scheduler_blueprint, url_prefix="/api/scheduler")
 
 
 @app.errorhandler(Exception)
@@ -245,3 +251,12 @@ async def internal_error(error):
 async def http_error(error):
     logger.error(error, exc_info=True)
     return {"error": error.name, "message": error.description}, error.code
+
+
+scheduler = TaskScheduler(host=config.redis.host, port=config.redis.port, db=2)
+
+
+@app.before_serving
+async def startup():
+    await scheduler.start()
+    logger.info("Task scheduler started")

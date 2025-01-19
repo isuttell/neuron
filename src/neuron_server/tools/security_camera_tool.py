@@ -6,7 +6,7 @@ from PIL import Image
 import time
 import asyncio
 from neuron_server.logger import logger
-from neuron_server.config import config
+from neuron_server.config import config as neuron_config
 import PIL.PngImagePlugin as PngImagePlugin
 from datetime import datetime, timedelta
 from langchain_openai import ChatOpenAI
@@ -22,6 +22,7 @@ from langchain_core.runnables import Runnable
 from typing import Literal
 from langchain_core.runnables import RunnableConfig
 import os
+from neuron_server.util.image_utilities import create_thumbnails
 
 
 class CameraName(Enum):
@@ -94,7 +95,7 @@ Parameters:
 
 
 async def get_frames_from_camera(
-    camera: str, frame_count: int = 10, fps: float = 2
+    camera: str, frame_count: int = 3, fps: float = 1
 ) -> List[str]:
     logger.debug(f"Getting {frame_count} frames from {camera} at {fps} FPS")
     cap = cv2.VideoCapture(devices[camera])
@@ -134,7 +135,7 @@ async def convert_frame_to_image_url(
         scaling_factor = min(max_height / height, max_width / width)
         new_dimensions = (int(width * scaling_factor), int(height * scaling_factor))
         img = cv2.resize(img, new_dimensions, interpolation=cv2.INTER_CUBIC)
-    _, buffer = cv2.imencode(".jpg", img)
+    _, buffer = cv2.imencode(".jpg", img, [cv2.IMWRITE_JPEG_QUALITY, 80])
     image_base64 = base64.b64encode(buffer).decode("utf-8")
     return f"data:image/jpeg;base64,{image_base64}"
 
@@ -161,12 +162,13 @@ def save_images(
         filename = (
             f"{camera}_capture_{capture_time.strftime('%Y-%m-%d_%H-%M-%S-%f')}.png"
         )
-        file_path = os.path.abspath(os.path.join(config.static_folder, filename))
+        file_path = os.path.abspath(os.path.join(neuron_config.static_folder, filename))
         image.save(file_path, format="png", pnginfo=pnginfo)
-        url = f"{config.static_content_url}/{filename}"
+        url = f"{neuron_config.static_content_url}/{filename}"
         results.append(
             f"<image>![{camera} at {capture_time.astimezone().isoformat(timespec='seconds')}]({url})</image>"
         )
+        create_thumbnails(filename=file_path)
     return results
 
 
@@ -178,7 +180,7 @@ class SecurityCameraToolArgs(BaseModel):
         description="The camera to use. Must be one of: front_door, backyard, garage, kitty_cam"
     )
     frame_count: Optional[int] = Field(
-        description="The number of frames to capture. Defaults to 3. Max is 120.",
+        description="The number of frames to capture. Defaults to 3. Max is 10.",
         default=3,
     )
     fps: Optional[float] = Field(

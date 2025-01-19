@@ -1,8 +1,11 @@
 import { useAppSelector } from "../hooks";
-import { getImages } from "../slices/imagesSlice";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useAppDispatch } from "../hooks";
-import { fetchImages } from "../actions/imageActions";
+import {
+  fetchRecentMedia,
+  selectAllMedia,
+  selectMediaLoading,
+} from "../slices/mediaSlice";
 import ImageContent from "../messages/ImageContent";
 import VideoContent from "../messages/VideoContent";
 import AudioContent from "../messages/AudioContent";
@@ -14,7 +17,7 @@ import { forwardRef } from "react";
 import type { GridComponents } from "react-virtuoso";
 import TogglePlayerButton from "@/components/TogglePlayerButton";
 import { Spinner } from "@/components/ui/spinner";
-import { getImagesLoading } from "../slices/imagesSlice";
+
 // Ensure that this stays out of the component,
 // Otherwise the grid will remount with each render due to new component instances.
 const gridComponents: GridComponents = {
@@ -34,27 +37,33 @@ const gridComponents: GridComponents = {
   )),
 };
 
-export default function Gallery() {
-  const images = useAppSelector(getImages);
-  const loading = useAppSelector(getImagesLoading);
+interface RecentMediaProps {
+  limit?: number;
+}
+
+export default function RecentMedia({ limit = 16 }: RecentMediaProps) {
+  const mediaItems = useAppSelector(selectAllMedia);
+  const loading = useAppSelector(selectMediaLoading);
   const dispatch = useAppDispatch();
+  const offset = useRef(0);
 
   useEffect(() => {
-    dispatch(fetchImages());
+    dispatch(fetchRecentMedia({ offset: offset.current, limit }));
   }, []);
 
-  const sortedImages = [...images].sort((a, b) =>
-    a.created_at > b.created_at ? -1 : 1
-  );
-
-  if (loading && sortedImages.length === 0) {
+  if (loading && mediaItems.length === 0) {
     return (
       <div className="flex items-center justify-center h-full w-full">
         <Spinner />
       </div>
     );
   }
-
+  const sortedMediaItems = mediaItems
+    .slice()
+    .sort(
+      (a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
   return (
     <MediaPlayerProvider>
       <div className="flex flex-1 p-4 flex-col flex-nowrap max-h-screen overflow-auto">
@@ -65,34 +74,45 @@ export default function Gallery() {
           <TogglePlayerButton />
         </div>
         <VirtuosoGrid
-          totalCount={sortedImages.length}
+          totalCount={sortedMediaItems.length}
           components={gridComponents}
-          itemContent={(index) => {
-            const image = sortedImages[index];
+          data={sortedMediaItems}
+          endReached={() => {
+            offset.current += limit;
+            dispatch(fetchRecentMedia({ offset: offset.current, limit }));
+          }}
+          itemContent={(_, mediaItem) => {
             return (
               <AspectRatio
-                key={image.id}
+                key={mediaItem.id}
                 ratio={1}
                 className="max-h-[1024px] max-w-[1024px] rounded-lg border border-gray-900 flex justify-center items-center p-1"
               >
-                {image.media_type === "image" ? (
+                {mediaItem.type === "image" ? (
                   <ImageContent
-                    key={image.id}
-                    url={image.url}
-                    alt={image.prompt ?? ""}
+                    key={mediaItem.id}
+                    url={mediaItem.url}
+                    alt={mediaItem.name}
                     width={256}
                     height={256}
-                    objectFit="contain"
+                    objectFit="cover"
+                    mediaItem={mediaItem}
                   />
                 ) : null}
-                {image.media_type === "video" ? (
-                  <VideoContent key={image.id} url={image.url} />
+                {mediaItem.type === "video" ? (
+                  <VideoContent
+                    key={mediaItem.id}
+                    url={mediaItem.url}
+                    mediaItem={mediaItem}
+                  />
                 ) : null}
-                {image.media_type === "audio" ? (
+                {mediaItem.type === "audio" ? (
                   <AudioContent
                     className="w-full"
-                    key={image.id}
-                    url={image.url}
+                    key={mediaItem.id}
+                    url={mediaItem.url}
+                    title={mediaItem.name}
+                    mediaItem={mediaItem}
                     preload="metadata"
                   />
                 ) : null}

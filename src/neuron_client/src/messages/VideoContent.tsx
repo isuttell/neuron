@@ -13,7 +13,8 @@ import {
   TooltipContent,
 } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
-
+import { MediaItem } from "@/slices/mediaSlice";
+import { MediaListDropdown } from "@/components/MediaListDropdown";
 interface VideoContentProps {
   url: string;
   autoPlay?: boolean;
@@ -21,10 +22,12 @@ interface VideoContentProps {
   controls?: boolean;
   loop?: boolean;
   showControls?: boolean;
+  mediaItem?: MediaItem;
 }
 
 const VideoContent: React.FC<VideoContentProps> = ({
   url,
+  mediaItem,
   autoPlay = false,
   muted = false,
   controls = false,
@@ -37,7 +40,7 @@ const VideoContent: React.FC<VideoContentProps> = ({
       <DialogTrigger asChild>
         <div className="w-full relative max-h-[1024px] max-w-[1024px]">
           <video
-            className="rounded-lg w-full h-full object-contain cursor-pointer bg-black"
+            className="rounded-lg w-full h-full object-contain cursor-pointer"
             src={url}
             autoPlay={autoPlay}
             muted={muted}
@@ -46,6 +49,12 @@ const VideoContent: React.FC<VideoContentProps> = ({
           />
           {showControls && (
             <div className="absolute bottom-2 right-2 space-x-2">
+              {mediaItem && (
+                <MediaListDropdown
+                  variant="outline"
+                  mediaItemId={mediaItem.id}
+                />
+              )}
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
@@ -96,7 +105,7 @@ const VideoContent: React.FC<VideoContentProps> = ({
         </DialogHeader>
         <div className="flex-1 overflow-hidden">
           <video
-            className="w-full h-full rounded-md object-contain bg-black"
+            className="w-full h-full rounded-md object-contain"
             autoPlay={true}
             controls={true}
             loop={true}
@@ -107,6 +116,9 @@ const VideoContent: React.FC<VideoContentProps> = ({
           </video>
         </div>
         <div className="flex justify-end gap-2">
+          {mediaItem && (
+            <MediaListDropdown variant="outline" mediaItemId={mediaItem.id} />
+          )}
           <Button
             variant="outline"
             onClick={(e) => {

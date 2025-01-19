@@ -12,6 +12,7 @@ import { setGetAccessTokenSilently } from "../actions/getToken";
 import { fetchConfig } from "@/slices/appSlice";
 import { ThreadTitleUpdater } from "@/components/ThreadTitleUpdater";
 import { GlobalAudioPlayer } from "@/components/GlobalAudioPlayer";
+import { fetchMediaLists } from "@/slices/mediaListsSlice";
 
 function Root() {
   const {
@@ -32,8 +33,9 @@ function Root() {
     } else if (!isLoading && isAuthenticated) {
       dispatch({ type: "socket/connect" });
       dispatch(fetchConfig());
+      dispatch(fetchMediaLists());
     }
-  }, [isAuthenticated, isLoading]);
+  }, [isAuthenticated, isLoading, dispatch]);
 
   useEffect(() => {
     if (getAccessTokenSilently) {

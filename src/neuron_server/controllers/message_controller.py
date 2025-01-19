@@ -1,6 +1,6 @@
 from quart import Blueprint, request
 from neuron_server.event_router import EventRouter
-from neuron_server.models import ThreadModel
+from neuron_server.models import ThreadModel, MediaItemModel
 from neuron_server.controllers.events.message_events import (
     PostMessage,
     CancelMessage,
@@ -13,14 +13,9 @@ from neuron_server.llms.agent import aget_state
 from werkzeug.exceptions import NotFound, BadRequest
 import neuron_server.llms.agent as agent
 from neuron_server.pubsub import pubsub
-from uuid import uuid4
-import os
-from neuron_server.config import config as neuron_config
-import hashlib
-import aiofiles
 from neuron_server.controllers.auth import requires_auth
-from neuron_server.util.image_utilities import create_thumbnails
-
+from neuron_server.models.media_item_model import MediaItemModel
+from neuron_server.util.file_utilities import process_uploaded_file
 
 router = EventRouter()
 
@@ -40,9 +35,16 @@ async def get_thread_messages(thread_id: UUID):
         for message in (state.values.get("messages", []))
         if message.type != "system"
     ]
+
+    # Get media items for this thread
+    media_items = await MediaItemModel.get_thread_media(
+        thread_id=thread.id, user_id=request.token.user_id
+    )
+
     return {
         "threads": [thread.model_dump()],
         "messages": [message.model_dump() for message in messages],
+        "media": [item.model_dump() for item in media_items],
     }
 
 
@@ -75,39 +77,8 @@ async def post_thread_message(thread_id: UUID):
         raise BadRequest("prompt is required")
 
     if "file" in files:
-        file = files["file"]
-        ext = os.path.splitext(file.filename)[1]
-        if ext not in neuron_config.allowed_file_types:
-            raise BadRequest("Invalid file type")
-
-        # Create hash of file contents so we upload the
-        # same file multiple times with the same name
-        hasher = hashlib.sha256()
-        file_contents: bytes = file.read()
-        assert isinstance(file_contents, bytes)
-        if len(file_contents) > neuron_config.max_file_size:
-            raise BadRequest("File too large")
-        hasher.update(file_contents)
-        content_hash = hasher.hexdigest()
-
-        filename = f"{content_hash}{ext}"
-        file_path = os.path.abspath(
-            os.path.join(neuron_config.static_folder, "user", filename)
-        )
-        url = f"{neuron_config.static_content_url}/user/{filename}"
-
-        # Only save if file doesn't already exist
-        if not os.path.exists(file_path):
-            os.makedirs(os.path.dirname(file_path), exist_ok=True)
-            async with aiofiles.open(file_path, "wb") as f:
-                await f.write(file_contents)
-            if ext in [".jpg", ".jpeg", ".png", ".webp"]:
-                create_thumbnails(
-                    file_path,
-                    os.path.abspath(os.path.join(neuron_config.static_folder, "user")),
-                )
-
-        prompt = f"{format_ai_uploaded_file(file.filename, ext, url)}\n{prompt}"
+        filename, ext, url = await process_uploaded_file(files["file"])
+        prompt = f"{format_ai_uploaded_file(filename, ext, url)}\n{prompt}"
 
     await agent.astream(
         thread_id=thread.id,
