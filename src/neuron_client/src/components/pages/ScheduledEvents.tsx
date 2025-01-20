@@ -10,7 +10,7 @@ import { RootState } from "@/store";
 import Loading from "@/lib/loading";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { formatScheduledTime, formatRecurringPattern } from "@/lib/time";
+import { formatRecurringPattern } from "@/lib/time";
 import { Badge } from "@/components/ui/badge";
 import Content from "@/messages/Content";
 import { ScheduledTimeBadge } from "@/components/ui/scheduled-time-badge";
@@ -31,7 +31,7 @@ export default function ScheduledEvents() {
 
   useEffect(() => {
     dispatch(fetchEvents());
-  }, [dispatch]);
+  }, []);
 
   // Group events by personality
   const eventsByPersonality = events.reduce(

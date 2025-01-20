@@ -6,6 +6,7 @@ import {
   List,
   Calendar,
   LogOut,
+  Settings,
 } from "lucide-react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import {
@@ -34,6 +35,7 @@ import { useAppSelector } from "@/hooks";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { ThreadsUpdating } from "@/components/ThreadsUpdating";
 import { useGlobalAudio } from "@/contexts/GlobalAudioContext";
+import { ProvidersMenuItem } from "./ProvidersMenuItem";
 
 interface SidebarLink {
   to: string;
@@ -178,6 +180,7 @@ export function MainSidebar() {
                     <span>Scheduled</span>
                   </NavLink>
                 </DropdownMenuItem>
+                <ProvidersMenuItem className="text-gray-300 hover:text-accent-foreground flex items-center gap-2" />
                 <DropdownMenuItem
                   onClick={() => {
                     logout();

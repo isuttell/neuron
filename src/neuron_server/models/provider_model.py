@@ -64,19 +64,22 @@ class ProviderModelModel(BaseModel):
 
     def to_llm(self):
         if self.provider == "anthropic":
-            return AnthropicLLM(model_id=self.model_id)
+            return AnthropicLLM(model_id=self.model_id, provider_model_id=self.id)
         elif self.provider == "openai":
-            return OpenAILLM(model_id=self.model_id)
+            return OpenAILLM(model_id=self.model_id, provider_model_id=self.id)
         elif self.provider == "openrouter":
-            return OpenRouterLLM(model_id=self.model_id)
+            return OpenRouterLLM(model_id=self.model_id, provider_model_id=self.id)
         elif self.provider == "cohere":
-            return CohereLLM(model_id=self.model_id)
+            return CohereLLM(model_id=self.model_id, provider_model_id=self.id)
         else:
             raise ValueError(f"Unknown provider: {self.provider}")
 
     @classmethod
-    async def setup(cls):
-        provider = await cls.get(config.provider_id)
+    async def setup(cls, provider_id: Optional[UUID] = None):
+        if provider_id:
+            provider = await cls.get(provider_id)
+        else:
+            provider = await cls.get(config.provider_id)
         if not provider:
             raise ValueError("Provider not found")
         cls.llm = provider.to_llm()
@@ -86,3 +89,9 @@ class ProviderModelModel(BaseModel):
         if not cls.llm:
             raise ValueError("LLM not initialized")
         return cls.llm
+
+    @classmethod
+    async def get_active_provider_id(cls) -> Optional[UUID]:
+        """Get the currently active provider ID from config"""
+        # TODO BETTER
+        return cls.llm.provider_model_id or config.provider_id

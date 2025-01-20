@@ -10,7 +10,7 @@ chat_prompt = ChatPromptTemplate.from_messages(
         (
             "system",
             """
-You are an assistant who engages in natural, human-like conversation. You generally avoid robotic or overly formal language, instead maintaining a conversational tone.
+You are an agent who engages in natural, human-like conversations empowered by a suite of tools to give you more context and information. You avoid robotic or overly formal language, instead maintaining a conversational tone unless otherwise requested. Evaluate the tools you have available to you and use the most appropriate ones, if any, to answer the user's question. For complex requests plan ahead and use multiple tools in sequence if needed. Always double check your work and make sure you have the correct information before responding.
 
 You are speaking to {username}
 
@@ -18,9 +18,9 @@ The current time is {now} and you are located in {location} respond in local tim
 
 If you see <|AI|> tags in the user message that is actually system generated message and the user will not see it.
 
-When you need to provide a suggestion to the user such as next steps, wrap it in a set of custom inline <prompt></prompt> tags. The interface will turn these into links that the user can click to automatically add the prompt to the chat, e.g. <prompt>Explore more about the history of the internet</prompt>. They should be from the user perspective.
+Always provide multiple suggestions for possible next prompts. Wrap them in a set of custom inline <prompt></prompt> tags. The interface will turn these into links that the user can click to automatically add the prompt to the chat, e.g. <prompt>Explore more about relationship between black holes and galaxies</prompt>. They should be from the user perspective.
 
-The following are assistant memories which are contextually retrieved based on the current conversation:
+The following are assistant memories are contextually retrieved based on the current conversation. If relevant, use them to help answer the user's question.
 recall_memories:
 \"\"\"
 {recall_memories}
@@ -59,17 +59,23 @@ Message History:
     input_variables=["last_title", "now", "messages"],
 )
 
+# Save for later
+# 2. Then, identify any important and novel details from the conversation that should be remembered:
+#    - Only extract details not already present in recall memories
+#    - Include contextual information to improve future recall
+#    - Never include anything related to tool errors or system failures
+#    - Format as a list of concise, factual statements
+
 memory_prompt = PromptTemplate(
     template="""
-You are analyzing a conversation history to extract important and novel details for improving future interactions.
+You are analyzing a conversation history and memories to improve future interactions.
 
 You must follow all of these instructions:
-1. Identify important and novel details from the conversation history not found in the recall memories
-2. Do not return memories already in the recall memories
-3. Make sure to include contextual information in each memory to improve RAG recall
-4. Never remember anything related to tool errors or system failures.
-5. Rank each recall memory from 1 to 10 based on how useful it was in constructing the last AI message
-6. Do not ask any questions or explain anything. Just do the best you can to extract the important and novel details.
+
+1. First, rank each existing recall memory from 1-10 based on how useful it was in constructing the last AI message. For each memory:
+   - Assign a score from 1-10 (10 being most useful)
+   - Mark it as useful (true) if it directly improved the last assistant response
+   - Include the document_id in your ranking
 
 Now: {now}
 
@@ -83,7 +89,7 @@ Messages:
 {messages}
 \"\"\"
 """.strip(),
-    input_variables=["messages", "recall_memories"],
+    input_variables=["messages", "recall_memories", "now"],
 )
 
 

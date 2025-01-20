@@ -12,6 +12,7 @@ class OpenRouterLLM(LLM):
     def __init__(
         self,
         model_id: Optional[str] = "google/gemini-2.0-flash-exp:free",
+        provider_model_id: Optional[str] = None,
     ):
         model = ChatOpenAI(
             model=model_id,
@@ -39,4 +40,5 @@ class OpenRouterLLM(LLM):
             model,
             title_model,
             memory_model,
+            provider_model_id=provider_model_id,
         )

@@ -83,12 +83,14 @@ class LLM:
         model: Runnable,
         title_model: Optional[Runnable] = None,
         memory_model: Optional[Runnable] = None,
+        provider_model_id: Optional[str] = None,
     ):
         self.model = model
         self.title_model = title_model
         self.title = title_prompt | self.title_model | StrOutputParser()
         self.memory_model = memory_model
         self.memory = memory_prompt | self.memory_model | StrOutputParser()
+        self.provider_model_id = provider_model_id
 
     def create_workflow(
         self,
@@ -145,6 +147,7 @@ class LLM:
         state: AgentState,
         config: RunnableConfig,
     ):
+        logger.debug(f"Loading recall memories...")
         messages = [
             msg
             for msg in state["messages"]
@@ -180,7 +183,7 @@ class LLM:
         messages = state["messages"]
 
         chain = chat_prompt | model
-
+        logger.debug(f"Invoking model...")
         response: AIMessage = await chain.ainvoke(
             {
                 "messages": messages,
@@ -203,6 +206,7 @@ class LLM:
         state: AgentState,
         config: RunnableConfig,
     ):
+        logger.debug(f"Updating title...")
         messages = [
             msg
             for msg in state["messages"]
@@ -225,6 +229,7 @@ class LLM:
         state: AgentState,
         config: RunnableConfig,
     ):
+        logger.debug(f"Ranking memories...")
         start_time = time.perf_counter()
         messages = [
             msg
@@ -274,9 +279,9 @@ class LLM:
                     stats["scores"] = stats["scores"][-100:]
                     document.cmetadata["stats"] = stats
                     await document.save()
-        logger.debug(
-            f"{len(response.memory_recall_rankings) } memories ranked - {time.perf_counter() - start_time:.2f}s"
-        )
+            logger.debug(
+                f"{len(response.memory_recall_rankings) } memories ranked - {time.perf_counter() - start_time:.2f}s"
+            )
 
     async def call_update_memory(
         self,

@@ -2,13 +2,12 @@ from langchain.tools import BaseTool
 from neuron_server.config import config as neuron_config
 from neuron_server.logger import logger
 from uuid import uuid4
-from neuron_server.util.script_parser import parse_script
 import os
 import shutil
 import subprocess
 from neuron_server.util.slug import safe_filename
 from openai import AsyncOpenAI
-from typing import List, Type
+from typing import List, Type, Literal
 import asyncio
 from pydantic import BaseModel, Field
 import aiofiles
@@ -20,35 +19,23 @@ from neuron_server.models.media_item_model import MediaItemModel
 client = AsyncOpenAI(api_key=neuron_config.openai_api_key)
 
 
+class VoiceLine(BaseModel):
+    voice: Literal["alloy", "echo", "fable", "onyx", "nova", "shimmer"] = Field(
+        description="The voice to use for the line."
+    )
+    text: str = Field(description="The text to be spoken.")
+
+
 class OpenAITTSToolArgs(BaseModel):
-    script: str = Field(
-        description="""
-The script to generate audio from. The script should be formatted as a list of spoken lines, with each line containing a voice identifier and the text to be spoken.
-
-Supported voices:
-alloy
-echo
-fable
-onyx
-nova
-shimmer
-
-Example:
-\"\"\"
-[nova]
-Welcome! I'm here to demonstrate our text-to-speech voices.
-
-[alloy]
-And I'll help explain how they sound different.
-\"\"\"
-""".strip(),
+    script: List[VoiceLine] = Field(
+        description="The script to generate audio from. The script should be formatted as a list of spoken lines, with each line containing a voice identifier and the text to be spoken."
     )
     speed: float = Field(
         description="The speed of the audio. 1 is normal speed. 0.5 is half speed. 2 is double speed. If the user wants it slightly faster user a value of 1.04 or in that range without distorting the audio.",
         default=1,
     )
     name: str = Field(
-        description="A unique display name for the audio file to be generated. Must be less than 256 characters",
+        description="A unique display title for the audio file to be generated. Must be less than 256 characters",
     )
 
 
@@ -65,33 +52,29 @@ The tool will use OpenAI's TTS API to generate the audio and return a link to th
         return asyncio.run(self._arun(*args, **kwargs))
 
     async def _arun(
-        self, script: str, name: str, config: RunnableConfig, speed: float = 1
+        self,
+        script: List[VoiceLine],
+        name: str,
+        config: RunnableConfig,
+        speed: float = 1,
     ) -> str:
-        """
-        Generates audio from a provided script. In the format of:
-        ```
-        [alloy]
-        Hello, how are you?
-
-        [echo]
-        I'm great!
-        ```
-        """
         working_dir: str
         try:
             working_dir = os.path.abspath(
                 os.path.join(neuron_config.temp_folder, uuid4().hex)
             )
             os.makedirs(working_dir)
+            if len(script) == 0:
+                raise ValueError("Failed to parse script. Found no lines.")
             audio_files: List[str] = []
-            for index, line in enumerate(parse_script(script, remove_actions=True)):
+            for index, line in enumerate(script):
                 logger.debug(
-                    f"Generating openai audio for line: [{line['voice']}] {line['text']}"
+                    f"Generating openai audio for line: [{line.voice}] {line.text}"
                 )
                 response = await client.audio.speech.create(
                     model="tts-1-hd",
-                    voice=line["voice"],
-                    input=line["text"],
+                    voice=line.voice,
+                    input=line.text,
                     speed=speed,
                 )
                 audio_file_path = os.path.abspath(
@@ -105,21 +88,23 @@ The tool will use OpenAI's TTS API to generate the audio and return a link to th
             # Concatenate all audio files using ffmpeg
             filename = safe_filename("openai_tts", name, "mp3")
             output = os.path.join(neuron_config.static_folder, filename)
-            ffmpeg_command = [
-                "ffmpeg",
-                "-loglevel",
-                "error",
-                "-hide_banner",
-                "-y",
-                "-i",
-                "concat:" + "|".join(audio_files),
-                "-c",
-                "copy",
-                output,
-            ]
-            await run_subprocess(
-                ffmpeg_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE
-            )
+            if len(audio_files) > 1:
+                ffmpeg_command = [
+                    "ffmpeg",
+                    "-loglevel",
+                    "error",
+                    "-hide_banner",
+                    "-i",
+                    "concat:" + "|".join(audio_files),
+                    "-c",
+                    "copy",
+                    output,
+                ]
+                await run_subprocess(
+                    ffmpeg_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+                )
+            else:
+                shutil.copy(audio_files[0], output)
             url = neuron_config.static_content_url + "/" + filename
             await MediaItemModel.create(
                 url=url,
@@ -127,7 +112,9 @@ The tool will use OpenAI's TTS API to generate the audio and return a link to th
                 user_id=config["configurable"].get("user_id"),
                 thread_id=config["configurable"].get("thread_id"),
                 name=name,
-                description=script,
+                description="\n".join(
+                    [f"[{line.voice}]\n\n{line.text}" for line in script]
+                ),
             )
             logger.debug(f"Generated audio file at {output} <{url}>")
             return f"""<audio src="{url}"></audio>""".strip()

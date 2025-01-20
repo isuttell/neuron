@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { AudioBarVisualization } from "@/components/AudioBarVisualization";
 import { cn } from "@/lib/utils";
 import { useGlobalAudio } from "@/contexts/GlobalAudioContext";
-import { useEffect, useState } from "react";
+import { useEffect, useState, memo } from "react";
 import { Spinner } from "@/components/ui/spinner";
 import { MediaListDropdown } from "@/components/MediaListDropdown";
 import { MediaItem } from "@/slices/mediaSlice";
@@ -171,4 +171,4 @@ const AudioContent: React.FC<AudioContentProps> = ({
   );
 };
 
-export default AudioContent;
+export default memo(AudioContent);

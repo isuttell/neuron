@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import MessageForm from "../messages/MessageForm";
 import MessageItem from "../messages/MessageItem";
 import { useAppSelector, useAppDispatch } from "../hooks";
@@ -21,12 +21,11 @@ import { MediaPlayerProvider } from "@/contexts/MediaPlayerContext";
 import TogglePlayerButton from "@/components/TogglePlayerButton";
 import EditPersonalityDialog from "@/personalities/EditPersonalityDialog";
 import { selectAllMedia } from "../slices/mediaSlice";
-
-const selectThread = (state: RootState, threadId?: string) =>
-  state.threads.threads.find((thread) => thread.id === threadId);
-
-const selectMessages = (state: RootState, threadId?: string) =>
-  state.messages.messages.filter((message) => message.thread_id === threadId);
+import {
+  selectThreadMessages,
+  getMessagesLoading,
+} from "../slices/messagesSlice";
+import { selectThread } from "../slices/threadsSlice";
 
 export default function Thread() {
   const dispatch = useAppDispatch();
@@ -38,8 +37,9 @@ export default function Thread() {
     (state) => selectThread(state, threadId),
     shallowEqual
   );
+  const loading = useAppSelector(getMessagesLoading);
   const messages = useAppSelector(
-    (state) => selectMessages(state, threadId),
+    (state) => selectThreadMessages(state, threadId),
     shallowEqual
   );
   const [showTools, setShowTools] = useState(false);
@@ -79,7 +79,7 @@ export default function Thread() {
     }, 0);
   }, [lastMessageRef.current]);
 
-  if (!thread || (thread.message_count > 0 && messages.length === 0)) {
+  if (!thread || (loading && messages.length === 0)) {
     return <Loading />;
   }
 
@@ -112,6 +112,20 @@ export default function Thread() {
     .reverse()
     .find((message) => message.type === "human");
 
+  const lastUserMessageIndex = filteredMessages.findIndex(
+    (message) => message.id === lastUserMessage?.id
+  );
+
+  const handlePromptClick = debounce((prompt) => {
+    dispatch(
+      postMessageByThread({
+        threadId: thread.id,
+        prompt,
+        personalityId: thread.personality_id,
+      })
+    );
+  }, 100);
+
   return (
     <MediaPlayerProvider>
       <div className="flex flex-1 p-4 flex-col flex-nowrap max-h-screen">
@@ -137,27 +151,17 @@ export default function Thread() {
             <div className="flex-1 overflow-y-auto relative">
               <div className="absolute top-0 left-0 right-0 bottom-0 flex flex-1 flex-col flex-nowrap max-h-full mx-auto overflow-y-auto">
                 <div className="max-w-[1170px] w-full mx-auto">
-                  {filteredMessages.map((message) => (
+                  {filteredMessages.map((message, index) => (
                     <div
                       key={message.id}
                       ref={
-                        message.id === lastUserMessage?.id
-                          ? lastMessageRef
-                          : null
+                        index === lastUserMessageIndex ? lastMessageRef : null
                       }
                     >
                       <MessageItem
-                        message={message}
+                        messageId={message.id}
                         showTools={showTools}
-                        onPromptClick={debounce((prompt) => {
-                          dispatch(
-                            postMessageByThread({
-                              threadId: thread.id,
-                              prompt,
-                              personalityId: thread.personality_id,
-                            })
-                          );
-                        }, 100)}
+                        onPromptClick={handlePromptClick}
                       />
                     </div>
                   ))}

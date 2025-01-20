@@ -6,10 +6,10 @@ import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
-import AudioPlayer from "./AudioWavePlayer";
 import { cn } from "@/lib/utils";
 import "./Content.css";
 import "katex/dist/katex.min.css";
+import AudioContent from "./AudioContent";
 
 interface ContentProps {
   className?: string;
@@ -42,16 +42,16 @@ const Content: React.FC<ContentProps> = ({
               }
             }
           }
-          if (!src) {
+          if (typeof src !== "string") {
             return null;
           }
-
-          return <AudioPlayer preload={preload} src={src.toString()} />;
+          return <AudioContent preload={preload} url={src} />;
         },
-        img({ node, className = "", children, ...props }) {
+        img({ node, src, className = "", children, ...props }) {
           return (
             <img
               className={`${className} my-2 w-full max-w-[512px] rounded-md`}
+              src={src?.replace(/\.[^.]+$/, `_o.webp`)}
               {...props}
             />
           );

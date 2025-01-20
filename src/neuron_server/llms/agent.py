@@ -141,7 +141,7 @@ async def _debounced_publish(channel: str, event: Any):
 
 
 async def update_thread_status(
-    thread: ThreadModel, status: str, force_update: bool = True
+    thread: ThreadModel, status: str, force_update: bool = False
 ):
     if thread.status != status or force_update:
         thread.status = status
@@ -202,6 +202,7 @@ async def astream(
             raise Exception("Personality not found")
 
         llm: LLM = ProviderModelModel.get_llm()
+        logger.debug(f"provider_model_id={llm.provider_model_id}")
         tools = get_tools(personality.tool_set) if personality.tool_set else None
         graph = llm.create_workflow(tools)
         graph.checkpointer = AsyncPostgresSaver(pool)
@@ -345,10 +346,11 @@ async def astream(
                     # @TODO: This is a hack
                     message = ThreadMessage(
                         **output.model_dump(),
-                        created_at=start_time.isoformat(),
                         thread_id=thread.id,
                         node=node,
                     )
+                    if not message.created_at:
+                        message.created_at = start_time.isoformat()
                     await pubsub.publish("app", MessageEvent(message=message))
                 await update_thread_status(thread, "thinking")
             elif kind == "error":

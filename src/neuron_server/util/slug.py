@@ -4,7 +4,7 @@ from typing import Optional
 
 
 def slugify(text: str) -> str:
-    return re.sub(r"[^a-z0-9-_]", "", text)[:255].lower().replace(" ", "-")
+    return re.sub(r"[^a-z0-9-_]", "", text.lower().replace(" ", "-"))[:255]
 
 
 def safe_filename(

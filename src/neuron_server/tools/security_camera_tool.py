@@ -168,7 +168,7 @@ def save_images(
         results.append(
             f"<image>![{camera} at {capture_time.astimezone().isoformat(timespec='seconds')}]({url})</image>"
         )
-        create_thumbnails(filename=file_path)
+        create_thumbnails(file_path)
     return results
 
 

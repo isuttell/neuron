@@ -7,6 +7,7 @@ from datetime import datetime
 import asyncio
 from langchain_core.runnables import RunnableConfig
 from uuid import uuid4
+import json
 
 
 class RecurringPattern(BaseModel):
@@ -26,7 +27,7 @@ class SchedulePromptToolArgs(BaseModel):
         description="If provided this event will be updated instead of creating a new one."
     )
     prompt: Optional[str] = Field(
-        description="The prompt to schedule. Required creating a new event and event_id is not provided. Include all relevant context and instructions. It should be in 2nd person describing the action to take. It will be executed by the AI at the scheduled time."
+        description="The prompt to run. Required when creating a new event and event_id is not provided. It should be self contained and include all relevant context and and step by step instructions. It should be in 2nd person describing the action to take. It will be executed by the assistant at the scheduled time. Do not include schedule information in the prompt unless it needs to to be dynamic."
     )
     trigger_time: Optional[datetime] = Field(
         description="The time to trigger the prompt. Must be at least 30 seconds in the future to take into account the time it takes to process the request. Must be in UTC."
@@ -61,13 +62,15 @@ Schedules or edits an action to be taken on this thread at a given time or on a 
             from neuron_server.api import scheduler
 
             action = "create" if not event_id else "update"
-            logger.debug(f"{action} prompt: {prompt}")
+            logger.debug(
+                f"{action} event_id={event_id} prompt={prompt} trigger_time={trigger_time} recurring_pattern={recurring_pattern}"
+            )
             if not recurring_pattern and not trigger_time:
                 raise ValueError("trigger_time is required for non-recurring events")
             if action == "update":
                 await scheduler.update_event(
                     event_id=event_id,
-                    new_data={"prompt": prompt},
+                    new_data={"prompt": prompt} if prompt else None,
                     new_trigger_time=trigger_time,
                     new_recurring_pattern=recurring_pattern,
                 )
@@ -87,7 +90,10 @@ Schedules or edits an action to be taken on this thread at a given time or on a 
                     trigger_time=trigger_time,
                     recurring_pattern=recurring_pattern,
                 )
-            return f"event_id ({event_id}) successfully {action}d"
+            # return the event data so we can verify it was created/updated correctly
+            event = await scheduler.get_event(event_id)
+            assert event is not None
+            return f"event_id ({event_id}) successfully {action}d\n\n```json\n{json.dumps(event, indent=2)}\n```"
         except Exception as e:
             logger.error(f"Error scheduling prompt: {e}", exc_info=True)
             raise e

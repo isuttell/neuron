@@ -36,6 +36,7 @@ Supported Sensors:
     {"entity_id": "person.heidi_la_bash", "description": "Heidi La Bash's Presence"},
     {"entity_id": "sensor.date_time"},
     {"entity_id": "sensor.moon_phase"},
+    {"entity_id": "calendar.home", "description": "Home Assistant Calendar, for things like Trash day, etc."},
 ]
         """.strip()
     )

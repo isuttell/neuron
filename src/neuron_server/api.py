@@ -49,6 +49,9 @@ from neuron_server.task_scheduler import TaskScheduler
 from neuron_server.controllers.scheduler_controller import (
     blueprint as scheduler_blueprint,
 )
+from neuron_server.controllers.provider_controller import (
+    provider_blueprint as provider_blueprint,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -239,6 +242,7 @@ app.register_blueprint(app_blueprint, url_prefix="/api/app")
 app.register_blueprint(embedding_blueprint, url_prefix="/api/embeddings")
 app.register_blueprint(media_blueprint, url_prefix="/api/media")
 app.register_blueprint(scheduler_blueprint, url_prefix="/api/scheduler")
+app.register_blueprint(provider_blueprint, url_prefix="/api/providers")
 
 
 @app.errorhandler(Exception)

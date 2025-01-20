@@ -30,11 +30,15 @@ interface IncomingThreadsEvent {
 
 // Define a type for the slice state
 interface ThreadState {
+  loading: boolean;
+  error: string | null;
   threads: Thread[];
 }
 
 // Define the initial state using that type
 const initialState: ThreadState = {
+  loading: false,
+  error: null,
   threads: [],
 };
 /**
@@ -82,18 +86,26 @@ export const threadsSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
+      .addCase(actions.fetchThread.pending, (state) => {
+        state.loading = true;
+      })
       .addCase(
         actions.fetchThread.fulfilled,
         (state, action: PayloadAction<IncomingThreadEvent>) => {
           upsert(state, action.payload.thread);
+          state.loading = false;
         }
       )
+      .addCase(actions.fetchThreadsByPersonality.pending, (state) => {
+        state.loading = true;
+      })
       .addCase(
         actions.fetchThreadsByPersonality.fulfilled,
         (state, action: PayloadAction<IncomingThreadsEvent>) => {
           for (const thread of action.payload.threads) {
             upsert(state, thread);
           }
+          state.loading = false;
         }
       )
       .addCase(
@@ -137,7 +149,10 @@ export const threadsSlice = createSlice({
 
 export const { upsertThread, upsertThreads, deleteThread } =
   threadsSlice.actions;
-
+export const selectThread = (state: RootState, threadId?: string) =>
+  state.threads.threads.find((thread) => thread.id === threadId);
 export const getThreads = (state: RootState) => state.threads.threads;
+export const getThreadsLoading = (state: RootState) => state.threads.loading;
+export const getThreadsError = (state: RootState) => state.threads.error;
 
 export default threadsSlice.reducer;

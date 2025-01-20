@@ -162,7 +162,6 @@ class MemoryRecallTool(BaseTool):
             query,
             k=k,
             filter=doc_filter,
-            score_threshold=score_threshold,
         )
         if len(doc_scores) == 0:
             return NO_MEMORIES_FOUND

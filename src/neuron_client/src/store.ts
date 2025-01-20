@@ -13,6 +13,7 @@ import audioReducer from "./slices/audioSlice";
 import mediaReducer from "./slices/mediaSlice";
 import mediaListsReducer from "./slices/mediaListsSlice";
 import schedulerReducer from "./slices/schedulerSlice";
+import providersReducer from "./slices/providerSlice";
 
 export const store = configureStore({
   reducer: {
@@ -28,6 +29,7 @@ export const store = configureStore({
     media: mediaReducer,
     mediaLists: mediaListsReducer,
     scheduler: schedulerReducer,
+    providers: providersReducer,
   },
   // @ts-ignore
   middleware: (getDefaultMiddleware) =>

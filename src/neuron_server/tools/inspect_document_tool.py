@@ -15,6 +15,9 @@ from langchain_core.documents import Document
 import json
 from neuron_server.cache import cache_response
 from typing import List
+from langchain_core.prompts import PromptTemplate
+from langchain_core.output_parsers import StrOutputParser
+from datetime import datetime
 
 
 async def load_pdf_from_url(
@@ -112,10 +115,39 @@ class DocumentInspectToolArgs(BaseModel):
         "scrape",
         description="The mode of the website import. Can be 'scrape' or 'crawl'. Scrape is for a single url and Crawl is for the url and all accessible sub pages. Ignored when importing documents",
     )
-    add_facts_to_store: bool = Field(
+    add_facts_to_store: Optional[bool] = Field(
         False,
         description="If True, the document's atomic facts will be extracted and added to the document store. This is useful for long term memory.",
     )
+    summarize_prompt: Optional[str] = Field(
+        None,
+        description="If provided, the prompt will be used to summarize the document instead of returning the raw text. Use this to extract specific information from the document and reduce the amount of information returned. It should be in second person and be a detailed step by step guide to follow. It should include how detailed of an analysis to perform. Include relevant context to aid the analysis.",
+    )
+
+
+document_inspect_prompt = PromptTemplate(
+    template="""
+You are an intelligent assistant and will be given a text document and a prompt. Your job is to comprehensively summarize the document in a way that is useful for answering the prompt. Be as long and detailed as needed. Accuracy is important. Include quotes and markdown links to sources. Use markdown to format the output.
+
+Now: {now}
+
+Document Metadata:
+\"\"\"
+{metadata}
+\"\"\"
+
+Document ({index}):
+\"\"\"
+{document}
+\"\"\"
+
+Prompt:
+\"\"\"
+{prompt}
+\"\"\"
+""".strip(),
+    input_variables=["prompt", "document", "index", "now", "metadata"],
+)
 
 
 class DocumentInspectTool(BaseTool):
@@ -143,10 +175,12 @@ pdf
         url: str,
         config: RunnableConfig,
         mode: str = "scrape",
+        summarize_prompt: Optional[str] = None,
     ) -> str:
         try:
             # Record the start time for performance measurement
             start_time = time.perf_counter()
+            logger.debug(f"Processing '{url}' with prompt: {summarize_prompt}")
 
             docs = await load_document_from_url(
                 url,
@@ -164,14 +198,49 @@ pdf
             )
             if len(docs) == 0:
                 raise DocumentInspectToolFailed("No documents found")
+
+            from neuron_server.models.provider_model import ProviderModelModel
+
+            # Inspect the image
+            llm = ProviderModelModel.get_llm()
+            chain = document_inspect_prompt | llm.model | StrOutputParser()
+
             results = []
+            tasks = []
             for index, doc in enumerate(docs):
+                if summarize_prompt:
+                    tasks.append(
+                        chain.ainvoke(
+                            {
+                                "prompt": summarize_prompt,
+                                "document": doc.page_content,
+                                "index": f"{index}/{len(docs)}",
+                                "now": datetime.now()
+                                .astimezone()
+                                .isoformat(timespec="seconds"),
+                                "metadata": json.dumps(doc.metadata or {}, indent=2),
+                            }
+                        )
+                    )
+                else:
+                    results.append(
+                        f"""\
+        <document index="{index}">
+            <source>{doc.metadata.get("source", url)}</source>
+            <document_content>{doc.page_content.strip()}</document_content>
+            <document_metadata>{json.dumps(doc.metadata or {}, indent=2)}</document_metadata>
+        </document>
+    """
+                    )
+
+            summaries: List[str] = await asyncio.gather(*tasks)
+            for index, summary in enumerate(summaries):
                 results.append(
                     f"""\
     <document index="{index}">
         <source>{doc.metadata.get("source", url)}</source>
-        <document_content>{doc.page_content}</document_content>
-        <document_metadata>{json.dumps(doc.metadata or {})}</document_metadata>
+        <document_summary>{summary.strip()}</document_summary>
+        <document_metadata>{json.dumps(doc.metadata or {}, indent=2)}</document_metadata>
     </document>
 """
                 )
@@ -179,6 +248,7 @@ pdf
             logger.debug(f"Processed '{url}' - {duration:.2f}s")
             docs = "\n\n".join(results)
             return f"<documents>\n{docs}\n</documents>"
+
         except Exception as e:
             logger.error(e, exc_info=True)
             raise e

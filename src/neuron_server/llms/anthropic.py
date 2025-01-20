@@ -9,12 +9,12 @@ class AnthropicLLM(LLM):
     def __init__(
         self,
         model_id: Optional[str] = "claude-3-5-sonnet-20241022",
+        provider_model_id: Optional[str] = None,
     ):
         model = ChatAnthropic(
             model=model_id,
             temperature=1,
             streaming=True,
-            max_tokens=8192,
         )
         title_model = ChatAnthropic(
             # model=model_id,
@@ -31,4 +31,5 @@ class AnthropicLLM(LLM):
             model=model,
             title_model=title_model,
             memory_model=memory_model,
+            provider_model_id=provider_model_id,
         )

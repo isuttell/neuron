@@ -53,14 +53,20 @@ interface IncomingPartialMessageEvent {
   message: IncomingPartialMessage;
 }
 
-// Define a type for the slice state
+// Update MessageState to use a Record/map instead of array
 interface MessageState {
-  messages: Message[];
+  messageMap: Record<string, Message>;
+  messageIds: string[]; // To maintain order
+  loading: boolean;
+  error: string | null;
 }
 
-// Define the initial state using that type
+// Update initial state
 const initialState: MessageState = {
-  messages: [],
+  messageMap: {},
+  messageIds: [],
+  loading: false,
+  error: null,
 };
 
 export function getTextContent(content: Content[] | string): string {
@@ -89,15 +95,13 @@ function parseIncomingMessage(message: IncomingMessage): Message {
 }
 
 function upsert(state: MessageState, incomingMessage: IncomingMessage) {
-  const existingMessageIndex = state.messages.findIndex(
-    (msg) => msg.id === incomingMessage.id.replace("run-", "")
-  );
   const message = parseIncomingMessage(incomingMessage);
-  if (existingMessageIndex !== -1) {
-    state.messages[existingMessageIndex] = message;
-  } else {
-    state.messages.push(message);
+  const messageId = message.id;
+
+  if (!state.messageMap[messageId]) {
+    state.messageIds.push(messageId);
   }
+  state.messageMap[messageId] = message;
 }
 
 export const messagesSlice = createSlice({
@@ -116,35 +120,64 @@ export const messagesSlice = createSlice({
       state,
       action: PayloadAction<IncomingPartialMessageEvent>
     ) => {
-      const existingMessageIndex = state.messages.findIndex(
-        (msg) => msg.id === action.payload.message.id.replace("run-", "")
-      );
-      const message = parseIncomingMessage(action.payload.message);
-      if (existingMessageIndex !== -1) {
-        state.messages[existingMessageIndex].status = message.status;
-        if (typeof message.content === "string") {
-          state.messages[existingMessageIndex].content += message.content;
-        }
+      const messageId = action.payload.message.id.replace("run-", "");
+      const existingMessage = state.messageMap[messageId];
+
+      if (existingMessage) {
+        const message = action.payload.message;
+        state.messageMap[messageId] = {
+          ...existingMessage,
+          status: message.status,
+          content:
+            typeof message.content === "string"
+              ? existingMessage.content + message.content
+              : message.content,
+        };
       } else {
-        state.messages.push(message);
+        const message = parseIncomingMessage(action.payload.message);
+        state.messageMap[messageId] = message;
+        state.messageIds.push(messageId);
       }
     },
   },
   extraReducers: (builder) => {
-    builder.addCase(
-      fetchMessagesByThread.fulfilled,
-      (state, action: PayloadAction<IncomingMessagesEvent>) => {
-        for (const message of action.payload.messages) {
-          upsert(state, message);
+    builder
+      .addCase(fetchMessagesByThread.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchMessagesByThread.rejected, (state) => {
+        state.loading = false;
+        state.error = "Failed to fetch messages";
+      })
+      .addCase(
+        fetchMessagesByThread.fulfilled,
+        (state, action: PayloadAction<IncomingMessagesEvent>) => {
+          for (const message of action.payload.messages) {
+            upsert(state, message);
+          }
+          state.loading = false;
         }
-      }
-    );
+      );
   },
 });
 
 export const { upsertMessage, upsertMessages, partialMessage } =
   messagesSlice.actions;
 
-export const getMessages = (state: RootState) => state.messages.messages;
+export const getMessagesLoading = (state: RootState) => state.messages.loading;
+export const getMessagesError = (state: RootState) => state.messages.error;
+
+// Update selector to return messages in order
+export const getMessages = (state: RootState) =>
+  state.messages.messageIds.map((id) => state.messages.messageMap[id]);
+
+export const getMessage = (state: RootState, id: string) =>
+  state.messages.messageMap[id];
+
+export const selectThreadMessages = (state: RootState, threadId?: string) =>
+  state.messages.messageIds
+    .map((id) => state.messages.messageMap[id])
+    .filter((message) => message.thread_id === threadId);
 
 export default messagesSlice.reducer;

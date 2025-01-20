@@ -21,6 +21,7 @@ import { EmbeddingsView } from "./components/EmbeddingsView";
 import { GlobalAudioProvider } from "./contexts/GlobalAudioContext";
 import MediaLists from "./routes/media-lists.tsx";
 import ScheduledEvents from "@/components/pages/ScheduledEvents";
+import ProvidersPage from "./routes/providers";
 
 import "./index.css";
 
@@ -71,6 +72,10 @@ const router = createBrowserRouter(
         {
           path: "/scheduled",
           element: <ScheduledEvents />,
+        },
+        {
+          path: "/providers",
+          element: <ProvidersPage />,
         },
       ],
     },

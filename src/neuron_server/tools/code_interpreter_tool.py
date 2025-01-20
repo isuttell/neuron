@@ -30,6 +30,8 @@ scienceplots==2.1.1
 scipy==1.14.1
 seaborn[stats]==0.13.2
 statsmodels==0.14.4
+jplephem==2.22
+pylatex==1.4.2
 
 Available ephemeris data:
 

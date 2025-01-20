@@ -7,7 +7,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Message, getTextContent } from "@/slices/messagesSlice";
+import { getMessage, getTextContent } from "@/slices/messagesSlice";
 import Content from "./Content";
 import FuzzyTimeAgo from "@/components/FuzzyTimeAgo";
 import { formatNumber } from "../utils/numberFormat";
@@ -16,9 +16,10 @@ import { getMediaItems } from "./MediaList";
 import MediaList from "./MediaList";
 import { useAuth0 } from "@auth0/auth0-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-
+import { RootState } from "@/store";
+import { useAppSelector } from "@/hooks";
 interface MessageItemProps {
-  message: Message;
+  messageId: string;
   onPromptClick?: (prompt: string) => void;
   showTools?: boolean;
 }
@@ -36,10 +37,13 @@ const getStatusMessage = (status: string) => {
 };
 
 const MessageItem: React.FC<MessageItemProps> = ({
-  message,
+  messageId,
   onPromptClick,
   showTools = false,
 }) => {
+  const message = useAppSelector((state: RootState) =>
+    getMessage(state, messageId)
+  );
   const { user } = useAuth0();
   const { type: role, content, node, status = undefined } = message;
   const isTool = role === "tool" || node === "tools";
