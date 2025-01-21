@@ -14,6 +14,7 @@ export const fetchThread = createAsyncThunk(
       const data = await response.json();
       return data;
     } catch (error: any) {
+      debugger;
       return thunkAPI.rejectWithValue(error.message);
     }
   }

@@ -146,17 +146,17 @@ export const messagesSlice = createSlice({
         state.loading = true;
         state.error = null;
       })
-      .addCase(fetchMessagesByThread.rejected, (state) => {
+      .addCase(fetchMessagesByThread.rejected, (state, action) => {
         state.loading = false;
-        state.error = "Failed to fetch messages";
+        state.error = action.error.message || "Failed to fetch messages";
       })
       .addCase(
         fetchMessagesByThread.fulfilled,
         (state, action: PayloadAction<IncomingMessagesEvent>) => {
+          state.loading = false;
           for (const message of action.payload.messages) {
             upsert(state, message);
           }
-          state.loading = false;
         }
       );
   },
