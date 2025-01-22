@@ -11,10 +11,12 @@ export const fetchThread = createAsyncThunk(
           Authorization: `Bearer ${accessToken}`,
         },
       });
+      if (!response.ok) {
+        throw new Error(`Thread not found (${response.status})`);
+      }
       const data = await response.json();
       return data;
     } catch (error: any) {
-      debugger;
       return thunkAPI.rejectWithValue(error.message);
     }
   }
@@ -33,6 +35,9 @@ export const fetchThreadsByPersonality = createAsyncThunk(
           },
         }
       );
+      if (!response.ok) {
+        throw new Error(`Failed to fetch threads (${response.status})`);
+      }
       const data = await response.json();
       return data;
     } catch (error: any) {
@@ -51,6 +56,9 @@ export const fetchRecentThreads = createAsyncThunk(
           Authorization: `Bearer ${accessToken}`,
         },
       });
+      if (!response.ok) {
+        throw new Error(`Failed to fetch recent threads (${response.status})`);
+      }
       const data = await response.json();
       return data;
     } catch (error: any) {
@@ -95,6 +103,9 @@ export const createThread = createAsyncThunk(
         },
         body: formData,
       });
+      if (!response.ok) {
+        throw new Error(`Failed to create thread (${response.status})`);
+      }
       const data = await response.json();
       return data;
     } catch (error: any) {
@@ -121,6 +132,9 @@ export const updateThread = createAsyncThunk(
         },
         body: JSON.stringify({ name: thread.name, context: thread.context }),
       });
+      if (!response.ok) {
+        throw new Error(`Failed to update thread (${response.status})`);
+      }
       const data = await response.json();
       return data;
     } catch (error: any) {
@@ -134,12 +148,15 @@ export const deleteThread = createAsyncThunk(
   async (threadId: string, thunkAPI) => {
     try {
       const accessToken = await getAccessToken();
-      await fetch(`/api/threads/${threadId}`, {
+      const response = await fetch(`/api/threads/${threadId}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
       });
+      if (!response.ok) {
+        throw new Error(`Failed to delete thread (${response.status})`);
+      }
       return threadId;
     } catch (error: any) {
       return thunkAPI.rejectWithValue(error.message);

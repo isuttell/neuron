@@ -88,16 +88,23 @@ export const threadsSlice = createSlice({
     builder
       .addCase(actions.fetchThread.pending, (state) => {
         state.loading = true;
+        state.error = null;
       })
       .addCase(
         actions.fetchThread.fulfilled,
         (state, action: PayloadAction<IncomingThreadEvent>) => {
           upsert(state, action.payload.thread);
           state.loading = false;
+          state.error = null;
         }
       )
+      .addCase(actions.fetchThread.rejected, (state, action) => {
+        state.loading = false;
+        state.error = (action.payload as string) || "Failed to fetch thread";
+      })
       .addCase(actions.fetchThreadsByPersonality.pending, (state) => {
         state.loading = true;
+        state.error = null;
       })
       .addCase(
         actions.fetchThreadsByPersonality.fulfilled,
@@ -106,8 +113,13 @@ export const threadsSlice = createSlice({
             upsert(state, thread);
           }
           state.loading = false;
+          state.error = null;
         }
       )
+      .addCase(actions.fetchThreadsByPersonality.rejected, (state, action) => {
+        state.loading = false;
+        state.error = (action.payload as string) || "Failed to fetch threads";
+      })
       .addCase(
         actions.createThread.fulfilled,
         (state, action: PayloadAction<IncomingThreadEvent>) => {
