@@ -36,6 +36,14 @@ const initialState: MediaListsState = {
   error: null,
 };
 
+export const fetchMediaList = createAsyncThunk(
+  "mediaLists/fetchOne",
+  async (listId: string) => {
+    const response = await api.get(`/media/lists/${listId}`);
+    return response;
+  }
+);
+
 export const fetchMediaLists = createAsyncThunk(
   "mediaLists/fetchAll",
   async () => {
@@ -62,6 +70,22 @@ interface AddMediaToListPayload {
   mediaItemId: string;
   index?: number;
 }
+
+export const reorderMediaListItems = createAsyncThunk(
+  "mediaLists/reorderItems",
+  async ({
+    listId,
+    mediaItemIds,
+  }: {
+    listId: string;
+    mediaItemIds: string[];
+  }) => {
+    const response = await api.post(`/media/lists/${listId}/reorder`, {
+      media_item_ids: mediaItemIds,
+    });
+    return response;
+  }
+);
 
 export const addMediaToList = createAsyncThunk(
   "mediaLists/addMedia",
@@ -90,6 +114,53 @@ const mediaListsSlice = createSlice({
   reducers: {},
   extraReducers: (builder) => {
     builder
+      .addCase(fetchMediaList.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(
+        fetchMediaList.fulfilled,
+        (state, action: PayloadAction<FetchMediaListsResponse>) => {
+          state.loading = false;
+          action.payload.media_lists.forEach((list) => {
+            const existingIndex = state.lists.findIndex(
+              (item) => item.id === list.id
+            );
+            if (existingIndex !== -1) {
+              state.lists[existingIndex] = list;
+            } else {
+              state.lists.push(list);
+            }
+          });
+
+          // Update media list items
+          const updatedItems = new Map(
+            action.payload.media_list_items.map((item) => [item.id, item])
+          );
+
+          // Remove items for this list that no longer exist and update existing ones
+          state.mediaListItems = state.mediaListItems
+            .filter(
+              (item) =>
+                item.media_list_id !== action.payload.media_lists[0].id ||
+                updatedItems.has(item.id)
+            )
+            .map((item) => updatedItems.get(item.id) || item);
+
+          // Add new items
+          action.payload.media_list_items.forEach((item) => {
+            if (
+              !state.mediaListItems.some((existing) => existing.id === item.id)
+            ) {
+              state.mediaListItems.push(item);
+            }
+          });
+        }
+      )
+      .addCase(fetchMediaList.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message ?? "Failed to fetch media list";
+      })
       .addCase(fetchMediaLists.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -98,6 +169,7 @@ const mediaListsSlice = createSlice({
         fetchMediaLists.fulfilled,
         (state, action: PayloadAction<FetchMediaListsResponse>) => {
           state.loading = false;
+          state.error = null;
           action.payload.media_lists.forEach((list) => {
             const existingIndex = state.lists.findIndex(
               (item) => item.id === list.id
@@ -108,13 +180,21 @@ const mediaListsSlice = createSlice({
               state.lists.push(list);
             }
           });
+          // Update or add media list items
+          const updatedItems = new Map(
+            action.payload.media_list_items.map((item) => [item.id, item])
+          );
+
+          // Remove items that no longer exist and update existing ones
+          state.mediaListItems = state.mediaListItems
+            .filter((item) => updatedItems.has(item.id))
+            .map((item) => updatedItems.get(item.id) || item);
+
+          // Add new items
           action.payload.media_list_items.forEach((item) => {
-            const existingIndex = state.mediaListItems.findIndex(
-              (existingItem) => existingItem.id === item.id
-            );
-            if (existingIndex !== -1) {
-              // state.mediaListItems[existingIndex] = item;
-            } else {
+            if (
+              !state.mediaListItems.some((existing) => existing.id === item.id)
+            ) {
               state.mediaListItems.push(item);
             }
           });
@@ -132,9 +212,27 @@ const mediaListsSlice = createSlice({
         (state, action: PayloadAction<AddMediaToListResponse>) => {
           state.mediaListItems.push(...action.payload.media_list_items);
         }
+      )
+      .addCase(
+        reorderMediaListItems.fulfilled,
+        (
+          state,
+          action: PayloadAction<{ media_list_items: MediaListItem[] }>
+        ) => {
+          // Update indices of reordered items
+          const updatedItems = new Map(
+            action.payload.media_list_items.map((item) => [item.id, item])
+          );
+
+          state.mediaListItems = state.mediaListItems.map((item) =>
+            updatedItems.has(item.id) ? updatedItems.get(item.id)! : item
+          );
+        }
       );
   },
 });
+
+export const {} = mediaListsSlice.actions;
 
 // Selectors
 export const selectAllMediaLists = (state: RootState) => state.mediaLists.lists;

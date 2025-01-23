@@ -63,6 +63,15 @@ from neuron_server.tools.personality_prompt_tool import PersonalityPromptTool
 from neuron_server.tools.schedule_prompt_tool import SchedulePromptTool
 from neuron_server.tools.schedule_list_tool import ScheduleListTool
 from neuron_server.tools.schedule_remove_tool import ScheduleRemoveTool
+from neuron_server.tools.media_list_access_tool import MediaListAccessTool
+from neuron_server.tools.media_list_add_item_tool import MediaListAddItemTool
+from neuron_server.tools.media_list_get_items_tool import MediaListGetItemsTool
+from neuron_server.tools.media_list_remove_item_tool import MediaListRemoveItemTool
+from neuron_server.tools.media_list_create_tool import MediaListCreateTool
+from neuron_server.tools.media_list_read_tool import MediaListReadTool
+from neuron_server.tools.media_list_update_tool import MediaListUpdateTool
+from neuron_server.tools.media_list_delete_tool import MediaListDeleteTool
+from neuron_server.tools.media_list_reorder_items_tool import MediaListReorderItemsTool
 
 homeassistant_api = HomeAssistantAPI(token=config.homeassistant.token)
 
@@ -188,4 +197,13 @@ def get_tools(query: str) -> List[BaseTool]:
     ts.append(SchedulePromptTool())
     ts.append(ScheduleListTool())
     ts.append(ScheduleRemoveTool())
+    ts.append(MediaListAccessTool())
+    ts.append(MediaListAddItemTool())
+    ts.append(MediaListGetItemsTool())
+    ts.append(MediaListRemoveItemTool())
+    ts.append(MediaListCreateTool())
+    ts.append(MediaListReadTool())
+    ts.append(MediaListUpdateTool())
+    ts.append(MediaListDeleteTool())
+    ts.append(MediaListReorderItemsTool())
     return list({tool.name: tool for tool in ts}.values())

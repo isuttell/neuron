@@ -68,6 +68,7 @@ function MediaItemList({
               title={item.name}
               key={item.id}
               mediaItem={item}
+              autoAddToQueue={!showControls} // true for thread view, false for media list view
             />
           );
         }

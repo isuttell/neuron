@@ -22,6 +22,7 @@ import { GlobalAudioProvider } from "./contexts/GlobalAudioContext";
 import MediaLists from "./routes/media-lists.tsx";
 import ScheduledEvents from "@/components/pages/ScheduledEvents";
 import ProvidersPage from "./routes/providers";
+import SharedMediaList from "./routes/shared-media-list";
 
 import "./index.css";
 
@@ -36,6 +37,10 @@ const router = createBrowserRouter(
       element: <Root />,
       errorElement: <ErrorPage />,
       children: [
+        {
+          path: "share/:listId",
+          element: <SharedMediaList />,
+        },
         {
           path: "/",
           element: <Index />,
@@ -105,6 +110,8 @@ const Auth0ProviderWithNavigate = ({
         audience: "https://neuron.zaks.io/api",
       }}
       onRedirectCallback={onRedirectCallback}
+      useRefreshTokens={true}
+      cacheLocation="localstorage"
     >
       {children}
     </Auth0Provider>

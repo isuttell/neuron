@@ -78,7 +78,7 @@ async def get_media_lists() -> dict:
 @blueprint.get("/lists/<uuid:list_id>")
 @requires_auth
 async def get_media_list(list_id: UUID) -> dict:
-    """Get a specific media list by ID"""
+    """Get a specific media list by ID with its media items"""
     assert isinstance(request.token.user_id, str)
     media_list = await MediaListModel.get(list_id)
     if not media_list:
@@ -88,10 +88,20 @@ async def get_media_list(list_id: UUID) -> dict:
     if (
         media_list.user_id != request.token.user_id
         and request.token.user_id not in media_list.shared_with
+        and media_list.visibility != "public"
     ):
         return {"error": "Unauthorized"}, 403
 
-    return {"media_list": media_list.model_dump()}
+    # Get media list items and media items
+    media_list_items = await MediaListItemModel.get_by_list(list_id)
+    media_item_ids = [item.media_item_id for item in media_list_items]
+    media_items = await MediaItemModel.get_many(media_item_ids)
+
+    return {
+        "media_lists": [media_list.model_dump()],
+        "media_list_items": [item.model_dump() for item in media_list_items],
+        "media_items": [item.model_dump() for item in media_items],
+    }
 
 
 @blueprint.put("/lists/<uuid:list_id>")

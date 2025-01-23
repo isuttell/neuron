@@ -48,7 +48,7 @@ The tool will use OpenAI's TTS API to generate the audio and return a link to th
     )
     args_schema: Type[OpenAITTSToolArgs] = OpenAITTSToolArgs
 
-    async def _run(self, *args, **kwargs):
+    def _run(self, *args, **kwargs):
         return asyncio.run(self._arun(*args, **kwargs))
 
     async def _arun(

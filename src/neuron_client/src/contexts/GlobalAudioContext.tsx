@@ -63,6 +63,7 @@ export function GlobalAudioProvider({
   const [loop, setLoop] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(new Audio());
   const queueIndexRef = useRef<number>(0);
+  const isAdvancingRef = useRef(false);
 
   const loadAndPlay = useCallback(
     (queueToPlay: QueueItem[], index: number = 0) => {
@@ -131,18 +132,32 @@ export function GlobalAudioProvider({
         return;
       }
 
-      const newItem = {
-        url,
-        title,
-        key: Math.random().toString(36).substring(2),
-      };
-      const newQueue = playNow ? [newItem, ...queue] : [...queue, newItem];
-      setQueue(newQueue);
+      setQueue((prevQueue) => {
+        const newQueue = [...prevQueue];
+        const existingIndex = newQueue.findIndex((item) => item.url === url);
 
-      if (playNow) {
-        queueIndexRef.current = 0;
-        loadAndPlay(newQueue, 0);
-      }
+        if (existingIndex >= 0) {
+          if (playNow) {
+            queueIndexRef.current = existingIndex;
+            loadAndPlay(newQueue, existingIndex);
+          }
+          return newQueue;
+        }
+
+        const newItem = {
+          url,
+          title,
+          key: Math.random().toString(36).substring(2),
+        };
+        newQueue.push(newItem);
+
+        if (playNow) {
+          queueIndexRef.current = newQueue.length - 1;
+          loadAndPlay(newQueue, queueIndexRef.current);
+        }
+
+        return newQueue;
+      });
     },
     [isPlaying, queue, loadAndPlay]
   );
@@ -255,9 +270,19 @@ export function GlobalAudioProvider({
 
     const handleEnded = () => {
       setIsPlaying(false);
-      setHasEnded(true);
       setProgress(0);
-      audioRef.current!.currentTime = 0;
+      if (
+        autoAdvance &&
+        queueIndexRef.current < queue.length - 1 &&
+        !isAdvancingRef.current
+      ) {
+        isAdvancingRef.current = true;
+        queueIndexRef.current++;
+        startQueue();
+        isAdvancingRef.current = false;
+      } else {
+        setHasEnded(true);
+      }
     };
 
     const handlePause = () => {
@@ -266,6 +291,7 @@ export function GlobalAudioProvider({
 
     const handlePlay = () => {
       setIsPlaying(true);
+      setHasEnded(false);
     };
 
     const handleLoadedMetadata = () => {
@@ -293,15 +319,7 @@ export function GlobalAudioProvider({
       audio.removeEventListener("timeupdate", handleTimeUpdate);
       audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
     };
-  }, [handleTimeUpdate]);
-
-  useEffect(() => {
-    if (autoAdvance && hasEnded && queueIndexRef.current < queue.length - 1) {
-      queueIndexRef.current++;
-      startQueue();
-      setHasEnded(false);
-    }
-  }, [hasEnded, queue, startQueue, autoAdvance]);
+  }, [handleTimeUpdate, autoAdvance, queue, startQueue]);
 
   return (
     <GlobalAudioContext.Provider

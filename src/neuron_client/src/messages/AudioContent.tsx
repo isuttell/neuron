@@ -24,6 +24,7 @@ interface AudioContentProps {
   onPlay?: () => void;
   onEnded?: () => void;
   onPause?: () => void;
+  autoAddToQueue?: boolean;
 }
 
 const AudioContent: React.FC<AudioContentProps> = ({
@@ -31,6 +32,7 @@ const AudioContent: React.FC<AudioContentProps> = ({
   title,
   className,
   mediaItem,
+  autoAddToQueue = false,
 }) => {
   const { toast } = useToast();
   const {
@@ -49,8 +51,10 @@ const AudioContent: React.FC<AudioContentProps> = ({
   const [isWaveDataLoading, setIsWaveDataLoading] = useState(true);
 
   useEffect(() => {
-    addToQueue(url, title);
-  }, [url]);
+    if (autoAddToQueue) {
+      addToQueue(url, title);
+    }
+  }, [url, title, autoAddToQueue, addToQueue]);
 
   return (
     <div className={cn("flex rounded-lg flex-col w-full border", className)}>

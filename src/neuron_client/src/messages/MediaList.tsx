@@ -13,6 +13,7 @@ interface MediaItem {
   content?: string;
   alt?: string;
   toolCallId?: string;
+  id?: string;
 }
 
 export function getMediaItems(messages: Message[]): MediaItem[] {
@@ -29,13 +30,15 @@ export function getMediaItems(messages: Message[]): MediaItem[] {
             .join("\n")
         : message.content;
 
-      // Find any markdown image syntax within image tags, regardless of format
+      // Find any markdown image syntax within image tags, with optional id attribute and display wrapper
       const imageMatches = body.matchAll(
-        /<image>.*?!\[([^\]]*)\]\(([^)]+)\).*?<\/image>/gs
+        /<image(?:\s+id="([^"]*)")?>\s*<display>\s*!\[([^\]]*)\]\(([^)]+)\)\s*<\/display>\s*<\/image>/gs
       );
       for (const match of imageMatches) {
-        const [_, alt, url] = match;
-        const key = `${message.tool_call_id}-${url}`;
+        const [_, id, alt, url] = match;
+        const key = id
+          ? `${message.tool_call_id}-${id}`
+          : `${message.tool_call_id}-${url}`;
 
         items.push({
           key,
@@ -44,49 +47,31 @@ export function getMediaItems(messages: Message[]): MediaItem[] {
           url,
           toolCallId: message.tool_call_id,
           messageId: message.id,
+          id,
         });
       }
 
-      // Find markdown image and link tags ![alt](url) and [alt](url) surrounded by optional <link> or <image> tags
-      const markdownMatches = body.matchAll(
-        /<(link|image)>\s*\[([^\]]*)\]\(([^)]+)\)\s*<\/\1>/g
-      );
-      for (const match of markdownMatches) {
-        const type = match[1];
-        const key = `${message.tool_call_id}-${match[3]}`;
-        let alt = match[2];
-        let url = match[3];
-
-        if (alt.match(/\.(py|js|txt|md)$/)) {
-          alt = "View " + alt;
-          url = `/code-viewer?url=${url}`;
-        }
-
-        items.push({
-          key,
-          type: type === "image" ? "image" : "link",
-          alt,
-          url,
-          toolCallId: message.tool_call_id,
-          messageId: message.id,
-        });
-      }
-
-      // Find HTML audio/video tags with direct src or nested source tags
+      // Find HTML audio/video tags with direct src or nested source tags, capturing optional id
       const mediaMatches = body.matchAll(
-        /<(audio|video)(?:[^>]*src="([^"]+)"[^>]*>|[^>]*>(?:[^<]*<source[^>]*src="([^"]+)"[^>]*>)?)/g
+        /<(audio|video)(?:\s+id="([^"]*)")?(?:[^>]*src="([^"]+)"[^>]*>|[^>]*>(?:[^<]*<source[^>]*src="([^"]+)"[^>]*>)?)/g
       );
       for (const match of mediaMatches) {
         const type = match[1]; // 'audio' or 'video'
-        const directSrc = match[2];
-        const sourceSrc = match[3];
-        if (directSrc || sourceSrc) {
+        const id = match[2];
+        const directSrc = match[3];
+        const sourceSrc = match[4];
+        const url = directSrc || sourceSrc;
+        if (url) {
+          const key = id
+            ? `${message.tool_call_id}-${id}`
+            : `${message.tool_call_id}-${url}`;
           items.push({
-            key: `${message.tool_call_id}-${directSrc || sourceSrc}`,
+            key,
             type,
-            url: directSrc || sourceSrc,
+            url,
             messageId: message.id,
             content: typeof message.content === "string" ? message.content : "",
+            id,
           });
         }
       }
