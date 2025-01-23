@@ -60,29 +60,6 @@ export default function Thread() {
         new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
     );
 
-  useEffect(() => {
-    if (!threadId) {
-      return;
-    }
-    dispatch(fetchMessagesByThread(threadId));
-  }, [threadId]);
-
-  useEffect(() => {
-    // Scroll to the bottom of the messages when they change
-    setTimeout(() => {
-      if (lastMessageRef.current) {
-        lastMessageRef.current.scrollIntoView({
-          behavior: "instant",
-          block: "start",
-        });
-      }
-    }, 0);
-  }, [lastMessageRef.current]);
-
-  if (!thread || (loading && messages.length === 0)) {
-    return <Loading />;
-  }
-
   const filteredMessages = messages
     .slice()
     .map((message) => {
@@ -115,6 +92,29 @@ export default function Thread() {
   const lastUserMessageIndex = filteredMessages.findIndex(
     (message) => message.id === lastUserMessage?.id
   );
+
+  useEffect(() => {
+    if (!threadId) {
+      return;
+    }
+    dispatch(fetchMessagesByThread(threadId));
+  }, [threadId]);
+
+  useEffect(() => {
+    // Only scroll when the last human message changes or system messages are toggled
+    setTimeout(() => {
+      if (lastMessageRef.current) {
+        lastMessageRef.current.scrollIntoView({
+          behavior: "instant",
+          block: "start",
+        });
+      }
+    }, 0);
+  }, [lastUserMessageIndex, filteredMessages.length]);
+
+  if (!thread || (loading && messages.length === 0)) {
+    return <Loading />;
+  }
 
   const handlePromptClick = debounce((prompt) => {
     dispatch(
