@@ -106,7 +106,7 @@ The tool will use OpenAI's TTS API to generate the audio and return a link to th
             else:
                 shutil.copy(audio_files[0], output)
             url = neuron_config.static_content_url + "/" + filename
-            await MediaItemModel.create(
+            media_item = await MediaItemModel.create(
                 url=url,
                 type="audio",
                 user_id=config["configurable"].get("user_id"),
@@ -117,7 +117,10 @@ The tool will use OpenAI's TTS API to generate the audio and return a link to th
                 ),
             )
             logger.debug(f"Generated audio file at {output} <{url}>")
-            return f"""<audio src="{url}"></audio>""".strip()
+            return f"""\
+<audio id="{media_item.id}">
+    <display><audio src="{url}"></audio></display>
+</audio>""".strip()
         except Exception as e:
             logger.error(e, exc_info=True)
             raise e

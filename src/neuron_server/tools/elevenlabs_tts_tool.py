@@ -166,7 +166,7 @@ This tool generates audio from a provided script using ElevenLabs' TTS APIs and 
             else:
                 shutil.copy(audio_files[0], output)
             url = neuron_config.static_content_url + "/" + filename
-            await MediaItemModel.create(
+            media_item = await MediaItemModel.create(
                 url=url,
                 type="audio",
                 user_id=config["configurable"].get("user_id"),
@@ -177,7 +177,10 @@ This tool generates audio from a provided script using ElevenLabs' TTS APIs and 
                 ),
             )
             logger.info(f"Generated audio file saved to {output} <{url}>")
-            return f'<audio src="{url}"></audio>'
+            return f"""\
+<audio id="{media_item.id}">
+    <display><audio src="{url}"></audio></display>
+</audio>"""
         except Exception as e:
             logger.error(e, exc_info=True)
             raise

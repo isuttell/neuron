@@ -355,7 +355,7 @@ Use this tool to generate an image using a text prompt on replicate.com and has 
                     file_path,
                 )
                 url = f"{neuron_config.static_content_url}/{filename}"
-                await MediaItemModel.create(
+                media_item = await MediaItemModel.create(
                     thread_id=config["configurable"].get("thread_id"),
                     user_id=config["configurable"].get("user_id"),
                     url=url,
@@ -366,7 +366,7 @@ Use this tool to generate an image using a text prompt on replicate.com and has 
                 if described_image:
                     results.append(
                         f"""\
-<image>
+<image id="{media_item.id}">
     <display>![{described_image.caption}]({url})</display>
     <description>{described_image.description}</description>
     <prompt_comparison>{described_image.prompt_comparison}</prompt_comparison>
@@ -376,7 +376,7 @@ Use this tool to generate an image using a text prompt on replicate.com and has 
                 else:
                     results.append(
                         f"""\
-<image>
+<image id="{media_item.id}">
     <display>![{prompt}]({url})</display>
 </image>
 """

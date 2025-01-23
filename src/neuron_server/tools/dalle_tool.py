@@ -140,7 +140,7 @@ class DalleTool(BaseTool):
                     file_path,
                 )
                 url = f"{neuron_config.static_content_url}/{filename}"
-                await MediaItemModel.create(
+                media_item = await MediaItemModel.create(
                     thread_id=config["configurable"].get("thread_id"),
                     user_id=config["configurable"].get("user_id"),
                     url=url,
@@ -151,7 +151,7 @@ class DalleTool(BaseTool):
                 logger.debug(f"Saved generated image to {file_path} <{url}>")
                 results.append(
                     f"""\
-<image>
+<image id="{media_item.id}">
     <display>![{prompt}]({url})</display>
 </image>
 """

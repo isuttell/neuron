@@ -99,7 +99,7 @@ This tool uses the video generation model minimax/video-01, also known as Hailuo
                 async for chunk in output:
                     await file.write(chunk)
             url = f"{neuron_config.static_content_url}/{filename}"
-            await MediaItemModel.create(
+            media_item = await MediaItemModel.create(
                 thread_id=config["configurable"].get("thread_id"),
                 user_id=config["configurable"].get("user_id"),
                 url=url,
@@ -110,7 +110,11 @@ This tool uses the video generation model minimax/video-01, also known as Hailuo
             logger.debug(
                 f"Saved generated video to {file_path} <{url}> - {time.perf_counter() - start_time:.2f}s"
             )
-            return f'<video src="{url}"></video>\nFilename: {file_path}'
+            return f"""\
+<video id="{media_item.id}">
+    <display><video src="{url}"></video></display>
+    <filename>{file_path}</filename>
+</video>"""
         except Exception as e:
             logger.error(e, exc_info=True)
             raise
