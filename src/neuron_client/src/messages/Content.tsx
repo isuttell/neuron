@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import "./Content.css";
 import "katex/dist/katex.min.css";
 import AudioContent from "./AudioContent";
+import ImageContent from "./ImageContent";
 
 interface ContentProps {
   className?: string;
@@ -47,12 +48,15 @@ const Content: React.FC<ContentProps> = ({
           }
           return <AudioContent preload={preload} url={src} />;
         },
-        img({ node, src, className = "", children, ...props }) {
+        img({ src, alt, className = "" }) {
+          if (!src) {
+            return null;
+          }
           return (
-            <img
+            <ImageContent
               className={`${className} my-2 w-full max-w-[512px] rounded-md`}
-              src={src?.replace(/\.[^.]+$/, `_o.webp`)}
-              {...props}
+              url={src?.replace(/\.[^.]+$/, `_o.webp`)}
+              alt={alt}
             />
           );
         },

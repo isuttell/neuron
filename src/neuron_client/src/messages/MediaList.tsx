@@ -31,8 +31,9 @@ export function getMediaItems(messages: Message[]): MediaItem[] {
         : message.content;
 
       // Find any markdown image syntax within image tags, with optional id attribute and display wrapper
+      // Allow for any content between image and display tags
       const imageMatches = body.matchAll(
-        /<image(?:\s+id="([^"]*)")?>\s*<display>\s*!\[([^\]]*)\]\(([^)]+)\)\s*<\/display>\s*<\/image>/gs
+        /<image(?:\s+id="([^"]*)")?>[^]*?<display>\s*!\[([^\]]*)\]\(([^)]+)\)\s*<\/display>[^]*?<\/image>/gs
       );
       for (const match of imageMatches) {
         const [_, id, alt, url] = match;

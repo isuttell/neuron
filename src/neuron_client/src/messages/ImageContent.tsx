@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { MediaListDropdown } from "@/components/MediaListDropdown";
 import { MediaItem } from "@/slices/mediaSlice";
 interface ImageContentProps {
+  className?: string;
   url: string;
   alt?: string;
   width?: number;
@@ -37,6 +38,7 @@ const ImageContent: React.FC<ImageContentProps> = ({
   alt,
   width,
   height,
+  className,
   thumbnail_size = "l",
   display_size = "o",
   preload = false,
@@ -75,7 +77,12 @@ const ImageContent: React.FC<ImageContentProps> = ({
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <div className="relative max-h-[1024px] max-w-[1024px] w-full h-full">
+        <div
+          className={cn(
+            "relative max-h-[1024px] max-w-[1024px] w-full h-full",
+            className
+          )}
+        >
           <img
             ref={thumbnailRef}
             className={cn(
