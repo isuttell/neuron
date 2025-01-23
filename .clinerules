@@ -1,0 +1,64 @@
+# Project Overview
+
+Neuron is a realtime chat application built with LangChain and LangGraph to allow for testing various models and tool capabilities. It supports threaded conversations, persistent memory, and a variety of custom tools integrated into onsite services. It serves as a playground for experimenting with new ideas and features.
+
+## Project Structure
+
+- **src/neuron_client** React frontend application.
+- **src/neuron_client/src/components/ui** Shadcn UI components
+- **src/neuron_client/src/actions** Redux actions
+- **src/neuron_client/src/main.tsx** React router configuration.
+- **src/neuron_client/src/store.ts** Redux store configuration.
+- **src/neuron_client/src/lib/api.ts** Authenticated API requests
+- **src/neuron_client/src/components/layout/MainSidebar.tsx** Sidebar component
+- **src/neuron_server** Python backend application.
+- **src/neuron_server/tools** LangChain tools
+- **src/neuron_server/controllers** Quart controllers with WebSocket and REST endpoints.
+- **src/neuron_server/models** Database models; follow SQLAlchemy ORM conventions.
+- **src/neuron_server/llms** LangChain LLM integrations.
+- **src/neuron_server/api.py** Quart app initialization, controller registration and event router, backend router configuration, additional frontend router configuration.
+
+## Code Style and Structure
+
+### General Principles
+
+- Favor iteration and modularization over code duplication.
+- Use descriptive variable names with auxiliary verbs for clarity
+- Write concise, technical code
+
+### Frontend Code Style and Structure
+
+- Use TypeScript.
+- Use functional and declarative programming patterns; avoid classes.
+- Use Tailwind CSS for styling; avoid inline styles.
+- Use Shadcn UI components for consistency; prefer reusable components.
+- Use Redux for state management; favor slice reducers and avoid storing derived state.
+- Use fetch for API requests.
+- Use `camelCase` for variable names.
+
+#### Frontend Testing
+
+- Write unit tests for all components using Jest and React Testing Library.
+- Focus on testing business logic and DOM interactions.
+
+### Backend Code Style and Structure
+
+- Write concise, technical Python code.
+- Use Postgres and PGVector for database and vector storage.
+- Use Neo4j for knowledge graph.
+- Use Pydantic for data validation; ensure all models are strongly typed.
+- Use SQLAlchemy ORM for database interactions; avoid raw SQL unless necessary.
+- Use Quart for the web server and WebSocket handling; prioritize async operations.
+- Use `snake_case` for variable names.
+- **Types:** Include type hints in all functions and class methods.
+- **Commenting Style:** Use docstrings for all exported functions and classes to explain their purpose and parameters.
+
+#### Backend Testing
+
+- Write tests using Pytest.
+- Include tests for controllers, tools, and database models.
+- Use mocking for database and network operations to ensure isolation of tests.
+
+### Model Notes
+
+- gpt-4o is the latest OpenAI model.
