@@ -25,3 +25,10 @@ services:
   redis:
     restart: unless-stopped
     image: redis:7.4-alpine
+    volumes:
+      - ./redis.conf:/usr/local/etc/redis/redis.conf
+      - redis-data:/data
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+
+volumes:
+  redis-data:

@@ -55,6 +55,10 @@ pyjwt = { version = "*", extras = ["crypto"] }
 lxml = "*"
 pi-heif = "0.21.0"
 
+[tool.poetry.group.dev.dependencies]
+pytest = "*"
+pytest-asyncio = "*"
+
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
