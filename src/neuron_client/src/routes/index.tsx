@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAppSelector, useAppDispatch } from "../hooks";
 import { CornerDownLeft, Upload } from "lucide-react";
 import { AttachmentIndicator } from "@/components/AttachmentIndicator";
@@ -54,10 +54,14 @@ export default function Index() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const [isLoading, setLoading] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const activePersonalityId = useAppSelector(getActivePersonalityId);
   const activePersonality = useAppSelector(getActivePersonality);
   const recentThreads = useAppSelector(selectRecentThreads);
   const personalities = useAppSelector(getPersonalities);
+
+  const isSubmitDisabled =
+    !activePersonalityId || (prompt.trim().length === 0 && !file);
 
   const personalitiesLoading = useAppSelector(
     (state) => state.personalities.loading
@@ -68,12 +72,21 @@ export default function Index() {
     dispatch(fetchRecentThreads());
   }, []);
 
+  useEffect(() => {
+    if (activePersonalityId) {
+      // Small delay to ensure DOM is updated after personality selection
+      setTimeout(() => {
+        textareaRef.current?.focus();
+      }, 50);
+    }
+  }, [activePersonalityId]);
+
   const handleSubmit = (e?: React.FormEvent) => {
     if (e) {
       e.preventDefault();
     }
 
-    if (!activePersonalityId || (prompt.trim().length === 0 && !file)) {
+    if (isSubmitDisabled) {
       return;
     }
 
@@ -187,6 +200,7 @@ export default function Index() {
             </Label>
             <div className="space-y-2">
               <Textarea
+                ref={textareaRef}
                 id="prompt"
                 placeholder={
                   activePersonality
@@ -221,7 +235,9 @@ export default function Index() {
             <div className="flex flex-row gap-2 pt-2">
               <Select
                 value={activePersonalityId}
-                onValueChange={(value) => dispatch(setActivePersonality(value))}
+                onValueChange={(value) => {
+                  dispatch(setActivePersonality(value));
+                }}
               >
                 <SelectTrigger className="w-full">
                   <SelectValue
@@ -313,8 +329,14 @@ export default function Index() {
               <Button
                 onClick={() => handleSubmit()}
                 type="submit"
-                disabled={isDisabled || (!prompt.trim().length && !file)}
-                className="gap-1.5 bg-accent text-accent-foreground"
+                disabled={isSubmitDisabled}
+                className={cn(
+                  "gap-1.5",
+                  isLoading && "cursor-progress",
+                  isSubmitDisabled
+                    ? "bg-muted text-muted-foreground cursor-not-allowed"
+                    : "bg-accent text-accent-foreground"
+                )}
               >
                 {isLoading ? (
                   <>
