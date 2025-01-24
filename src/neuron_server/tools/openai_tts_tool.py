@@ -5,6 +5,7 @@ from uuid import uuid4
 import os
 import shutil
 import subprocess
+from neuron_server.util.text_cleaning import clean_action_text
 from neuron_server.util.slug import safe_filename
 from openai import AsyncOpenAI
 from typing import List, Type, Literal
@@ -67,14 +68,16 @@ The tool will use OpenAI's TTS API to generate the audio and return a link to th
             if len(script) == 0:
                 raise ValueError("Failed to parse script. Found no lines.")
             audio_files: List[str] = []
+
             for index, line in enumerate(script):
+                cleaned_text = clean_action_text(line.text)
                 logger.debug(
-                    f"Generating openai audio for line: [{line.voice}] {line.text}"
+                    f"Generating openai audio for line: [{line.voice}] {cleaned_text}"
                 )
                 response = await client.audio.speech.create(
                     model="tts-1-hd",
                     voice=line.voice,
-                    input=line.text,
+                    input=cleaned_text,
                     speed=speed,
                 )
                 audio_file_path = os.path.abspath(

@@ -7,7 +7,7 @@ import os
 import shutil
 import subprocess
 from elevenlabs import AsyncElevenLabs
-from neuron_server.logger import logger
+from neuron_server.util.text_cleaning import clean_action_text
 import asyncio
 from pydantic import BaseModel, Field
 from neuron_server.util.slug import safe_filename
@@ -123,12 +123,14 @@ This tool generates audio from a provided script using ElevenLabs' TTS APIs and 
             audio_files: List[str] = []
             if len(script) == 0:
                 raise ValueError("Failed to parse script. Found no lines.")
+
             for index, line in enumerate(script):
+                cleaned_text = clean_action_text(line.text)
                 logger.debug(
-                    f"Generating elevenlabs audio for line: [{line.voice}] {line.text}"
+                    f"Generating elevenlabs audio for line: [{line.voice}] {cleaned_text}"
                 )
                 response = await client.generate(
-                    text=line.text,
+                    text=cleaned_text,
                     voice=line.voice,
                     model=model,
                 )
