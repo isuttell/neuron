@@ -179,6 +179,7 @@ class Config(BaseModel):
             ".mp3",
             ".wav",
             ".mp4",
+            ".webm",
             ".heic",
             ".heif",
         ],

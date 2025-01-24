@@ -8,9 +8,13 @@ from neuron_server.llms.agent import astream
 import asyncio
 from werkzeug.exceptions import BadRequest
 from neuron_server.controllers.auth import requires_auth
-from neuron_server.controllers.message_controller import format_ai_uploaded_file
-from neuron_server.util.file_utilities import process_uploaded_file
+from neuron_server.controllers.message_controller import (
+    process_message_request,
+)
+from openai import AsyncOpenAI
+from neuron_server.config import config as neuron_config
 
+client = AsyncOpenAI(api_key=neuron_config.openai_api_key)
 router = EventRouter()
 blueprint = Blueprint("thread", __name__)
 
@@ -69,15 +73,10 @@ async def post_create_thread():
     personality_id = form.get("personality_id")
     if not personality_id:
         raise BadRequest("personality_id is required")
-    prompt = str(form.get("prompt", ""))
-    greeting = str(form.get("greeting", "false")).lower() == "true"
+
     personality = await PersonalityModel.get(personality_id)
     if not personality:
         raise ValueError("Personality not found")
-
-    if "file" in files:
-        filename, ext, url = await process_uploaded_file(files["file"])
-        prompt = f"{format_ai_uploaded_file(filename, ext, url)}\n{prompt}"
 
     thread = await ThreadModel.create(
         personality_id=personality.id,
@@ -86,8 +85,11 @@ async def post_create_thread():
         user_id=request.token.user_id,
     )
 
+    greeting = str(form.get("greeting", "false")).lower() == "true"
     if greeting:
-        prompt = f"{prompt or ''}<|AI|>Start the conversation in a sentence or two and then provide some prompt suggestions as a list. Don't run any tools<|AI|>"
+        prompt = "<|AI|>\nStart the conversation in a sentence or two and then provide some prompt suggestions as a list. Don't run any tools\n<|AI|>"
+    else:
+        prompt = await process_message_request(files, form)
 
     if prompt:
         # Start the conversation and stream the response if we have any actions to take

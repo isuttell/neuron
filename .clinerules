@@ -31,6 +31,7 @@ Neuron is a realtime chat application built with LangChain and LangGraph to allo
 - Use TypeScript.
 - Use functional and declarative programming patterns; avoid classes.
 - Use Tailwind CSS for styling; avoid inline styles.
+- Use vite for frontend development.
 - Use Shadcn UI components for consistency; prefer reusable components.
 - Use Redux for state management; favor slice reducers and avoid storing derived state.
 - Use fetch for API requests.

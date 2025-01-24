@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { useAppSelector, useAppDispatch } from "../hooks";
 import { CornerDownLeft, Upload } from "lucide-react";
+import { AttachmentIndicator } from "@/components/AttachmentIndicator";
+import { AudioRecorder } from "@/components/AudioRecorder";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -46,7 +48,8 @@ const selectRecentThreads = (state: RootState) => {
 
 export default function Index() {
   const [prompt, setPrompt] = useState("");
-  const [file, setFile] = useState<File | undefined>(undefined);
+  const [file, setFile] = useState<File | Blob | undefined>(undefined);
+  const [isAudioRecording, setIsAudioRecording] = useState(false);
   const { toast } = useToast();
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
@@ -65,16 +68,21 @@ export default function Index() {
     dispatch(fetchRecentThreads());
   }, []);
 
-  const handleSubmit = (greeting?: boolean) => {
-    if (!activePersonalityId || (prompt.trim().length === 0 && !greeting)) {
+  const handleSubmit = (e?: React.FormEvent) => {
+    if (e) {
+      e.preventDefault();
+    }
+
+    if (!activePersonalityId || (prompt.trim().length === 0 && !file)) {
       return;
     }
+
     setLoading(true);
     dispatch(
       createThread({
         personalityId: activePersonalityId,
         prompt,
-        greeting,
+        greeting: false,
         file,
       })
     )
@@ -93,10 +101,69 @@ export default function Index() {
         setLoading(false);
       });
   };
+
+  const handleGreeting = () => {
+    if (!activePersonalityId) return;
+
+    setLoading(true);
+    dispatch(
+      createThread({
+        personalityId: activePersonalityId,
+        prompt,
+        greeting: true,
+        file,
+      })
+    )
+      .unwrap()
+      .then(({ thread }) => {
+        navigate(`/thread/${thread.id}`);
+      })
+      .catch((error) => {
+        toast({
+          variant: "destructive",
+          title: "Failed to create thread",
+          description: error?.message || "An unexpected error occurred",
+        });
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  };
+
+  const handleAutoSend = (blob: Blob) => {
+    if (!activePersonalityId) return;
+    setLoading(true);
+    dispatch(
+      createThread({
+        personalityId: activePersonalityId,
+        prompt,
+        greeting: false,
+        file: blob,
+      })
+    )
+      .unwrap()
+      .then(({ thread }) => {
+        navigate(`/thread/${thread.id}`);
+        setFile(undefined);
+        setPrompt("");
+      })
+      .catch((error) => {
+        toast({
+          variant: "destructive",
+          title: "Failed to create thread",
+          description: error?.message || "An unexpected error occurred",
+        });
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  };
+
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       setFile(file);
+      setIsAudioRecording(false);
       toast({
         title: "Attachment added",
         description: `${file.name} has been added to the message`,
@@ -114,34 +181,43 @@ export default function Index() {
           <img src={logo} alt="Neuron" className="w-[120px]" />
         </div>
         <div className="flex flex-col gap-2 max-w-[768px] mx-auto w-full">
-          <form
-            className=""
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleSubmit();
-            }}
-          >
+          <form className="" onSubmit={handleSubmit}>
             <Label htmlFor="prompt" className="sr-only">
               Prompt
             </Label>
-            <Textarea
-              id="prompt"
-              placeholder={
-                activePersonality
-                  ? "Type your prompt here..."
-                  : "Select a personality first"
-              }
-              className="flex min-h-[60px] w-full rounded-md border border-input bg-transparent text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 p-4"
-              value={prompt}
-              disabled={isDisabled}
-              onChange={(e) => setPrompt(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSubmit();
+            <div className="space-y-2">
+              <Textarea
+                id="prompt"
+                placeholder={
+                  activePersonality
+                    ? "Type your prompt here..."
+                    : "Select a personality first"
                 }
-              }}
-            />
+                className="flex min-h-[60px] w-full rounded-md border border-input bg-transparent text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 p-4"
+                value={prompt}
+                disabled={isDisabled}
+                onChange={(e) => setPrompt(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSubmit();
+                  }
+                }}
+              />
+              {file && (
+                <AttachmentIndicator
+                  type={isAudioRecording ? "audio" : "file"}
+                  name={file instanceof File ? file.name : undefined}
+                  onRemove={() => {
+                    setFile(undefined);
+                    setIsAudioRecording(false);
+                    toast({
+                      title: "Attachment removed",
+                    });
+                  }}
+                />
+              )}
+            </div>
             <div className="flex flex-row gap-2 pt-2">
               <Select
                 value={activePersonalityId}
@@ -178,25 +254,41 @@ export default function Index() {
                 </SelectContent>
               </Select>
               <div className="flex-1" />
-              <Button
-                type="button"
-                size="sm"
-                variant={file ? "default" : "outline"}
-                className="mr-2 size-10 gap-1.5"
-                disabled={isDisabled}
-                onClick={() => {
-                  if (file) {
-                    setFile(undefined);
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={file ? "default" : "outline"}
+                  className="size-10 gap-1.5"
+                  disabled={isDisabled}
+                  onClick={() => {
+                    if (file) {
+                      setFile(undefined);
+                      setIsAudioRecording(false);
+                      toast({
+                        title: "Attachment removed",
+                      });
+                    } else {
+                      document.getElementById("file-upload")?.click();
+                    }
+                  }}
+                >
+                  <Upload className="size-3.5" />
+                </Button>
+                <AudioRecorder
+                  className="size-10"
+                  disabled={isDisabled || !!file}
+                  onRecordingComplete={(blob) => {
+                    setFile(blob);
+                    setIsAudioRecording(true);
                     toast({
-                      title: "Attachment removed",
+                      title: "Recording sent",
+                      description: "Starting new conversation",
                     });
-                  } else {
-                    document.getElementById("file-upload")?.click();
-                  }
-                }}
-              >
-                <Upload className="size-3.5" />
-              </Button>
+                  }}
+                  onAutoSend={handleAutoSend}
+                />
+              </div>
               <PromptDropdown
                 disabled={isDisabled}
                 onSelectPrompt={(promptText) => setPrompt(promptText)}
@@ -210,8 +302,8 @@ export default function Index() {
               />
               {!isLoading ? (
                 <Button
-                  onClick={() => handleSubmit(true)}
-                  type="submit"
+                  onClick={handleGreeting}
+                  type="button"
                   className="gap-1.5"
                   disabled={isDisabled}
                 >
@@ -219,9 +311,9 @@ export default function Index() {
                 </Button>
               ) : null}
               <Button
-                onClick={() => handleSubmit(false)}
+                onClick={() => handleSubmit()}
                 type="submit"
-                disabled={isDisabled || prompt.trim().length === 0}
+                disabled={isDisabled || (!prompt.trim().length && !file)}
                 className="gap-1.5 bg-accent text-accent-foreground"
               >
                 {isLoading ? (

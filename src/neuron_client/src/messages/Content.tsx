@@ -10,7 +10,6 @@ import { cn } from "@/lib/utils";
 import "./Content.css";
 import "katex/dist/katex.min.css";
 import AudioContent from "./AudioContent";
-import ImageContent from "./ImageContent";
 
 interface ContentProps {
   className?: string;
@@ -33,6 +32,10 @@ const Content: React.FC<ContentProps> = ({
       remarkPlugins={[remarkGfm, remarkMath]}
       rehypePlugins={[rehypeRaw, rehypeKatex]}
       components={{
+        // @ts-ignore
+        transcription({ children }) {
+          return <span className="italic">{children}</span>;
+        },
         audio({ node }) {
           let src = node?.properties?.src;
           if (!src && node?.children) {
@@ -48,15 +51,12 @@ const Content: React.FC<ContentProps> = ({
           }
           return <AudioContent preload={preload} url={src} />;
         },
-        img({ src, alt, className = "" }) {
-          if (!src) {
-            return null;
-          }
+        img({ node, src, className = "", children, ...props }) {
           return (
-            <ImageContent
+            <img
               className={`${className} my-2 w-full max-w-[512px] rounded-md`}
-              url={src?.replace(/\.[^.]+$/, `_o.webp`)}
-              alt={alt}
+              src={src?.replace(/\.[^.]+$/, `_o.webp`)}
+              {...props}
             />
           );
         },

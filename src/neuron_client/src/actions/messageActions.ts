@@ -33,7 +33,7 @@ export const postMessageByThread = createAsyncThunk(
       threadId: string;
       prompt: string;
       personalityId: string;
-      file?: File;
+      file?: File | Blob;
     },
     thunkAPI
   ) => {
@@ -43,7 +43,15 @@ export const postMessageByThread = createAsyncThunk(
       formData.append("personality_id", personalityId);
 
       if (file) {
-        formData.append("file", file);
+        if (file instanceof File) {
+          formData.append("file", file);
+        } else {
+          // Convert Blob to File with a timestamp-based name
+          const audioFile = new File([file], `recording-${Date.now()}.webm`, {
+            type: "audio/webm",
+          });
+          formData.append("file", audioFile);
+        }
       }
 
       const accessToken = await getAccessToken();

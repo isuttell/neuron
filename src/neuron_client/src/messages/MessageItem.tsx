@@ -1,5 +1,6 @@
 import React, { memo } from "react";
-import { Bot, User, Hammer } from "lucide-react";
+import { Bot, User, Hammer, FileIcon } from "lucide-react";
+import { AttachmentIndicator } from "@/components/AttachmentIndicator";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -175,6 +176,30 @@ const MessageItem: React.FC<MessageItemProps> = ({
     </Card>,
   ];
   if (mediaItems.length > 0) {
+    const hasAudio = mediaItems.some((item) => item.type === "audio");
+    const hasFiles = mediaItems.some((item) =>
+      ["image", "video", "link"].includes(item.type)
+    );
+
+    if (hasAudio || hasFiles) {
+      elements.push(
+        <div key={`${message.id}-indicators`} className="ml-[5.5rem] mb-2">
+          {hasAudio && (
+            <AttachmentIndicator
+              type="audio"
+              onRemove={() => {}} // Read-only in thread view
+            />
+          )}
+          {hasFiles && (
+            <AttachmentIndicator
+              type="file"
+              onRemove={() => {}} // Read-only in thread view
+            />
+          )}
+        </div>
+      );
+    }
+
     elements.push(
       <MediaList
         key={`${message.id}-media`}

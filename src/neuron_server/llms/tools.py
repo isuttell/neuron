@@ -72,6 +72,7 @@ from neuron_server.tools.media_list_read_tool import MediaListReadTool
 from neuron_server.tools.media_list_update_tool import MediaListUpdateTool
 from neuron_server.tools.media_list_delete_tool import MediaListDeleteTool
 from neuron_server.tools.media_list_reorder_items_tool import MediaListReorderItemsTool
+from neuron_server.tools.whisper_stt_tool import WhisperSTTTool
 
 homeassistant_api = HomeAssistantAPI(token=config.homeassistant.token)
 
@@ -116,11 +117,13 @@ tool_sets: Dict[str, List[BaseTool]] = {
         FFmpegTool(),
         ElevenLabsSoundEffectsTool(),
         ReplicateMusicGenerationTool(),
+        WhisperSTTTool(),
     ],
     "tts": [
         OpenAITTSTool(),
         ElevenLabsTTSTool(),
         FFmpegTool(),
+        WhisperSTTTool(),
     ],
     "search": [
         TavilySearchResults(
@@ -187,23 +190,39 @@ default_tools: List[BaseTool] = list(
     }.values()
 )
 
+media_tools: List[BaseTool] = [
+    MediaListAccessTool(),
+    MediaListAddItemTool(),
+    MediaListGetItemsTool(),
+    MediaListRemoveItemTool(),
+    MediaListCreateTool(),
+    MediaListReadTool(),
+    MediaListUpdateTool(),
+    MediaListDeleteTool(),
+    MediaListReorderItemsTool(),
+]
+
+schedule_tools: List[BaseTool] = [
+    SchedulePromptTool(),
+    ScheduleListTool(),
+    ScheduleRemoveTool(),
+]
+
+memory_tools: List[BaseTool] = [
+    MemoryRecallTool(),
+    MemoryStoreTool(),
+]
+personality_tools: List[BaseTool] = [
+    PersonalityPromptTool(),
+]
+
 
 def get_tools(query: str) -> List[BaseTool]:
     ts = [tool for name in [*query.strip("+").split("+")] for tool in tool_sets[name]]
+    # Required Tools
     if config.memory_enabled:
-        ts.append(MemoryRecallTool())
-        ts.append(MemoryStoreTool())
-    ts.append(PersonalityPromptTool())
-    ts.append(SchedulePromptTool())
-    ts.append(ScheduleListTool())
-    ts.append(ScheduleRemoveTool())
-    ts.append(MediaListAccessTool())
-    ts.append(MediaListAddItemTool())
-    ts.append(MediaListGetItemsTool())
-    ts.append(MediaListRemoveItemTool())
-    ts.append(MediaListCreateTool())
-    ts.append(MediaListReadTool())
-    ts.append(MediaListUpdateTool())
-    ts.append(MediaListDeleteTool())
-    ts.append(MediaListReorderItemsTool())
+        ts.extend(memory_tools)
+    ts.extend(personality_tools)
+    ts.extend(schedule_tools)
+    ts.extend(media_tools)
     return list({tool.name: tool for tool in ts}.values())

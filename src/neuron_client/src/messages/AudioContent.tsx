@@ -45,6 +45,8 @@ const AudioContent: React.FC<AudioContentProps> = ({
     addToQueue,
     duration,
     currentTime,
+    autoAdvance,
+    queue,
   } = useGlobalAudio();
   title = title || url.split("/").pop()?.split(".")[0] || "";
   const isActive = currentUrl === url;
@@ -52,9 +54,28 @@ const AudioContent: React.FC<AudioContentProps> = ({
 
   useEffect(() => {
     if (autoAddToQueue) {
-      addToQueue(url, title);
+      if (autoAdvance) {
+        // If nothing is playing or queue is empty, play immediately
+        // Otherwise just add to queue and let auto-advance handle it
+        if (!isPlaying || queue.length === 0) {
+          playAudio(url, title, true);
+        } else {
+          playAudio(url, title, false);
+        }
+      } else {
+        addToQueue(url, title);
+      }
     }
-  }, [url, title, autoAddToQueue, addToQueue]);
+  }, [
+    url,
+    title,
+    autoAddToQueue,
+    addToQueue,
+    autoAdvance,
+    playAudio,
+    isPlaying,
+    queue,
+  ]);
 
   return (
     <div className={cn("flex rounded-lg flex-col w-full border", className)}>

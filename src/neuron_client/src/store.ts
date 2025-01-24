@@ -41,8 +41,10 @@ export const store = configureStore({
           "messages/postMessageByThread",
           "threads/createThread/pending",
           "threads/createThread/fulfilled",
+          "threads/createThread/rejected",
           "messages/postMessageByThread/pending",
           "messages/postMessageByThread/fulfilled",
+          "messages/postMessageByThread/rejected",
         ],
         // Ignore these field paths in all actions
         ignoredActionPaths: ["payload.socket"],

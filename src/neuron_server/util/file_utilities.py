@@ -63,4 +63,4 @@ async def process_uploaded_file(file: FileStorage) -> Tuple[str, str, str]:
             )
 
     url = f"{neuron_config.static_content_url}/user/{filename}"
-    return filename, ext, url
+    return file_path, ext, url

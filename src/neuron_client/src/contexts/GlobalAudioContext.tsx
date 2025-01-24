@@ -119,7 +119,8 @@ export function GlobalAudioProvider({
     (url: string, title?: string, playNow: boolean = true) => {
       if (!audioRef.current) return;
 
-      if (playNow && isPlaying) {
+      // Only pause current playback if auto-advance is off
+      if (playNow && isPlaying && !autoAdvance) {
         audioRef.current.pause();
       }
 
@@ -159,7 +160,7 @@ export function GlobalAudioProvider({
         return newQueue;
       });
     },
-    [isPlaying, queue, loadAndPlay]
+    [isPlaying, queue, loadAndPlay, autoAdvance]
   );
 
   const toggleAudio = useCallback(() => {

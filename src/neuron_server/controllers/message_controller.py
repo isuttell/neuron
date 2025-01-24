@@ -1,3 +1,4 @@
+from typing import Optional, Tuple
 from quart import Blueprint, request
 from neuron_server.event_router import EventRouter
 from neuron_server.models import ThreadModel, MediaItemModel
@@ -8,7 +9,7 @@ from neuron_server.controllers.events.message_events import (
 from neuron_server.controllers.events.message_events import (
     ThreadMessage,
 )
-from uuid import UUID
+from uuid import UUID, uuid4
 from neuron_server.llms.agent import aget_state
 from werkzeug.exceptions import NotFound, BadRequest
 import neuron_server.llms.agent as agent
@@ -16,6 +17,13 @@ from neuron_server.pubsub import pubsub
 from neuron_server.controllers.auth import requires_auth
 from neuron_server.models.media_item_model import MediaItemModel
 from neuron_server.util.file_utilities import process_uploaded_file
+from openai import AsyncOpenAI
+from neuron_server.config import config as neuron_config
+import logging
+
+logger = logging.getLogger(__name__)
+
+client = AsyncOpenAI(api_key=neuron_config.openai_api_key)
 
 router = EventRouter()
 
@@ -48,6 +56,44 @@ async def get_thread_messages(thread_id: UUID):
     }
 
 
+async def process_message_request(files: dict, form: dict) -> str:
+    """Process message request with files and form data.
+
+    Args:
+        files: Request files dictionary
+        form: Request form dictionary
+
+    Returns:
+        Tuple of (prompt, ai_prompt) strings
+    """
+    prompt = str(form.get("prompt", ""))
+    ai_prompt = ""
+
+    if "file" in files:
+        file = files["file"]
+        filename, ext, url = await process_uploaded_file(file)
+
+        if ext == ".webm":
+            # Transcribe using the file path
+            with open(filename, "rb") as audio:
+                prompt = await client.audio.transcriptions.create(
+                    model="whisper-1",
+                    file=audio,
+                    prompt="Umm, hello, welcome to my lecture.",
+                    response_format="text",
+                )
+        else:
+            # Handle other files normally
+            ai_prompt = format_ai_uploaded_file(filename, ext, url)
+
+    if prompt.strip():
+        prompt = f"{ai_prompt}\n{prompt.strip()}"
+    else:
+        prompt = ai_prompt
+
+    return prompt
+
+
 def format_ai_uploaded_file(filename: str, ext: str, url: str) -> str:
     # inform the agent that the user has uploaded a file
     if ext in [".jpg", ".jpeg", ".png", ".webp", ".gif"]:
@@ -58,7 +104,7 @@ def format_ai_uploaded_file(filename: str, ext: str, url: str) -> str:
         url = f'<video src="{url}"></video>'
     else:
         url = f"<{url}>"
-    return f"<|AI|>The user has uploaded a file called '{filename}' to {url} as part the request<|AI|>"
+    return f"<|AI|>The user has uploaded a file called '{filename}' to {url} as part the request.<|AI|>"
 
 
 @blueprint.post("/thread/<uuid:thread_id>")
@@ -72,13 +118,10 @@ async def post_thread_message(thread_id: UUID):
     personality_id = form.get("personality_id")
     if not personality_id:
         raise BadRequest("personality_id is required")
-    prompt = form.get("prompt")
-    if not prompt:
-        raise BadRequest("prompt is required")
+    if not files.get("file") and not form.get("prompt", "").strip():
+        raise BadRequest("Either prompt or file is required")
 
-    if "file" in files:
-        filename, ext, url = await process_uploaded_file(files["file"])
-        prompt = f"{format_ai_uploaded_file(filename, ext, url)}\n{prompt}"
+    prompt = await process_message_request(files, form)
 
     await agent.astream(
         thread_id=thread.id,
