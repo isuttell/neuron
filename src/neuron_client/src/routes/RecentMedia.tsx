@@ -15,7 +15,6 @@ import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { VirtuosoGrid } from "react-virtuoso";
 import { forwardRef } from "react";
 import type { GridComponents } from "react-virtuoso";
-import TogglePlayerButton from "@/components/TogglePlayerButton";
 import { Spinner } from "@/components/ui/spinner";
 
 // Ensure that this stays out of the component,
@@ -71,7 +70,6 @@ export default function RecentMedia({ limit = 16 }: RecentMediaProps) {
           <SidebarTrigger className="size-10 mr-2" />
           <h1 className="text-2xl font-bold">Recent Media</h1>
           <div className="flex-1" />
-          <TogglePlayerButton />
         </div>
         <VirtuosoGrid
           totalCount={sortedMediaItems.length}

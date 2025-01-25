@@ -15,6 +15,8 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { MediaItem } from "@/slices/mediaSlice";
 import { MediaListDropdown } from "@/components/MediaListDropdown";
+import { useMediaPlayer } from "@/contexts/MediaPlayerContext";
+import { useId, useRef, useEffect } from "react";
 interface VideoContentProps {
   url: string;
   autoPlay?: boolean;
@@ -35,11 +37,41 @@ const VideoContent: React.FC<VideoContentProps> = ({
   showControls = false,
 }) => {
   const { toast } = useToast();
+  const thumbnailId = useId();
+  const dialogId = useId();
+  const thumbnailVideoRef = useRef<HTMLVideoElement>(null);
+  const dialogVideoRef = useRef<HTMLVideoElement>(null);
+  const { registerPlayer, unregisterPlayer, playPlayer } = useMediaPlayer();
+
+  useEffect(() => {
+    const thumbnailVideo = thumbnailVideoRef.current;
+    const dialogVideo = dialogVideoRef.current;
+
+    if (thumbnailVideo) {
+      registerPlayer(thumbnailId, thumbnailVideo);
+      thumbnailVideo.addEventListener("play", () => playPlayer(thumbnailId));
+    }
+    if (dialogVideo) {
+      registerPlayer(dialogId, dialogVideo);
+      dialogVideo.addEventListener("play", () => playPlayer(dialogId));
+    }
+
+    return () => {
+      if (thumbnailVideo) {
+        unregisterPlayer(thumbnailId);
+      }
+      if (dialogVideo) {
+        unregisterPlayer(dialogId);
+      }
+    };
+  }, [thumbnailId, dialogId, registerPlayer, unregisterPlayer, playPlayer]);
+
   return (
     <Dialog>
       <DialogTrigger asChild>
         <div className="w-full relative max-h-[1024px] max-w-[1024px]">
           <video
+            ref={thumbnailVideoRef}
             className="rounded-lg w-full h-full object-contain cursor-pointer"
             src={url}
             autoPlay={autoPlay}
@@ -105,6 +137,7 @@ const VideoContent: React.FC<VideoContentProps> = ({
         </DialogHeader>
         <div className="flex-1 overflow-hidden">
           <video
+            ref={dialogVideoRef}
             className="w-full h-full rounded-md object-contain"
             autoPlay={true}
             controls={true}

@@ -18,7 +18,6 @@ import ToggleSystemMessages from "@/components/ToggleSystemMessages";
 import MediaPanelWidth, { WidthMode } from "@/components/MediaPanelWidth";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { MediaPlayerProvider } from "@/contexts/MediaPlayerContext";
-import TogglePlayerButton from "@/components/TogglePlayerButton";
 import EditPersonalityDialog from "@/personalities/EditPersonalityDialog";
 import { selectAllMedia } from "../slices/mediaSlice";
 import {
@@ -135,7 +134,6 @@ export default function Thread() {
             {thread.name || "Welcome..."}
           </h1>
           <div className="flex-1" />
-          <TogglePlayerButton />
           <ToggleSystemMessages
             showTools={showTools}
             onToggle={() => setShowTools(!showTools)}

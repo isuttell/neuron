@@ -9,7 +9,6 @@ import images from "./slices/imagesSlice";
 import app from "./slices/appSlice";
 import promptsReducer from "./slices/promptsSlice";
 import embeddingsReducer from "./slices/embeddingsSlice";
-import audioReducer from "./slices/audioSlice";
 import mediaReducer from "./slices/mediaSlice";
 import mediaListsReducer from "./slices/mediaListsSlice";
 import schedulerReducer from "./slices/schedulerSlice";
@@ -25,7 +24,6 @@ export const store = configureStore({
     images,
     prompts: promptsReducer,
     embeddings: embeddingsReducer,
-    audio: audioReducer,
     media: mediaReducer,
     mediaLists: mediaListsReducer,
     scheduler: schedulerReducer,

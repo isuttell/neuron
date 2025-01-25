@@ -18,7 +18,6 @@ import Index from "./routes/index.tsx";
 import CodeViewer from "./routes/code-viewer.tsx";
 import Prompts from "./routes/prompts.tsx";
 import { EmbeddingsView } from "./components/EmbeddingsView";
-import { GlobalAudioProvider } from "./contexts/GlobalAudioContext";
 import MediaLists from "./routes/media-lists.tsx";
 import ScheduledEvents from "@/components/pages/ScheduledEvents";
 import ProvidersPage from "./routes/providers";
@@ -122,12 +121,10 @@ createRoot(document.getElementById("root")!).render(
     <Provider store={store}>
       <TooltipProvider>
         <MediaPlayerProvider>
-          <GlobalAudioProvider>
-            <Auth0ProviderWithNavigate>
-              <RouterProvider router={router} />
-              <Toaster />
-            </Auth0ProviderWithNavigate>
-          </GlobalAudioProvider>
+          <Auth0ProviderWithNavigate>
+            <RouterProvider router={router} />
+            <Toaster />
+          </Auth0ProviderWithNavigate>
         </MediaPlayerProvider>
       </TooltipProvider>
     </Provider>

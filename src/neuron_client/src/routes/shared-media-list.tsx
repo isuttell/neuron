@@ -2,7 +2,6 @@ import { useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { MediaPlayerProvider } from "@/contexts/MediaPlayerContext";
-import TogglePlayerButton from "@/components/TogglePlayerButton";
 import { Button } from "@/components/ui/button";
 import { useAppDispatch, useAppSelector } from "@/hooks";
 import {
@@ -62,7 +61,6 @@ export default function SharedMediaList() {
             <ArrowLeft className="size-4" />
           </Button>
           <div className="flex-1" />
-          <TogglePlayerButton />
         </div>
         <div className="max-w-3xl mx-auto w-full">
           <MediaListCard list={list} isSharedView />

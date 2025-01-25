@@ -9,12 +9,12 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MediaList } from "@/slices/mediaListsSlice";
-import { Share2, PlayCircle } from "lucide-react";
+import { Share2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import MediaItemList from "@/messages/MediaItemList";
-import { useGlobalAudio } from "@/contexts/GlobalAudioContext";
 import { useAppSelector } from "@/hooks";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { MediaListAudioPlayer } from "./MediaListAudioPlayer";
 
 interface MediaListCardProps {
   list: MediaList;
@@ -23,8 +23,6 @@ interface MediaListCardProps {
 
 function MediaListCard({ list, isSharedView = false }: MediaListCardProps) {
   const navigate = useNavigate();
-  const { clearQueue, playAudio, toggleAutoAdvance, addToQueue } =
-    useGlobalAudio();
   const mediaItems = useAppSelector((state) => {
     return state.mediaLists.mediaListItems
       .filter((item) => item.media_list_id === list.id)
@@ -34,7 +32,6 @@ function MediaListCard({ list, isSharedView = false }: MediaListCardProps) {
       )
       .filter((item): item is NonNullable<typeof item> => item != null);
   });
-  const audioItems = mediaItems.filter((item) => item.type === "audio");
   return (
     <Card>
       <CardHeader>
@@ -60,37 +57,6 @@ function MediaListCard({ list, isSharedView = false }: MediaListCardProps) {
           </Badge>
         )}
         <div className="flex-1" />
-        {audioItems.length > 0 && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-8"
-            onClick={() => {
-              clearQueue();
-              // Add all items to queue
-              const promises = audioItems.map(
-                (item) =>
-                  new Promise<void>((resolve) => {
-                    addToQueue(item.url, item.name);
-                    resolve();
-                  })
-              );
-
-              // Once all items are added to queue
-              Promise.all(promises).then(() => {
-                // Enable auto-advance
-                toggleAutoAdvance();
-                // Play first item
-                if (audioItems.length > 0) {
-                  playAudio(audioItems[0].url, audioItems[0].name, true);
-                }
-              });
-            }}
-          >
-            <PlayCircle className="size-4" />
-            <span className="sr-only">Play Audio</span>
-          </Button>
-        )}
         {!isSharedView && (
           <Button
             variant="outline"
@@ -103,6 +69,7 @@ function MediaListCard({ list, isSharedView = false }: MediaListCardProps) {
           </Button>
         )}
       </CardFooter>
+      <MediaListAudioPlayer mediaItems={mediaItems} />
     </Card>
   );
 }

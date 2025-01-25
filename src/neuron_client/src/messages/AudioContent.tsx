@@ -1,4 +1,4 @@
-import { Download, Copy, Play, Pause, Plus } from "lucide-react";
+import { Download, Copy, Play, Pause } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -8,8 +8,8 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { AudioBarVisualization } from "@/components/AudioBarVisualization";
 import { cn } from "@/lib/utils";
-import { useGlobalAudio } from "@/contexts/GlobalAudioContext";
-import { useEffect, useState, memo } from "react";
+import { useEffect, useState, memo, useRef, useId } from "react";
+import { useMediaPlayer } from "@/contexts/MediaPlayerContext";
 import { Spinner } from "@/components/ui/spinner";
 import { MediaListDropdown } from "@/components/MediaListDropdown";
 import { MediaItem } from "@/slices/mediaSlice";
@@ -24,63 +24,117 @@ interface AudioContentProps {
   onPlay?: () => void;
   onEnded?: () => void;
   onPause?: () => void;
-  autoAddToQueue?: boolean;
 }
+
+const formatTime = (seconds: number): string => {
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = Math.floor(seconds % 60);
+  const fraction = seconds % 1;
+  return `${minutes}:${remainingSeconds
+    .toString()
+    .padStart(2, "0")}.${Math.floor(fraction * 100)
+    .toString()
+    .padStart(2, "0")}`;
+};
 
 const AudioContent: React.FC<AudioContentProps> = ({
   url,
   title,
   className,
   mediaItem,
-  autoAddToQueue = false,
+  autoPlay = false,
+  onPlay,
+  onEnded,
+  onPause,
 }) => {
   const { toast } = useToast();
-  const {
-    playAudio,
-    currentUrl,
-    isPlaying,
-    progress,
-    seek,
-    toggleAudio,
-    addToQueue,
-    duration,
-    currentTime,
-    autoAdvance,
-    queue,
-  } = useGlobalAudio();
-  title = title || url.split("/").pop()?.split(".")[0] || "";
-  const isActive = currentUrl === url;
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [currentTime, setCurrentTime] = useState("0:00.00");
+  const [duration, setDuration] = useState("0:00.00");
   const [isWaveDataLoading, setIsWaveDataLoading] = useState(true);
+  const id = useId();
+  const audioRef = useRef<HTMLAudioElement>(new Audio());
+  const { registerPlayer, unregisterPlayer, playPlayer } = useMediaPlayer();
+
+  title = title || url.split("/").pop()?.split(".")[0] || "";
 
   useEffect(() => {
-    if (autoAddToQueue) {
-      if (autoAdvance) {
-        // If nothing is playing or queue is empty, play immediately
-        // Otherwise just add to queue and let auto-advance handle it
-        if (!isPlaying || queue.length === 0) {
-          playAudio(url, title, true);
-        } else {
-          playAudio(url, title, false);
-        }
-      } else {
-        addToQueue(url, title);
-      }
+    const audio = audioRef.current;
+    audio.src = url;
+    audio.preload = "auto";
+
+    const handleTimeUpdate = () => {
+      const newProgress = (audio.currentTime / audio.duration) * 100;
+      setProgress(newProgress);
+      setCurrentTime(formatTime(audio.currentTime));
+    };
+
+    const handleLoadedMetadata = () => {
+      setDuration(formatTime(audio.duration));
+    };
+
+    const handleEnded = () => {
+      setIsPlaying(false);
+      setProgress(0);
+      setCurrentTime("0:00.00");
+      if (onEnded) onEnded();
+    };
+
+    const handlePlay = () => {
+      setIsPlaying(true);
+      if (onPlay) onPlay();
+    };
+
+    const handlePause = () => {
+      setIsPlaying(false);
+      if (onPause) onPause();
+    };
+
+    audio.addEventListener("timeupdate", handleTimeUpdate);
+    audio.addEventListener("loadedmetadata", handleLoadedMetadata);
+    audio.addEventListener("ended", handleEnded);
+    audio.addEventListener("play", handlePlay);
+    audio.addEventListener("pause", handlePause);
+
+    registerPlayer(id, audio);
+
+    if (autoPlay) {
+      audio.play().catch(console.error);
     }
-  }, [
-    url,
-    title,
-    autoAddToQueue,
-    addToQueue,
-    autoAdvance,
-    playAudio,
-    isPlaying,
-    queue,
-  ]);
+
+    return () => {
+      audio.removeEventListener("timeupdate", handleTimeUpdate);
+      audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
+      audio.removeEventListener("ended", handleEnded);
+      audio.removeEventListener("play", handlePlay);
+      audio.removeEventListener("pause", handlePause);
+      unregisterPlayer(id);
+      audio.pause();
+    };
+  }, [url, autoPlay, onPlay, onPause, onEnded]);
+
+  const toggleAudio = () => {
+    if (!audioRef.current) return;
+    if (isPlaying) {
+      audioRef.current.pause();
+    } else {
+      playPlayer(id);
+      audioRef.current.play().catch(console.error);
+    }
+  };
+
+  const handleSeek = (percentage: number) => {
+    if (!audioRef.current) return;
+    const time = (percentage / 100) * audioRef.current.duration;
+    audioRef.current.currentTime = time;
+    setProgress(percentage);
+  };
 
   return (
     <div className={cn("flex rounded-lg flex-col w-full border", className)}>
       <div
-        className="w-full relative flex justify-center items-center"
+        className="w-full relative flex justify-center items-center py-3"
         style={{
           aspectRatio: "5/1",
           backgroundColor: "#111111",
@@ -91,14 +145,22 @@ const AudioContent: React.FC<AudioContentProps> = ({
             <Spinner size={32} />
           </div>
         )}
+        {currentTime !== "0:00.00" && (
+          <div className="text-xs text-gray-500 truncate p-1 absolute bottom-0 left-0">
+            {currentTime}
+          </div>
+        )}
+        <div className="text-xs text-gray-500 truncate p-1 absolute bottom-0 right-0">
+          {duration}
+        </div>
         <AudioBarVisualization
           src={url}
-          progress={isActive ? progress : 0}
+          progress={progress}
           className={cn(
             "w-full rounded-md transition-opacity",
             isWaveDataLoading && "opacity-0"
           )}
-          onSeek={isActive ? seek : undefined}
+          onSeek={handleSeek}
           onLoadingChange={setIsWaveDataLoading}
         />
       </div>
@@ -106,50 +168,27 @@ const AudioContent: React.FC<AudioContentProps> = ({
       <div className="flex flex-row gap-2 w-full border-t p-1 overflow-hidden">
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => {
-                if (currentUrl === url && isPlaying) {
-                  toggleAudio();
-                } else {
-                  playAudio(url, title, true);
-                }
-              }}
-            >
-              {currentUrl === url && isPlaying ? (
+            <Button size="sm" variant="ghost" onClick={toggleAudio}>
+              {isPlaying ? (
                 <Pause className="size-4" />
               ) : (
                 <Play className="size-4" />
               )}
             </Button>
           </TooltipTrigger>
-          <TooltipContent>
-            {currentUrl === url && isPlaying ? "Pause" : "Play Now"}
-          </TooltipContent>
+          <TooltipContent>{isPlaying ? "Pause" : "Play"}</TooltipContent>
         </Tooltip>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => playAudio(url, title, false)}
-            >
-              <Plus className="size-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Add to Queue</TooltipContent>
-        </Tooltip>
-        {mediaItem && <MediaListDropdown mediaItemId={mediaItem.id} />}
-        {url === currentUrl && (
-          <div className="text-xs text-gray-500 truncate p-2">
-            {currentTime}
-          </div>
+        {mediaItem && (
+          <Tooltip>
+            <TooltipTrigger>
+              <MediaListDropdown size="sm" mediaItemId={mediaItem.id} />
+            </TooltipTrigger>
+            <TooltipContent>Add to list</TooltipContent>
+          </Tooltip>
         )}
+
         <div className="flex-1" />
-        {url === currentUrl && (
-          <div className="text-xs text-gray-500 truncate p-2">{duration}</div>
-        )}
+
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
