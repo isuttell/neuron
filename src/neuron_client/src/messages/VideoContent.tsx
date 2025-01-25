@@ -16,11 +16,10 @@ import { useToast } from "@/hooks/use-toast";
 import { MediaItem } from "@/slices/mediaSlice";
 import { MediaListDropdown } from "@/components/MediaListDropdown";
 import { useMediaPlayer } from "@/contexts/MediaPlayerContext";
-import { useId, useRef, useEffect } from "react";
+import { useId, useRef, useEffect, memo } from "react";
 interface VideoContentProps {
   url: string;
   autoPlay?: boolean;
-  muted?: boolean;
   controls?: boolean;
   loop?: boolean;
   showControls?: boolean;
@@ -31,7 +30,6 @@ const VideoContent: React.FC<VideoContentProps> = ({
   url,
   mediaItem,
   autoPlay = false,
-  muted = false,
   controls = false,
   loop = false,
   showControls = false,
@@ -39,27 +37,18 @@ const VideoContent: React.FC<VideoContentProps> = ({
   const { toast } = useToast();
   const thumbnailId = useId();
   const dialogId = useId();
-  const thumbnailVideoRef = useRef<HTMLVideoElement>(null);
   const dialogVideoRef = useRef<HTMLVideoElement>(null);
   const { registerPlayer, unregisterPlayer, playPlayer } = useMediaPlayer();
 
   useEffect(() => {
-    const thumbnailVideo = thumbnailVideoRef.current;
     const dialogVideo = dialogVideoRef.current;
 
-    if (thumbnailVideo) {
-      registerPlayer(thumbnailId, thumbnailVideo);
-      thumbnailVideo.addEventListener("play", () => playPlayer(thumbnailId));
-    }
     if (dialogVideo) {
       registerPlayer(dialogId, dialogVideo);
       dialogVideo.addEventListener("play", () => playPlayer(dialogId));
     }
 
     return () => {
-      if (thumbnailVideo) {
-        unregisterPlayer(thumbnailId);
-      }
       if (dialogVideo) {
         unregisterPlayer(dialogId);
       }
@@ -71,11 +60,10 @@ const VideoContent: React.FC<VideoContentProps> = ({
       <DialogTrigger asChild>
         <div className="w-full relative max-h-[1024px] max-w-[1024px]">
           <video
-            ref={thumbnailVideoRef}
             className="rounded-lg w-full h-full object-contain cursor-pointer"
             src={url}
             autoPlay={autoPlay}
-            muted={muted}
+            muted={true}
             controls={controls}
             loop={loop}
           />
@@ -182,4 +170,4 @@ const VideoContent: React.FC<VideoContentProps> = ({
   );
 };
 
-export default VideoContent;
+export default memo(VideoContent);

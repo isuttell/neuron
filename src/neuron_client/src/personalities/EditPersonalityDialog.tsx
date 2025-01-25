@@ -35,20 +35,21 @@ interface EditPersonalityDialogProps {
 
 const ToolSetLabels = {
   astro: "Astro",
+  audio: "Audio Generation",
   code_interpreter: "Code Interpreter",
   dice: "Dice",
+  graph: "Knowledge Graph",
   hd2: "Hell Divers 2",
   homeassistant: "Smart Home",
   image: "Image Generation",
-  graph: "Knowledge Graph",
-  notifications: "Notifications",
   inspect: "Inspect",
-  search: "Search",
-  audio: "Audio Generation",
-  tts: "Text to Speech",
-  weather: "Weather",
-  video: "Video Generation",
   kepler: "Kepler",
+  notifications: "Notifications",
+  reasoning: "Reasoning",
+  search: "Search",
+  tts: "Text to Speech",
+  video: "Video Generation",
+  weather: "Weather",
 };
 
 export default function EditPersonalityDialog({

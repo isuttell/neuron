@@ -73,12 +73,16 @@ from neuron_server.tools.media_list_update_tool import MediaListUpdateTool
 from neuron_server.tools.media_list_delete_tool import MediaListDeleteTool
 from neuron_server.tools.media_list_reorder_items_tool import MediaListReorderItemsTool
 from neuron_server.tools.whisper_stt_tool import WhisperSTTTool
+from neuron_server.tools.deepseek_reasoning_tool import DeepSeekReasoningTool
 
 homeassistant_api = HomeAssistantAPI(token=config.homeassistant.token)
 
 tool_sets: Dict[str, List[BaseTool]] = {
     "nasa": [],
     "charts": [],
+    "reasoning": [
+        DeepSeekReasoningTool(),
+    ],
     "kepler": [
         Automatic1111Tool(
             api=Automatic1111API(

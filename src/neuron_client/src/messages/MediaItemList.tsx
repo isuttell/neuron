@@ -68,7 +68,6 @@ function MediaItemList({
               title={item.name}
               key={item.id}
               mediaItem={item}
-              autoAddToQueue={!showControls} // true for thread view, false for media list view
             />
           );
         }
@@ -77,7 +76,6 @@ function MediaItemList({
             <VideoContent
               url={item.url}
               autoPlay={true}
-              muted={true}
               controls={false}
               loop={true}
               key={item.id}

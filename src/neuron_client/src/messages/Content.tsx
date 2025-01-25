@@ -10,6 +10,8 @@ import { cn } from "@/lib/utils";
 import "./Content.css";
 import "katex/dist/katex.min.css";
 import AudioContent from "./AudioContent";
+import VideoContent from "./VideoContent";
+import ImageContent from "./ImageContent";
 
 interface ContentProps {
   className?: string;
@@ -36,6 +38,10 @@ const Content: React.FC<ContentProps> = ({
         transcription({ children }) {
           return <span className="italic">{children}</span>;
         },
+        // @ts-ignore
+        thinking({ children }) {
+          return <span className="text-gray-400">{children}</span>;
+        },
         audio({ node }) {
           let src = node?.properties?.src;
           if (!src && node?.children) {
@@ -51,12 +57,32 @@ const Content: React.FC<ContentProps> = ({
           }
           return <AudioContent preload={preload} url={src} />;
         },
-        img({ node, src, className = "", children, ...props }) {
+        video({ node }) {
+          let src = node?.properties?.src;
+          if (!src && node?.children) {
+            for (const child of node.children) {
+              if (child.type === "element" && child.properties?.src) {
+                src = child.properties.src;
+                break;
+              }
+            }
+          }
+          if (typeof src !== "string") {
+            return null;
+          }
+          return <VideoContent autoPlay={true} url={src} loop={true} />;
+        },
+        img({ src, alt, width, height }) {
+          if (!src) {
+            return null;
+          }
           return (
-            <img
-              className={`${className} my-2 w-full max-w-[512px] rounded-md`}
-              src={src?.replace(/\.[^.]+$/, `_o.webp`)}
-              {...props}
+            <ImageContent
+              url={src}
+              alt={alt}
+              thumbnail_size="xl"
+              width={width ? Number(width) : undefined}
+              height={height ? Number(height) : undefined}
             />
           );
         },

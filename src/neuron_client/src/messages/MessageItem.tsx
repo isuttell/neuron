@@ -23,6 +23,7 @@ interface MessageItemProps {
   messageId: string;
   onPromptClick?: (prompt: string) => void;
   showTools?: boolean;
+  toolOutput?: string[];
 }
 
 const getStatusMessage = (status: string) => {
@@ -41,13 +42,18 @@ const MessageItem: React.FC<MessageItemProps> = ({
   messageId,
   onPromptClick,
   showTools = false,
+  toolOutput = ["deepseek_reasoning"],
 }) => {
   const message = useAppSelector((state: RootState) =>
     getMessage(state, messageId)
   );
+
   const { user } = useAuth0();
   const { type: role, content, node, status = undefined } = message;
   const isTool = role === "tool" || node === "tools";
+  const showToolOutput =
+    isTool && toolOutput && toolOutput.includes(message.name ?? "");
+
   let body = getTextContent(content);
 
   if (!showTools) {
@@ -56,7 +62,7 @@ const MessageItem: React.FC<MessageItemProps> = ({
 
   const mediaItems = getMediaItems([message]);
 
-  if (!showTools && (isTool || body.length === 0)) {
+  if (!showTools && ((isTool && !showToolOutput) || body.length === 0)) {
     if (mediaItems.length === 0) {
       // If there are no media items, don't show the tool card
       return <div />;
@@ -75,9 +81,7 @@ const MessageItem: React.FC<MessageItemProps> = ({
   const elements = [
     <Card
       key={message.id}
-      className={`w-full my-2 ${
-        role === "tool" || role === "system" ? "bg-zinc-900" : ""
-      }`}
+      className={`w-full my-2 ${role === "system" ? "bg-zinc-900" : ""}`}
     >
       <CardContent className="px-6 py-4 text-small text-default-400 flex items-start space-x-2">
         <Tooltip delayDuration={0}>
@@ -109,15 +113,11 @@ const MessageItem: React.FC<MessageItemProps> = ({
         </Tooltip>
         <div className="flex flex-col flex-1 ">
           {body.trim().length > 0 ? (
-            isTool ? (
-              <div className="whitespace-pre-wrap">{body}</div>
-            ) : (
-              <Content
-                content={body}
-                preload={status === "streaming" ? "none" : "auto"}
-                onPromptClick={onPromptClick}
-              />
-            )
+            <Content
+              content={body}
+              preload={status === "streaming" ? "none" : "auto"}
+              onPromptClick={onPromptClick}
+            />
           ) : (
             <div className="space-y-2 flex-1">
               <Skeleton className="h-4 w-[250px]" />
