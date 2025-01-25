@@ -78,18 +78,19 @@ async def post_create_thread():
     if not personality:
         raise ValueError("Personality not found")
 
-    thread = await ThreadModel.create(
-        personality_id=personality.id,
-        name=form.get("name"),
-        context=form.get("context"),
-        user_id=request.token.user_id,
-    )
-
     greeting = str(form.get("greeting", "false")).lower() == "true"
     if greeting:
         prompt = "<|AI|>\nStart the conversation in a sentence or two and then provide some prompt suggestions as a list. Don't run any tools\n<|AI|>"
     else:
         prompt = await process_message_request(files, form)
+
+    thread = await ThreadModel.create(
+        personality_id=personality.id,
+        name=form.get("name"),
+        context=form.get("context"),
+        user_id=request.token.user_id,
+        message_count=1 if prompt else 0,
+    )
 
     if prompt:
         # Start the conversation and stream the response if we have any actions to take

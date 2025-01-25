@@ -53,6 +53,7 @@ class ThreadModel(BaseModel):
         memory: Optional[str] = "",
         status: Optional[str] = "idle",
         id: Optional[UUID] = None,
+        message_count: Optional[int] = 0,
     ) -> Self:
         async with get_session() as session:
             thread = Thread(
@@ -63,6 +64,7 @@ class ThreadModel(BaseModel):
                 memory=memory,
                 status=status,
                 personality_id=personality_id,
+                message_count=message_count,
             )
             session.add(thread)
             await session.commit()
