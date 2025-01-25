@@ -57,7 +57,7 @@ const MessageItem: React.FC<MessageItemProps> = ({
   let body = getTextContent(content);
 
   if (!showTools) {
-    body = body.replace(/<\|AI\|>.*?<\|AI\|>/g, "").trim();
+    body = body.replace(/<\|AI\|>[\s\S]*?<\|AI\|>/g, "").trim();
   }
 
   const mediaItems = getMediaItems([message]);
