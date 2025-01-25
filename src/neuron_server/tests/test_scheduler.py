@@ -125,7 +125,7 @@ async def test_start_scheduler(scheduler, mock_redis):
     await scheduler.start()
 
     mock_redis.return_value.config_set.assert_called_once_with(
-        "notify-keyspace-events", "Ex"
+        "notify-keyspace-events", "KEx"
     )
     assert scheduler._running is True
 
@@ -157,7 +157,8 @@ async def test_process_expired_event(scheduler, mock_redis):
         "time_remaining_seconds": 0,
     }
 
-    mock_redis.return_value.sadd.return_value = True
+    # Mock successful lock acquisition
+    mock_redis.return_value.set.return_value = True
     mock_redis.return_value.get.return_value = json.dumps(event_data)
 
     # Mock the on_event method
@@ -165,9 +166,55 @@ async def test_process_expired_event(scheduler, mock_redis):
         await scheduler._process_expired_event(event_id)
 
         mock_on_event.assert_called_once_with(event_id, event_data["event_data"])
-        mock_redis.return_value.srem.assert_called_with(
-            scheduler.processing_events_set, event_id
+        # Verify lock was deleted
+        mock_redis.return_value.delete.assert_called_with(
+            f"{scheduler.processing_events_set}:{event_id}"
         )
+
+
+@pytest.mark.asyncio
+async def test_process_expired_event_locked(scheduler, mock_redis):
+    """Test handling of already locked events"""
+    event_id = "test_event_6"
+
+    # Mock failed lock acquisition
+    mock_redis.return_value.set.return_value = False
+
+    await scheduler._process_expired_event(event_id)
+
+    # Verify event was not processed
+    mock_redis.return_value.get.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_recurring_event_next_occurrence(scheduler, mock_redis):
+    """Test scheduling next occurrence of recurring event"""
+    event_id = "test_recurring_2"
+    now = datetime.now(pytz.UTC)
+    event_data = {
+        "event_id": event_id,
+        "event_data": {"message": "recurring test"},
+        "scheduled_time": now.isoformat(),
+        "created_at": (now - timedelta(days=1)).isoformat(),
+        "recurring_pattern": {
+            "interval": 1,
+            "unit": "days",
+            "time_of_day": "12:00",
+        },
+        "time_remaining_seconds": 0,
+    }
+
+    # Mock successful lock acquisition
+    mock_redis.return_value.set.return_value = True
+    mock_redis.return_value.get.return_value = json.dumps(event_data)
+
+    await scheduler._process_expired_event(event_id)
+
+    # Verify next occurrence was scheduled
+    pipeline = mock_redis.return_value.pipeline.return_value.__aenter__.return_value
+    assert pipeline.set.called  # New metadata
+    assert pipeline.setex.called  # New event
+    assert pipeline.sadd.call_count >= 2  # Active and recurring sets
 
 
 @pytest.mark.asyncio

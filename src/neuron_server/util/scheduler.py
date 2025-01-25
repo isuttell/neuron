@@ -193,7 +193,7 @@ class AsyncRedisEventScheduler(ABC):
 
         try:
             async with self.redis_client() as client:
-                await client.config_set("notify-keyspace-events", "Ex")
+                await client.config_set("notify-keyspace-events", "KEx")
                 self._running = True
                 self._listener_task = asyncio.create_task(self._listen_for_events())
                 self._reconciliation_task = asyncio.create_task(
@@ -251,11 +251,13 @@ class AsyncRedisEventScheduler(ABC):
     async def _process_expired_event(self, event_id: str):
         """Process an expired event with proper locking and error handling."""
         async with self.redis_client() as client:
-            try:
-                if not await client.sadd(self.processing_events_set, event_id):
-                    logger.warning(f"Event {event_id} is already being processed")
-                    return
+            # Add expiration to processing lock
+            lock_key = f"{self.processing_events_set}:{event_id}"
+            if not await client.set(lock_key, "1", ex=300, nx=True):  # 5 min timeout
+                logger.warning(f"Event {event_id} is already being processed")
+                return
 
+            try:
                 logger.debug(
                     f"Processing event {event_id} at {datetime.now(self.timezone).isoformat()} UTC"
                 )
@@ -284,7 +286,7 @@ class AsyncRedisEventScheduler(ABC):
                     f"Error processing event {event_id}: {str(e)}", exc_info=True
                 )
             finally:
-                await client.srem(self.processing_events_set, event_id)
+                await client.delete(lock_key)
 
     async def _schedule_next_occurrence(self, event_id: str, metadata: dict):
         """Schedule the next occurrence of a recurring event."""
@@ -294,7 +296,49 @@ class AsyncRedisEventScheduler(ABC):
         pattern = RecurringPattern(**metadata["recurring_pattern"])
         last_run = datetime.fromisoformat(metadata["scheduled_time"])
         next_time = self._calculate_next_occurrence(pattern, last_run)
-        await self.schedule_event(event_id, metadata["event_data"], next_time, pattern)
+
+        try:
+            # Schedule new occurrence first, then clean up old one atomically
+            async with self.redis_client() as client:
+                async with client.pipeline() as pipe:
+                    # Schedule new occurrence
+                    metadata_key = f"{self.metadata_prefix}{event_id}"
+                    event_key = f"event:{event_id}"
+
+                    new_metadata = {
+                        "event_id": event_id,
+                        "event_data": metadata["event_data"],
+                        "scheduled_time": next_time.isoformat(timespec="seconds"),
+                        "created_at": datetime.now(self.timezone).isoformat(
+                            timespec="seconds"
+                        ),
+                        "recurring_pattern": metadata["recurring_pattern"],
+                        "time_remaining_seconds": int(
+                            (next_time - datetime.now(self.timezone)).total_seconds()
+                        ),
+                    }
+
+                    # Set new event data
+                    await pipe.set(metadata_key, json.dumps(new_metadata))
+                    await pipe.setex(
+                        event_key,
+                        new_metadata["time_remaining_seconds"],
+                        json.dumps(metadata["event_data"]),
+                    )
+                    await pipe.sadd(self.active_events_set, event_id)
+                    await pipe.sadd(self.recurring_events_set, event_id)
+
+                    # Execute transaction
+                    await pipe.execute()
+
+                    logger.debug(
+                        f"Scheduled next occurrence of event {event_id} at {next_time.isoformat()}"
+                    )
+        except Exception as e:
+            logger.error(
+                f"Failed to schedule next occurrence of event {event_id}: {str(e)}"
+            )
+            raise
 
     async def _reconcile_events(self):
         """Periodically check for and clean up orphaned events."""
