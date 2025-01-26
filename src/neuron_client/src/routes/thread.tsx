@@ -4,7 +4,6 @@ import MessageForm from "../messages/MessageForm";
 import MessageItem from "../messages/MessageItem";
 import { useAppSelector, useAppDispatch } from "../hooks";
 import { shallowEqual } from "react-redux";
-import { RootState } from "../store";
 import Loading from "@/lib/loading";
 import { getActivePersonality } from "../slices/personalitiesSlice";
 import MediaItemList from "../messages/MediaItemList";

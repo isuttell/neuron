@@ -11,13 +11,14 @@ class OpenRouterLLM(LLM):
 
     def __init__(
         self,
-        model_id: Optional[str] = "google/gemini-2.0-flash-exp:free",
+        model_id: Optional[str] = "openai/gpt-4o",
         provider_model_id: Optional[str] = None,
     ):
         model = ChatOpenAI(
             model=model_id,
             temperature=1,
             streaming=True,
+            stream_usage=True,
             max_tokens=None,
             api_key=config.openrouter_api_key,
             base_url=self.base_url,

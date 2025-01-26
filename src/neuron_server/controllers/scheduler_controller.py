@@ -119,15 +119,14 @@ async def list_events():
     """List all scheduled events for the authenticated user"""
     from neuron_server.api import scheduler
 
-    pattern = request.args.get("pattern", "*")
     filters: Dict[str, Any] = {"user_id": request.token.user_id}
 
     # Add any additional filters from query parameters
     for key, value in request.args.items():
-        if key not in ["pattern"]:
+        if key not in ["user_id"]:
             filters[key] = value
 
-    events = await scheduler.list_events(pattern=pattern, filters=filters)
+    events = await scheduler.list_events(filters=filters)
     personality_ids = list(
         set(event["event_data"].get("personality_id") for event in events)
     )

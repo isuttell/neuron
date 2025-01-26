@@ -121,6 +121,70 @@ class AsyncRedisEventScheduler(ABC):
             logger.error(f"Error deleting event: {str(e)}")
             return False
 
+    async def list_events(
+        self, filters: Optional[Dict[str, Any]] = None
+    ) -> List[Dict[str, Any]]:
+        """List all scheduled events matching the filters.
+
+        Args:
+            filters: Dictionary of filters to apply to event metadata (e.g., {"user_id": "123"})
+
+        Returns:
+            List of event metadata dictionaries
+        """
+        try:
+            async with self.redis_client() as client:
+                # Get all active event IDs
+                event_ids = await client.smembers(self.active_events_set)
+                if not event_ids:
+                    return []
+
+                # Get metadata for all events
+                metadata_keys = [
+                    f"{self.metadata_prefix}{event_id}" for event_id in event_ids
+                ]
+                metadata_values = await client.mget(metadata_keys)
+
+                # Parse metadata and apply filters
+                events = []
+                for metadata_str in metadata_values:
+                    if not metadata_str:
+                        continue
+
+                    try:
+                        event = json.loads(metadata_str)
+                    except json.JSONDecodeError as e:
+                        logger.error(f"Failed to parse event metadata: {str(e)}")
+                        continue
+
+                    # Apply filters if provided
+                    if filters:
+                        matches = True
+                        for key, value in filters.items():
+                            # Handle nested keys in event_data
+                            if key in event.get("event_data", {}):
+                                if event["event_data"][key] != value:
+                                    matches = False
+                                    break
+                            elif key in event:
+                                if event[key] != value:
+                                    matches = False
+                                    break
+                            else:
+                                matches = False
+                                break
+
+                        if not matches:
+                            continue
+
+                    events.append(event)
+
+                return events
+
+        except Exception as e:
+            logger.error(f"Error listing events: {str(e)}")
+            return []
+
     async def schedule_event(
         self,
         event_id: str,
