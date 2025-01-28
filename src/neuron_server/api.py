@@ -162,6 +162,7 @@ blueprint = Blueprint(
 @blueprint.get("/stats")
 @blueprint.get("/prompts")
 @blueprint.get("/scheduled")
+@blueprint.get("/providers")
 @blueprint.get("/share/<list_id>")
 async def index(**kwargs):
     return await blueprint.send_static_file("index.html")
