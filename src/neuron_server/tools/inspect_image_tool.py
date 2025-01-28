@@ -220,7 +220,7 @@ class InspectImageTool(BaseTool):
             from neuron_server.models.provider_model import ProviderModelModel
 
             # Inspect the image
-            llm = ProviderModelModel.get_llm()
+            llm = await ProviderModelModel.get_active_llm()
             model = llm.model | StrOutputParser()
             content: str = await model.ainvoke(
                 [

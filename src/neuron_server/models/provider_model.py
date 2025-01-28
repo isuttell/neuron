@@ -1,7 +1,7 @@
 from typing import Literal
 from pydantic import BaseModel
 from uuid import UUID
-from typing import List, Optional
+from typing import List, Optional, Any
 from sqlalchemy import select
 from pydantic import BaseModel, Field, field_serializer
 from uuid import uuid4
@@ -22,6 +22,7 @@ class ProviderModelModel(BaseModel):
     id: UUID = Field(default_factory=lambda: uuid4())
     provider: Provider = Field(description="The provider of the model")
     model_id: str = Field(description="The model id of the provider")
+    enabled: bool = Field(description="Whether the model is enabled")
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc).astimezone()
     )
@@ -60,6 +61,21 @@ class ProviderModelModel(BaseModel):
             provider_model = await session.get(ProviderModel, self.id)
             provider_model.provider = self.provider
             provider_model.model_id = self.model_id
+            provider_model.enabled = self.enabled
+
+            # If enabling this provider, disable all others
+            if self.enabled:
+                result = await session.execute(
+                    select(ProviderModel)
+                    .where(ProviderModel.id != self.id)
+                    .where(ProviderModel.enabled == True)
+                )
+                other_providers = result.scalars().all()
+
+                # Disable other providers
+                for other_provider in other_providers:
+                    other_provider.enabled = False
+
             await session.commit()
 
     def to_llm(self):
@@ -75,23 +91,48 @@ class ProviderModelModel(BaseModel):
             raise ValueError(f"Unknown provider: {self.provider}")
 
     @classmethod
-    async def setup(cls, provider_id: Optional[UUID] = None):
-        if provider_id:
-            provider = await cls.get(provider_id)
-        else:
-            provider = await cls.get(config.provider_id)
-        if not provider:
-            raise ValueError("Provider not found")
-        cls.llm = provider.to_llm()
+    async def get_active_provider(cls) -> Self:
+        """Get the currently active provider from the database"""
+        async with get_session() as session:
+            result = await session.execute(
+                select(ProviderModel).where(ProviderModel.enabled == True)
+            )
+            provider = result.scalar_one_or_none()
+
+            if not provider:
+                raise ValueError("No active provider found")
+
+            return cls(**provider.__dict__)
 
     @classmethod
-    def get_llm(cls) -> LLM:
-        if not cls.llm:
-            raise ValueError("LLM not initialized")
-        return cls.llm
+    async def get_active_llm(cls) -> LLM:
+        """Get LLM instance for the active provider"""
+        provider = await cls.get_active_provider()
+        return provider.to_llm()
+
+    @classmethod
+    async def setup(cls, provider_id: Optional[UUID] = None):
+        """Setup a provider as active"""
+        provider = await cls.get(provider_id)
+        if not provider:
+            raise ValueError("Provider not found")
+
+        # Find and disable currently active provider
+        async with get_session() as session:
+            result = await session.execute(
+                select(ProviderModel).where(ProviderModel.enabled == True)
+            )
+            active_provider: Any | None = result.scalar_one_or_none()
+
+            if active_provider:
+                active_provider.enabled = False
+                await session.commit()
+
+        provider.enabled = True
+        await provider.save()
 
     @classmethod
     async def get_active_provider_id(cls) -> Optional[UUID]:
-        """Get the currently active provider ID from config"""
-        # TODO BETTER
-        return cls.llm.provider_model_id or config.provider_id
+        """Get the currently active provider ID from database"""
+        provider = await cls.get_active_provider()
+        return provider.id

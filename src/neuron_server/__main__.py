@@ -25,7 +25,6 @@ async def init():
     start_time = time.perf_counter()
     logger.debug("Starting database...")
     await start()
-    await ProviderModelModel.setup()
     logger.debug(f"Database started in {time.perf_counter() - start_time:.2f} seconds")
 
 

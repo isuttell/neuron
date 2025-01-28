@@ -53,7 +53,7 @@ export const setupProvider = createAsyncThunk(
   "providers/setupProvider",
   async (providerId: string) => {
     const accessToken = await getAccessToken();
-    const response = await fetch(`/api/providers/${providerId}/setup`, {
+    const response = await fetch(`/api/providers/${providerId}/activate`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${accessToken}`,

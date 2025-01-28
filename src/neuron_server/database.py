@@ -1,5 +1,15 @@
 from typing import List, Optional
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, JSON, func
+from sqlalchemy import (
+    Column,
+    Integer,
+    String,
+    Text,
+    DateTime,
+    ForeignKey,
+    JSON,
+    func,
+    Boolean,
+)
 from sqlalchemy.dialects.postgresql import UUID as pgUUID, JSONB
 from pgvector.sqlalchemy import Vector
 from sqlalchemy.orm import relationship, Mapped, sessionmaker
@@ -30,6 +40,7 @@ class ProviderModel(Base):
     id = Column(pgUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     provider = Column(String, nullable=False)
     model_id = Column(String, nullable=False)
+    enabled = Column(Boolean, nullable=False, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

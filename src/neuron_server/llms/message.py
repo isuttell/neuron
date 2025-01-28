@@ -274,7 +274,6 @@ async def update_memory(thread: ThreadModel, llm: LLM, messages: List[BaseMessag
 async def ainvoke(
     thread_id: UUID,
     prompt: str,
-    provider_id: UUID,
     personality_id: UUID,
     save_user_message: bool = True,
 ):

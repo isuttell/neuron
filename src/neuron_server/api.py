@@ -1,5 +1,6 @@
 from quart import Quart, websocket, send_from_directory, Blueprint
 import json
+import openai
 from neuron_server.config import config
 from neuron_server.event_router import EventRouter, ErrorEvent
 from neuron_server.controllers.thread_controller import (
@@ -244,6 +245,14 @@ app.register_blueprint(embedding_blueprint, url_prefix="/api/embeddings")
 app.register_blueprint(media_blueprint, url_prefix="/api/media")
 app.register_blueprint(scheduler_blueprint, url_prefix="/api/scheduler")
 app.register_blueprint(provider_blueprint, url_prefix="/api/providers")
+
+
+@app.errorhandler(openai.APIError)
+async def openai_api_error(error: openai.APIError):
+    logger.error(error, exc_info=True)
+    if error.body:
+        logger.error(error.body)
+    return {"error": "API Error", "message": str(error)}, 400
 
 
 @app.errorhandler(Exception)

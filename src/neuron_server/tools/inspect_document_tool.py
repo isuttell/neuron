@@ -202,7 +202,7 @@ pdf
             from neuron_server.models.provider_model import ProviderModelModel
 
             # Inspect the image
-            llm = ProviderModelModel.get_llm()
+            llm = await ProviderModelModel.get_active_llm()
             chain = document_inspect_prompt | llm.model | StrOutputParser()
 
             results = []

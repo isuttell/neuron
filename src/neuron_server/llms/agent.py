@@ -45,7 +45,7 @@ async def execute_agent(
     if personality is None:
         raise BadRequest("Personality not found")
 
-    llm: LLM = ProviderModelModel.get_llm()
+    llm: LLM = await ProviderModelModel.get_active_llm()
     tools = get_tools(personality.tool_set) if personality.tool_set else None
     graph = llm.create_workflow(tools)
     graph.checkpointer = None
@@ -76,7 +76,7 @@ async def execute_agent(
 
 async def aget_state(thread_id: UUID):
     checkpointer = AsyncPostgresSaver(pool)
-    llm: LLM = ProviderModelModel.get_llm()
+    llm: LLM = await ProviderModelModel.get_active_llm()
     return await llm.aget_state(
         {"configurable": {"thread_id": str(thread_id)}}, checkpointer=checkpointer
     )
@@ -201,7 +201,7 @@ async def astream(
         if personality is None:
             raise Exception("Personality not found")
 
-        llm: LLM = ProviderModelModel.get_llm()
+        llm: LLM = await ProviderModelModel.get_active_llm()
         logger.debug(f"provider_model_id={llm.provider_model_id}")
         tools = get_tools(personality.tool_set) if personality.tool_set else None
         graph = llm.create_workflow(tools)

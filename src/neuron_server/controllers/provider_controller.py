@@ -3,7 +3,7 @@ from typing import List
 from uuid import UUID
 from neuron_server.models.provider_model import ProviderModelModel
 from neuron_server.controllers.auth import requires_auth
-from werkzeug.exceptions import NotFound, Forbidden
+from werkzeug.exceptions import NotFound, Forbidden, BadRequest
 
 provider_blueprint = Blueprint("provider", __name__)
 
@@ -24,17 +24,14 @@ async def list_providers() -> dict:
     }
 
 
-@provider_blueprint.post("/<uuid:provider_id>/setup")
+@provider_blueprint.post("/<uuid:provider_id>/activate")
 @requires_auth
-async def setup_provider(provider_id: UUID):
-    """Setup a specific provider as the active LLM"""
-
+async def activate_provider(provider_id: UUID):
+    """Activate a specific provider"""
     if "admin" not in request.token.roles:
         raise Forbidden("Admin access required")
-
-    provider = await ProviderModelModel.get(provider_id)
-    if not provider:
-        raise NotFound("Provider not found")
-
     await ProviderModelModel.setup(provider_id)
-    return {"message": "Provider setup successfully"}
+    return {
+        "message": "Provider activated successfully",
+        "active_provider_id": provider_id,
+    }

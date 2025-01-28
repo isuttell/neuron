@@ -109,9 +109,6 @@ class Config(BaseModel):
     log_level: str = Field(
         default=os.environ.get("LOG_LEVEL", "DEBUG"), description="Log level"
     )
-    provider_id: UUID = Field(
-        default=UUID(os.environ.get("PROVIDER_ID")), description="Provider ID"
-    )
     host: str = Field(default=os.environ.get("HOST", "0.0.0.0"), description="Host")
     port: int = Field(default=int(os.environ.get("PORT", 5000)), description="Port")
     client_assets_folder: str = Field(

@@ -43,9 +43,7 @@ async def ainvoke_update_personality(
     llm: LLM, personality: PersonalityModel, context: str, prompt: str
 ) -> str:
     tools = get_tools(personality.tool_set) if personality.tool_set else default_tools
-    chain: Runnable = (
-        personality_update_prompt | llm.model.bind_tools(tools) | StrOutputParser()
-    )
+    chain: Runnable = personality_update_prompt | llm.model | StrOutputParser()
     content: str = await chain.ainvoke({"context": context, "prompt": prompt})
     assert isinstance(content, str)
     match = re.search(r"<\|context\|>(.*?)</?\|context\|>", content, re.DOTALL)
@@ -145,7 +143,7 @@ async def update_personality(personality_id: UUID):
     body = await request.get_json()
     payload = UpdatePersonality(**body)
 
-    llm: LLM = ProviderModelModel.get_llm()
+    llm: LLM = await ProviderModelModel.get_active_llm()
 
     # If there is no description, generate one from the context
     description = payload.description
@@ -183,7 +181,7 @@ class PostPersonalityContext(BaseModel):
 async def post_personality_context(personality_id: UUID):
     body = await request.get_json()
     payload = PostPersonalityContext(**body)
-    llm: LLM = ProviderModelModel.get_llm()
+    llm: LLM = await ProviderModelModel.get_active_llm()
     personality = await PersonalityModel.get(personality_id)
     if personality is None:
         raise BadRequest("Personality not found")
