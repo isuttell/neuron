@@ -1,9 +1,11 @@
-from typing import Dict, Tuple, Callable, Any, Coroutine
-from pydantic import BaseModel, Field
-from datetime import datetime, timezone
-from typing import Self, Literal
-from neuron_server.logger import logger
 import asyncio
+from collections.abc import Callable, Coroutine
+from datetime import UTC, datetime
+from typing import Any, Literal, Self
+
+from pydantic import BaseModel, Field
+
+from neuron_server.logger import logger
 
 
 class Event(BaseModel):
@@ -16,7 +18,7 @@ class IncomingEvent(Event):
 
 class OutgoingEvent(Event):
     created_at: str = Field(
-        default_factory=lambda: datetime.now(timezone.utc).astimezone().isoformat()
+        default_factory=lambda: datetime.now(UTC).astimezone().isoformat()
     )
 
 
@@ -26,9 +28,9 @@ class ErrorEvent(Event):
 
 
 class EventRouter:
-    routes: Dict[str, Tuple[BaseModel, Callable]]
+    routes: dict[str, tuple[BaseModel, Callable]]
 
-    def __init__(self, routes: Dict[str, Tuple[BaseModel, Callable]] = None):
+    def __init__(self, routes: dict[str, tuple[BaseModel, Callable]] = None):
         self.routes = routes or {}
 
     def on(self, model: BaseModel):
@@ -43,11 +45,11 @@ class EventRouter:
     def register_controller(self, event_router: Self):
         self.routes.update(event_router.routes)
 
-    async def dispatch(self, event: Dict[str, Any]) -> Coroutine[Any, Any, None]:
+    async def dispatch(self, event: dict[str, Any]) -> Coroutine[Any, Any, None]:
         event_type = event.get("type")
         if not event_type:
             raise ValueError("Event type is required")
-        if not event_type in self.routes:
+        if event_type not in self.routes:
             raise ValueError(f"No route for event type: {event_type}")
         model, func = self.routes[event_type]
         logger.debug(f"incoming={event_type}")

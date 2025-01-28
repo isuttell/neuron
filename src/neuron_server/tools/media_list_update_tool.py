@@ -1,11 +1,11 @@
-from langchain.tools import BaseTool
-from typing import Type, List
-from pydantic import BaseModel, Field
 import asyncio
-from neuron_server.pubsub import pubsub
 import logging
 from uuid import UUID
+
+from langchain.tools import BaseTool
 from langchain_core.runnables import RunnableConfig
+from pydantic import BaseModel, Field
+
 from neuron_server.models.media_list_model import MediaListModel
 
 logger = logging.getLogger(__name__)
@@ -15,9 +15,9 @@ class MediaListUpdateToolArgs(BaseModel):
     list_id: UUID = Field(description="ID of the media list to update")
     name: str = Field(description="New name for the media list")
     description: str = Field(description="New description for the media list")
-    tags: List[str] = Field(description="Updated tags for categorization")
+    tags: list[str] = Field(description="Updated tags for categorization")
     visibility: str = Field(description="Updated visibility setting")
-    shared_with: List[str] = Field(description="Updated list of users to share with")
+    shared_with: list[str] = Field(description="Updated list of users to share with")
 
 
 class MediaListUpdateTool(BaseTool):
@@ -26,7 +26,7 @@ class MediaListUpdateTool(BaseTool):
         """This tool updates an existing media list. The user must be the owner of the list."""
     )
 
-    args_schema: Type[MediaListUpdateToolArgs] = MediaListUpdateToolArgs
+    args_schema: type[MediaListUpdateToolArgs] = MediaListUpdateToolArgs
 
     def _run(self, *args, **kwargs) -> str:
         return asyncio.run(self._arun(*args, **kwargs))
@@ -36,9 +36,9 @@ class MediaListUpdateTool(BaseTool):
         list_id: UUID,
         name: str,
         description: str,
-        tags: List[str],
+        tags: list[str],
         visibility: str,
-        shared_with: List[str],
+        shared_with: list[str],
         config: RunnableConfig,
     ) -> str:
         try:

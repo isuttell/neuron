@@ -1,28 +1,30 @@
-from neuron_server.logger import logger
-from typing import List, TypedDict, Optional, Set, Dict, Any, Callable
-from neuron_server.models.provider_model import ProviderModelModel
-from neuron_server.event_router import ErrorEvent
-from neuron_server.models.personality_model import PersonalityModel
+import asyncio
+from collections.abc import Callable
+from datetime import datetime
+from typing import Any, TypedDict
 from uuid import UUID, uuid4
-from langchain_core.messages import HumanMessage, AIMessage
-from datetime import datetime, timezone
-from neuron_server.llms.message import get_message_content
+
+from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
-from neuron_server.database import pool
-from neuron_server.llms.llm import LLM
-from neuron_server.models.thread_model import ThreadModel
-from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
-from neuron_server.pubsub import pubsub
+from werkzeug.exceptions import BadRequest
+
 from neuron_server.controllers.events.message_events import (
     MessageEvent,
-    PartialMessageEvent,
     PartialMessage,
+    PartialMessageEvent,
     ThreadMessage,
 )
-import asyncio
 from neuron_server.controllers.events.thread_events import GetThreadResponse
-from werkzeug.exceptions import BadRequest
+from neuron_server.database import pool
+from neuron_server.event_router import ErrorEvent
+from neuron_server.llms.llm import LLM
+from neuron_server.llms.message import get_message_content
 from neuron_server.llms.tools import get_tools
+from neuron_server.logger import logger
+from neuron_server.models.personality_model import PersonalityModel
+from neuron_server.models.provider_model import ProviderModelModel
+from neuron_server.models.thread_model import ThreadModel
+from neuron_server.pubsub import pubsub
 
 connection_kwargs = {
     "autocommit": True,
@@ -85,11 +87,11 @@ async def aget_state(thread_id: UUID):
 class Debouncer:
     def __init__(self, wait: float):
         self.wait = wait  # seconds
-        self.task: Optional[asyncio.Task] = None
-        self._future: Optional[asyncio.Future] = None
-        self._next_args: Optional[tuple] = None
-        self._next_kwargs: Optional[dict] = None
-        self._coro_func: Optional[Callable] = None
+        self.task: asyncio.Task | None = None
+        self._future: asyncio.Future | None = None
+        self._next_args: tuple | None = None
+        self._next_kwargs: dict | None = None
+        self._coro_func: Callable | None = None
 
     async def call(self, coro_func: Callable, *args, **kwargs):
         """
@@ -168,7 +170,7 @@ async def wait_for_idle(thread_id: UUID, timeout: int = 300):
     thread = await ThreadModel.get(thread_id)
     while thread and thread.status != "idle":
         if asyncio.get_event_loop().time() - start_time > timeout:
-            raise asyncio.TimeoutError(
+            raise TimeoutError(
                 f"Thread {thread.id} did not become idle within {timeout} seconds"
             )
         await asyncio.sleep(1)
@@ -242,7 +244,7 @@ async def astream(
         )
 
         index = -1
-        active_runs: Dict[str, str] = {}
+        active_runs: dict[str, str] = {}
         async for body in graph.astream_events(
             {
                 "messages": [
@@ -269,7 +271,7 @@ async def astream(
             name: str = body["name"]
             data: dict = body["data"]
             run_id: str = body["run_id"]
-            node: Optional[str] = body["metadata"].get("langgraph_node")
+            node: str | None = body["metadata"].get("langgraph_node")
 
             if kind in ["on_chain_start", "on_chain_end"] and name in [
                 "update_title",
@@ -342,7 +344,7 @@ async def astream(
                 await pubsub.publish("app", MessageEvent(message=message))
             elif kind == "on_chat_model_end":
                 output: AIMessage = data["output"]
-                if not "update_title" in active_runs.values():
+                if "update_title" not in active_runs.values():
                     # @TODO: This is a hack
                     message = ThreadMessage(
                         **output.model_dump(),
@@ -365,7 +367,7 @@ async def astream(
         thread.message_count = len(state.values.get("messages", []))
         await update_thread_status(thread, status="idle")
         logger.debug(f"Agent completed for {thread.id}")
-        last_message: Optional[AIMessage] = (
+        last_message: AIMessage | None = (
             state.values.get("messages", [])[-1]
             if len(state.values.get("messages", [])) > 0
             else None

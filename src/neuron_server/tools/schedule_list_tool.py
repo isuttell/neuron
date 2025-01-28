@@ -1,9 +1,11 @@
-from langchain.tools import BaseTool
-from neuron_server.logger import logger
 import asyncio
 import json
-from langchain_core.runnables import RunnableConfig
 from datetime import datetime
+
+from langchain.tools import BaseTool
+from langchain_core.runnables import RunnableConfig
+
+from neuron_server.logger import logger
 
 
 class ScheduleListTool(BaseTool):
@@ -24,7 +26,7 @@ Lists all scheduled prompts with their event ids, scheduled time, recurring patt
         try:
             from neuron_server.api import scheduler
 
-            logger.debug(f"Listing scheduled events")
+            logger.debug("Listing scheduled events")
             events = await scheduler.list_events(
                 filters={"personality_id": config["configurable"]["personality_id"]}
             )

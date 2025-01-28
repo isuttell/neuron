@@ -1,12 +1,12 @@
 import asyncio
 import subprocess
-from typing import List, Tuple, Optional
+
 from neuron_server.logger import logger
 
 
 async def run_subprocess(
-    args: List[str],
-    timeout: Optional[int] = None,
+    args: list[str],
+    timeout: int | None = None,
     check: bool = True,
     **kwargs,
 ) -> subprocess.CompletedProcess[str]:

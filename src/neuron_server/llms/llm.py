@@ -1,43 +1,39 @@
-from langchain_core.messages import trim_messages
-from neuron_server.llms.prompts import (
-    chat_prompt,
-    title_prompt,
-    memory_prompt,
-)
-from langchain_core.runnables import Runnable
-from typing import List, Optional
-from langchain_core.tools import BaseTool
-from typing import Literal
+import asyncio
+import re
+import time
+from collections.abc import Sequence
+from datetime import UTC, datetime
 from typing import (
     Annotated,
-    Sequence,
+    Literal,
     TypedDict,
 )
-from langchain_core.messages import BaseMessage, AIMessage, ToolMessage
-from langgraph.graph.message import add_messages
-from langchain_core.runnables import RunnableConfig
-from langgraph.graph import StateGraph, END
-from datetime import datetime, timezone
-from langgraph.prebuilt import ToolNode
-from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
-from langchain_core.output_parsers import StrOutputParser
-import re
-from langchain_core.messages.utils import get_buffer_string
+
 import tiktoken
+from langchain_core.messages import AIMessage, BaseMessage, ToolMessage
+from langchain_core.messages.utils import get_buffer_string
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.runnables import Runnable, RunnableConfig
+from langchain_core.tools import BaseTool
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+from langgraph.graph import END, StateGraph
+from langgraph.graph.message import add_messages
+from langgraph.prebuilt import ToolNode
+from pydantic import BaseModel, Field
+
+from neuron_server.config import config
+from neuron_server.llms.prompts import (
+    chat_prompt,
+    memory_prompt,
+    title_prompt,
+)
+from neuron_server.llms.tools import default_tools
+from neuron_server.logger import logger
+from neuron_server.models.embedding_model import EmbeddingModel
 from neuron_server.tools.memory_recall_tool import (
     MemoryRecallTool,
     MemoryStats,
-    NO_MEMORIES_FOUND,
 )
-from neuron_server.tools.memory_store_tool import MemoryStoreTool
-from neuron_server.llms.prompts import memory_prompt
-from pydantic import BaseModel, Field
-from neuron_server.config import config
-from neuron_server.logger import logger
-from neuron_server.models.embedding_model import EmbeddingModel
-from neuron_server.llms.tools import default_tools
-import asyncio
-import time
 
 tokenizer = tiktoken.encoding_for_model("gpt-4o")
 
@@ -64,7 +60,7 @@ class MemoryRecallRanking(BaseModel):
 
 
 class MemoryResponse(BaseModel):
-    memory_recall_rankings: List[MemoryRecallRanking] = Field(
+    memory_recall_rankings: list[MemoryRecallRanking] = Field(
         description="A list of existing recall memories ranked by usefulness to the response"
     )
 
@@ -81,9 +77,9 @@ class LLM:
     def __init__(
         self,
         model: Runnable,
-        title_model: Optional[Runnable] = None,
-        memory_model: Optional[Runnable] = None,
-        provider_model_id: Optional[str] = None,
+        title_model: Runnable | None = None,
+        memory_model: Runnable | None = None,
+        provider_model_id: str | None = None,
     ):
         self.model = model
         self.title_model = title_model
@@ -94,7 +90,7 @@ class LLM:
 
     def create_workflow(
         self,
-        tools: Optional[List[BaseTool]] = None,
+        tools: list[BaseTool] | None = None,
     ):
         workflow = StateGraph(AgentState)
         model = self.model.bind_tools(tools or default_tools)
@@ -147,7 +143,7 @@ class LLM:
         state: AgentState,
         config: RunnableConfig,
     ):
-        logger.debug(f"Loading recall memories...")
+        logger.debug("Loading recall memories...")
         messages = [
             msg
             for msg in state["messages"]
@@ -183,7 +179,7 @@ class LLM:
         messages = state["messages"]
 
         chain = chat_prompt | model
-        logger.debug(f"Invoking model...")
+        logger.debug("Invoking model...")
         response: AIMessage = await chain.ainvoke(
             {
                 "messages": messages,
@@ -206,7 +202,7 @@ class LLM:
         state: AgentState,
         config: RunnableConfig,
     ):
-        logger.debug(f"Updating title...")
+        logger.debug("Updating title...")
         messages = [
             msg
             for msg in state["messages"]
@@ -229,7 +225,7 @@ class LLM:
         state: AgentState,
         config: RunnableConfig,
     ):
-        logger.debug(f"Ranking memories...")
+        logger.debug("Ranking memories...")
         start_time = time.perf_counter()
         messages = [
             msg
@@ -267,13 +263,13 @@ class LLM:
 
                     if ranking.useful:
                         stats["last_useful_at"] = int(
-                            datetime.now(timezone.utc).timestamp()
+                            datetime.now(UTC).timestamp()
                         )
                         stats["useful"] += 1
 
                     stats["total"] += 1
                     stats["last_recall_at"] = int(
-                        datetime.now(timezone.utc).timestamp()
+                        datetime.now(UTC).timestamp()
                     )
                     stats["scores"].append(ranking.score)
                     stats["scores"] = stats["scores"][-100:]
@@ -299,13 +295,11 @@ class LLM:
         if last_message.tool_calls:
             return "tools"
         # Otherwise if there is, we continue
-        else:
-            return "continue"
+        return "continue"
 
     def should_call_update_memory(
         self, state: AgentState
     ) -> Literal["update_memory", "continue"]:
         if len(state["recall_memories"]) > 0:
             return "update_memory"
-        else:
-            return "continue"
+        return "continue"

@@ -1,20 +1,22 @@
-from pydantic import BaseModel, Field
+from typing import Any
+
 import requests
-from typing import Dict, Any, List
+from pydantic import BaseModel, Field
+
 from neuron_server.logger import logger
 
 
 class State(BaseModel):
     entity_id: str
     state: str
-    attributes: Dict[str, Any]
+    attributes: dict[str, Any]
     last_changed: str
 
 
 class SensorState(State):
     last_reported: str
     last_updated: str
-    context: Dict[str, Any]
+    context: dict[str, Any]
 
 
 class HomeAssistantAPI(BaseModel):
@@ -33,7 +35,7 @@ class HomeAssistantAPI(BaseModel):
         res.raise_for_status()
         return SensorState(**res.json())
 
-    def get_sensor_states(self) -> List[SensorState]:
+    def get_sensor_states(self) -> list[SensorState]:
         url = f"{self.server}/api/states"
         logger.debug(f"GET {url}")
         res = requests.get(
@@ -43,7 +45,7 @@ class HomeAssistantAPI(BaseModel):
         res.raise_for_status()
         return [SensorState(**state) for state in res.json()]
 
-    def call_service(self, domain: str, service: str, entity_id: str) -> List[State]:
+    def call_service(self, domain: str, service: str, entity_id: str) -> list[State]:
         url = f"{self.server}/api/services/{domain}/{service}"
         logger.debug(f"POST {url}")
         res = requests.post(

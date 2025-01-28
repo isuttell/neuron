@@ -1,15 +1,16 @@
-import redis.asyncio as redis
-from redis.asyncio.retry import Retry
-from redis.backoff import ExponentialBackoff
-import json
 import asyncio
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Literal, Any, Set, TypedDict
-from dataclasses import dataclass
-import pytz
+import json
 import logging
 from abc import ABC, abstractmethod
 from contextlib import asynccontextmanager
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+from typing import Any, Literal, TypedDict
+
+import pytz
+import redis.asyncio as redis
+from redis.asyncio.retry import Retry
+from redis.backoff import ExponentialBackoff
 
 logger = logging.getLogger(__name__)
 
@@ -25,19 +26,19 @@ class RecurringPattern:
 
     interval: int
     unit: Literal["seconds", "minutes", "hours", "days", "weeks", "months"]
-    time_of_day: Optional[str] = (
+    time_of_day: str | None = (
         None  # HH:MM:SS or HH:MM format for daily/weekly/monthly
     )
-    day_of_week: Optional[int] = None  # 0-6 for weekly (0 is Monday)
-    day_of_month: Optional[int] = None  # 1-31 for monthly
+    day_of_week: int | None = None  # 0-6 for weekly (0 is Monday)
+    day_of_month: int | None = None  # 1-31 for monthly
 
 
 class ScheduledEvent(TypedDict):
     event_id: str
-    event_data: Dict[str, Any]
+    event_data: dict[str, Any]
     scheduled_time: str
     created_at: str
-    recurring_pattern: Optional[Dict[str, Any]]
+    recurring_pattern: dict[str, Any] | None
     time_remaining_seconds: int
 
 
@@ -79,7 +80,7 @@ class AsyncRedisEventScheduler(ABC):
     async def on_event(
         self,
         event_id: str,
-        event_data: Dict[str, Any],
+        event_data: dict[str, Any],
     ) -> None:
         """Event handler for triggered events."""
         raise NotImplementedError("on_event must be implemented")
@@ -93,7 +94,7 @@ class AsyncRedisEventScheduler(ABC):
         finally:
             await client.close()
 
-    async def get_event(self, event_id: str) -> Optional[Dict]:
+    async def get_event(self, event_id: str) -> dict | None:
         """Get details of a specific event. All times are in UTC."""
         try:
             async with self.redis_client() as client:
@@ -122,8 +123,8 @@ class AsyncRedisEventScheduler(ABC):
             return False
 
     async def list_events(
-        self, filters: Optional[Dict[str, Any]] = None
-    ) -> List[Dict[str, Any]]:
+        self, filters: dict[str, Any] | None = None
+    ) -> list[dict[str, Any]]:
         """List all scheduled events matching the filters.
 
         Args:
@@ -189,8 +190,8 @@ class AsyncRedisEventScheduler(ABC):
         self,
         event_id: str,
         event_data: dict,
-        trigger_time: Optional[datetime] = None,
-        recurring_pattern: Optional[RecurringPattern] = None,
+        trigger_time: datetime | None = None,
+        recurring_pattern: RecurringPattern | None = None,
     ):
         """Schedule an event with optional trigger_time and recurring pattern."""
         logger.debug(f"Scheduling event {event_id}")
@@ -435,7 +436,7 @@ class AsyncRedisEventScheduler(ABC):
             await asyncio.sleep(60)
 
     def _calculate_next_occurrence(
-        self, pattern: RecurringPattern, last_run: Optional[datetime] = None
+        self, pattern: RecurringPattern, last_run: datetime | None = None
     ) -> datetime:
         """Calculate the next occurrence based on the recurring pattern."""
         now = datetime.now(self.timezone)

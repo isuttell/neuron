@@ -1,10 +1,12 @@
-from uuid import UUID
-from neuron_server.database import get_session, MediaListItem
-from typing import Optional, List, Self
-from sqlalchemy import select
+import builtins
+from datetime import UTC, datetime
+from typing import Self
+from uuid import UUID, uuid4
+
 from pydantic import BaseModel, Field
-from uuid import uuid4
-from datetime import datetime, timezone
+from sqlalchemy import select
+
+from neuron_server.database import MediaListItem, get_session
 
 
 class MediaListItemModel(BaseModel):
@@ -13,10 +15,10 @@ class MediaListItemModel(BaseModel):
     media_item_id: UUID = Field(description="ID of the associated media item")
     index: int = Field(description="Index of the media item in the list")
     created_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc).astimezone()
+        default_factory=lambda: datetime.now(UTC).astimezone()
     )
     updated_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc).astimezone()
+        default_factory=lambda: datetime.now(UTC).astimezone()
     )
 
     @classmethod
@@ -25,7 +27,7 @@ class MediaListItemModel(BaseModel):
         media_list_id: UUID,
         media_item_id: UUID,
         index: int,
-        id: Optional[UUID] = None,
+        id: UUID | None = None,
     ) -> Self:
         async with get_session() as session:
             media_list_item = MediaListItem(
@@ -61,14 +63,14 @@ class MediaListItemModel(BaseModel):
             return cls(**media_list_item.__dict__)
 
     @classmethod
-    async def list(cls) -> List[Self]:
+    async def list(cls) -> list[Self]:
         async with get_session() as session:
             results = await session.execute(select(MediaListItem))
             records = results.scalars().all()
             return [cls(**item.__dict__) for item in records]
 
     @classmethod
-    async def get(cls, id: UUID) -> Optional[Self]:
+    async def get(cls, id: UUID) -> Self | None:
         async with get_session() as session:
             data = await session.get(MediaListItem, id)
             if data:
@@ -84,7 +86,7 @@ class MediaListItemModel(BaseModel):
             await session.commit()
 
     @classmethod
-    async def get_many(cls, ids: List[UUID]) -> List[Self]:
+    async def get_many(cls, ids: builtins.list[UUID]) -> builtins.list[Self]:
         async with get_session() as session:
             results = await session.execute(
                 select(MediaListItem).where(MediaListItem.id.in_(ids))
@@ -93,7 +95,7 @@ class MediaListItemModel(BaseModel):
             return [cls(**item.__dict__) for item in records]
 
     @classmethod
-    async def get_by_media_list(cls, media_list_id: UUID) -> List[Self]:
+    async def get_by_media_list(cls, media_list_id: UUID) -> builtins.list[Self]:
         async with get_session() as session:
             results = await session.execute(
                 select(MediaListItem).where(
@@ -104,7 +106,7 @@ class MediaListItemModel(BaseModel):
             return [cls(**item.__dict__) for item in records]
 
     @classmethod
-    async def get_by_media_item(cls, media_item_id: UUID) -> List[Self]:
+    async def get_by_media_item(cls, media_item_id: UUID) -> builtins.list[Self]:
         async with get_session() as session:
             results = await session.execute(
                 select(MediaListItem).where(
@@ -115,7 +117,7 @@ class MediaListItemModel(BaseModel):
             return [cls(**item.__dict__) for item in records]
 
     @classmethod
-    async def get_by_list(cls, list_id: UUID) -> List[Self]:
+    async def get_by_list(cls, list_id: UUID) -> builtins.list[Self]:
         async with get_session() as session:
             results = await session.execute(
                 select(MediaListItem)

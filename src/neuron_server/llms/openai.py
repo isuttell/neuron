@@ -1,6 +1,8 @@
+from typing import Literal
+
 from langchain_openai import ChatOpenAI
+
 from neuron_server.llms.llm import LLM
-from typing import Optional, Literal
 
 
 class OpenAILLM(LLM):
@@ -8,8 +10,8 @@ class OpenAILLM(LLM):
 
     def __init__(
         self,
-        model_id: Optional[str] = "gpt-4o",
-        provider_model_id: Optional[str] = None,
+        model_id: str | None = "gpt-4o",
+        provider_model_id: str | None = None,
     ):
         model = ChatOpenAI(
             model=model_id,

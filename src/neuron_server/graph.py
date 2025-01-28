@@ -1,24 +1,24 @@
-from langchain_neo4j import Neo4jGraph
-from langchain_openai import ChatOpenAI, OpenAIEmbeddings
-from langchain_anthropic import ChatAnthropic
-from neuron_server.config import config
-from langchain_core.prompts import ChatPromptTemplate
-from pydantic import BaseModel, Field
-from typing import List, Dict, Any, TypedDict, Annotated, Literal, Optional
-import asyncio
-from langchain_text_splitters import TokenTextSplitter
-import hashlib
-from neuron_server.logger import logger
-from operator import add
-from langgraph.graph import StateGraph, START, END
-from langchain_community.vectorstores import Neo4jVector
-import re
 import ast
-from langchain_core.runnables import RunnableConfig
+import asyncio
+import hashlib
+import json
+import re
 import time
 from datetime import datetime
-import json
-from langchain_core.prompts import PromptTemplate
+from operator import add
+from typing import Annotated, Any, Literal, TypedDict
+
+from langchain_community.vectorstores import Neo4jVector
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.runnables import RunnableConfig
+from langchain_neo4j import Neo4jGraph
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from langchain_text_splitters import TokenTextSplitter
+from langgraph.graph import END, START, StateGraph
+from pydantic import BaseModel, Field
+
+from neuron_server.config import config
+from neuron_server.logger import logger
 
 graph = Neo4jGraph(
     url=config.neo4j.url,
@@ -119,7 +119,7 @@ MERGE (start)-[:NEXT]->(end)
 
 
 class AtomicFact(BaseModel):
-    key_elements: List[str] = Field(
+    key_elements: list[str] = Field(
         description="""The essential nouns (e.g., characters, times, events, places, numbers), verbs (e.g.,actions), and adjectives (e.g., states, feelings) that are pivotal to the atomic fact's narrative."""
     )
     atomic_fact: str = Field(
@@ -131,7 +131,7 @@ class Extraction(BaseModel):
     description: str = Field(
         description="A short description of the extracted information"
     )
-    atomic_facts: List[AtomicFact] = Field(description="List of atomic facts")
+    atomic_facts: list[AtomicFact] = Field(description="List of atomic facts")
 
 
 model = ChatOpenAI(model="gpt-4o-2024-11-20", temperature=0.3, max_tokens=None)
@@ -146,7 +146,7 @@ class SummaryResponse(BaseModel):
     critical_analysis: str = Field(
         description="A detailed critical analysis of the extracted information. Identify inconsistencies and contradictions. Consider any biases or limitations. How trustworthy is the information? Is there evidence and supporting facts? What is the significance of the information? Provide future research recommendations if relevant."
     )
-    keywords: List[str] = Field(
+    keywords: list[str] = Field(
         description="A list of informative keywords or concepts that are important to the extracted information"
     )
 
@@ -168,15 +168,15 @@ def encode_md5(text: str) -> str:
 
 
 def import_chunks(
-    texts: List[str],
-    extractions: List[Extraction],
+    texts: list[str],
+    extractions: list[Extraction],
     document_id: str,
-    document_name: Optional[str] = None,
-    personality_id: Optional[str] = None,
-    user_id: Optional[str] = None,
-    source: Optional[str] = None,
+    document_name: str | None = None,
+    personality_id: str | None = None,
+    user_id: str | None = None,
+    source: str | None = None,
 ):
-    docs: List[Dict[str, Any]] = [extraction.model_dump() for extraction in extractions]
+    docs: list[dict[str, Any]] = [extraction.model_dump() for extraction in extractions]
     for index, doc in enumerate(docs):
         doc["chunk_id"] = encode_md5(texts[index])
         doc["chunk_text"] = texts[index]
@@ -204,7 +204,7 @@ def import_chunks(
 async def process_chunk(
     input: str,
     index: int,
-    config: Optional[RunnableConfig],
+    config: RunnableConfig | None,
     semaphore: asyncio.Semaphore,
     attempts: int = 3,
     retry_delay_seconds: int = 1,
@@ -233,9 +233,9 @@ async def process_chunk(
 
 class DocumentResult(BaseModel):
     document_id: str = Field(description="The ID of the document")
-    document_name: Optional[str] = Field(description="The name of the document")
-    source: Optional[str] = Field(description="The source of the document")
-    keywords: List[str] = Field(description="The keywords of the document")
+    document_name: str | None = Field(description="The name of the document")
+    source: str | None = Field(description="The source of the document")
+    keywords: list[str] = Field(description="The keywords of the document")
     summary: str = Field(description="The summary of the document")
     analysis: str = Field(description="The analysis of the document")
 
@@ -244,16 +244,16 @@ async def process_document(
     text: str,
     config: RunnableConfig,
     document_id: str,
-    document_name: Optional[str] = None,
-    source: Optional[str] = None,
+    document_name: str | None = None,
+    source: str | None = None,
     chunk_size: int = 2000,
     chunk_overlap: int = 200,
 ):
     start_time = time.perf_counter()
-    logger.debug(f"Started graph extraction...")
-    personality_id: Optional[str] = config["configurable"].get("personality_id")
+    logger.debug("Started graph extraction...")
+    personality_id: str | None = config["configurable"].get("personality_id")
     assert personality_id is not None
-    user_id: Optional[str] = config["configurable"].get("user_id")
+    user_id: str | None = config["configurable"].get("user_id")
     assert user_id is not None
 
     text_splitter = TokenTextSplitter(
@@ -264,7 +264,7 @@ async def process_document(
     # Limit to 10 concurrent tasks
     semaphore = asyncio.Semaphore(10)
     logger.debug(f"Extracting atomic facts from {len(texts)} text chunks")
-    extractions: List[Extraction] = await asyncio.gather(
+    extractions: list[Extraction] = await asyncio.gather(
         *[
             process_chunk(input=input, config=config, semaphore=semaphore, index=index)
             for index, input in enumerate(texts)
@@ -307,7 +307,7 @@ class InputState(TypedDict):
 class OutputState(TypedDict):
     answer: str
     analysis: str
-    previous_actions: List[str]
+    previous_actions: list[str]
 
 
 class OverallState(TypedDict):
@@ -315,10 +315,10 @@ class OverallState(TypedDict):
     question: str
     rational_plan: str
     notebook: str
-    previous_actions: Annotated[List[str], add]
-    check_atomic_facts_queue: List[str]
-    check_chunks_queue: List[str]
-    neighbor_check_queue: List[str]
+    previous_actions: Annotated[list[str], add]
+    check_atomic_facts_queue: list[str]
+    check_chunks_queue: list[str]
+    neighbor_check_queue: list[str]
     chosen_action: str
 
 
@@ -349,8 +349,7 @@ def parse_function(input_str):
                 arguments = [raw_arguments.strip()]
 
         return {"function_name": function_name, "arguments": arguments}
-    else:
-        return None
+    return None
 
 
 rational_plan_system = """As an intelligent assistant with access to a knowledge graph database, your primary objective is to answer the following question by gathering supporting facts from various articles using the notebook as a starting point. To facilitate this objective, the first step is to make a rational plan based on the question. This plan should outline the step-by-step process, in a few steps as possible, to resolve the question and specify the key information required to formulate a comprehensive answer. Use the message history if you need more context for the user's question. Do not answer the question, only make a plan to follow and determine the next action.
@@ -427,7 +426,7 @@ async def rational_plan_node(
 embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
 
 
-async def get_potential_nodes(question: str) -> List[str]:
+async def get_potential_nodes(question: str) -> list[str]:
     # Load it on demand here to generate the embeddings on the fly
     # @TODO find a better way to get the embeddings created
     neo4j_vector = Neo4jVector.from_existing_graph(
@@ -505,7 +504,7 @@ class Node(BaseModel):
 
 
 class InitialNodes(BaseModel):
-    initial_nodes: List[Node] = Field(
+    initial_nodes: list[Node] = Field(
         description="List of relevant nodes to the question and plan"
     )
 
@@ -629,8 +628,8 @@ class AtomFactResult(TypedDict):
 
 
 def get_atomic_facts(
-    key_elements: List[str], personality_id: str
-) -> List[AtomFactResult]:
+    key_elements: list[str], personality_id: str
+) -> list[AtomFactResult]:
     """
     Get the atomic facts for the given key elements and personality
     """
@@ -645,7 +644,7 @@ RETURN DISTINCT doc.id AS document_id, doc.name AS document_name, doc.source AS 
     return data
 
 
-def get_neighbors_by_key_element(key_elements: List[str], personality_id: str):
+def get_neighbors_by_key_element(key_elements: list[str], personality_id: str):
     logger.debug(f"Key elements: {key_elements}")
     data = graph.query(
         """
@@ -666,11 +665,11 @@ atomic_fact_chain = atomic_fact_check_prompt | model.with_structured_output(
 )
 
 
-def get_read_chunk_ids(previous_actions: List[str]) -> List[str]:
+def get_read_chunk_ids(previous_actions: list[str]) -> list[str]:
     """
     Get the list of chunks that have been read from the previous actions
     """
-    read_chunks: List[str] = []
+    read_chunks: list[str] = []
     for action in previous_actions:
         if action.startswith("read_chunk"):
             read_chunks.append(action.split("(")[1].split(")")[0].strip())
@@ -680,7 +679,7 @@ def get_read_chunk_ids(previous_actions: List[str]) -> List[str]:
 async def atomic_fact_check(
     state: OverallState, config: RunnableConfig
 ) -> OverallState:
-    personality_id: Optional[str] = config["configurable"].get("personality_id")
+    personality_id: str | None = config["configurable"].get("personality_id")
     assert personality_id is not None
     atomic_facts = get_atomic_facts(
         key_elements=state.get("check_atomic_facts_queue"),
@@ -717,7 +716,7 @@ async def atomic_fact_check(
         response["neighbor_check_queue"] = neighbors
     elif chosen_action.get("function_name") == "read_chunk":
         args = chosen_action.get("arguments")
-        check_chunks_queue: List[str] = (
+        check_chunks_queue: list[str] = (
             args[0]
             if isinstance(args, list) and len(args) > 0 and isinstance(args[0], list)
             else []
@@ -812,7 +811,7 @@ Chunk
 chunk_read_chain = chunk_read_prompt | model.with_structured_output(ChunkOutput)
 
 
-def get_subsequent_chunk_id(chunk_id: str, personality_id: str) -> Optional[str]:
+def get_subsequent_chunk_id(chunk_id: str, personality_id: str) -> str | None:
     data = graph.query(
         """
 MATCH (c:Chunk)-[:NEXT]->(next)
@@ -824,7 +823,7 @@ RETURN next.id AS next
     return data[0]["next"] if data else None
 
 
-def get_previous_chunk_id(chunk_id: str, personality_id: str) -> Optional[str]:
+def get_previous_chunk_id(chunk_id: str, personality_id: str) -> str | None:
     data = graph.query(
         """
 MATCH (c:Chunk)<-[:NEXT]-(previous)
@@ -842,7 +841,7 @@ class Chunk(TypedDict):
     document_id: str
 
 
-def get_chunk(chunk_id: str, personality_id: str) -> Optional[Chunk]:
+def get_chunk(chunk_id: str, personality_id: str) -> Chunk | None:
     data = graph.query(
         """
 MATCH (c:Chunk)
@@ -855,7 +854,7 @@ RETURN c.id AS chunk_id, c.text AS text, c.document_id AS document_id
 
 
 async def chunk_check(state: OverallState, config: RunnableConfig) -> OverallState:
-    personality_id: Optional[str] = config["configurable"].get("personality_id")
+    personality_id: str | None = config["configurable"].get("personality_id")
     assert personality_id is not None
     check_chunks_queue = state.get("check_chunks_queue")
     if len(check_chunks_queue) == 0:
@@ -990,7 +989,7 @@ neighbor_select_chain = neighbor_select_prompt | model.with_structured_output(
 
 
 async def neighbor_select(state: OverallState, config: RunnableConfig) -> OverallState:
-    logger.debug(f"Step: neighbor select")
+    logger.debug("Step: neighbor select")
     logger.debug(f"Possible candidates: {state.get('neighbor_check_queue')}")
     neighbor_select_results: NeighborOutput = await neighbor_select_chain.ainvoke(
         {
@@ -1018,7 +1017,7 @@ async def neighbor_select(state: OverallState, config: RunnableConfig) -> Overal
     return response
 
 
-def get_document(document_id: str, personality_id: str) -> Optional[Dict[str, str]]:
+def get_document(document_id: str, personality_id: str) -> dict[str, str] | None:
     data = graph.query(
         """
 MATCH (c:Chunk)<-[:HAS_CHUNK]-(doc:Document)
@@ -1124,7 +1123,7 @@ def atomic_fact_condition(
 ) -> Literal["neighbor_select", "chunk_check"]:
     if state.get("chosen_action") == "stop_and_read_neighbor":
         return "neighbor_select"
-    elif (
+    if (
         state.get("chosen_action") == "read_chunk"
         and len(state.get("check_chunks_queue", [])) > 0
     ):
@@ -1137,13 +1136,13 @@ def chunk_condition(
 ) -> Literal["answer_reasoning", "chunk_check", "neighbor_select"]:
     if state.get("chosen_action") == "termination":
         return "answer_reasoning"
-    elif state.get("chosen_action") in [
+    if state.get("chosen_action") in [
         "read_subsequent_chunk",
         "read_previous_chunk",
         "search_more",
     ]:
         return "chunk_check"
-    elif state.get("chosen_action") == "search_neighbor":
+    if state.get("chosen_action") == "search_neighbor":
         return "neighbor_select"
     logger.error(f"Unknown action: {state.get('chosen_action')}")
     return "neighbor_select"
@@ -1154,7 +1153,7 @@ def neighbor_condition(
 ) -> Literal["answer_reasoning", "atomic_fact_check"]:
     if state.get("chosen_action") == "termination":
         return "answer_reasoning"
-    elif state.get("chosen_action") == "read_neighbor_node":
+    if state.get("chosen_action") == "read_neighbor_node":
         return "atomic_fact_check"
 
 
@@ -1166,7 +1165,7 @@ def rational_plan_node_condition(
     return "answer_reasoning"
 
 
-async def initial_notebook(state: OverallState) -> List[str]:
+async def initial_notebook(state: OverallState) -> list[str]:
     neo4j_vector = Neo4jVector.from_existing_graph(
         url=config.neo4j.url,
         username=config.neo4j.username,

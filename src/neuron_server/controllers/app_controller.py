@@ -1,6 +1,7 @@
+from typing import Any
+
 from quart import Blueprint
-from typing import Dict, Any
-from neuron_server.controllers.auth import requires_auth
+
 from neuron_server.cache import get_cache_key
 from neuron_server.config import config
 
@@ -11,7 +12,7 @@ blueprint = Blueprint(
 
 
 @blueprint.get("/config")
-async def get_config() -> Dict[str, Any]:
+async def get_config() -> dict[str, Any]:
     """
     Returns application configuration settings.
 

@@ -53,5 +53,5 @@ class CommandRunner:
             return await asyncio.wait_for(
                 self.run_command(command, shell), timeout=timeout
             )
-        except asyncio.TimeoutError:
+        except TimeoutError:
             return -1, "", "Command timed out"

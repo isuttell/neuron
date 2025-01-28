@@ -1,10 +1,10 @@
-from langchain.tools import BaseTool
-from typing import Type, List
-from pydantic import BaseModel
 import asyncio
-from neuron_server.pubsub import pubsub
 import logging
+
+from langchain.tools import BaseTool
 from langchain_core.runnables import RunnableConfig
+from pydantic import BaseModel
+
 from neuron_server.models.media_list_model import MediaListModel
 
 logger = logging.getLogger(__name__)
@@ -20,7 +20,7 @@ class MediaListAccessTool(BaseTool):
         """This tool returns a list of all media lists that the user has access to (either owns or shared with them)."""
     )
 
-    args_schema: Type[MediaListAccessToolArgs] = MediaListAccessToolArgs
+    args_schema: type[MediaListAccessToolArgs] = MediaListAccessToolArgs
 
     def _run(self, *args, **kwargs) -> str:
         return asyncio.run(self._arun(*args, **kwargs))

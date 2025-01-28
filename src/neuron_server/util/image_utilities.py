@@ -1,10 +1,10 @@
-from typing import Tuple, Dict, Optional, List
-import os
-import logging
 import base64
+import logging
+import os
 from io import BytesIO
-from PIL import Image
+
 from pi_heif import register_heif_opener
+from PIL import Image
 
 register_heif_opener()
 
@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 def resize_with_padding(
-    image: Image.Image, target_size: Tuple[int, int]
+    image: Image.Image, target_size: tuple[int, int]
 ) -> Image.Image:
     # Calculate scaling factor to fit within target size
     ratio = min(target_size[0] / image.width, target_size[1] / image.height)
@@ -35,7 +35,7 @@ def resize_with_padding(
 
 def apply_exif_rotation(image: Image.Image) -> Image.Image:
     if hasattr(image, "_getexif"):  # Check if image has EXIF
-        exif: Optional[Dict[int, int]] = image._getexif()
+        exif: dict[int, int] | None = image._getexif()
         if exif is not None:
             orientation = exif.get(274)  # 274 is the orientation tag
             if orientation is not None:
@@ -43,15 +43,15 @@ def apply_exif_rotation(image: Image.Image) -> Image.Image:
                 rotate_values = {3: 180, 6: 270, 8: 90}
                 if orientation in rotate_values:
                     return image.rotate(rotate_values[orientation], expand=True)
-                elif orientation == 2:
+                if orientation == 2:
                     return image.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
-                elif orientation == 4:
+                if orientation == 4:
                     return image.transpose(Image.Transpose.FLIP_TOP_BOTTOM)
-                elif orientation == 5:
+                if orientation == 5:
                     return image.transpose(Image.Transpose.FLIP_LEFT_RIGHT).rotate(
                         270, expand=True
                     )
-                elif orientation == 7:
+                if orientation == 7:
                     return image.transpose(Image.Transpose.FLIP_LEFT_RIGHT).rotate(
                         90, expand=True
                     )
@@ -69,7 +69,7 @@ ThumbnailSizeMap = {
 
 def create_thumbnails(
     image_path: str,
-    sizes: List[str] = [
+    sizes: list[str] = [
         "t",
         "l",
         "xl",
@@ -115,7 +115,7 @@ def create_image_url(
     image: Image.Image,
     size: int = 1024,
 ) -> str:
-    logger.debug(f"Creating base64 thumbnail")
+    logger.debug("Creating base64 thumbnail")
     thumbnail = image.copy()
 
     # Resize image to ensure it's not too large

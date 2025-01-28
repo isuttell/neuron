@@ -1,9 +1,10 @@
+
 from langchain.tools import BaseTool
+from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.runnables import RunnableConfig
 from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field
-from typing import Type
-from langchain_core.runnables import RunnableConfig
-from langchain_core.messages import SystemMessage, HumanMessage
+
 from neuron_server.logger import logger
 
 
@@ -60,7 +61,7 @@ Key uses:
 """.strip()
     )
 
-    args_schema: Type[OpenAICompatibleToolArgs] = OpenAICompatibleToolArgs
+    args_schema: type[OpenAICompatibleToolArgs] = OpenAICompatibleToolArgs
 
     @property
     def base_url(self) -> str:

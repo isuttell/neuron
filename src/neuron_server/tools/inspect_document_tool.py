@@ -1,27 +1,28 @@
-from langchain.tools import BaseTool
-from neuron_server.logger import logger
-from pydantic import BaseModel, Field
-from typing import Type, Literal, Optional, Dict, Any
 import asyncio
-from langchain_core.runnables import RunnableConfig
-from neuron_server.graph import encode_md5
+import json
 import os
 import time
-from neuron_server.config import config as neuron_config
-import aiohttp
-from langchain_community.document_loaders import FireCrawlLoader
-import pymupdf4llm
-from langchain_core.documents import Document
-import json
-from neuron_server.cache import cache_response
-from typing import List
-from langchain_core.prompts import PromptTemplate
-from langchain_core.output_parsers import StrOutputParser
 from datetime import datetime
+from typing import Any, Literal
+
+import aiohttp
+import pymupdf4llm
+from langchain.tools import BaseTool
+from langchain_community.document_loaders import FireCrawlLoader
+from langchain_core.documents import Document
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.prompts import PromptTemplate
+from langchain_core.runnables import RunnableConfig
+from pydantic import BaseModel, Field
+
+from neuron_server.cache import cache_response
+from neuron_server.config import config as neuron_config
+from neuron_server.graph import encode_md5
+from neuron_server.logger import logger
 
 
 async def load_pdf_from_url(
-    url: str, metadata: Optional[Dict[str, Any]] = None
+    url: str, metadata: dict[str, Any] | None = None
 ) -> Document:
     temp_file = os.path.abspath(
         os.path.join(neuron_config.temp_folder, f"{encode_md5(url)}.pdf")
@@ -51,7 +52,7 @@ async def load_pdf_from_url(
 
 
 async def load_text_from_url(
-    url: str, metadata: Optional[Dict[str, Any]] = None
+    url: str, metadata: dict[str, Any] | None = None
 ) -> Document:
     async with aiohttp.ClientSession() as session:
         async with session.get(url) as response:
@@ -70,9 +71,9 @@ async def load_text_from_url(
 @cache_response(ttl=60 * 60 * 3)
 async def load_document_from_url(
     url: str,
-    metadata: Optional[Dict[str, Any]] = None,
+    metadata: dict[str, Any] | None = None,
     mode: Literal["scrape", "crawl"] = "scrape",
-) -> List[Document]:
+) -> list[Document]:
     metadata = {"updated_at": int(time.time()), **(metadata or {})}
     if (
         url.endswith(".txt")
@@ -85,22 +86,21 @@ async def load_document_from_url(
             url, metadata={"extension": url.rsplit(".")[-1], **metadata}
         )
         return [doc]
-    elif url.endswith(".pdf"):
+    if url.endswith(".pdf"):
         doc = await load_pdf_from_url(url, metadata={"extension": "pdf", **metadata})
         return [doc]
-    else:
-        if "zaks.io" in url or "192.168" in url:
-            raise DocumentInspectToolFailed(
-                "FireCrawl cannot access urls on the local network."
-            )
-
-        loader = FireCrawlLoader(
-            api_key=neuron_config.firecrawl_api_key, url=url, mode=mode
+    if "zaks.io" in url or "192.168" in url:
+        raise DocumentInspectToolFailed(
+            "FireCrawl cannot access urls on the local network."
         )
-        docs = await loader.aload()
-        for doc in docs:
-            doc.metadata["updated_at"] = int(time.time())
-        return docs
+
+    loader = FireCrawlLoader(
+        api_key=neuron_config.firecrawl_api_key, url=url, mode=mode
+    )
+    docs = await loader.aload()
+    for doc in docs:
+        doc.metadata["updated_at"] = int(time.time())
+    return docs
 
 
 class DocumentInspectToolFailed(Exception):
@@ -111,15 +111,15 @@ class DocumentInspectToolArgs(BaseModel):
     url: str = Field(
         description="The url of the document or website to inspect. Supports html websites, text files, pdfs, csvs, and markdown documents"
     )
-    mode: Optional[Literal["scrape", "crawl"]] = Field(
+    mode: Literal["scrape", "crawl"] | None = Field(
         "scrape",
         description="The mode of the website import. Can be 'scrape' or 'crawl'. Scrape is for a single url and Crawl is for the url and all accessible sub pages. Ignored when importing documents",
     )
-    add_facts_to_store: Optional[bool] = Field(
+    add_facts_to_store: bool | None = Field(
         False,
         description="If True, the document's atomic facts will be extracted and added to the document store. This is useful for long term memory.",
     )
-    summarize_prompt: Optional[str] = Field(
+    summarize_prompt: str | None = Field(
         None,
         description="If provided, the prompt will be used to summarize the document instead of returning the raw text. Use this to extract specific information from the document and reduce the amount of information returned. It should be in second person and be a detailed step by step guide to follow. It should include how detailed of an analysis to perform. Include relevant context to aid the analysis.",
     )
@@ -165,7 +165,7 @@ vtt
 pdf
 """.strip()
     )
-    args_schema: Type[DocumentInspectToolArgs] = DocumentInspectToolArgs
+    args_schema: type[DocumentInspectToolArgs] = DocumentInspectToolArgs
 
     def _run(self, *args, **kwargs) -> str:
         return asyncio.run(self._arun(*args, **kwargs))
@@ -175,7 +175,7 @@ pdf
         url: str,
         config: RunnableConfig,
         mode: str = "scrape",
-        summarize_prompt: Optional[str] = None,
+        summarize_prompt: str | None = None,
     ) -> str:
         try:
             # Record the start time for performance measurement
@@ -233,7 +233,7 @@ pdf
     """
                     )
 
-            summaries: List[str] = await asyncio.gather(*tasks)
+            summaries: list[str] = await asyncio.gather(*tasks)
             for index, summary in enumerate(summaries):
                 results.append(
                     f"""\

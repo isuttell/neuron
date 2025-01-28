@@ -1,18 +1,19 @@
+import asyncio
+import os
+import sys
+from datetime import datetime
+
+import arxiv
+from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.tools import BaseTool
+from langchain_anthropic import ChatAnthropic
+from langchain_core.runnables import RunnableConfig
+from pydantic import BaseModel, Field
+
 from neuron_server.config import config as neuron_config
 from neuron_server.logger import logger
-import arxiv
-import os
-from neuron_server.util.pdf import summarize_pages, summarize_document
-from langchain_anthropic import ChatAnthropic
-from datetime import datetime
-from pydantic import BaseModel, Field
-from typing import Type
-import asyncio
+from neuron_server.util.pdf import summarize_document, summarize_pages
 from neuron_server.vectorstores import arxiv_store
-import sys
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_core.runnables import RunnableConfig
 
 if sys.platform.startswith("win"):
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
@@ -41,7 +42,7 @@ class ArxivSummaryTool(BaseTool):
 This tool provides detailed, page-by-page summaries of research articles by their arXiv short IDs. The initial run may take some time as it downloads and processes the article, and adds it to the vector store for RAG, but a cached summary is saved for faster access on future requests. Only use this tool if you can't answer the question based on the information you have as it is slower than other tools.
 """.strip()
     )
-    args_schema: Type[ArxivSummaryArgs] = ArxivSummaryArgs
+    args_schema: type[ArxivSummaryArgs] = ArxivSummaryArgs
 
     def _run(self, id: str, force_resummarize: bool = False) -> str:
         return asyncio.run(self._arun(id, force_resummarize))
@@ -96,7 +97,7 @@ This tool provides detailed, page-by-page summaries of research articles by thei
             )
 
             if not force_resummarize and os.path.exists(summary_file_path):
-                with open(summary_file_path, "r") as file:
+                with open(summary_file_path) as file:
                     return f"Summary already exists:\n{file.read()}"
 
             page_summaries, documents = await summarize_pages(

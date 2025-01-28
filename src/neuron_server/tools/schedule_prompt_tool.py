@@ -1,13 +1,14 @@
-from langchain.tools import BaseTool
-from typing import List, Type, Literal, Optional
-from pydantic import BaseModel, Field
-import random
-from neuron_server.logger import logger
-from datetime import datetime
 import asyncio
-from langchain_core.runnables import RunnableConfig
-from uuid import uuid4
 import json
+from datetime import datetime
+from typing import Literal
+from uuid import uuid4
+
+from langchain.tools import BaseTool
+from langchain_core.runnables import RunnableConfig
+from pydantic import BaseModel, Field
+
+from neuron_server.logger import logger
 
 
 class RecurringPattern(BaseModel):
@@ -15,24 +16,24 @@ class RecurringPattern(BaseModel):
     unit: Literal["seconds", "minutes", "hours", "days", "weeks", "months"] = Field(
         description="The unit of time to trigger the prompt"
     )
-    time_of_day: Optional[str] = Field(
+    time_of_day: str | None = Field(
         description="HH:MM:SS or HH:MM format for daily/weekly/monthly. Must be in UTC."
     )
-    day_of_week: Optional[int] = Field(description="0-6 for weekly (0 is Monday)")
-    day_of_month: Optional[int] = Field(description="1-31 for monthly")
+    day_of_week: int | None = Field(description="0-6 for weekly (0 is Monday)")
+    day_of_month: int | None = Field(description="1-31 for monthly")
 
 
 class SchedulePromptToolArgs(BaseModel):
-    event_id: Optional[str] = Field(
+    event_id: str | None = Field(
         description="If provided this event will be updated instead of creating a new one."
     )
-    prompt: Optional[str] = Field(
+    prompt: str | None = Field(
         description="The prompt to run. Required when creating a new event and event_id is not provided. It should be self contained and include all relevant context and and step by step instructions. It should be in 2nd person describing the action to take. It will be executed by the assistant at the scheduled time. Do not include schedule information in the prompt unless it needs to to be dynamic."
     )
-    trigger_time: Optional[datetime] = Field(
+    trigger_time: datetime | None = Field(
         description="The time to trigger the prompt. Must be at least 30 seconds in the future to take into account the time it takes to process the request. Must be in UTC."
     )
-    recurring_pattern: Optional[RecurringPattern] = Field(
+    recurring_pattern: RecurringPattern | None = Field(
         description="The recurring pattern to trigger the prompt. Must be in UTC."
     )
 
@@ -45,7 +46,7 @@ Schedules or edits an action to be taken on this thread at a given time or on a 
 """.strip()
     )
 
-    args_schema: Type[SchedulePromptToolArgs] = SchedulePromptToolArgs
+    args_schema: type[SchedulePromptToolArgs] = SchedulePromptToolArgs
 
     def _run(self, *args, **kwargs) -> str:
         return asyncio.run(self._arun(*args, **kwargs))
@@ -53,10 +54,10 @@ Schedules or edits an action to be taken on this thread at a given time or on a 
     async def _arun(
         self,
         config: RunnableConfig,
-        prompt: Optional[str] = None,
-        event_id: Optional[str] = None,
-        trigger_time: Optional[datetime] = None,
-        recurring_pattern: Optional[RecurringPattern] = None,
+        prompt: str | None = None,
+        event_id: str | None = None,
+        trigger_time: datetime | None = None,
+        recurring_pattern: RecurringPattern | None = None,
     ) -> str:
         try:
             from neuron_server.api import scheduler

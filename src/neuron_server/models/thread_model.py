@@ -1,12 +1,12 @@
-from uuid import UUID
-from typing import List, Optional
-from neuron_server.database import get_session, Thread, Message
-from sqlalchemy import select, func, and_
-from pydantic import BaseModel, Field
-from uuid import uuid4
-from datetime import datetime, timezone, timedelta
-from typing import Literal, Self, Any
-from pydantic import field_serializer
+import builtins
+from datetime import UTC, datetime, timedelta
+from typing import Any, Self
+from uuid import UUID, uuid4
+
+from pydantic import BaseModel, Field, field_serializer
+from sqlalchemy import select
+
+from neuron_server.database import Thread, get_session
 
 
 class ThreadModel(BaseModel):
@@ -33,10 +33,10 @@ class ThreadModel(BaseModel):
         default=0,
     )
     created_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc).astimezone()
+        default_factory=lambda: datetime.now(UTC).astimezone()
     )
     updated_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc).astimezone()
+        default_factory=lambda: datetime.now(UTC).astimezone()
     )
 
     @field_serializer("created_at", "updated_at")
@@ -48,12 +48,12 @@ class ThreadModel(BaseModel):
         cls,
         personality_id: UUID,
         user_id: str,
-        name: Optional[str] = "",
-        context: Optional[str] = "",
-        memory: Optional[str] = "",
-        status: Optional[str] = "idle",
-        id: Optional[UUID] = None,
-        message_count: Optional[int] = 0,
+        name: str | None = "",
+        context: str | None = "",
+        memory: str | None = "",
+        status: str | None = "idle",
+        id: UUID | None = None,
+        message_count: int | None = 0,
     ) -> Self:
         async with get_session() as session:
             thread = Thread(
@@ -97,7 +97,7 @@ class ThreadModel(BaseModel):
             return cls(**thread.__dict__)
 
     @classmethod
-    async def get(cls, id: UUID) -> Optional[Self]:
+    async def get(cls, id: UUID) -> Self | None:
         async with get_session() as session:
             data = await session.get(Thread, id)
             if data:
@@ -106,8 +106,8 @@ class ThreadModel(BaseModel):
 
     @classmethod
     async def list(
-        cls, personality_id: UUID, user_id: Optional[str] = None
-    ) -> List[Self]:
+        cls, personality_id: UUID, user_id: str | None = None
+    ) -> list[Self]:
         async with get_session() as session:
             query = select(Thread).where(Thread.personality_id == personality_id)
             if user_id:
@@ -142,8 +142,8 @@ class ThreadModel(BaseModel):
 
     @classmethod
     async def get_recent_threads(
-        cls, hours: int = 1, limit: int = 10, user_id: Optional[str] = None
-    ) -> List[Self]:
+        cls, hours: int = 1, limit: int = 10, user_id: str | None = None
+    ) -> builtins.list[Self]:
         """Get all threads that have received messages in the last specified hours.
 
         Args:
@@ -155,7 +155,7 @@ class ThreadModel(BaseModel):
             List of ThreadModel instances with recent messages
         """
         async with get_session() as session:
-            cutoff_time = datetime.now(timezone.utc) - timedelta(hours=hours)
+            cutoff_time = datetime.now(UTC) - timedelta(hours=hours)
 
             query = (
                 select(Thread)

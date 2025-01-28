@@ -1,12 +1,12 @@
-from langchain.tools import BaseTool
-from typing import Type
-from pydantic import BaseModel, Field
-from neuron_server.config import config
-import time
-import aiohttp
 import asyncio
-from neuron_server.logger import logger
+
+import aiohttp
+from langchain.tools import BaseTool
+from pydantic import BaseModel, Field
+
 from neuron_server.cache import cache_response
+from neuron_server.config import config
+from neuron_server.logger import logger
 
 
 @cache_response(ttl=60 * 60 * 6)
@@ -40,7 +40,7 @@ class AstrosphericForecastTool(BaseTool):
 This tool provides an 81-hour astronomical forecast using Astrospheric's API, updating every 6 hours. It evaluates key observing conditions including cloud cover (0-100%, where 0% is clear), atmospheric transparency, and seeing conditions. The transparency index (0-27+) indicates overall atmospheric clarity, with lower numbers being better: 0-5 excellent, 6-9 above average, 10-13 average, 14-23 below average, 24-27 poor, >27 cloudy. The seeing index (0-5) measures atmospheric stability affecting image steadiness: 0 cloudy, 1 poor, 2 below average, 3 average, 4 above average, 5 excellent. Additional parameters include temperature, dew point, wind velocity, and direction. Use this tool to identify optimal viewing windows when transparency and seeing conditions are favorable (lower transparency numbers, higher seeing numbers) and cloud cover is minimal.""".strip()
     )
 
-    args_schema: Type[AstrosphericForecastToolArgs] = AstrosphericForecastToolArgs
+    args_schema: type[AstrosphericForecastToolArgs] = AstrosphericForecastToolArgs
 
     def _run(self, *args, **kwargs):
         return asyncio.run(self._arun(*args, **kwargs))

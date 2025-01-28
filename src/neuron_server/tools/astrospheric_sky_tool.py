@@ -1,12 +1,12 @@
-from langchain.tools import BaseTool
-from typing import Type
-from pydantic import BaseModel, Field
-from neuron_server.config import config
-import time
-import aiohttp
 import asyncio
-from neuron_server.logger import logger
+
+import aiohttp
+from langchain.tools import BaseTool
+from pydantic import BaseModel, Field
+
 from neuron_server.cache import cache_response
+from neuron_server.config import config
+from neuron_server.logger import logger
 
 
 @cache_response(ttl=60 * 60 * 24)
@@ -45,7 +45,7 @@ Provided a Latitude, Longitude, and time (in UTC), this function will return the
 """.strip()
     )
 
-    args_schema: Type[AstrosphericSkyToolArgs] = AstrosphericSkyToolArgs
+    args_schema: type[AstrosphericSkyToolArgs] = AstrosphericSkyToolArgs
 
     def _run(self, *args, **kwargs):
         return asyncio.run(self._arun(*args, **kwargs))

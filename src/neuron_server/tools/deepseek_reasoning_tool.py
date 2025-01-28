@@ -1,14 +1,15 @@
-from typing import Any, Dict, Optional, Type
-from pydantic import BaseModel, Field
-from neuron_server.tools.openai_compatible_tool import OpenAICompatibleTool
-from neuron_server.config import config
-from langchain_core.messages import SystemMessage, HumanMessage
-from langchain_core.runnables import RunnableConfig
 import logging
 import time
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+
+from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.output_parsers import StrOutputParser
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.runnables import RunnableConfig
 from langchain_openai import ChatOpenAI
+from pydantic import BaseModel, Field
+
+from neuron_server.config import config
+from neuron_server.tools.openai_compatible_tool import OpenAICompatibleTool
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +61,7 @@ Ideal for:
 """.strip()
     )
 
-    args_schema: Type[DeepSeekReasoningToolArgs] = DeepSeekReasoningToolArgs
+    args_schema: type[DeepSeekReasoningToolArgs] = DeepSeekReasoningToolArgs
 
     base_system_prompt: str = (
         """

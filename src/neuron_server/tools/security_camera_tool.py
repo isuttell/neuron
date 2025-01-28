@@ -1,27 +1,26 @@
-from langchain_core.tools import BaseTool
+import asyncio
+import base64
+import os
+import time
+from datetime import datetime, timedelta
 from enum import Enum
+from io import BytesIO
+from typing import Literal
+
 import cv2
 import numpy as np
-from PIL import Image
-import time
-import asyncio
-from neuron_server.logger import logger
-from neuron_server.config import config as neuron_config
-import PIL.PngImagePlugin as PngImagePlugin
-from datetime import datetime, timedelta
-from langchain_openai import ChatOpenAI
-from langchain_anthropic import ChatAnthropic
-from langchain_core.messages import SystemMessage, HumanMessage
-from typing import List, Type, Tuple, Optional
-from langchain_core.output_parsers import StrOutputParser
 from cv2.typing import MatLike
-import base64
+from langchain_anthropic import ChatAnthropic
+from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.runnables import Runnable, RunnableConfig
+from langchain_core.tools import BaseTool
+from langchain_openai import ChatOpenAI
+from PIL import Image, PngImagePlugin
 from pydantic import BaseModel, Field
-from io import BytesIO
-from langchain_core.runnables import Runnable
-from typing import Literal
-from langchain_core.runnables import RunnableConfig
-import os
+
+from neuron_server.config import config as neuron_config
+from neuron_server.logger import logger
 from neuron_server.util.image_utilities import create_thumbnails
 
 
@@ -50,11 +49,11 @@ device_descriptions = {
 async def inspect_images(
     prompt: str,
     model: Runnable,
-    image_urls: List[str],
+    image_urls: list[str],
     start_time: datetime,
     fps: float,
     max_tokens: int = 4000,
-    config: Optional[RunnableConfig] = None,
+    config: RunnableConfig | None = None,
 ):
     logger.debug(f"Inspecting {len(image_urls)} images with prompt: {prompt}")
 
@@ -96,7 +95,7 @@ Parameters:
 
 async def get_frames_from_camera(
     camera: str, frame_count: int = 3, fps: float = 1
-) -> List[str]:
+) -> list[str]:
     logger.debug(f"Getting {frame_count} frames from {camera} at {fps} FPS")
     cap = cv2.VideoCapture(devices[camera])
     if not cap.isOpened():
@@ -126,7 +125,7 @@ async def get_frames_from_camera(
 
 
 async def convert_frame_to_image_url(
-    frame: MatLike, max_dimensions: Tuple[int, int] = (768, 2000)
+    frame: MatLike, max_dimensions: tuple[int, int] = (768, 2000)
 ):
     img = frame.astype(np.uint8)
     height, width, _ = img.shape
@@ -141,9 +140,9 @@ async def convert_frame_to_image_url(
 
 
 def save_images(
-    image_urls: List[str], camera: str, start_time: datetime, fps: float
-) -> List[str]:
-    results: List[str] = []
+    image_urls: list[str], camera: str, start_time: datetime, fps: float
+) -> list[str]:
+    results: list[str] = []
     for i, data_url in enumerate(image_urls):
         capture_time = start_time + timedelta(seconds=i / fps)
         image_data = base64.b64decode(data_url.split(",")[1])
@@ -179,11 +178,11 @@ class SecurityCameraToolArgs(BaseModel):
     camera_name: CameraName = Field(
         description="The camera to use. Must be one of: front_door, backyard, garage, kitty_cam"
     )
-    frame_count: Optional[int] = Field(
+    frame_count: int | None = Field(
         description="The number of frames to capture. Defaults to 3. Max is 10.",
         default=3,
     )
-    fps: Optional[float] = Field(
+    fps: float | None = Field(
         description="The number of frames per second to capture. Defaults to 1.",
         default=1,
     )
@@ -194,7 +193,7 @@ class SecurityCameraTool(BaseTool):
     description: str = (
         "This tool captures a series of images from live security cameras and uses an AI to answer questions about them. The security cameras are located at: front yard and door, backyard, inside the garage, and kitty cam in the master bathroom. Use this tool to answer questions about what is happening outside or inside the house. For example, you can use this tool to answer questions like 'Is a package being delivered?' or 'Is anyone in the backyard?'. Show the most relevant image in your response."
     )
-    args_schema: Type[SecurityCameraToolArgs] = SecurityCameraToolArgs
+    args_schema: type[SecurityCameraToolArgs] = SecurityCameraToolArgs
 
     def _run(
         self,
@@ -208,9 +207,9 @@ class SecurityCameraTool(BaseTool):
         prompt: str,
         camera_name: CameraName,
         config: RunnableConfig,
-        frame_count: Optional[int] = 3,
-        fps: Optional[float] = 1,
-        provider: Optional[Literal["openai", "anthropic"]] = "openai",
+        frame_count: int | None = 3,
+        fps: float | None = 1,
+        provider: Literal["openai", "anthropic"] | None = "openai",
     ) -> str:
         try:
             camera: str = (

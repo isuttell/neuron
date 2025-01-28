@@ -1,16 +1,16 @@
-from neuron_server.logger import logger
-import asyncio
-from neuron_server.config import config as neuron_config
 import os
-from uuid import uuid4
+import shutil
 import subprocess
 import time
-import shutil
-from typing import List
+from uuid import uuid4
+
+from langchain_core.runnables import RunnableConfig
+
+from neuron_server.config import config as neuron_config
+from neuron_server.logger import logger
+from neuron_server.models.media_item_model import MediaItemModel
 from neuron_server.util.image_utilities import create_thumbnails
 from neuron_server.util.subprocess_runner import run_subprocess
-from langchain_core.runnables import RunnableConfig
-from neuron_server.models.media_item_model import MediaItemModel
 
 
 class RestrictedKeywordError(Exception):
@@ -73,26 +73,26 @@ def get_media_type(file_path: str) -> str:
         ".webp",
     ]:
         return "image"
-    elif ext in [
+    if ext in [
         ".mp4",
         ".mov",
         ".webm",
     ]:
         return "video"
-    elif ext in [
+    if ext in [
         ".mp3",
         ".wav",
         ".ogg",
     ]:
         return "audio"
-    elif ext in [
+    if ext in [
         ".html",
         ".htm",
     ]:
         return "html"
-    elif ext in [".py", ".js", ".ts", ".jsx", ".tsx"]:
+    if ext in [".py", ".js", ".ts", ".jsx", ".tsx"]:
         return "code"
-    elif ext in [
+    if ext in [
         ".pdf",
         ".csv",
         ".txt",
@@ -181,7 +181,7 @@ async def run_code_interpreter(
             temp_artifacts_folder,
             artifacts_folder,
         )
-        artifacts: List[str] = []
+        artifacts: list[str] = []
 
         # Copy the source code to the artifacts folder
         src_filename = "source_code.py"
@@ -217,6 +217,6 @@ async def run_code_interpreter(
             else:
                 artifacts.append(f"<link>[{file}]({url})</link>")
         return process.stdout.strip() if process.stdout else "", artifacts
-    except asyncio.TimeoutError:
+    except TimeoutError:
         await force_stop_code_interpreter()
         raise Exception(f"python code execution timed out after {timeout} seconds")

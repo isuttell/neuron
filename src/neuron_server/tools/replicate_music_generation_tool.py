@@ -1,17 +1,18 @@
-from langchain.tools import BaseTool
-from typing import Type, Optional, Literal
-from pydantic import BaseModel, Field
-import replicate.helpers
 import asyncio
-import replicate
-import aiohttp
-from uuid import uuid4
-import os
-from neuron_server.config import config as neuron_config
-import aiofiles
-import re
 import logging
+import os
+from typing import Literal
+from uuid import uuid4
+
+import aiofiles
+import aiohttp
+import replicate
+import replicate.helpers
+from langchain.tools import BaseTool
 from langchain_core.runnables import RunnableConfig
+from pydantic import BaseModel, Field
+
+from neuron_server.config import config as neuron_config
 from neuron_server.models.media_item_model import MediaItemModel
 from neuron_server.util.slug import safe_filename
 
@@ -23,24 +24,24 @@ class ReplicateMusicGenerationToolArgs(BaseModel):
         description="A unique display name for the audio generation less than 256 characters"
     )
     prompt: str = Field(description="A description of the music you want to generate.")
-    input_audio: Optional[str] = Field(
+    input_audio: str | None = Field(
         description="An audio file url that will influence the generated music. If continuation is True, the generated music will be a continuation of the audio file. Otherwise, the generated music will mimic the audio file's melody. The input audio duration must be shorter than to requested duration. Use the ffmpeg tool to trim the input audio file to the desired length of approximately 10 seconds for a 60 second clip.",
         default=None,
     )
-    duration: Optional[int] = Field(
+    duration: int | None = Field(
         description="Duration of the generated audio in seconds.", default=6
     )
-    continuation: Optional[bool] = Field(
+    continuation: bool | None = Field(
         description="If True, generated music will continue from input_audio. Otherwise, generated music will mimic input_audio's melody.",
         default=False,
     )
     # model_version: Optional[
     #     Literal["stereo-melody-large", "melody-large", "stereo-large", "large"]
     # ] = Field(description="Model to use for generation", default="stereo-melody-large")
-    continuation_start: Optional[int] = Field(
+    continuation_start: int | None = Field(
         description="Start time of the audio file to use for continuation.", default=0
     )
-    continuation_end: Optional[int] = Field(
+    continuation_end: int | None = Field(
         description="End time of the audio file to use for continuation. If -1, will default to end of clip.",
         default=-1,
     )
@@ -48,25 +49,25 @@ class ReplicateMusicGenerationToolArgs(BaseModel):
     #     description="If True, EnCodec tokens will be decoded with MultiBand Diffusion. Only works with non-stereo models.",
     #     default=False,
     # )
-    normalization_strategy: Optional[Literal["loudness", "peak", "clip", "rms"]] = (
+    normalization_strategy: Literal["loudness", "peak", "clip", "rms"] | None = (
         Field(description="Strategy for normalizing audio.", default="loudness")
     )
-    top_k: Optional[int] = Field(
+    top_k: int | None = Field(
         description="Reduces sampling to the k most likely tokens.", default=250
     )
-    top_p: Optional[float] = Field(
+    top_p: float | None = Field(
         description="Reduces sampling to tokens with cumulative probability of p. When 0, top_k sampling is used.",
         default=0,
     )
-    temperature: Optional[float] = Field(
+    temperature: float | None = Field(
         description="Controls the 'conservativeness' of the sampling process. Higher temperature means more diversity.",
         default=1.0,
     )
-    classifier_free_guidance: Optional[int] = Field(
+    classifier_free_guidance: int | None = Field(
         description="Increases influence of inputs on output. Higher values produce lower-variance outputs that adhere more closely to inputs.",
         default=3,
     )
-    seed: Optional[int] = Field(
+    seed: int | None = Field(
         description="Seed for random number generator. If None or -1, a random seed will be used.",
         default=-1,
     )
@@ -84,7 +85,7 @@ If you get a "Prompt is longer than audio to generate" error then the input audi
 """.strip()
     )
 
-    args_schema: Type[ReplicateMusicGenerationToolArgs] = (
+    args_schema: type[ReplicateMusicGenerationToolArgs] = (
         ReplicateMusicGenerationToolArgs
     )
 
@@ -100,7 +101,7 @@ If you get a "Prompt is longer than audio to generate" error then the input audi
         prompt: str,
         name: str,
         config: RunnableConfig,
-        input_audio: Optional[str] = None,
+        input_audio: str | None = None,
         **kwargs,
     ) -> str:
         logger.debug(f"Generating music with prompt: {prompt}")

@@ -1,59 +1,68 @@
-from quart import Quart, websocket, send_from_directory, Blueprint
+import asyncio
 import json
+import logging
+import os
+import re
+from functools import wraps
+
 import openai
+from quart import Blueprint, Quart, Response, send_from_directory, websocket
+from werkzeug.exceptions import HTTPException
+
 from neuron_server.config import config
-from neuron_server.event_router import EventRouter, ErrorEvent
-from neuron_server.controllers.thread_controller import (
-    router as thread_router,
-    blueprint as thread_blueprint,
-)
-from neuron_server.controllers.message_controller import (
-    router as message_router,
-    blueprint as message_blueprint,
-)
-from neuron_server.controllers.personality_controller import (
-    router as personality_router,
-    blueprint as personality_blueprint,
-)
-from neuron_server.controllers.image_controller import (
-    router as image_router,
-    blueprint as image_blueprint,
-)
-from neuron_server.controllers.webhook_controller import blueprint as webhook_blueprint
-from neuron_server.controllers.graph_controller import (
-    blueprint as graph_blueprint,
-)
-from neuron_server.controllers.prompt_controller import (
-    router as prompt_router,
-    blueprint as prompt_blueprint,
-)
 from neuron_server.controllers.app_controller import (
     blueprint as app_blueprint,
 )
+from neuron_server.controllers.auth import decode_token
 from neuron_server.controllers.embedding_controller import (
     blueprint as embedding_blueprint,
 )
+from neuron_server.controllers.graph_controller import (
+    blueprint as graph_blueprint,
+)
+from neuron_server.controllers.image_controller import (
+    blueprint as image_blueprint,
+)
+from neuron_server.controllers.image_controller import (
+    router as image_router,
+)
 from neuron_server.controllers.media_controller import blueprint as media_blueprint
-from functools import wraps
-from quart import Response
-from typing import Optional
-import asyncio
-from neuron_server.database import pool
-from neuron_server.pubsub import client
-import re
-import os
-import logging
-from neuron_server.util.image_utilities import create_thumbnails
-from neuron_server.controllers.auth import decode_token
-from werkzeug.exceptions import HTTPException
-from neuron_server.task_scheduler import TaskScheduler
-from neuron_server.controllers.scheduler_controller import (
-    blueprint as scheduler_blueprint,
+from neuron_server.controllers.message_controller import (
+    blueprint as message_blueprint,
+)
+from neuron_server.controllers.message_controller import (
+    router as message_router,
+)
+from neuron_server.controllers.personality_controller import (
+    blueprint as personality_blueprint,
+)
+from neuron_server.controllers.personality_controller import (
+    router as personality_router,
+)
+from neuron_server.controllers.prompt_controller import (
+    blueprint as prompt_blueprint,
+)
+from neuron_server.controllers.prompt_controller import (
+    router as prompt_router,
 )
 from neuron_server.controllers.provider_controller import (
     provider_blueprint as provider_blueprint,
 )
-
+from neuron_server.controllers.scheduler_controller import (
+    blueprint as scheduler_blueprint,
+)
+from neuron_server.controllers.thread_controller import (
+    blueprint as thread_blueprint,
+)
+from neuron_server.controllers.thread_controller import (
+    router as thread_router,
+)
+from neuron_server.controllers.webhook_controller import blueprint as webhook_blueprint
+from neuron_server.database import pool
+from neuron_server.event_router import EventRouter
+from neuron_server.pubsub import client
+from neuron_server.task_scheduler import TaskScheduler
+from neuron_server.util.image_utilities import create_thumbnails
 
 logger = logging.getLogger(__name__)
 
@@ -101,7 +110,7 @@ def cors(
 
 
 def cache_control(
-    max_age: Optional[int] = None,
+    max_age: int | None = None,
     no_cache: bool = False,
     private: bool = False,
     public: bool = False,

@@ -1,12 +1,13 @@
-from quart import Blueprint, request
-from neuron_server.logger import logger
 from uuid import UUID
-from neuron_server.llms.agent import execute_agent
+
 from pydantic import BaseModel
-from typing import Optional
+from quart import Blueprint, request
 from werkzeug.exceptions import BadRequest
-from neuron_server.tools.code_interpreter_api import run_code_interpreter
+
 from neuron_server.controllers.auth import requires_auth
+from neuron_server.llms.agent import execute_agent
+from neuron_server.logger import logger
+from neuron_server.tools.code_interpreter_api import run_code_interpreter
 
 blueprint = Blueprint(
     "webhooks",
@@ -15,7 +16,7 @@ blueprint = Blueprint(
 
 
 class PromptRequest(BaseModel):
-    run_name: Optional[str] = None
+    run_name: str | None = None
     prompt: str
     personality_id: UUID
 

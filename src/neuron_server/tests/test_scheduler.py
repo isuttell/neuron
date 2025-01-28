@@ -1,9 +1,11 @@
-import pytest
 import asyncio
-from datetime import datetime, timedelta
-import pytz
 import json
-from unittest.mock import AsyncMock, MagicMock, patch, call
+from datetime import datetime, timedelta
+from unittest.mock import AsyncMock, call, patch
+
+import pytest
+import pytz
+
 from neuron_server.util.scheduler import AsyncRedisEventScheduler, RecurringPattern
 
 

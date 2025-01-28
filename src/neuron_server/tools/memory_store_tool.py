@@ -1,19 +1,19 @@
-from langchain.tools import BaseTool
-from typing import Type, List
-from pydantic import BaseModel, Field
-from neuron_server.logger import logger
 import asyncio
 import time
-from neuron_server.vectorstores import memories_store
-from langchain_core.runnables import RunnableConfig
-from langchain_core.documents import Document
 from uuid import uuid4
+
+from langchain.tools import BaseTool
+from langchain_core.documents import Document
+from langchain_core.runnables import RunnableConfig
+from pydantic import BaseModel, Field
+
+from neuron_server.logger import logger
 from neuron_server.tools.memory_recall_tool import MemoryStats
-from datetime import datetime, timezone
+from neuron_server.vectorstores import memories_store
 
 
 class MemoryStoreToolArgs(BaseModel):
-    memories: List[str] = Field(
+    memories: list[str] = Field(
         description="A detailed list of memories to save. Be specific. It will be used for in a semantic text search and RAG. Do not use pronouns. Include all relevant details and references. Each memory must be self contained and not rely on other memories for context. Provide quotes for any specific information."
     )
 
@@ -24,14 +24,14 @@ class MemoryStoreTool(BaseTool):
         "This tool allows you to save memories for later retrieval. Use this when the user asks for you to remember something or you otherwise need to remember something novel."
     )
 
-    args_schema: Type[MemoryStoreToolArgs] = MemoryStoreToolArgs
+    args_schema: type[MemoryStoreToolArgs] = MemoryStoreToolArgs
 
-    def _run(self, memories: List[str], config: RunnableConfig) -> str:
+    def _run(self, memories: list[str], config: RunnableConfig) -> str:
         return asyncio.run(self._arun(memories, config))
 
     async def _arun(
         self,
-        memories: List[str],
+        memories: list[str],
         config: RunnableConfig,
     ) -> str:
         try:
@@ -58,7 +58,7 @@ class MemoryStoreTool(BaseTool):
                 [f"- {memory.page_content}" for memory in documents]
             )
             logger.debug(f"Saved memories:\n{memories_str}")
-            return f"Memories saved"
+            return "Memories saved"
         except Exception as e:
             logger.error(e, exc_info=True)
             raise

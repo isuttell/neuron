@@ -1,6 +1,7 @@
 import redis.asyncio as redis
-from neuron_server.config import config
 from pydantic import BaseModel
+
+from neuron_server.config import config
 
 client = redis.Redis(
     host=config.redis.host,

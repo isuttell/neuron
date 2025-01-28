@@ -1,23 +1,18 @@
-from langchain.tools import BaseTool
-from typing import Type, Optional
-from pydantic import BaseModel, Field
-from neuron_server.config import config
-import time
-import aiohttp
 import asyncio
-from neuron_server.logger import logger
+
+import aiohttp
+from langchain.tools import BaseTool
+from pydantic import BaseModel, Field
+
 from neuron_server.cache import cache_response
+from neuron_server.config import config
+from neuron_server.logger import logger
 
 
 @cache_response(ttl=60 * 10)
 async def get_openweathermap_overview(lat: float, lon: float, date: str) -> str:
     async with aiohttp.ClientSession() as session:
-        url = "https://api.openweathermap.org/data/3.0/onecall/overview?lat={lat}&lon={lon}&date={date}&appid={api_key}".format(
-            lat=lat,
-            lon=lon,
-            date=date,
-            api_key=config.openweather_api_key,
-        )
+        url = f"https://api.openweathermap.org/data/3.0/onecall/overview?lat={lat}&lon={lon}&date={date}&appid={config.openweather_api_key}"
         logger.debug(f"GET {url}")
         async with session.get(url) as response:
             response.raise_for_status()
@@ -40,7 +35,7 @@ Get a human-readable weather summary for today or tomorrow's forecast, utilizing
 """.strip()
     )
 
-    args_schema: Type[OpenWeatherMapOverviewToolArgs] = OpenWeatherMapOverviewToolArgs
+    args_schema: type[OpenWeatherMapOverviewToolArgs] = OpenWeatherMapOverviewToolArgs
 
     def _run(self, *args, **kwargs):
         return asyncio.run(self._arun(*args, **kwargs))

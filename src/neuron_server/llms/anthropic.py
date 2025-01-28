@@ -1,5 +1,7 @@
+from typing import Literal
+
 from langchain_anthropic import ChatAnthropic
-from typing import Optional, Literal
+
 from neuron_server.llms.llm import LLM
 
 
@@ -8,8 +10,8 @@ class AnthropicLLM(LLM):
 
     def __init__(
         self,
-        model_id: Optional[str] = "claude-3-5-sonnet-20241022",
-        provider_model_id: Optional[str] = None,
+        model_id: str | None = "claude-3-5-sonnet-20241022",
+        provider_model_id: str | None = None,
     ):
         model = ChatAnthropic(
             model=model_id,

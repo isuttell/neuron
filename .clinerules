@@ -63,3 +63,9 @@ Neuron is a realtime chat application built with LangChain and LangGraph to allo
 ### Model Notes
 
 - gpt-4o is the latest OpenAI model.
+
+
+## Commands
+
+`cd src/neuron_client && npm run lint ` - Lint the frontend
+`poetry run ruff check src/neuron_server/` - Lint the backend

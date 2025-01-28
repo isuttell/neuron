@@ -1,28 +1,30 @@
-from uuid import UUID
-from neuron_server.database import get_session, MediaList, MediaListItem
-from typing import Optional, List, Self
-from sqlalchemy import select, func
-from sqlalchemy.dialects.postgresql import JSONB
+import builtins
+from datetime import UTC, datetime
+from typing import Self
+from uuid import UUID, uuid4
+
 from pydantic import BaseModel, Field
-from uuid import uuid4
-from datetime import datetime, timezone
+from sqlalchemy import func, select
+from sqlalchemy.dialects.postgresql import JSONB
+
+from neuron_server.database import MediaList, MediaListItem, get_session
 
 
 class MediaListModel(BaseModel):
     id: UUID = Field(default_factory=lambda: uuid4())
     name: str = Field(description="Name of the media list")
     description: str = Field(description="Description of the media list")
-    tags: List[str] = Field(default_factory=list, description="Tags for categorization")
+    tags: list[str] = Field(default_factory=list, description="Tags for categorization")
     user_id: str = Field(description="ID of the user who owns this list")
     visibility: str = Field(default="private", description="Visibility setting")
-    shared_with: List[str] = Field(
+    shared_with: list[str] = Field(
         default_factory=list, description="List of users this is shared with"
     )
     created_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc).astimezone()
+        default_factory=lambda: datetime.now(UTC).astimezone()
     )
     updated_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc).astimezone()
+        default_factory=lambda: datetime.now(UTC).astimezone()
     )
 
     @classmethod
@@ -31,10 +33,10 @@ class MediaListModel(BaseModel):
         name: str,
         description: str,
         user_id: str,
-        tags: Optional[List[str]] = None,
+        tags: list[str] | None = None,
         visibility: str = "private",
-        shared_with: Optional[List[str]] = None,
-        id: Optional[UUID] = None,
+        shared_with: list[str] | None = None,
+        id: UUID | None = None,
     ) -> Self:
         async with get_session() as session:
             media_list = MediaList(
@@ -51,7 +53,7 @@ class MediaListModel(BaseModel):
             return cls(**media_list.__dict__)
 
     @classmethod
-    async def get(cls, id: UUID) -> Optional[Self]:
+    async def get(cls, id: UUID) -> Self | None:
         async with get_session() as session:
             data = await session.get(MediaList, id)
             if data:
@@ -59,7 +61,7 @@ class MediaListModel(BaseModel):
             return None
 
     @classmethod
-    async def list(cls) -> List[Self]:
+    async def list(cls) -> list[Self]:
         async with get_session() as session:
             results = await session.execute(select(MediaList))
             records = results.scalars().all()
@@ -77,9 +79,9 @@ class MediaListModel(BaseModel):
         id: UUID,
         name: str,
         description: str,
-        tags: List[str],
+        tags: builtins.list[str],
         visibility: str,
-        shared_with: List[str],
+        shared_with: builtins.list[str],
     ) -> Self:
         async with get_session() as session:
             media_list = await session.get(MediaList, id)
@@ -103,7 +105,7 @@ class MediaListModel(BaseModel):
             await session.commit()
 
     @classmethod
-    async def list_for_user(cls, user_id: str) -> List[Self]:
+    async def list_for_user(cls, user_id: str) -> builtins.list[Self]:
         """Get all media lists owned by or shared with the user"""
         async with get_session() as session:
             query = select(MediaList).where(
@@ -115,7 +117,7 @@ class MediaListModel(BaseModel):
             return [cls(**list_item.__dict__) for list_item in records]
 
     @classmethod
-    async def get_max_index(cls, list_id: UUID) -> Optional[int]:
+    async def get_max_index(cls, list_id: UUID) -> int | None:
         """Get the highest index currently used in the media list"""
         async with get_session() as session:
             result = await session.execute(

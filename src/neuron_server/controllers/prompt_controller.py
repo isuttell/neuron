@@ -1,12 +1,13 @@
-from quart import Blueprint, request, Response
-from neuron_server.models.prompt_model import PromptModel
 from uuid import UUID
+
 from pydantic import BaseModel
-from typing import Optional
-from neuron_server.event_router import EventRouter
+from quart import Blueprint, Response, request
 from werkzeug.exceptions import NotFound
+
 from neuron_server.controllers.auth import requires_auth
+from neuron_server.event_router import EventRouter
 from neuron_server.models.personality_model import PersonalityModel
+from neuron_server.models.prompt_model import PromptModel
 
 router = EventRouter()
 blueprint = Blueprint("prompt", __name__)
@@ -15,7 +16,7 @@ blueprint = Blueprint("prompt", __name__)
 class CreatePrompt(BaseModel):
     name: str
     text: str
-    personality_id: Optional[UUID] = None
+    personality_id: UUID | None = None
 
 
 class UpdatePrompt(CreatePrompt):

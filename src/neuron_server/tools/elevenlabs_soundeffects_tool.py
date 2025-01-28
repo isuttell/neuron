@@ -1,15 +1,15 @@
+import asyncio
+import os
+
+from elevenlabs import AsyncElevenLabs
 from langchain.tools import BaseTool
+from langchain_core.runnables import RunnableConfig
+from pydantic import BaseModel, Field
+
 from neuron_server.config import config as neuron_config
 from neuron_server.logger import logger
-import os
-from elevenlabs import AsyncElevenLabs
-from neuron_server.logger import logger
-from typing import Optional, Type
-from pydantic import Field, BaseModel
-import asyncio
-from neuron_server.util.slug import safe_filename
-from langchain_core.runnables import RunnableConfig
 from neuron_server.models.media_item_model import MediaItemModel
+from neuron_server.util.slug import safe_filename
 
 tool_promp_types = """
 Prompt Tips:
@@ -26,11 +26,11 @@ class ElevenLabsSoundEffectsToolArgs(BaseModel):
     prompt: str = Field(
         description="The prompt used to generate the sound effect.\n\n{tool_promp_types}"
     )
-    duration_seconds: Optional[float] = Field(
+    duration_seconds: float | None = Field(
         description="The duration of the sound which will be generated in seconds. Must be at least 0.5 and at most 22.",
         default=None,
     )
-    prompt_influence: Optional[float] = Field(
+    prompt_influence: float | None = Field(
         description="The influence of the prompt on the sound effect. Must be between 0 and 1. Defaults to 0.3",
         default=0.3,
     )
@@ -43,9 +43,9 @@ class ElevenLabsSoundEffectsTool(BaseTool):
 This tool generates sound effects using the Eleven Labs sound effect API from text prompts. Provide a prompt, and the tool returns a sound file with an <audio> tag for playback. Complex sequences (e.g., "a man walks through a hallway, then falls") must be created with individual effects and later combined using ffmpeg for optimal quality.
 """.strip()
     )
-    args_schema: Type[ElevenLabsSoundEffectsToolArgs] = ElevenLabsSoundEffectsToolArgs
+    args_schema: type[ElevenLabsSoundEffectsToolArgs] = ElevenLabsSoundEffectsToolArgs
 
-    def _run(self, prompt: str, duration_seconds: Optional[float] = None) -> str:
+    def _run(self, prompt: str, duration_seconds: float | None = None) -> str:
         return asyncio.run(self._arun(prompt, duration_seconds))
 
     async def _arun(
@@ -53,8 +53,8 @@ This tool generates sound effects using the Eleven Labs sound effect API from te
         prompt: str,
         name: str,
         config: RunnableConfig,
-        duration_seconds: Optional[float] = None,
-        prompt_influence: Optional[float] = None,
+        duration_seconds: float | None = None,
+        prompt_influence: float | None = None,
     ) -> str:
         try:
             logger.debug(

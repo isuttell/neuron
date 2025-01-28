@@ -1,18 +1,19 @@
-from neuron_server.models import ThreadModel, PersonalityModel
-from quart import Blueprint, request, Response
-from neuron_server.event_router import EventRouter
-from typing import Optional
-from uuid import UUID
-from pydantic import BaseModel
-from neuron_server.llms.agent import astream
 import asyncio
+from uuid import UUID
+
+from openai import AsyncOpenAI
+from pydantic import BaseModel
+from quart import Blueprint, Response, request
 from werkzeug.exceptions import BadRequest
+
+from neuron_server.config import config as neuron_config
 from neuron_server.controllers.auth import requires_auth
 from neuron_server.controllers.message_controller import (
     process_message_request,
 )
-from openai import AsyncOpenAI
-from neuron_server.config import config as neuron_config
+from neuron_server.event_router import EventRouter
+from neuron_server.llms.agent import astream
+from neuron_server.models import PersonalityModel, ThreadModel
 
 client = AsyncOpenAI(api_key=neuron_config.openai_api_key)
 router = EventRouter()
@@ -57,10 +58,10 @@ async def get_recent_threads():
 
 
 class CreateThread(BaseModel):
-    name: Optional[str] = None
-    context: Optional[str] = None
-    greeting: Optional[bool] = None
-    prompt: Optional[str] = None
+    name: str | None = None
+    context: str | None = None
+    greeting: bool | None = None
+    prompt: str | None = None
     personality_id: UUID
 
 
@@ -122,8 +123,8 @@ async def delete_thread(thread_id: UUID):
 
 
 class UpdateThread(BaseModel):
-    name: Optional[str] = None
-    context: Optional[str] = None
+    name: str | None = None
+    context: str | None = None
 
 
 @blueprint.put("/<uuid:thread_id>")

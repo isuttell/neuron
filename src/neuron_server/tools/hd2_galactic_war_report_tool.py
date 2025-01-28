@@ -1,15 +1,15 @@
-from langchain.tools import BaseTool
-from typing import Type, Optional
-from neuron_server.config import config
-import aiohttp
 import asyncio
-from neuron_server.logger import logger
-from neuron_server.cache import cache_response
-from pydantic import BaseModel
-from typing import Optional, List, Dict, Any, TypedDict
-from datetime import datetime, timezone
-from neuron_server.graph import process_document
+from datetime import UTC, datetime
+from typing import Any, TypedDict
+
+import aiohttp
+from langchain.tools import BaseTool
 from langchain_core.runnables import RunnableConfig
+from pydantic import BaseModel
+
+from neuron_server.cache import cache_response
+from neuron_server.graph import process_document
+from neuron_server.logger import logger
 
 
 class Biome(BaseModel):
@@ -26,18 +26,18 @@ class Campaign(BaseModel):
     maxHealth: int
     percentage: float
     defense: bool
-    biome: Optional[Biome] = None
-    expireDateTime: Optional[float] = None
+    biome: Biome | None = None
+    expireDateTime: float | None = None
 
 
 @cache_response(ttl=60 * 1)
-async def get_campaigns() -> List[Campaign]:
+async def get_campaigns() -> list[Campaign]:
     async with aiohttp.ClientSession() as session:
         url = "https://helldiverstrainingmanual.com/api/v1/war/campaign"
         logger.debug(f"GET {url}")
         async with session.get(url) as response:
             response.raise_for_status()
-            rows: List[Dict[str, Any]] = await response.json()
+            rows: list[dict[str, Any]] = await response.json()
             return [Campaign(**row) for row in rows]
 
 
@@ -45,18 +45,18 @@ class News(BaseModel):
     id: int
     published: int
     type: int
-    tagIds: List[str]
+    tagIds: list[str]
     message: str
 
 
 @cache_response(ttl=60 * 1)
-async def get_news() -> List[News]:
+async def get_news() -> list[News]:
     async with aiohttp.ClientSession() as session:
         url = "https://helldiverstrainingmanual.com/api/v1/war/news"
         logger.debug(f"GET {url}")
         async with session.get(url) as response:
             response.raise_for_status()
-            rows: List[Dict[str, Any]] = await response.json()
+            rows: list[dict[str, Any]] = await response.json()
             return [News(**row) for row in rows]
 
 
@@ -68,18 +68,18 @@ class Environmentals(BaseModel):
 class Planet(BaseModel):
     name: str
     sector: str
-    biome: Optional[Biome] = None
-    environmentals: List[Environmentals]
+    biome: Biome | None = None
+    environmentals: list[Environmentals]
 
 
 @cache_response(ttl=60 * 60 * 24)
-async def get_planets() -> Dict[str, Planet]:
+async def get_planets() -> dict[str, Planet]:
     async with aiohttp.ClientSession() as session:
         url = "https://helldiverstrainingmanual.com/api/v1/planets"
         logger.debug(f"GET {url}")
         async with session.get(url) as response:
             response.raise_for_status()
-            data: Dict[str, Dict[str, Any]] = await response.json()
+            data: dict[str, dict[str, Any]] = await response.json()
             results = {}
             for id, row in data.items():
                 results[id] = Planet(**row)
@@ -88,8 +88,8 @@ async def get_planets() -> Dict[str, Planet]:
 
 class Task(BaseModel):
     type: int
-    values: List[int]
-    valueTypes: List[int]
+    values: list[int]
+    valueTypes: list[int]
 
 
 class Reward(BaseModel):
@@ -103,31 +103,31 @@ class Setting(BaseModel):
     overrideTitle: str
     overrideBrief: str
     taskDescription: str
-    tasks: List[Task]
-    rewards: List[Reward]
+    tasks: list[Task]
+    rewards: list[Reward]
     reward: Reward
     flags: int
 
 
 class MajorOrder(BaseModel):
     id32: int
-    progress: List[int]
+    progress: list[int]
     expiresIn: int
     setting: Setting
 
 
 class MajorOrdersResponse(BaseModel):
-    major_orders: List[MajorOrder]
+    major_orders: list[MajorOrder]
 
 
 @cache_response(ttl=60 * 1)
-async def get_major_orders() -> List[MajorOrder]:
+async def get_major_orders() -> list[MajorOrder]:
     async with aiohttp.ClientSession() as session:
         url = "https://helldiverstrainingmanual.com/api/v1/war/major-orders"
         logger.debug(f"GET {url}")
         async with session.get(url) as response:
             response.raise_for_status()
-            rows: List[Dict[str, Any]] = await response.json()
+            rows: list[dict[str, Any]] = await response.json()
             return [MajorOrder(**row) for row in rows]
 
 
@@ -140,7 +140,7 @@ class GlobalEvent(TypedDict):
 class SpaceStation(TypedDict):
     id32: int
     planetIndex: int
-    activeEffectIds: List[int] = []
+    activeEffectIds: list[int] = []
     currentElectionEndWarTime: int
     flags: int
 
@@ -167,10 +167,10 @@ class PlanetAttack(TypedDict):
 class WarStatus(TypedDict):
     time: int
     warId: int
-    globalEvents: List[GlobalEvent]
-    spaceStations: List[SpaceStation]
-    planetStatus: List[PlanetStatus]
-    planetAttacks: List[PlanetAttack]
+    globalEvents: list[GlobalEvent]
+    spaceStations: list[SpaceStation]
+    planetStatus: list[PlanetStatus]
+    planetAttacks: list[PlanetAttack]
     layoutVersion: int
 
 
@@ -185,7 +185,7 @@ async def get_war_status() -> WarStatus:
 
 
 def format_campaigns(
-    campaigns: List[Campaign], planet_statuses: List[PlanetStatus]
+    campaigns: list[Campaign], planet_statuses: list[PlanetStatus]
 ) -> str:
     if len(campaigns) == 0:
         return "No active campaigns"
@@ -206,7 +206,7 @@ def format_campaigns(
 
 
 def format_major_orders(
-    major_orders: List[MajorOrder], planets: Dict[str, Planet]
+    major_orders: list[MajorOrder], planets: dict[str, Planet]
 ) -> str:
     if len(major_orders) == 0:
         return "No major orders."
@@ -222,7 +222,7 @@ def format_major_orders(
 
 
 def format_planet_attacks(
-    planet_attacks: List[PlanetAttack], planets: Dict[str, Planet]
+    planet_attacks: list[PlanetAttack], planets: dict[str, Planet]
 ) -> str:
     if len(planet_attacks) == 0:
         return "No planet attacks"
@@ -250,7 +250,7 @@ def format_planet(planet: Planet) -> str:
     return f"| {planet.name} | {planet.sector} | {planet.biome.description if planet.biome else 'N/A'} | {format_environmentals(planet) if planet.environmentals else 'None'} |"
 
 
-def format_planets(planets: List[Planet]) -> str:
+def format_planets(planets: list[Planet]) -> str:
     if len(planets) == 0:
         return "No planets"
 
@@ -261,7 +261,7 @@ def format_planets(planets: List[Planet]) -> str:
     return f"{headers}\n{planet_rows}"
 
 
-def format_news(messages: List[News]) -> str:
+def format_news(messages: list[News]) -> str:
     if len(messages) == 0:
         return "No news"
 
@@ -275,7 +275,7 @@ def format_news(messages: List[News]) -> str:
     return f"{headers}\n{message_rows}"
 
 
-def format_global_events(events: List[GlobalEvent]) -> str:
+def format_global_events(events: list[GlobalEvent]) -> str:
     if len(events) == 0:
         return "No global events"
 
@@ -331,7 +331,7 @@ Get's the latest report on the in universe Hell Divers 2 Galactic War. Includes 
                     config=config,
                 )
 
-            active_planets: List[Planet] = list(
+            active_planets: list[Planet] = list(
                 map(
                     lambda campaign: planets[str(campaign.planetIndex)],
                     campaigns,
@@ -339,7 +339,7 @@ Get's the latest report on the in universe Hell Divers 2 Galactic War. Includes 
             )
 
             return f"""
-# Hell Divers 2 Galactic War Report for {datetime.now(timezone.utc).isoformat(timespec="seconds")}
+# Hell Divers 2 Galactic War Report for {datetime.now(UTC).isoformat(timespec="seconds")}
 
 Classified Top Secret
 

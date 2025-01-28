@@ -1,14 +1,16 @@
-from typing import Literal, Optional
-from neuron_server.event_router import OutgoingEvent, IncomingEvent
+from typing import Literal
 from uuid import UUID
+
 from langchain_core.messages import BaseMessage
 from pydantic import ConfigDict
+
+from neuron_server.event_router import IncomingEvent, OutgoingEvent
 
 
 class ThreadMessage(BaseMessage):
     thread_id: UUID
-    node: Optional[str] = None
-    created_at: Optional[str] = None
+    node: str | None = None
+    created_at: str | None = None
     model_config = ConfigDict(
         extra="allow",
     )

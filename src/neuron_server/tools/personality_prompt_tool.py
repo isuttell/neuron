@@ -1,12 +1,13 @@
-from langchain.tools import BaseTool
-from typing import Literal, Type
-from pydantic import BaseModel, Field
 import asyncio
-from neuron_server.pubsub import pubsub
 import logging
+
+from langchain.tools import BaseTool
 from langchain_core.runnables import RunnableConfig
+from pydantic import BaseModel, Field
+
 from neuron_server.controllers.events.prompt_events import GetPromptResponse
 from neuron_server.models.prompt_model import PromptModel
+from neuron_server.pubsub import pubsub
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +25,7 @@ class PersonalityPromptTool(BaseTool):
         """This tools lets you save a prompt for the active personality making it available to the user to use at any time. Only use this tool when the user has explictly asked for it."""
     )
 
-    args_schema: Type[PersonalityPromptToollArgs] = PersonalityPromptToollArgs
+    args_schema: type[PersonalityPromptToollArgs] = PersonalityPromptToollArgs
 
     def _run(self, *args, **kwargs) -> str:
         return asyncio.run(self._arun(*args, **kwargs))

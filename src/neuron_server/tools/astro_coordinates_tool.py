@@ -1,19 +1,19 @@
-from langchain.tools import BaseTool
-from typing import Type, Optional
-from pydantic import BaseModel, Field
-from datetime import datetime, timezone
 import argparse
-from astropy.coordinates import EarthLocation, SkyCoord, AltAz
+from datetime import UTC, datetime
+
 from astropy import units as u
-from neuron_server.logger import logger
-from zoneinfo import ZoneInfo
+from astropy.coordinates import AltAz, EarthLocation, SkyCoord
 from astropy.time import Time
+from langchain.tools import BaseTool
+from pydantic import BaseModel, Field
+
+from neuron_server.logger import logger
 
 
 class AstroCoordinatesToolArgs(BaseModel):
     latitude: float = Field(description="Observer latitude")
     longitude: float = Field(description="Observer longitude")
-    elevation: Optional[float] = Field(
+    elevation: float | None = Field(
         description="Observer elevation in meters", default=0
     )
     time: datetime = Field(description="Observation time in UTC")
@@ -27,7 +27,7 @@ This tool returns the RA/Dec coordinates of the sky zenith at a given location a
 """.strip()
     )
 
-    args_schema: Type[AstroCoordinatesToolArgs] = AstroCoordinatesToolArgs
+    args_schema: type[AstroCoordinatesToolArgs] = AstroCoordinatesToolArgs
 
     def _run(
         self,
@@ -38,7 +38,7 @@ This tool returns the RA/Dec coordinates of the sky zenith at a given location a
     ) -> str:
         try:
             obstime = Time(
-                time.astimezone(timezone.utc), format="datetime", scale="utc"
+                time.astimezone(UTC), format="datetime", scale="utc"
             )
             location = EarthLocation(
                 lat=latitude * u.deg, lon=longitude * u.deg, height=elevation * u.m

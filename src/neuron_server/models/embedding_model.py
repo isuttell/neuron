@@ -1,35 +1,32 @@
+import builtins
+from typing import Any, Self
 from uuid import UUID
-from typing import List, Optional
-from neuron_server.database import (
-    get_session,
-    LangchainPGEmbedding,
-    LangchainPGCollection,
-)
+
 from pydantic import BaseModel, Field
-from uuid import uuid4
-from datetime import datetime, timezone
-from typing import Literal, Self, Any
-from pydantic import field_serializer
-from sqlalchemy import select
-from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy import func
+from sqlalchemy import func, select
+
+from neuron_server.database import (
+    LangchainPGCollection,
+    LangchainPGEmbedding,
+    get_session,
+)
 
 
 class EmbeddingModel(BaseModel):
     id: str = Field(description="The ID of the embedding")
-    collection_id: Optional[UUID] = Field(
+    collection_id: UUID | None = Field(
         description="The collection ID associated with the embedding"
     )
-    collection_name: Optional[str] = Field(
+    collection_name: str | None = Field(
         description="The name of the collection this embedding belongs to", default=None
     )
-    embedding: Optional[List[float]] = Field(
+    embedding: list[float] | None = Field(
         description="The vector representation of the embedding"
     )
-    document: Optional[str] = Field(
+    document: str | None = Field(
         description="The document associated with the embedding"
     )
-    cmetadata: Optional[dict] = Field(
+    cmetadata: dict | None = Field(
         description="Custom metadata associated with the embedding"
     )
 
@@ -37,10 +34,10 @@ class EmbeddingModel(BaseModel):
     async def create(
         cls,
         id: str,
-        collection_id: Optional[UUID] = None,
-        embedding: Optional[List[float]] = None,
-        document: Optional[str] = None,
-        cmetadata: Optional[dict] = None,
+        collection_id: UUID | None = None,
+        embedding: list[float] | None = None,
+        document: str | None = None,
+        cmetadata: dict | None = None,
     ) -> Self:
         async with get_session() as session:
             embedding_instance = LangchainPGEmbedding(
@@ -64,10 +61,10 @@ class EmbeddingModel(BaseModel):
     async def update(
         cls,
         id: str,
-        collection_id: Optional[UUID] = None,
-        embedding: Optional[List[float]] = None,
-        document: Optional[str] = None,
-        cmetadata: Optional[dict] = None,
+        collection_id: UUID | None = None,
+        embedding: list[float] | None = None,
+        document: str | None = None,
+        cmetadata: dict | None = None,
     ) -> Self:
         async with get_session() as session:
             embedding_instance = await session.get(LangchainPGEmbedding, id)
@@ -83,7 +80,7 @@ class EmbeddingModel(BaseModel):
             return cls(**embedding_instance.__dict__)
 
     @classmethod
-    async def get(cls, id: str) -> Optional[Self]:
+    async def get(cls, id: str) -> Self | None:
         async with get_session() as session:
             data = await session.get(LangchainPGEmbedding, id)
             if data:
@@ -91,7 +88,7 @@ class EmbeddingModel(BaseModel):
             return None
 
     @classmethod
-    async def list(cls, collection_id: UUID) -> List[Self]:
+    async def list(cls, collection_id: UUID) -> list[Self]:
         async with get_session() as session:
             results = await session.execute(
                 select(
@@ -143,7 +140,7 @@ class EmbeddingModel(BaseModel):
             return cls(**embedding_instance.__dict__)
 
     @classmethod
-    async def filter_by_metadata(cls, key: str, value: str) -> List[Self]:
+    async def filter_by_metadata(cls, key: str, value: str) -> builtins.list[Self]:
         async with get_session() as session:
             results = await session.execute(
                 select(
@@ -185,7 +182,7 @@ class EmbeddingModel(BaseModel):
             await session.commit()
 
     @classmethod
-    async def get_many(cls, ids: List[str]) -> List[Self]:
+    async def get_many(cls, ids: builtins.list[str]) -> builtins.list[Self]:
         """Get multiple embeddings by their IDs.
 
         Args:
@@ -226,7 +223,7 @@ class EmbeddingModel(BaseModel):
             return embeddings
 
     @classmethod
-    async def delete_many(cls, ids: List[str]) -> None:
+    async def delete_many(cls, ids: builtins.list[str]) -> None:
         """Delete multiple embeddings by their IDs.
 
         Args:

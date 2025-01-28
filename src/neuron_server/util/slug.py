@@ -1,6 +1,5 @@
 import re
 from uuid import uuid4
-from typing import Optional
 
 
 def slugify(text: str) -> str:

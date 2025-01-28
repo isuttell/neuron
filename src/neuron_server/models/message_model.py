@@ -1,14 +1,17 @@
-from uuid import UUID, uuid4
-from datetime import datetime, timezone
-from typing import Literal, Optional, List, Dict, Any, Tuple, Self
-from sqlalchemy import select, delete, func
-from langchain_core.messages import BaseMessage, AIMessage, HumanMessage, ToolMessage
-from langchain_core.messages.tool import ToolCall
-from neuron_server.database import get_session, Message
-from sqlalchemy.dialects.postgresql import insert as pg_insert
+import builtins
 import json
-from typing_extensions import TypedDict
+from datetime import UTC, datetime
+from typing import Any, Literal, Self
+from uuid import UUID, uuid4
+
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, ToolMessage
+from langchain_core.messages.tool import ToolCall
 from pydantic import BaseModel, Field, field_validator
+from sqlalchemy import delete, func, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
+from typing_extensions import TypedDict
+
+from neuron_server.database import Message, get_session
 
 Role = Literal["human", "ai", "system", "tool"]
 
@@ -17,7 +20,7 @@ class UsageMetadata(TypedDict):
     input_tokens: int
     output_tokens: int
     total_tokens: int
-    input_token_details: Dict[str, Any]
+    input_token_details: dict[str, Any]
 
 
 class MessageModel(BaseModel):
@@ -25,20 +28,20 @@ class MessageModel(BaseModel):
     thread_id: UUID = Field(description="The ID of the thread the message belongs to")
     content: str = Field(description="The content of the message")
     role: Role = Field(description="The role of the message sender")
-    tool_call_id: Optional[str] = Field(
+    tool_call_id: str | None = Field(
         default=None, description="The ID of the tool call the message belongs to"
     )
-    tool_calls: List[ToolCall] = Field(
+    tool_calls: list[ToolCall] = Field(
         default=[], description="The tool calls the message belongs to"
     )
-    usage_metadata: Dict[str, Any] = Field(
+    usage_metadata: dict[str, Any] = Field(
         default={}, description="The usage metadata of the message"
     )
     created_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc).astimezone()
+        default_factory=lambda: datetime.now(UTC).astimezone()
     )
     updated_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc).astimezone()
+        default_factory=lambda: datetime.now(UTC).astimezone()
     )
 
     @field_validator("tool_calls", mode="before")
@@ -76,10 +79,10 @@ class MessageModel(BaseModel):
         role: Role,
         thread_id: UUID,
         content: str = "",
-        tool_call_id: Optional[str] = None,
-        tool_calls: Optional[List[ToolCall]] = None,
-        usage_metadata: Optional[Dict[str, Any]] = None,
-        id: Optional[UUID] = None,
+        tool_call_id: str | None = None,
+        tool_calls: list[ToolCall] | None = None,
+        usage_metadata: dict[str, Any] | None = None,
+        id: UUID | None = None,
     ) -> Self:
         async with get_session() as session:
             new_message = Message(
@@ -101,11 +104,11 @@ class MessageModel(BaseModel):
         content: str,
         role: Role,
         thread_id: UUID,
-        tool_call_id: Optional[str] = None,
-        tool_calls: Optional[List[ToolCall]] = None,
-        usage_metadata: Optional[Dict[str, Any]] = None,
-        id: Optional[UUID] = None,
-        created_at: Optional[str] = None,
+        tool_call_id: str | None = None,
+        tool_calls: list[ToolCall] | None = None,
+        usage_metadata: dict[str, Any] | None = None,
+        id: UUID | None = None,
+        created_at: str | None = None,
     ) -> Self:
         async with get_session() as session:
             stmt = (
@@ -145,7 +148,7 @@ class MessageModel(BaseModel):
             return cls(**message.__dict__)
 
     @classmethod
-    async def count_tokens(cls) -> Tuple[int, int]:
+    async def count_tokens(cls) -> tuple[int, int]:
         async with get_session() as session:
             stmt = select(Message.usage_metadata)
             result = await session.execute(stmt)
@@ -161,7 +164,7 @@ class MessageModel(BaseModel):
             return input_tokens, output_tokens
 
     @classmethod
-    async def list(cls, thread_id: UUID) -> List[Self]:
+    async def list(cls, thread_id: UUID) -> list[Self]:
         async with get_session() as session:
             result = await session.execute(
                 select(Message)
@@ -186,7 +189,7 @@ class MessageModel(BaseModel):
             await session.execute(delete(Message).where(Message.id == id))
 
     @classmethod
-    async def get(cls, id: UUID) -> Optional[Self]:
+    async def get(cls, id: UUID) -> Self | None:
         async with get_session() as session:
             data = await session.get(Message, id)
             if data:
@@ -198,9 +201,9 @@ class MessageModel(BaseModel):
         cls,
         id: UUID,
         content: str,
-        tool_call_id: Optional[str] = None,
-        tool_calls: Optional[List[ToolCall]] = None,
-        usage_metadata: Optional[Dict[str, Any]] = None,
+        tool_call_id: str | None = None,
+        tool_calls: builtins.list[ToolCall] | None = None,
+        usage_metadata: dict[str, Any] | None = None,
     ) -> Message:
         async with get_session() as session:
             message = await session.get(Message, id)
@@ -219,14 +222,13 @@ class MessageModel(BaseModel):
             return HumanMessage(
                 content=self.content,
             )
-        elif self.role == "ai":
+        if self.role == "ai":
             return AIMessage(
                 content=self.content,
                 tool_calls=self.tool_calls,
             )
-        elif self.role == "tool":
+        if self.role == "tool":
             if not self.tool_call_id:
                 raise ValueError("Tool call ID is required for tool selfs")
             return ToolMessage(content=self.content, tool_call_id=self.tool_call_id)
-        else:
-            raise ValueError(f"Invalid role: {self.role}")
+        raise ValueError(f"Invalid role: {self.role}")

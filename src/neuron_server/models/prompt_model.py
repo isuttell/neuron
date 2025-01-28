@@ -1,16 +1,18 @@
-from pydantic import BaseModel, UUID4, field_serializer, Field
-from typing import Optional
 from datetime import datetime
-from sqlalchemy import select
-from neuron_server.database import Prompt, get_session
+from typing import Optional
 from uuid import uuid4
+
+from pydantic import UUID4, BaseModel, Field, field_serializer
+from sqlalchemy import select
+
+from neuron_server.database import Prompt, get_session
 
 
 class PromptModel(BaseModel):
     id: UUID4 = Field(default_factory=lambda: uuid4())
     name: str
     text: str
-    personality_id: Optional[UUID4] = None
+    personality_id: UUID4 | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -20,7 +22,7 @@ class PromptModel(BaseModel):
 
     @classmethod
     async def create(
-        cls, name: str, text: str, personality_id: Optional[UUID4] = None
+        cls, name: str, text: str, personality_id: UUID4 | None = None
     ) -> "PromptModel":
         async with get_session() as session:
             prompt = Prompt(name=name, text=text, personality_id=personality_id)
@@ -36,7 +38,7 @@ class PromptModel(BaseModel):
             return cls(**prompt.__dict__) if prompt else None
 
     @classmethod
-    async def list(cls, personality_id: Optional[UUID4] = None) -> list["PromptModel"]:
+    async def list(cls, personality_id: UUID4 | None = None) -> list["PromptModel"]:
         async with get_session() as session:
             query = select(Prompt)
             if personality_id:

@@ -1,8 +1,10 @@
 import asyncio
 import logging
-from datetime import datetime, timedelta
-import pytz
 import sys
+from datetime import datetime, timedelta
+
+import pytz
+
 from neuron_server.util.scheduler import AsyncRedisEventScheduler, RecurringPattern
 
 # Configure event loop policy for Windows

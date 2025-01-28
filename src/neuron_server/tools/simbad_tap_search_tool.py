@@ -1,11 +1,12 @@
-from langchain.tools import BaseTool
-from typing import Type
-from pydantic import BaseModel, Field
 import argparse
-from neuron_server.logger import logger
-from pyvo.dal import DALResults, TAPService
-from pandas import DataFrame
 import time
+
+from langchain.tools import BaseTool
+from pandas import DataFrame
+from pydantic import BaseModel, Field
+from pyvo.dal import DALResults, TAPService
+
+from neuron_server.logger import logger
 
 
 class SimbadTapSearchToolArgs(BaseModel):
@@ -22,7 +23,7 @@ This tool queries a Simbad TAP service for astronomical objects and returns the 
 """.strip()
     )
 
-    args_schema: Type[SimbadTapSearchToolArgs] = SimbadTapSearchToolArgs
+    args_schema: type[SimbadTapSearchToolArgs] = SimbadTapSearchToolArgs
 
     simbad_service: str = "http://simbad.u-strasbg.fr/simbad/sim-tap"
 

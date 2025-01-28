@@ -1,8 +1,9 @@
-from langchain.tools import BaseTool
-from typing import List, Type
-from pydantic import BaseModel, Field
 import random
 import re
+
+from langchain.tools import BaseTool
+from pydantic import BaseModel, Field
+
 from neuron_server.logger import logger
 
 
@@ -40,7 +41,7 @@ def parse_dice_expression(expression: str) -> DiceRoll:
 
 
 class DiceToolArgs(BaseModel):
-    dice: List[str] = Field(
+    dice: list[str] = Field(
         description="A list of strings representing dice expressions, e.g. '1d20', '1d4', '5d6+3'.  The example '2d6+1' indicates rolling 2 dice, each with 6 sides, and adding a modifier of +1 to the total. The format consists of three parts: the number of dice (2), the letter 'd' to indicate dice, the number of sides on each die (6), and an optional modifier (+1). Must include at least one dice expression."
     )
 
@@ -53,17 +54,17 @@ Roll virtual dice and return the individual results of each dice and total. Use 
 """.strip()
     )
 
-    args_schema: Type[DiceToolArgs] = DiceToolArgs
+    args_schema: type[DiceToolArgs] = DiceToolArgs
 
-    def _run(self, dice: List[str]) -> str:
+    def _run(self, dice: list[str]) -> str:
         rolls = [parse_dice_expression(d) for d in dice]
-        role_results: List[List[int]] = [
+        role_results: list[list[int]] = [
             [random.randint(1, roll.sides) for _ in range(roll.count)]
             + ([roll.modifier] if roll.modifier else [])
             for roll in rolls
         ]
         totals = [sum(r) for r in role_results]
-        results = list(zip(dice, role_results, totals))
+        results = list(zip(dice, role_results, totals, strict=False))
         result = [
             f"Rolled {dice}: results={'+'.join([str(result) for result in results])} total={total}"
             for dice, results, total in results

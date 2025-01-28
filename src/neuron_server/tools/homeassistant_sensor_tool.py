@@ -1,11 +1,12 @@
+
 from langchain.tools import BaseTool
 from pydantic import BaseModel, Field
+
 from neuron_server.tools.homeassistant_api import HomeAssistantAPI, parse_sensor_state
-from typing import Type, List
 
 
 class HomeAssistantSensorToolArgs(BaseModel):
-    entity_ids: List[str] = Field(
+    entity_ids: list[str] = Field(
         description="""The entity ids to get the sensor states for. Use only entity_ids from the list of supported sensors.
 
 Supported Sensors:
@@ -49,11 +50,11 @@ class HomeAssistantSensorTool(BaseTool):
 Tool to return the latest sensor states from Home Assistant.
         """.strip()
     )
-    args_schema: Type[HomeAssistantSensorToolArgs] = HomeAssistantSensorToolArgs
+    args_schema: type[HomeAssistantSensorToolArgs] = HomeAssistantSensorToolArgs
 
     api: HomeAssistantAPI
 
-    def _run(self, entity_ids: List[str]):
+    def _run(self, entity_ids: list[str]):
         # Get all sensor states
         states = self.api.get_sensor_states()
 

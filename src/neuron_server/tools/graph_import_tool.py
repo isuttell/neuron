@@ -1,12 +1,13 @@
-from langchain.tools import BaseTool
-from neuron_server.logger import logger
-from pydantic import BaseModel, Field
-from typing import Type
 import asyncio
-from langchain_core.runnables import RunnableConfig
-from neuron_server.graph import process_document, encode_md5
 import time
+
 import tiktoken
+from langchain.tools import BaseTool
+from langchain_core.runnables import RunnableConfig
+from pydantic import BaseModel, Field
+
+from neuron_server.graph import encode_md5, process_document
+from neuron_server.logger import logger
 
 encoder = tiktoken.encoding_for_model("gpt-4o")
 
@@ -24,7 +25,7 @@ class GraphImportTool(BaseTool):
 Use this tool to import text into the knowledge graph for long term memory.
 """.strip()
     )
-    args_schema: Type[GraphImportToolArgs] = GraphImportToolArgs
+    args_schema: type[GraphImportToolArgs] = GraphImportToolArgs
 
     def _run(self, text: str, config: RunnableConfig) -> str:
         return asyncio.run(self._arun(text, config))

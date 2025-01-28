@@ -1,23 +1,23 @@
-from quart import Blueprint, request, Response, jsonify
-from uuid import UUID
+from typing import Any
+
 from pydantic import BaseModel
-from typing import Optional, List, Dict, Any, Set
+from quart import Blueprint, Response, request
 from werkzeug.exceptions import NotFound
+
 from neuron_server.controllers.auth import requires_auth
 from neuron_server.models.embedding_model import EmbeddingModel
 from neuron_server.vectorstores import memories_store
-
 
 blueprint = Blueprint("embedding", __name__)
 
 
 class BulkDeleteEmbeddings(BaseModel):
-    embedding_ids: List[str]
+    embedding_ids: list[str]
 
 
 class EmbeddingUpsert(BaseModel):
     content: str
-    metadata: Optional[Dict[str, Any]] = None
+    metadata: dict[str, Any] | None = None
 
 
 @blueprint.post("/<string:embedding_id>")

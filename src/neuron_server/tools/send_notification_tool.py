@@ -1,23 +1,24 @@
-from langchain.tools import BaseTool
-from typing import Type, Optional
-from pydantic import BaseModel, Field
-from neuron_server.config import config as neuron_config
-import time
-import aiohttp
 import asyncio
+import time
+
+import aiohttp
+from langchain.tools import BaseTool
 from langchain_core.runnables import RunnableConfig
+from pydantic import BaseModel, Field
+
+from neuron_server.config import config as neuron_config
 
 
 class SendNotificationToolArgs(BaseModel):
     title: str = Field(description="A short title for the notification")
     message: str = Field(description="A message to be displayed to the user")
-    url: Optional[str] = Field(
+    url: str | None = Field(
         description="This URL will be passed directly to the device client. By default links back to the thread."
     )
-    url_title: Optional[str] = Field(
+    url_title: str | None = Field(
         description="A title for the URL to be displayed to the user"
     )
-    sound: Optional[str] = Field(
+    sound: str | None = Field(
         description="""The name of a sound to be played when the notification is received. Use one of the following:
 pushover - Pushover (default)
 cosmic - Cosmic
@@ -40,7 +41,7 @@ Immediately send a notification to the Isaac's phone using Pushover.
 """.strip()
     )
 
-    args_schema: Type[SendNotificationToolArgs] = SendNotificationToolArgs
+    args_schema: type[SendNotificationToolArgs] = SendNotificationToolArgs
 
     def _run(self, *args, **kwargs):
         return asyncio.run(self._arun(*args, **kwargs))
@@ -50,9 +51,9 @@ Immediately send a notification to the Isaac's phone using Pushover.
         title: str,
         message: str,
         config: RunnableConfig,
-        url: Optional[str] = None,
-        url_title: Optional[str] = None,
-        sound: Optional[str] = None,
+        url: str | None = None,
+        url_title: str | None = None,
+        sound: str | None = None,
     ) -> str:
         async with aiohttp.ClientSession() as session:
             async with session.post(

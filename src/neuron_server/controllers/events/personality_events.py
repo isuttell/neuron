@@ -1,6 +1,7 @@
-from typing import Literal, List
-from neuron_server.event_router import OutgoingEvent, IncomingEvent
+from typing import Literal
 from uuid import UUID
+
+from neuron_server.event_router import IncomingEvent, OutgoingEvent
 from neuron_server.models.personality_model import PersonalityModel
 
 
@@ -30,4 +31,4 @@ class GetPersonalityResponse(OutgoingEvent):
 
 class GetPersonalitiesResponse(OutgoingEvent):
     type: Literal["personalities"] = "personalities"
-    personalities: List[PersonalityModel]
+    personalities: list[PersonalityModel]

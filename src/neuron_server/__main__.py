@@ -1,24 +1,23 @@
 from dotenv import load_dotenv
 
-
 # Load environment variables from a .env file
 load_dotenv()
 
-from PIL import Image
 from pi_heif import register_heif_opener
 
 register_heif_opener()
 
 import asyncio
 import sys
+import time
+
+from hypercorn.asyncio import serve
+from hypercorn.config import Config
+
 from neuron_server.api import app
 from neuron_server.config import config
-from neuron_server.logger import logger
 from neuron_server.database import start
-from neuron_server.models.provider_model import ProviderModelModel
-from hypercorn.config import Config
-from hypercorn.asyncio import serve
-import time
+from neuron_server.logger import logger
 
 
 async def init():

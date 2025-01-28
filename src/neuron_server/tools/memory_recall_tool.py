@@ -1,14 +1,14 @@
-from langchain.tools import BaseTool
-from typing import Type
-from pydantic import BaseModel, Field
-from neuron_server.logger import logger
 import asyncio
-from neuron_server.vectorstores import memories_store
-from langchain_core.runnables import RunnableConfig
-from langchain_core.documents import Document
-from typing import List, TypedDict
-from datetime import datetime, timezone
 import math
+from datetime import UTC, datetime
+from typing import TypedDict
+
+from langchain.tools import BaseTool
+from langchain_core.documents import Document
+from langchain_core.runnables import RunnableConfig
+from pydantic import BaseModel, Field
+
+from neuron_server.vectorstores import memories_store
 
 
 def format_memory(document: Document) -> str:
@@ -59,7 +59,7 @@ class MemoryStats(TypedDict):
     total: int
     last_useful_at: int | None
     last_recall_at: int
-    scores: List[float]
+    scores: list[float]
 
 
 def calculate_score(document: Document, relevance_score: float) -> int:
@@ -74,7 +74,7 @@ def calculate_score(document: Document, relevance_score: float) -> int:
             "useful": 0,
             "total": 1,
             "last_useful_at": None,
-            "last_recall_at": int(datetime.now(timezone.utc).timestamp()),
+            "last_recall_at": int(datetime.now(UTC).timestamp()),
             "scores": [],
         },
     )
@@ -131,7 +131,7 @@ class MemoryRecallTool(BaseTool):
         "This tool allows you to recall information from long term memory. Use this if you are looking for a specific memory or need a wide range of memories and the answer is not in the current recall memories."
     )
 
-    args_schema: Type[MemoryRecallToolArgs] = MemoryRecallToolArgs
+    args_schema: type[MemoryRecallToolArgs] = MemoryRecallToolArgs
 
     def _run(
         self,
@@ -165,7 +165,7 @@ class MemoryRecallTool(BaseTool):
         )
         if len(doc_scores) == 0:
             return NO_MEMORIES_FOUND
-        results: List[Document] = []
+        results: list[Document] = []
         for doc, score in doc_scores:
             doc.metadata["score"] = calculate_score(doc, score)
             results.append(doc)

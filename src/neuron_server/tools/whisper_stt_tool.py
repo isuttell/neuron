@@ -1,17 +1,17 @@
-from langchain.tools import BaseTool
-from neuron_server.config import config as neuron_config
-from neuron_server.logger import logger
-from uuid import uuid4
+import asyncio
 import os
 import shutil
-from neuron_server.util.slug import safe_filename
-from openai import AsyncOpenAI
-from typing import Type
-import asyncio
-from pydantic import BaseModel, Field
+
 import aiofiles
+from langchain.tools import BaseTool
 from langchain_core.runnables import RunnableConfig
+from openai import AsyncOpenAI
+from pydantic import BaseModel, Field
+
+from neuron_server.config import config as neuron_config
+from neuron_server.logger import logger
 from neuron_server.models.media_item_model import MediaItemModel
+from neuron_server.util.slug import safe_filename
 
 client = AsyncOpenAI(api_key=neuron_config.openai_api_key)
 
@@ -30,7 +30,7 @@ class WhisperSTTTool(BaseTool):
 Transcribes speech from an audio file using OpenAI's Whisper model. Returns both the transcription and a link to the audio file.
 """.strip()
     )
-    args_schema: Type[WhisperSTTToolArgs] = WhisperSTTToolArgs
+    args_schema: type[WhisperSTTToolArgs] = WhisperSTTToolArgs
 
     async def _arun(
         self,

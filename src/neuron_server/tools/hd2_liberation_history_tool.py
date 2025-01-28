@@ -1,11 +1,12 @@
-from langchain.tools import BaseTool
-from typing import Type
-from pydantic import BaseModel, Field
-from neuron_server.logger import logger
 import asyncio
 import time
+
 import aiohttp
+from langchain.tools import BaseTool
+from pydantic import BaseModel, Field
+
 from neuron_server.cache import cache_response
+from neuron_server.logger import logger
 
 
 @cache_response(ttl=60 * 5)
@@ -36,7 +37,7 @@ class HD2LiberationHistoryTool(BaseTool):
     description: str = (
         "Provides the detailed liberation history of a given planet. Returns the liberation status in 5 minutes intervals (with some variance). Status is only recorded when planet is active during a campaign. Ordered from newest to latest, limited to 288 results (24 hours). Use it to calculate the time until a planet is liberated."
     )
-    args_schema: Type[HD2LiberationHistoryToolArgs] = HD2LiberationHistoryToolArgs
+    args_schema: type[HD2LiberationHistoryToolArgs] = HD2LiberationHistoryToolArgs
 
     def _run(self, planet_index: int) -> str:
         return asyncio.run(self._arun(planet_index))

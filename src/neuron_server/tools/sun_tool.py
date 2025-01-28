@@ -1,18 +1,17 @@
-from langchain.tools import BaseTool
-from typing import Type, Optional
-from pydantic import BaseModel, Field
-from datetime import datetime, timezone
 import argparse
-from astropy.coordinates import EarthLocation, AltAz
-from astropy import units as u
-from astropy.time import Time
-from astropy.coordinates import get_sun
-from zoneinfo import ZoneInfo
+from datetime import UTC, datetime
+from typing import Any
+
 import pandas as pd
 from astroplan import (
     time_grid_from_range,
 )
-from typing import List, Dict, Any
+from astropy import units as u
+from astropy.coordinates import AltAz, EarthLocation, get_sun
+from astropy.time import Time
+from langchain.tools import BaseTool
+from pydantic import BaseModel, Field
+
 from neuron_server.logger import logger
 
 
@@ -30,7 +29,7 @@ def get_sun_data(
         if start_time != end_time
         else Time([start_time], location=location)
     )
-    results: List[Dict[str, Any]] = []
+    results: list[dict[str, Any]] = []
     for t in time_range:
         time = Time(t, location=location)
         sun = get_sun(time)
@@ -58,7 +57,7 @@ def get_twilights(
     end_time: datetime,
     time_resolution: float = 1,
 ):
-    results: List[Dict[str, Any]] = []
+    results: list[dict[str, Any]] = []
     twilights = ["Astronomical", "Nautical", "Civil", ""]
     twilight_limits = [-18, -12, -6, 0]
 
@@ -111,7 +110,7 @@ def get_twilights(
 class SunToolArgs(BaseModel):
     latitude: float = Field(description="Observer latitude")
     longitude: float = Field(description="Observer longitude")
-    elevation: Optional[float] = Field(
+    elevation: float | None = Field(
         description="Observer elevation in meters", default=0
     )
     start_time: datetime = Field(description="Start time in UTC")
@@ -141,7 +140,7 @@ Time: Time of the twilight
 """.strip()
     )
 
-    args_schema: Type[SunToolArgs] = SunToolArgs
+    args_schema: type[SunToolArgs] = SunToolArgs
 
     def _run(
         self,
@@ -153,8 +152,8 @@ Time: Time of the twilight
         elevation: float = 0,
     ) -> str:
         try:
-            start_time = start_time.astimezone(timezone.utc)
-            end_time = end_time.astimezone(timezone.utc)
+            start_time = start_time.astimezone(UTC)
+            end_time = end_time.astimezone(UTC)
             location = EarthLocation(
                 lat=latitude * u.deg, lon=longitude * u.deg, height=elevation * u.m
             )

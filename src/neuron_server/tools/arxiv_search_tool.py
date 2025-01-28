@@ -1,10 +1,9 @@
-from langchain.tools import BaseTool
-from neuron_server.config import config
-from neuron_server.logger import logger
+
 import arxiv
-import os
-from typing import List, Optional, Type
+from langchain.tools import BaseTool
 from pydantic import BaseModel, Field
+
+from neuron_server.logger import logger
 
 arxiv_search_info = """
 Query Guide:
@@ -34,10 +33,10 @@ client = arxiv.Client()
 
 
 class ArxivSearchToolArgs(BaseModel):
-    query: Optional[str] = Field(
+    query: str | None = Field(
         description=f"The search query for arXiv. If you want to search for a specific article, use the id_list field instead.\n{arxiv_search_info}"
     )
-    id_list: Optional[List[str]] = Field(
+    id_list: list[str] | None = Field(
         description="The list of article IDs to search for. Either this or query is required."
     )
     max_results: int = Field(
@@ -65,12 +64,12 @@ This tool searches arXiv for research articles, and retrieves short summaries. E
 - For specific IDs, use `id_list` instead of `search_query=id:xxx` to handle article versions.
 """.strip()
     )
-    args_schema: Type[ArxivSearchToolArgs] = ArxivSearchToolArgs
+    args_schema: type[ArxivSearchToolArgs] = ArxivSearchToolArgs
 
     def _run(
         self,
         query: str = "",
-        id_list: List[str] | None = None,
+        id_list: list[str] | None = None,
         max_results: int = 10,
         sort_by: arxiv.SortCriterion = arxiv.SortCriterion.SubmittedDate,
         sort_order: arxiv.SortOrder = arxiv.SortOrder.Descending,
@@ -92,7 +91,7 @@ This tool searches arXiv for research articles, and retrieves short summaries. E
                 sort_order=sort_order,
             )
 
-            articles: List[str] = []
+            articles: list[str] = []
             for result in client.results(search):
                 # <br /> is a line break in HTML for the markdown renderer
                 summary = result.summary.strip().replace("\n", "<br />")

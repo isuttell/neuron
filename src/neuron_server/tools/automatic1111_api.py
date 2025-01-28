@@ -1,85 +1,85 @@
-import requests
-import logging
-from typing import List, Dict, Any, Optional
 import base64
 import io
+import logging
+import os
+import time
+from datetime import datetime
+from typing import Any
+from zoneinfo import ZoneInfo
+
+import aiohttp
 from PIL import Image, PngImagePlugin
 from pydantic import BaseModel
-from uuid import uuid4
-import os
-from zoneinfo import ZoneInfo
-from datetime import datetime
-import time
-import aiohttp
+
 from neuron_server.util.image_utilities import create_thumbnails
 from neuron_server.util.slug import safe_filename
 
 
 class ImageGenerationOverrideSettings(BaseModel):
-    sd_model_checkpoint: Optional[str] = None
+    sd_model_checkpoint: str | None = None
 
 
 class ImageGenerationSettings(BaseModel):
-    prompt: Optional[str] = None
-    negative_prompt: Optional[str] = None
-    styles: Optional[List[str]] = None
-    seed: Optional[int] = None
-    subseed: Optional[int] = None
-    subseed_strength: Optional[float] = None
-    seed_resize_from_h: Optional[int] = None
-    seed_resize_from_w: Optional[int] = None
-    sampler_name: Optional[str] = None
-    scheduler: Optional[str] = None
-    batch_size: Optional[int] = None
-    n_iter: Optional[int] = None
-    steps: Optional[int] = None
-    cfg_scale: Optional[float] = None
-    width: Optional[int] = None
-    height: Optional[int] = None
-    restore_faces: Optional[bool] = None
-    tiling: Optional[bool] = None
-    do_not_save_samples: Optional[bool] = None
-    do_not_save_grid: Optional[bool] = None
-    eta: Optional[int] = None
-    denoising_strength: Optional[float] = None
-    s_min_uncond: Optional[int] = None
-    s_churn: Optional[int] = None
-    s_tmax: Optional[int] = None
-    s_tmin: Optional[int] = None
-    s_noise: Optional[int] = None
-    override_settings: Optional[ImageGenerationOverrideSettings] = None
-    override_settings_restore_afterwards: Optional[bool] = None
-    refiner_checkpoint: Optional[str] = None
-    refiner_switch_at: Optional[bool] = None
-    disable_extra_networks: Optional[bool] = None
-    firstpass_image: Optional[str] = None
-    comments: Optional[Dict[str, Any]] = None
-    enable_hr: Optional[bool] = None
-    firstphase_width: Optional[bool] = None
-    firstphase_height: Optional[bool] = None
-    hr_scale: Optional[float] = None
-    hr_upscaler: Optional[str] = None
-    hr_second_pass_steps: Optional[int] = None
-    hr_resize_x: Optional[int] = None
-    hr_resize_y: Optional[int] = None
-    hr_checkpoint_name: Optional[str] = None
-    hr_sampler_name: Optional[str] = None
-    hr_scheduler: Optional[str] = None
-    hr_prompt: Optional[str] = None
-    hr_negative_prompt: Optional[str] = None
-    force_task_id: Optional[str] = None
-    sampler_index: Optional[str] = None
-    script_name: Optional[str] = None
-    script_args: Optional[Dict[str, Any]] = None
-    send_images: Optional[bool] = None
-    save_images: Optional[bool] = None
-    alwayson_scripts: Optional[Dict[str, Any]] = None
-    infotext: Optional[str] = None
+    prompt: str | None = None
+    negative_prompt: str | None = None
+    styles: list[str] | None = None
+    seed: int | None = None
+    subseed: int | None = None
+    subseed_strength: float | None = None
+    seed_resize_from_h: int | None = None
+    seed_resize_from_w: int | None = None
+    sampler_name: str | None = None
+    scheduler: str | None = None
+    batch_size: int | None = None
+    n_iter: int | None = None
+    steps: int | None = None
+    cfg_scale: float | None = None
+    width: int | None = None
+    height: int | None = None
+    restore_faces: bool | None = None
+    tiling: bool | None = None
+    do_not_save_samples: bool | None = None
+    do_not_save_grid: bool | None = None
+    eta: int | None = None
+    denoising_strength: float | None = None
+    s_min_uncond: int | None = None
+    s_churn: int | None = None
+    s_tmax: int | None = None
+    s_tmin: int | None = None
+    s_noise: int | None = None
+    override_settings: ImageGenerationOverrideSettings | None = None
+    override_settings_restore_afterwards: bool | None = None
+    refiner_checkpoint: str | None = None
+    refiner_switch_at: bool | None = None
+    disable_extra_networks: bool | None = None
+    firstpass_image: str | None = None
+    comments: dict[str, Any] | None = None
+    enable_hr: bool | None = None
+    firstphase_width: bool | None = None
+    firstphase_height: bool | None = None
+    hr_scale: float | None = None
+    hr_upscaler: str | None = None
+    hr_second_pass_steps: int | None = None
+    hr_resize_x: int | None = None
+    hr_resize_y: int | None = None
+    hr_checkpoint_name: str | None = None
+    hr_sampler_name: str | None = None
+    hr_scheduler: str | None = None
+    hr_prompt: str | None = None
+    hr_negative_prompt: str | None = None
+    force_task_id: str | None = None
+    sampler_index: str | None = None
+    script_name: str | None = None
+    script_args: dict[str, Any] | None = None
+    send_images: bool | None = None
+    save_images: bool | None = None
+    alwayson_scripts: dict[str, Any] | None = None
+    infotext: str | None = None
 
 
 async def make_post(
-    url: str, json: Dict[str, Any], timeout: int = 300
-) -> Dict[str, Any]:
+    url: str, json: dict[str, Any], timeout: int = 300
+) -> dict[str, Any]:
     try:
         async with aiohttp.ClientSession() as session:
             async with session.post(url, json=json, timeout=timeout) as response:
@@ -107,27 +107,25 @@ class Automatic1111API:
     async def generate(
         self,
         prompt: str,
-        negative_prompt: Optional[str] = None,
-        steps: Optional[int] = 30,
-        width: Optional[int] = 1024,
-        height: Optional[int] = 1024,
-        cfg_scale: Optional[float] = 6,
-        sampler_name: Optional[str] = "Euler a",
-        sd_model_checkpoint: Optional[
-            str
-        ] = "sdxl\sdxlNuclearGeneralPurposeV3Semi_v30BakedVAE",
-        enable_hr: Optional[bool] = None,
-        hr_upscaler: Optional[str] = "Latent",
-        hr_scale: Optional[float] = 1.5,
-        hr_resize_x: Optional[int] = None,
-        hr_resize_y: Optional[int] = None,
-        hr_second_pass_steps: Optional[int] = 20,
-        denoising_strength: Optional[float] = 0.5,
-        restore_faces: Optional[bool] = None,
-        styles: List[str] = ["Default Negative Prompts"],
-        adetailer_enabled: Optional[bool] = False,
-        adetailer_model: Optional[str] = "face_yolov8s.pt",
-        adetailer_denoising_strength: Optional[float] = 0.5,
+        negative_prompt: str | None = None,
+        steps: int | None = 30,
+        width: int | None = 1024,
+        height: int | None = 1024,
+        cfg_scale: float | None = 6,
+        sampler_name: str | None = "Euler a",
+        sd_model_checkpoint: str | None = "sdxl\sdxlNuclearGeneralPurposeV3Semi_v30BakedVAE",
+        enable_hr: bool | None = None,
+        hr_upscaler: str | None = "Latent",
+        hr_scale: float | None = 1.5,
+        hr_resize_x: int | None = None,
+        hr_resize_y: int | None = None,
+        hr_second_pass_steps: int | None = 20,
+        denoising_strength: float | None = 0.5,
+        restore_faces: bool | None = None,
+        styles: list[str] = ["Default Negative Prompts"],
+        adetailer_enabled: bool | None = False,
+        adetailer_model: str | None = "face_yolov8s.pt",
+        adetailer_denoising_strength: float | None = 0.5,
     ) -> str:
         alwayson_scripts = {}
 

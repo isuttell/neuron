@@ -1,9 +1,10 @@
-from langchain.tools import BaseTool
-from typing import Type
-from pydantic import BaseModel, Field
-from neuron_server.logger import logger
 import asyncio
 import time
+
+from langchain.tools import BaseTool
+from pydantic import BaseModel, Field
+
+from neuron_server.logger import logger
 
 
 class WaitToolArgs(BaseModel):
@@ -20,7 +21,7 @@ This tool allows you to pause the execution of an agent for a specified number o
 """.strip()
     )
 
-    args_schema: Type[WaitToolArgs] = WaitToolArgs
+    args_schema: type[WaitToolArgs] = WaitToolArgs
 
     def _run(self, duration: float) -> str:
         logger.debug(f"Waiting for {str(duration)} seconds...")

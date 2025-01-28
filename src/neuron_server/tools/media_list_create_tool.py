@@ -1,11 +1,10 @@
-from langchain.tools import BaseTool
-from typing import Type, Optional, List
-from pydantic import BaseModel, Field
 import asyncio
-from neuron_server.pubsub import pubsub
 import logging
-from uuid import UUID
+
+from langchain.tools import BaseTool
 from langchain_core.runnables import RunnableConfig
+from pydantic import BaseModel, Field
+
 from neuron_server.models.media_list_model import MediaListModel
 
 logger = logging.getLogger(__name__)
@@ -14,14 +13,14 @@ logger = logging.getLogger(__name__)
 class MediaListCreateToolArgs(BaseModel):
     name: str = Field(description="Name of the media list")
     description: str = Field(description="Description of the media list")
-    tags: Optional[List[str]] = Field(
+    tags: list[str] | None = Field(
         default=None, description="Optional tags for categorization"
     )
     visibility: str = Field(
         default="private",
         description="Visibility setting (private/public)",
     )
-    shared_with: Optional[List[str]] = Field(
+    shared_with: list[str] | None = Field(
         default=None, description="Optional list of user IDs to share with"
     )
 
@@ -32,7 +31,7 @@ class MediaListCreateTool(BaseTool):
         """This tool creates a new media list owned by the current user."""
     )
 
-    args_schema: Type[MediaListCreateToolArgs] = MediaListCreateToolArgs
+    args_schema: type[MediaListCreateToolArgs] = MediaListCreateToolArgs
 
     def _run(self, *args, **kwargs) -> str:
         return asyncio.run(self._arun(*args, **kwargs))
@@ -41,9 +40,9 @@ class MediaListCreateTool(BaseTool):
         self,
         name: str,
         description: str,
-        tags: Optional[List[str]] = None,
+        tags: list[str] | None = None,
         visibility: str = "private",
-        shared_with: Optional[List[str]] = None,
+        shared_with: list[str] | None = None,
         config: RunnableConfig = None,
     ) -> str:
         try:

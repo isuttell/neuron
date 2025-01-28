@@ -1,12 +1,13 @@
-from langchain.tools import BaseTool
-from typing import Type, Optional
-from pydantic import BaseModel, Field
-from neuron_server.logger import logger
 import asyncio
-from neuron_server.vectorstores import arxiv_store
-from langchain_core.runnables import RunnableConfig
-from langchain_core.documents import Document
 from datetime import datetime
+
+from langchain.tools import BaseTool
+from langchain_core.documents import Document
+from langchain_core.runnables import RunnableConfig
+from pydantic import BaseModel, Field
+
+from neuron_server.logger import logger
+from neuron_server.vectorstores import arxiv_store
 
 
 def format_document(document: Document, score: float) -> str:
@@ -41,7 +42,7 @@ class ArxivRecallToolArgs(BaseModel):
     score_threshold: float = Field(
         description="The minimum score to recall a document", default=0.2, min=0, max=1
     )
-    filter_short_id: Optional[str] = Field(
+    filter_short_id: str | None = Field(
         description="The optional short id of the document to filter by. Use to ask questions from a specific paper.",
         default=None,
     )
@@ -53,7 +54,7 @@ class ArxivRecallTool(BaseTool):
         "This tool allows you to recall information from long term memory of arxiv papers that have been summarized. Use this to ask specific questions about a paper."
     )
 
-    args_schema: Type[ArxivRecallToolArgs] = ArxivRecallToolArgs
+    args_schema: type[ArxivRecallToolArgs] = ArxivRecallToolArgs
 
     def _run(self, query: str, config: RunnableConfig, k: int = 10):
         return asyncio.run(self._arun(query, config, k))

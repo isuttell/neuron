@@ -1,11 +1,12 @@
-from langchain.tools import BaseTool
-from typing import Type
-from pydantic import BaseModel, Field
-from neuron_server.config import config
-import aiohttp
 import asyncio
-from neuron_server.logger import logger
+
+import aiohttp
+from langchain.tools import BaseTool
+from pydantic import BaseModel, Field
+
 from neuron_server.cache import cache_response
+from neuron_server.config import config
+from neuron_server.logger import logger
 
 
 @cache_response(ttl=60 * 10)
@@ -35,7 +36,7 @@ class OpenWeatherMapForecastTool(BaseTool):
 Provides real-time weather, 48-hour hourly forecasts, 8-day daily forecasts, and government-issued weather alerts for any location using latitude and longitude from OpenWeatherMap.org. Data is updated every 10 minutes""".strip()
     )
 
-    args_schema: Type[OpenWeatherMapForecastToolArgs] = OpenWeatherMapForecastToolArgs
+    args_schema: type[OpenWeatherMapForecastToolArgs] = OpenWeatherMapForecastToolArgs
 
     def _run(self, *args, **kwargs):
         return asyncio.run(self._arun(*args, **kwargs))

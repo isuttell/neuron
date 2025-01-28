@@ -1,9 +1,10 @@
-from langchain.tools import BaseTool
-from neuron_server.logger import logger
-from typing import List
-import subprocess
-from neuron_server.util.subprocess_runner import run_subprocess
 import asyncio
+import subprocess
+
+from langchain.tools import BaseTool
+
+from neuron_server.logger import logger
+from neuron_server.util.subprocess_runner import run_subprocess
 
 
 class FFProbeTool(BaseTool):
@@ -17,7 +18,7 @@ This tool is designed to analyze video and audio using ffprobe. Starting with a 
     def _run(self, *args, **kwargs) -> str:
         return asyncio.run(self._arun(*args, **kwargs))
 
-    async def _arun(self, args: List[str]) -> str:
+    async def _arun(self, args: list[str]) -> str:
         process: subprocess.CompletedProcess[str]
         try:
             args = [

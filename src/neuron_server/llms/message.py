@@ -1,33 +1,34 @@
+import asyncio
+import json
+import re
+from datetime import UTC, datetime, timedelta
+from uuid import UUID
+
+from langchain_core.messages import (
+    AIMessage,
+    BaseMessage,
+    HumanMessage,
+    SystemMessage,
+    ToolMessage,
+)
+from langchain_core.messages.tool import ToolCall
+from pydantic import BaseModel
 from quart import websocket
-from neuron_server.event_router import ErrorEvent
-from neuron_server.models import ThreadModel, MessageModel, PersonalityModel
-from neuron_server.logger import logger
+
 from neuron_server.controllers.events.message_events import (
     MessageEvent,
-    PartialMessageEvent,
     PartialMessage,
+    PartialMessageEvent,
 )
 from neuron_server.controllers.events.thread_events import (
     GetThreadResponse,
 )
-from langchain_core.messages import (
-    BaseMessage,
-    SystemMessage,
-    AIMessage,
-    HumanMessage,
-    ToolMessage,
-)
-from datetime import datetime, timezone, timedelta
-from typing import List, Dict, Any
-import re
-from neuron_server.llms.llm import LLM
-from uuid import UUID
-from neuron_server.models.provider_model import ProviderModelModel
+from neuron_server.event_router import ErrorEvent
 from neuron_server.llms.clean_eos_tokens import clean_eos_tokens
-from langchain_core.messages.tool import ToolCall
-import json
-from pydantic import BaseModel
-import asyncio
+from neuron_server.llms.llm import LLM
+from neuron_server.logger import logger
+from neuron_server.models import MessageModel, PersonalityModel, ThreadModel
+from neuron_server.models.provider_model import ProviderModelModel
 
 
 async def send_message(message: BaseModel):
@@ -71,17 +72,17 @@ def get_message_content(message: BaseMessage):
 
 
 async def astream_events(
-    provider: LLM, messages: List[BaseMessage], thread: ThreadModel
+    provider: LLM, messages: list[BaseMessage], thread: ThreadModel
 ):
     index = -1
-    start_times: Dict[str, datetime] = {}
-    current_tool_calls: List[ToolCall] = []
+    start_times: dict[str, datetime] = {}
+    current_tool_calls: list[ToolCall] = []
     current_run_id: str | None = None
     graph = await provider.compile()
     async for body in graph.astream_events(
         {
             "messages": messages,
-            "now": datetime.now(timezone.utc)
+            "now": datetime.now(UTC)
             .astimezone()
             .strftime("%Y-%m-%d %H:%M:%S %Z"),
         },
@@ -96,7 +97,7 @@ async def astream_events(
         kind: str = body["event"]
         run_id: str = body["run_id"]
         if run_id not in start_times:
-            start_times[run_id] = datetime.now(timezone.utc).astimezone()
+            start_times[run_id] = datetime.now(UTC).astimezone()
 
         if kind == "on_chat_model_start":
             if current_run_id and len(current_tool_calls) > 0:
@@ -191,12 +192,12 @@ async def astream_events(
 async def get_trimmed_messages(
     thread: ThreadModel,
     llm: LLM,
-    system_prompts: List[str] = [],
-    messages: List[BaseMessage] = [],
+    system_prompts: list[str] = [],
+    messages: list[BaseMessage] = [],
     remove_tools: bool = False,
-) -> List[BaseMessage]:
-    records: List[MessageModel] = await MessageModel.list(thread.id)
-    messages: List[BaseMessage] = [
+) -> list[BaseMessage]:
+    records: list[MessageModel] = await MessageModel.list(thread.id)
+    messages: list[BaseMessage] = [
         SystemMessage(content="\n\n".join(system_prompts)),
         *[record.to_message() for record in records],
         *messages,
@@ -214,7 +215,7 @@ async def get_trimmed_messages(
     )
 
 
-async def update_title(thread: ThreadModel, llm: LLM, messages: List[BaseMessage]):
+async def update_title(thread: ThreadModel, llm: LLM, messages: list[BaseMessage]):
     response = await llm.title.ainvoke(
         {
             "messages": [
@@ -224,7 +225,7 @@ async def update_title(thread: ThreadModel, llm: LLM, messages: List[BaseMessage
                 ),
             ],
             "last_title": thread.name or "No title yet",
-            "now": datetime.now(timezone.utc)
+            "now": datetime.now(UTC)
             .astimezone()
             .strftime("%Y-%m-%d %H:%M:%S %Z"),
         },
@@ -242,7 +243,7 @@ async def update_title(thread: ThreadModel, llm: LLM, messages: List[BaseMessage
     await websocket.send(GetThreadResponse(thread=thread).model_dump_json())
 
 
-async def update_memory(thread: ThreadModel, llm: LLM, messages: List[BaseMessage]):
+async def update_memory(thread: ThreadModel, llm: LLM, messages: list[BaseMessage]):
     response = await llm.memory.ainvoke(
         {
             "messages": [
@@ -258,7 +259,7 @@ async def update_memory(thread: ThreadModel, llm: LLM, messages: List[BaseMessag
                 ),
             ],
             "memory": thread.memory or "No memory yet",
-            "now": datetime.now(timezone.utc)
+            "now": datetime.now(UTC)
             .astimezone()
             .strftime("%Y-%m-%d %H:%M:%S %Z"),
         },

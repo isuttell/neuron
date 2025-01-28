@@ -4,7 +4,6 @@ from langchain_core.prompts import (
     PromptTemplate,
 )
 
-
 chat_prompt = ChatPromptTemplate.from_messages(
     [
         (

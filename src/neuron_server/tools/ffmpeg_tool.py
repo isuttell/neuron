@@ -1,16 +1,17 @@
-from langchain.tools import BaseTool
-from neuron_server.config import config as neuron_config
-from neuron_server.logger import logger
-from uuid import uuid4
-from typing import List, Literal, Type
+import asyncio
 import os
 import subprocess
+from typing import Literal
+
+from langchain.tools import BaseTool
+from langchain_core.runnables import RunnableConfig
 from pydantic import BaseModel, Field
+
+from neuron_server.config import config as neuron_config
+from neuron_server.logger import logger
+from neuron_server.models.media_item_model import MediaItemModel
 from neuron_server.util.slug import safe_filename
 from neuron_server.util.subprocess_runner import run_subprocess
-import asyncio
-from langchain_core.runnables import RunnableConfig
-from neuron_server.models.media_item_model import MediaItemModel
 
 
 class FFmpegToolError(Exception):
@@ -26,7 +27,7 @@ class FFmpegToolArgs(BaseModel):
     name: str = Field(
         description="A unique display title for the audio file to be generated. Must be less than 256 characters",
     )
-    args: List[str] = Field(
+    args: list[str] = Field(
         description="""\
 ffmpeg arguments. Starting with a fixed base of arguments (ffmpeg -hide_banner -nostats -loglevel error), include all arguments required to do tasks such as join audio clips and integrate sound effects based on the user's specifications. The tool avoids duplicating the initial arguments and focuses on creating a cohesive output according to the user's input for sequence, timing, and effects. The output filename and URL is automatically generated, appended to the args, and returned in the tool's response, ready for use.
 
@@ -52,7 +53,7 @@ This tool is designed to manipulate video and audio using ffmpeg. Do not show th
 """.strip()
     )
 
-    args_schema: Type[FFmpegToolArgs] = FFmpegToolArgs
+    args_schema: type[FFmpegToolArgs] = FFmpegToolArgs
 
     def _run(self, *args, **kwargs) -> str:
         return asyncio.run(self._arun(*args, **kwargs))
@@ -60,7 +61,7 @@ This tool is designed to manipulate video and audio using ffmpeg. Do not show th
     async def _arun(
         self,
         name: str,
-        args: List[str],
+        args: list[str],
         extension: Literal["mp3", "mp4", "wav"],
         config: RunnableConfig,
     ) -> str:
@@ -111,5 +112,4 @@ Filename: {output}
             if process:
                 logger.error(process.stderr)
                 raise FFmpegToolError(str(e), process.stderr)
-            else:
-                raise e
+            raise e

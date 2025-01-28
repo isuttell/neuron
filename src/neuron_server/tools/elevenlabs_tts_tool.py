@@ -1,19 +1,21 @@
-from langchain.tools import BaseTool
-from neuron_server.config import config as neuron_config
-from neuron_server.logger import logger
-from uuid import uuid4
-from typing import Type, List, Literal, Optional
+import asyncio
 import os
 import shutil
 import subprocess
+from typing import Literal
+from uuid import uuid4
+
 from elevenlabs import AsyncElevenLabs
-from neuron_server.util.text_cleaning import clean_action_text
-import asyncio
+from langchain.tools import BaseTool
+from langchain_core.runnables import RunnableConfig
 from pydantic import BaseModel, Field
+
+from neuron_server.config import config as neuron_config
+from neuron_server.logger import logger
+from neuron_server.models.media_item_model import MediaItemModel
 from neuron_server.util.slug import safe_filename
 from neuron_server.util.subprocess_runner import run_subprocess
-from neuron_server.models.media_item_model import MediaItemModel
-from langchain_core.runnables import RunnableConfig
+from neuron_server.util.text_cleaning import clean_action_text
 
 AvailableVoices = Literal[
     "Aria",  # Expressive middle-aged American female
@@ -78,7 +80,7 @@ Nassim - Corporate Narration: Middle-aged American male with deep voice for corp
 
 
 class ElevenLabsTTSToolArgs(BaseModel):
-    script: List[VoiceLine] = Field(
+    script: list[VoiceLine] = Field(
         description="The script to generate audio from. The script should be formatted as a list of spoken lines, with each line containing a voice identifier and the text to be spoken."
     )
 
@@ -86,7 +88,7 @@ class ElevenLabsTTSToolArgs(BaseModel):
         description="A unique display title for the audio file to be generated. Must be less than 256 characters",
     )
 
-    model: Optional[Literal["eleven_turbo_v2_5", "eleven_multilingual_v2"]] = Field(
+    model: Literal["eleven_turbo_v2_5", "eleven_multilingual_v2"] | None = Field(
         description="The model to use for the TTS. Defaults to eleven_multilingual_v2 for quality and eleven_turbo_v2_5 for speed.",
         default="eleven_turbo_v2_5",
     )
@@ -99,19 +101,17 @@ class ElevenLabsTTSTool(BaseTool):
 This tool generates audio from a provided script using ElevenLabs' TTS APIs and returns a link to the final audio file. Use this tool to generate high quality audio for characters when the users requests it. This returns an audio tag to be shown to the user so they can play it. Hide the filename as the user will not need it.
 """.strip()
     )
-    args_schema: Type[ElevenLabsTTSToolArgs] = ElevenLabsTTSToolArgs
+    args_schema: type[ElevenLabsTTSToolArgs] = ElevenLabsTTSToolArgs
 
     def _run(self, *args, **kwargs) -> str:
         return asyncio.run(self._arun(*args, **kwargs))
 
     async def _arun(
         self,
-        script: List[VoiceLine],
+        script: list[VoiceLine],
         name: str,
         config: RunnableConfig,
-        model: Optional[
-            Literal["eleven_turbo_v2_5", "eleven_multilingual_v2"]
-        ] = "eleven_turbo_v2_5",
+        model: Literal["eleven_turbo_v2_5", "eleven_multilingual_v2"] | None = "eleven_turbo_v2_5",
     ) -> str:
         try:
             logger.debug(f"Generating elevenlabs audio using {model}...")
@@ -120,7 +120,7 @@ This tool generates audio from a provided script using ElevenLabs' TTS APIs and 
                 os.path.join(neuron_config.temp_folder, uuid4().hex)
             )
             os.makedirs(working_dir)
-            audio_files: List[str] = []
+            audio_files: list[str] = []
             if len(script) == 0:
                 raise ValueError("Failed to parse script. Found no lines.")
 
@@ -201,7 +201,7 @@ def main():
 
     # Call the tool to generate the audio
     tool = ElevenLabsTTSTool()
-    with open(args.script, "r") as f:
+    with open(args.script) as f:
         script = "\n".join(f.readlines())
     results = tool._run(script)
     # Print the response

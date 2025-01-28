@@ -1,20 +1,20 @@
-from langchain.tools import BaseTool
-from typing import Type, List
-from pydantic import BaseModel, Field
 import asyncio
-from neuron_server.pubsub import pubsub
 import logging
 from uuid import UUID
+
+from langchain.tools import BaseTool
 from langchain_core.runnables import RunnableConfig
-from neuron_server.models.media_list_model import MediaListModel
+from pydantic import BaseModel, Field
+
 from neuron_server.models.media_list_item_model import MediaListItemModel
+from neuron_server.models.media_list_model import MediaListModel
 
 logger = logging.getLogger(__name__)
 
 
 class MediaListReorderItemsToolArgs(BaseModel):
     list_id: UUID = Field(description="ID of the media list to reorder items in")
-    media_item_ids: List[UUID] = Field(
+    media_item_ids: list[UUID] = Field(
         description="List of media item IDs in their desired order"
     )
 
@@ -26,13 +26,13 @@ class MediaListReorderItemsTool(BaseTool):
         Provide the list_id and an array of media_item_ids in their desired order."""
     )
 
-    args_schema: Type[MediaListReorderItemsToolArgs] = MediaListReorderItemsToolArgs
+    args_schema: type[MediaListReorderItemsToolArgs] = MediaListReorderItemsToolArgs
 
     def _run(self, *args, **kwargs) -> str:
         return asyncio.run(self._arun(*args, **kwargs))
 
     async def _arun(
-        self, list_id: UUID, media_item_ids: List[UUID], config: RunnableConfig
+        self, list_id: UUID, media_item_ids: list[UUID], config: RunnableConfig
     ) -> str:
         try:
             user_id = config["configurable"].get("user_id")

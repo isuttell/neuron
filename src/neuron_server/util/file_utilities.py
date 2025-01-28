@@ -1,15 +1,16 @@
-import os
 import hashlib
-from typing import Tuple
+import os
+
 import aiofiles
+from PIL import Image
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import BadRequest
-from PIL import Image
+
 from neuron_server.config import config as neuron_config
 from neuron_server.util.image_utilities import create_thumbnails
 
 
-async def process_uploaded_file(file: FileStorage) -> Tuple[str, str, str]:
+async def process_uploaded_file(file: FileStorage) -> tuple[str, str, str]:
     """
     Process an uploaded file, handling validation, saving, and image conversion.
 

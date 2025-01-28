@@ -1,25 +1,23 @@
-from neuron_server.models import PersonalityModel
-from quart import websocket, Blueprint, request, Response
-from neuron_server.event_router import EventRouter
-from neuron_server.models.provider_model import ProviderModelModel
-from neuron_server.llms.prompts import (
-    personality_update_prompt,
-    personality_description_prompt,
-)
-from langchain_core.messages import AIMessage
 import re
-from neuron_server.llms.llm import LLM
-from neuron_server.config import config
 from uuid import UUID
-from werkzeug.exceptions import NotFound, BadRequest
-from pydantic import BaseModel
-from typing import Optional
-from neuron_server.logger import logger
+
 from langchain_core.output_parsers import StrOutputParser
-from neuron_server.llms.tools import get_tools, default_tools
 from langchain_core.runnables import Runnable
-from neuron_server.models.embedding_model import EmbeddingModel
+from pydantic import BaseModel
+from quart import Blueprint, Response, request
+from werkzeug.exceptions import BadRequest, NotFound
+
 from neuron_server.controllers.auth import requires_auth
+from neuron_server.event_router import EventRouter
+from neuron_server.llms.llm import LLM
+from neuron_server.llms.prompts import (
+    personality_description_prompt,
+    personality_update_prompt,
+)
+from neuron_server.llms.tools import default_tools, get_tools
+from neuron_server.models import PersonalityModel
+from neuron_server.models.embedding_model import EmbeddingModel
+from neuron_server.models.provider_model import ProviderModelModel
 
 router = EventRouter()
 
@@ -28,11 +26,11 @@ blueprint = Blueprint("personality", __name__)
 
 class CreatePersonality(BaseModel):
     name: str
-    description: Optional[str] = None
+    description: str | None = None
     context: str
     memory: str
-    logo: Optional[str] = None
-    tool_set: Optional[str] = None
+    logo: str | None = None
+    tool_set: str | None = None
 
 
 class UpdatePersonality(CreatePersonality):

@@ -1,6 +1,8 @@
-from typing import Literal, Optional
-from neuron_server.event_router import OutgoingEvent, IncomingEvent
+from typing import Literal
+
 from pydantic import BaseModel
+
+from neuron_server.event_router import IncomingEvent, OutgoingEvent
 
 
 class GetImages(IncomingEvent):
@@ -13,8 +15,8 @@ class DeleteImage(IncomingEvent):
 
 class CreateImage(IncomingEvent):
     prompt: str
-    guidance_scale: Optional[float] = None
-    num_inference_steps: Optional[int] = None
+    guidance_scale: float | None = None
+    num_inference_steps: int | None = None
 
 
 class ImageFromDisk(BaseModel):

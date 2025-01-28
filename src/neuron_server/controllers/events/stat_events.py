@@ -1,5 +1,6 @@
 from typing import Literal
-from neuron_server.event_router import OutgoingEvent, IncomingEvent
+
+from neuron_server.event_router import IncomingEvent, OutgoingEvent
 
 
 class GetTokenStats(IncomingEvent):

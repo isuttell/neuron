@@ -1,32 +1,28 @@
-from langchain.tools import BaseTool
-from typing import Type, Optional, Literal
-from pydantic import BaseModel, Field
-import replicate.helpers
-from neuron_server.logger import logger
 import asyncio
-import replicate
-from uuid import uuid4
 import os
-from neuron_server.config import config as neuron_config
+import re
+from datetime import datetime
+from uuid import uuid4
+
 import aiofiles
 import aiohttp
-from PIL import PngImagePlugin, Image
-from datetime import datetime, timezone
-import re
-import shutil
-from neuron_server.util.image_utilities import create_thumbnails
-from neuron_server.cache import set_cache_key
-from neuron_server.pubsub import pubsub
-from neuron_server.controllers.events.app_events import SidebarImageEvent
+import replicate
+import replicate.helpers
+from langchain.tools import BaseTool
+from PIL import Image, PngImagePlugin
+from pydantic import BaseModel, Field
+
+from neuron_server.config import config as neuron_config
+from neuron_server.logger import logger
 
 
 class ReplicateImageGenerationToolArgs(BaseModel):
     image_url: str = Field(description="The URL of the image to replace.")
     mask_prompt: str = Field(description="The prompt to use for the mask generation.")
-    negative_mask_prompt: Optional[str] = Field(
+    negative_mask_prompt: str | None = Field(
         description="The negative prompt to use for the mask generation."
     )
-    mask_adjustment_factor: Optional[int] = Field(
+    mask_adjustment_factor: int | None = Field(
         0, description="Mask Adjustment Factor (-ve for erosion, +ve for dilation)"
     )
 
@@ -39,7 +35,7 @@ Use this tool to generate an image using a text prompt on replicate.com and has 
 """.strip()
     )
 
-    args_schema: Type[ReplicateImageGenerationToolArgs] = (
+    args_schema: type[ReplicateImageGenerationToolArgs] = (
         ReplicateImageGenerationToolArgs
     )
 
@@ -63,8 +59,8 @@ Use this tool to generate an image using a text prompt on replicate.com and has 
         self,
         image_url: str,
         mask_prompt: str,
-        negative_mask_prompt: Optional[str] = "",
-        mask_adjustment_factor: Optional[int] = 0,
+        negative_mask_prompt: str | None = "",
+        mask_adjustment_factor: int | None = 0,
     ) -> str:
         tmp_upload_file = os.path.join(neuron_config.temp_folder, uuid4().hex)
         try:

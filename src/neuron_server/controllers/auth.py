@@ -1,13 +1,16 @@
-from quart import request
-import jwt
-from functools import wraps
-from typing import Awaitable, Any, List, Dict
-import aiohttp
-from neuron_server.config import config
 import logging
+from collections.abc import Awaitable
+from functools import wraps
+from typing import Any
+
+import aiohttp
+import jwt
 from pydantic import BaseModel
+from quart import request
+from werkzeug.exceptions import Unauthorized
+
 from neuron_server.cache import cache_response
-from werkzeug.exceptions import Unauthorized, Forbidden
+from neuron_server.config import config
 
 logger = logging.getLogger(__name__)
 
@@ -32,24 +35,24 @@ def get_token_auth_header():
         raise Unauthorized(
             'Authorization header must start with "Bearer"',
         )
-    elif len(parts) == 1:
+    if len(parts) == 1:
         raise Unauthorized("Token not found")
-    elif len(parts) > 2:
+    if len(parts) > 2:
         raise Unauthorized("Invalid Bearer schema")
     token = parts[1]
     return token
 
 
 class TokenPayload(BaseModel):
-    roles: List[str]
+    roles: list[str]
     user_id: str
     email: str
     nickname: str
-    permissions: List[str]
+    permissions: list[str]
 
 
 @cache_response(ttl=60 * 15)
-async def get_jwks() -> Dict[str, Any]:
+async def get_jwks() -> dict[str, Any]:
     async with aiohttp.ClientSession() as session:
         async with session.get(
             f"https://{config.auth0_domain}/.well-known/jwks.json"
@@ -60,7 +63,7 @@ async def get_jwks() -> Dict[str, Any]:
 async def decode_token(token: str) -> TokenPayload:
     jwks = await get_jwks()
     unverified_header = jwt.get_unverified_header(token)
-    rsa_key: Dict[str, Any] | None = None
+    rsa_key: dict[str, Any] | None = None
     for key in jwks["keys"]:
         if key["kid"] == unverified_header["kid"]:
             rsa_key = {

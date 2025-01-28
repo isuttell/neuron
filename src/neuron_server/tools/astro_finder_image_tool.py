@@ -1,18 +1,18 @@
-from langchain.tools import BaseTool
-from typing import Type, List
-from pydantic import BaseModel, Field
 import argparse
-from astropy.coordinates import SkyCoord
-from astropy import units as u
-from astroplan import FixedTarget
-from astroplan.plots import plot_finder_image
+import os
+from uuid import uuid4
+
+import matplotlib
 import matplotlib.pyplot as plt
+from astroplan import FixedTarget
+from astroplan.plots import dark_style_sheet, plot_finder_image
+from astropy import units as u
+from astropy.coordinates import SkyCoord
+from langchain.tools import BaseTool
+from pydantic import BaseModel, Field
+
 from neuron_server.config import config
 from neuron_server.logger import logger
-import matplotlib
-from astroplan.plots import dark_style_sheet
-from uuid import uuid4
-import os
 
 matplotlib.use("Agg")
 
@@ -28,7 +28,7 @@ class Target(BaseModel):
 
 
 class AstroFinderImageToolArgs(BaseModel):
-    targets: List[Target] = Field(
+    targets: list[Target] = Field(
         description="A list of targets, each target must have a name and it's ra/dec coordinates in degrees. High precision is recommended."
     )
     fov_radius: float = Field(
@@ -37,7 +37,7 @@ class AstroFinderImageToolArgs(BaseModel):
     )
 
 
-def create_finder_images(targets: List[FixedTarget], fov_radius: float = 10) -> str:
+def create_finder_images(targets: list[FixedTarget], fov_radius: float = 10) -> str:
     matplotlib.rcdefaults()
     matplotlib.rcParams.update(dark_style_sheet)
     images = []
@@ -66,11 +66,11 @@ This tool accepts a list of targets and plots finder images for each target. The
 """.strip()
     )
 
-    args_schema: Type[AstroFinderImageToolArgs] = AstroFinderImageToolArgs
+    args_schema: type[AstroFinderImageToolArgs] = AstroFinderImageToolArgs
 
     def _run(
         self,
-        targets: List[Target],
+        targets: list[Target],
         fov_radius: float = 10,
     ) -> str:
         try:

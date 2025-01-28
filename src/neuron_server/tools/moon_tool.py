@@ -1,25 +1,24 @@
-from langchain.tools import BaseTool
-from typing import Type, Optional
-from pydantic import BaseModel, Field
-from datetime import datetime
 import argparse
-from astropy.coordinates import EarthLocation, AltAz
-from astropy import units as u
-from astropy.time import Time
-from astropy.coordinates import get_body, get_sun
+from datetime import datetime
+from typing import Any
+from zoneinfo import ZoneInfo
+
 import numpy as np
-from typing import List, Dict, Any
+import pandas as pd
 from astroplan import (
     time_grid_from_range,
 )
-from zoneinfo import ZoneInfo
-import pandas as pd
+from astropy import units as u
+from astropy.coordinates import AltAz, EarthLocation, get_body, get_sun
+from astropy.time import Time
+from langchain.tools import BaseTool
+from pydantic import BaseModel, Field
 
 
 class MoonToolArgs(BaseModel):
     latitude: float = Field(description="Observer latitude")
     longitude: float = Field(description="Observer longitude")
-    elevation: Optional[float] = Field(
+    elevation: float | None = Field(
         description="Observer elevation in meters", default=0
     )
     start_time: datetime = Field(description="Start time")
@@ -43,7 +42,7 @@ Illumination: Percentage of the Moon's surface illuminated
 """.strip()
     )
 
-    args_schema: Type[MoonToolArgs] = MoonToolArgs
+    args_schema: type[MoonToolArgs] = MoonToolArgs
 
     def _run(
         self,
@@ -67,7 +66,7 @@ Illumination: Percentage of the Moon's surface illuminated
             if start_time != end_time
             else Time([start_time], location=location)
         )
-        results: List[Dict[str, Any]] = []
+        results: list[dict[str, Any]] = []
         for t in time_range:
             time = Time(t, location=location)
             sun = get_sun(time)

@@ -1,11 +1,11 @@
-from neuron_server.util.scheduler import AsyncRedisEventScheduler
-from typing import Dict, Any
 import asyncio
 import logging
 from datetime import datetime
+from typing import Any
 
-from neuron_server.models.thread_model import ThreadModel
 from neuron_server.models.stream_event import StreamEvent
+from neuron_server.models.thread_model import ThreadModel
+from neuron_server.util.scheduler import AsyncRedisEventScheduler
 
 logger = logging.getLogger(__name__)
 
@@ -19,9 +19,9 @@ class TaskScheduler(AsyncRedisEventScheduler):
         password: str = None,
     ):
         super().__init__(host=host, port=port, db=db, password=password)
-        self._active_streams: Dict[str, asyncio.Task] = {}
+        self._active_streams: dict[str, asyncio.Task] = {}
 
-    async def on_event(self, event_id: str, metadata: Dict[str, Any]):
+    async def on_event(self, event_id: str, metadata: dict[str, Any]):
         """Handle scheduled events by creating a new thread and streaming response."""
         from neuron_server.llms.agent import astream
 

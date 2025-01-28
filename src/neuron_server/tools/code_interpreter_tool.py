@@ -1,13 +1,13 @@
-from langchain.tools import BaseTool
-from typing import Type
-from pydantic import BaseModel, Field
-from neuron_server.logger import logger
 import asyncio
-import time
-from neuron_server.tools.code_interpreter_api import run_code_interpreter
 import subprocess
+import time
+
+from langchain.tools import BaseTool
 from langchain_core.runnables import RunnableConfig
-from neuron_server.models.media_item_model import MediaItemModel
+from pydantic import BaseModel, Field
+
+from neuron_server.logger import logger
+from neuron_server.tools.code_interpreter_api import run_code_interpreter
 
 
 class CodeInterpreterToolArgs(BaseModel):
@@ -51,7 +51,7 @@ This tool executes Python code in a restricted environment for data analysis, pr
 """.strip()
     )
 
-    args_schema: Type[CodeInterpreterToolArgs] = CodeInterpreterToolArgs
+    args_schema: type[CodeInterpreterToolArgs] = CodeInterpreterToolArgs
 
     timeout: int = 300
     code_interpreter_image: str = "192.168.1.160:5000/code-interpreter:latest"

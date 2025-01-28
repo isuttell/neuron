@@ -1,21 +1,22 @@
-from langchain.tools import BaseTool
-from neuron_server.config import config as neuron_config
-from neuron_server.logger import logger
-from uuid import uuid4
+import asyncio
 import os
 import shutil
 import subprocess
-from neuron_server.util.text_cleaning import clean_action_text
-from neuron_server.util.slug import safe_filename
-from openai import AsyncOpenAI
-from typing import List, Type, Literal
-import asyncio
-from pydantic import BaseModel, Field
-import aiofiles
-from neuron_server.util.subprocess_runner import run_subprocess
-from langchain_core.runnables import RunnableConfig
-from neuron_server.models.media_item_model import MediaItemModel
+from typing import Literal
+from uuid import uuid4
 
+import aiofiles
+from langchain.tools import BaseTool
+from langchain_core.runnables import RunnableConfig
+from openai import AsyncOpenAI
+from pydantic import BaseModel, Field
+
+from neuron_server.config import config as neuron_config
+from neuron_server.logger import logger
+from neuron_server.models.media_item_model import MediaItemModel
+from neuron_server.util.slug import safe_filename
+from neuron_server.util.subprocess_runner import run_subprocess
+from neuron_server.util.text_cleaning import clean_action_text
 
 client = AsyncOpenAI(api_key=neuron_config.openai_api_key)
 
@@ -28,7 +29,7 @@ class VoiceLine(BaseModel):
 
 
 class OpenAITTSToolArgs(BaseModel):
-    script: List[VoiceLine] = Field(
+    script: list[VoiceLine] = Field(
         description="The script to generate audio from. The script should be formatted as a list of spoken lines, with each line containing a voice identifier and the text to be spoken."
     )
     speed: float = Field(
@@ -47,14 +48,14 @@ class OpenAITTSTool(BaseTool):
 The tool will use OpenAI's TTS API to generate the audio and return a link to the audio file. Write your input text to mimic natural, conversational speech. Use this tool by default over other TTS tools when the user requests you generate spoken audio.
 """.strip()
     )
-    args_schema: Type[OpenAITTSToolArgs] = OpenAITTSToolArgs
+    args_schema: type[OpenAITTSToolArgs] = OpenAITTSToolArgs
 
     def _run(self, *args, **kwargs):
         return asyncio.run(self._arun(*args, **kwargs))
 
     async def _arun(
         self,
-        script: List[VoiceLine],
+        script: list[VoiceLine],
         name: str,
         config: RunnableConfig,
         speed: float = 1,
@@ -67,7 +68,7 @@ The tool will use OpenAI's TTS API to generate the audio and return a link to th
             os.makedirs(working_dir)
             if len(script) == 0:
                 raise ValueError("Failed to parse script. Found no lines.")
-            audio_files: List[str] = []
+            audio_files: list[str] = []
 
             for index, line in enumerate(script):
                 cleaned_text = clean_action_text(line.text)
@@ -143,7 +144,7 @@ def main():
 
     # Call the tool to generate the audio
     tool = OpenAITTSTool()
-    with open(args.script, "r") as f:
+    with open(args.script) as f:
         script = "\n".join(f.readlines())
     results = tool._run(script)
     # Print the response

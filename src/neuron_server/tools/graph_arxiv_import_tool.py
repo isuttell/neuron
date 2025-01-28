@@ -1,17 +1,18 @@
-from langchain.tools import BaseTool
-from neuron_server.logger import logger
-from pydantic import BaseModel, Field
-from typing import Type, Optional
 import asyncio
-from langchain_core.runnables import RunnableConfig
-from neuron_server.graph import process_document, get_document
-import arxiv
 import os
 import time
-from werkzeug.exceptions import BadRequest
+
+import arxiv
 import pymupdf4llm
-from neuron_server.config import config as neuron_config
 import tiktoken
+from langchain.tools import BaseTool
+from langchain_core.runnables import RunnableConfig
+from pydantic import BaseModel, Field
+from werkzeug.exceptions import BadRequest
+
+from neuron_server.config import config as neuron_config
+from neuron_server.graph import get_document, process_document
+from neuron_server.logger import logger
 
 encoder = tiktoken.encoding_for_model("gpt-4o")
 
@@ -46,7 +47,7 @@ class GraphArxivImportTool(BaseTool):
 Use this tool to import arXiv articles into the knowledge graph or check if an article already exists. It will return basic metadata about the article and the time it took to process. Be aware that this is a can be a slow process depending on the size of the article. Always confirm with the user before running this tool.
 """.strip()
     )
-    args_schema: Type[GraphArxivImportToolArgs] = GraphArxivImportToolArgs
+    args_schema: type[GraphArxivImportToolArgs] = GraphArxivImportToolArgs
 
     def _run(self, arxiv_id: str, config: RunnableConfig) -> str:
         return asyncio.run(self._arun(arxiv_id, config))

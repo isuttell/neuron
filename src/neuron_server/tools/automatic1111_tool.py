@@ -1,15 +1,16 @@
+import asyncio
+import os
+from typing import Literal
+
+import aiohttp
 from langchain.tools import BaseTool
+from langchain_core.runnables import RunnableConfig
+from pydantic import BaseModel, Field
+
 from neuron_server.config import config as neuron_config
 from neuron_server.logger import logger
-from typing import Literal, Type, Optional
-from pydantic import BaseModel, Field
-import asyncio
-from neuron_server.tools.automatic1111_api import Automatic1111API
-import os
-from neuron_server.logger import logger
-import aiohttp
 from neuron_server.models.media_item_model import MediaItemModel
-from langchain_core.runnables import RunnableConfig
+from neuron_server.tools.automatic1111_api import Automatic1111API
 
 Automatic1111Checkpoints = Literal[
     "sdxl\\sdxlNuclearGeneralPurposeV3Semi_v30BakedVAE",
@@ -26,23 +27,23 @@ class Automatic1111ToolArgs(BaseModel):
     prompt: str = Field(
         description="The prompt to generate the image from. When generating prompts, include specific visual details, such as colors, textures, and object placements, to guide the model toward a precise result. Mention the desired style (e.g., photorealistic, cartoonish, or abstract) and add context, like background elements or lighting, for more cohesive images. Focus on clarity and conciseness in each prompt to avoid ambiguity and ensure reproducible results."
     )
-    negative_prompt: Optional[str] = Field(
+    negative_prompt: str | None = Field(
         description="The negative prompt to use for generation."
     )
-    steps: Optional[int] = Field(
+    steps: int | None = Field(
         description="The number of steps to use for generation", default=30
     )
-    sd_model_checkpoint: Optional[Automatic1111Checkpoints] = Field(
+    sd_model_checkpoint: Automatic1111Checkpoints | None = Field(
         description="The model checkpoint to use for generation. sdxlNuclearGeneralPurposeV3Semi_v30BakedVAE is a general purpose model. betterThanWords_v30 is a realistic model for nudity. STOIQOAfroditexl_XL31 is a more photorealistic model. dreamshaperXL_v21TurboDPMSDE is the most creative model.",
         default="sdxl\\sdxlNuclearGeneralPurposeV3Semi_v30BakedVAE",
     )
-    cfg_scale: Optional[float] = Field(
+    cfg_scale: float | None = Field(
         description="The CFG scale to use for generation.", default=4
     )
-    enable_hr: Optional[bool] = Field(
+    enable_hr: bool | None = Field(
         description="Whether to enable high resolution (HR) upscaling. May introduce artifacts. Defaults to False."
     )
-    adetailer_enabled: Optional[bool] = Field(
+    adetailer_enabled: bool | None = Field(
         description="Whether to enable ADetailer to improve details in faces. Enable when generating faces to improve details in faces. Defaults to False."
     )
 
@@ -64,7 +65,7 @@ class Automatic1111Tool(BaseTool):
     description: str = (
         "A tool that generates an image based on a given prompt using Automatic1111 hosted on the machine called Kepler on the local network. Use this when the user asks for an image. Do not use to generate charts. Returns a markdown image tag."
     )
-    args_schema: Type[Automatic1111ToolArgs] = Automatic1111ToolArgs
+    args_schema: type[Automatic1111ToolArgs] = Automatic1111ToolArgs
 
     api: Automatic1111API
 
@@ -80,12 +81,12 @@ class Automatic1111Tool(BaseTool):
         prompt: str,
         name: str,
         config: RunnableConfig,
-        negative_prompt: Optional[str] = None,
-        steps: Optional[int] = 30,
-        cfg_scale: Optional[float] = 4,
-        sd_model_checkpoint: Optional[Automatic1111Checkpoints] = None,
-        adetailer_enabled: Optional[bool] = False,
-        enable_hr: Optional[bool] = False,
+        negative_prompt: str | None = None,
+        steps: int | None = 30,
+        cfg_scale: float | None = 4,
+        sd_model_checkpoint: Automatic1111Checkpoints | None = None,
+        adetailer_enabled: bool | None = False,
+        enable_hr: bool | None = False,
     ) -> str:
         """
         Runs the tool to generate an image based on the given prompt.

@@ -1,20 +1,20 @@
-from langchain.tools import BaseTool
-from typing import Type, Optional
-from pydantic import BaseModel, Field
-import replicate.helpers
-from neuron_server.logger import logger
 import asyncio
-import replicate
-import aiohttp
-from uuid import uuid4
 import os
-from neuron_server.config import config as neuron_config
-import aiofiles
-import re
 import random
-from neuron_server.util.slug import safe_filename
-from neuron_server.models.media_item_model import MediaItemModel
+from uuid import uuid4
+
+import aiofiles
+import aiohttp
+import replicate
+import replicate.helpers
+from langchain.tools import BaseTool
 from langchain_core.runnables import RunnableConfig
+from pydantic import BaseModel, Field
+
+from neuron_server.config import config as neuron_config
+from neuron_server.logger import logger
+from neuron_server.models.media_item_model import MediaItemModel
+from neuron_server.util.slug import safe_filename
 
 
 class ReplicateAudioGenerationToolArgs(BaseModel):
@@ -22,25 +22,25 @@ class ReplicateAudioGenerationToolArgs(BaseModel):
     name: str = Field(
         description="A unique display name for the audio generation less than 256 characters"
     )
-    prompt: Optional[str] = Field(
+    prompt: str | None = Field(
         description="Keywords to guide the audio generation. Only use if the model is not generating the audio you want.",
         default=None,
     )
-    duration: Optional[int] = Field(
+    duration: int | None = Field(
         description="The duration of the video in seconds. The default is the image to video duration of 6 seconds.",
         default=6,
     )
-    num_steps: Optional[int] = Field(
+    num_steps: int | None = Field(
         description="The number of steps to use for the audio generation.",
         default=25,
     )
-    cfg_strength: Optional[float] = Field(
+    cfg_strength: float | None = Field(
         description="The CFG strength to use for the audio generation", default=4.5
     )
-    seed: Optional[int] = Field(
+    seed: int | None = Field(
         description="The seed to use for the audio generation", default=-1
     )
-    negative_prompt: Optional[str] = Field(
+    negative_prompt: str | None = Field(
         description="Negative prompt to avoid certain sounds",
         default="music, voice, ethereal",
     )
@@ -54,7 +54,7 @@ Use this tool to add realistic foley sound effects synced to a video using the z
 """.strip()
     )
 
-    args_schema: Type[ReplicateAudioGenerationToolArgs] = (
+    args_schema: type[ReplicateAudioGenerationToolArgs] = (
         ReplicateAudioGenerationToolArgs
     )
 
@@ -83,7 +83,7 @@ Use this tool to add realistic foley sound effects synced to a video using the z
         duration: int = 6,
         num_steps: int = 25,
         cfg_strength: float = 4.5,
-        seed: Optional[int] = None,
+        seed: int | None = None,
         negative_prompt: str = "music, voice, ethereal",
     ) -> str:
         logger.debug(f"Generating audio for {video_url} with prompt: {prompt}")

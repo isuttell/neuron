@@ -1,18 +1,18 @@
-from quart import Blueprint
-from neuron_server.event_router import EventRouter
-import os
-from PIL import Image
-from neuron_server.config import config
-from typing import Optional
-from pydantic import BaseModel
-import json
-from datetime import datetime
-import mimetypes
 import hashlib
-import aiofiles
-from typing import List
+import json
 import logging
+import mimetypes
+import os
+from datetime import datetime
+
+import aiofiles
+from PIL import Image
+from pydantic import BaseModel
+from quart import Blueprint
+
+from neuron_server.config import config
 from neuron_server.controllers.auth import requires_auth
+from neuron_server.event_router import EventRouter
 
 logger = logging.getLogger(__name__)
 
@@ -26,14 +26,14 @@ class MediaFile(BaseModel):
     id: str
     path: str
     url: str
-    prompt: Optional[str]
+    prompt: str | None
     created_at: str
     size: int
     mime_type: str
-    media_type: Optional[str]
+    media_type: str | None
 
 
-async def get_media_files(directory: str, limit: int = 100) -> List[MediaFile]:
+async def get_media_files(directory: str, limit: int = 100) -> list[MediaFile]:
     results = []
     media_files = [
         (filename, os.stat(os.path.join(directory, filename)))
@@ -54,12 +54,12 @@ async def get_media_files(directory: str, limit: int = 100) -> List[MediaFile]:
                 os.path.join(directory, filename.replace(ext, ".json"))
             )
             if os.path.exists(metadata_path):
-                async with aiofiles.open(metadata_path, "r") as file:
+                async with aiofiles.open(metadata_path) as file:
                     content = await file.read()
                     metadata = json.loads(content)
                     results.append(MediaFile(**metadata))
                     continue
-            prompt: Optional[str] = None
+            prompt: str | None = None
             created_at = datetime.fromtimestamp(stats.st_ctime).isoformat()
             if ext == ".png":
                 with Image.open(file_path) as img:

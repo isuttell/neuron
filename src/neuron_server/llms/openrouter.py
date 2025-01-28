@@ -1,7 +1,9 @@
+from typing import Literal
+
 from langchain_openai import ChatOpenAI
-from neuron_server.llms.llm import LLM
-from typing import Optional, Literal
+
 from neuron_server.config import config
+from neuron_server.llms.llm import LLM
 
 
 class OpenRouterLLM(LLM):
@@ -11,8 +13,8 @@ class OpenRouterLLM(LLM):
 
     def __init__(
         self,
-        model_id: Optional[str] = "openai/gpt-4o",
-        provider_model_id: Optional[str] = None,
+        model_id: str | None = "openai/gpt-4o",
+        provider_model_id: str | None = None,
     ):
         model = ChatOpenAI(
             model=model_id,

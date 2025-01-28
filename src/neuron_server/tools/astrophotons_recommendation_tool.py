@@ -1,7 +1,6 @@
-from langchain.tools import BaseTool
-from typing import Type
-from pydantic import BaseModel, Field
 
+from langchain.tools import BaseTool
+from pydantic import BaseModel, Field
 
 astrophotons_recommendations = {
     "January": [
@@ -150,7 +149,7 @@ class AstrophotonsRecommendationTool(BaseTool):
 """.strip()
     )
 
-    args_schema: Type[AstrophotonsRecommendationToolArgs] = (
+    args_schema: type[AstrophotonsRecommendationToolArgs] = (
         AstrophotonsRecommendationToolArgs
     )
 

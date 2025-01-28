@@ -1,12 +1,13 @@
-from quart import Blueprint, request, jsonify
-from datetime import datetime
-from typing import Optional, Dict, Any
-from neuron_server.util.scheduler import RecurringPattern
-from neuron_server.controllers.auth import requires_auth
 import logging
+from datetime import datetime
+from typing import Any
 from uuid import uuid4
-from neuron_server.models import PersonalityModel
 
+from quart import Blueprint, jsonify, request
+
+from neuron_server.controllers.auth import requires_auth
+from neuron_server.models import PersonalityModel
+from neuron_server.util.scheduler import RecurringPattern
 
 logger = logging.getLogger(__name__)
 
@@ -22,12 +23,12 @@ async def create_event():
     data = await request.get_json()
 
     # Parse recurring pattern if provided
-    recurring_pattern: Optional[RecurringPattern] = None
+    recurring_pattern: RecurringPattern | None = None
     if pattern_data := data.get("recurring_pattern"):
         recurring_pattern = RecurringPattern(**pattern_data)
 
     # Parse trigger time if provided
-    trigger_time: Optional[datetime] = None
+    trigger_time: datetime | None = None
     if time_str := data.get("trigger_time"):
         trigger_time = datetime.fromisoformat(time_str)
 
@@ -61,12 +62,12 @@ async def update_event(event_id: str):
     data = await request.get_json()
 
     # Parse recurring pattern if provided
-    recurring_pattern: Optional[RecurringPattern] = None
+    recurring_pattern: RecurringPattern | None = None
     if pattern_data := data.get("recurring_pattern"):
         recurring_pattern = RecurringPattern(**pattern_data)
 
     # Parse trigger time if provided
-    trigger_time: Optional[datetime] = None
+    trigger_time: datetime | None = None
     if time_str := data.get("trigger_time"):
         trigger_time = datetime.fromisoformat(time_str)
 
@@ -119,7 +120,7 @@ async def list_events():
     """List all scheduled events for the authenticated user"""
     from neuron_server.api import scheduler
 
-    filters: Dict[str, Any] = {"user_id": request.token.user_id}
+    filters: dict[str, Any] = {"user_id": request.token.user_id}
 
     # Add any additional filters from query parameters
     for key, value in request.args.items():

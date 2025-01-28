@@ -1,11 +1,13 @@
-import redis.asyncio as redis
-from redis.typing import ExpiryT, ResponseT
-from neuron_server.config import config
 import functools
 import json
-from typing import Any, Optional
-import pickle
 import logging
+import pickle
+from typing import Any
+
+import redis.asyncio as redis
+from redis.typing import ExpiryT, ResponseT
+
+from neuron_server.config import config
 
 logger = logging.getLogger(__name__)
 
@@ -16,12 +18,12 @@ client = redis.Redis(
 )
 
 
-async def set_cache_key(key: str, value: Any, ttl: Optional[ExpiryT] = None):
+async def set_cache_key(key: str, value: Any, ttl: ExpiryT | None = None):
     await client.set(key, pickle.dumps(value, protocol=pickle.HIGHEST_PROTOCOL), ex=ttl)
 
 
-async def get_cache_key(key: str) -> Optional[Any]:
-    cached_result: Optional[ResponseT] = await client.get(key)
+async def get_cache_key(key: str) -> Any | None:
+    cached_result: ResponseT | None = await client.get(key)
     if cached_result is not None:
         return pickle.loads(cached_result)
     return None

@@ -1,4 +1,5 @@
 from typing import Literal
+
 from neuron_server.event_router import OutgoingEvent
 
 

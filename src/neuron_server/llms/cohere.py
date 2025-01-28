@@ -1,7 +1,9 @@
+from typing import Literal
+
 from langchain_cohere import ChatCohere
-from typing import Optional, Literal
-from neuron_server.llms.llm import LLM
 from langchain_openai import ChatOpenAI
+
+from neuron_server.llms.llm import LLM
 
 
 class CohereLLM(LLM):
@@ -9,8 +11,8 @@ class CohereLLM(LLM):
 
     def __init__(
         self,
-        model_id: Optional[str] = None,
-        provider_model_id: Optional[str] = None,
+        model_id: str | None = None,
+        provider_model_id: str | None = None,
     ):
         model = ChatCohere(
             temperature=1,

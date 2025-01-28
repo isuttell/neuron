@@ -1,17 +1,18 @@
-from langchain.tools import BaseTool
-from typing import Type, Optional
-from pydantic import BaseModel, Field
-import replicate.helpers
-from neuron_server.logger import logger
 import asyncio
-import replicate
-import aiohttp
-from uuid import uuid4
 import os
-from neuron_server.config import config as neuron_config
-import aiofiles
-import subprocess
 import re
+import subprocess
+from uuid import uuid4
+
+import aiofiles
+import aiohttp
+import replicate
+import replicate.helpers
+from langchain.tools import BaseTool
+from pydantic import BaseModel, Field
+
+from neuron_server.config import config as neuron_config
+from neuron_server.logger import logger
 from neuron_server.util.subprocess_runner import run_subprocess
 
 
@@ -59,11 +60,11 @@ Example prompts:
 - Motorcycle driving by
                     """.strip()
     )
-    seed: Optional[int] = Field(
+    seed: int | None = Field(
         description="Random seed for audio generation", default=-1
     )
-    steps: Optional[int] = Field(description="Number of inference steps", default=100)
-    cfg_scale: Optional[float] = Field(
+    steps: int | None = Field(description="Number of inference steps", default=100)
+    cfg_scale: float | None = Field(
         description="Classifier-free guidance scale", default=6.0
     )
     slug: str = Field(
@@ -78,10 +79,10 @@ Example prompts:
     #     description="Type of sampler to use", default="dpmpp-3m-sde"
     # )
     # seconds_start: Optional[int] = Field(description="Start time in seconds")
-    seconds_total: Optional[int] = Field(
+    seconds_total: int | None = Field(
         description="Total duration in seconds", default=6
     )
-    negative_prompt: Optional[str] = Field(
+    negative_prompt: str | None = Field(
         description="Text prompt to avoid in generation"
     )
     # init_noise_level: Optional[float] = Field(
@@ -97,7 +98,7 @@ This tool is optimized for generating short audio samples, sound effects, and pr
 """.strip()
     )
 
-    args_schema: Type[ReplicateSoundEffectGenerationToolArgs] = (
+    args_schema: type[ReplicateSoundEffectGenerationToolArgs] = (
         ReplicateSoundEffectGenerationToolArgs
     )
 

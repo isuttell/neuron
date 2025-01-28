@@ -1,9 +1,10 @@
-from langchain.tools import BaseTool
-from typing import Type
-from pydantic import BaseModel, Field
-from neuron_server.logger import logger
 import asyncio
+
+from langchain.tools import BaseTool
 from langchain_core.runnables import RunnableConfig
+from pydantic import BaseModel, Field
+
+from neuron_server.logger import logger
 from neuron_server.models.thread_model import ThreadModel
 
 
@@ -19,7 +20,7 @@ class SetThreadMemoryTool(BaseTool):
         """This tool allows you to update the memory of the current thread. Use this to store plans and other custom instructions that you do not want to get lost. For example, on a complicated task you might put together a rational plan to solve it, store it using this tool and then it will be included in future requests to guide the agent."""
     )
 
-    args_schema: Type[SetThreadMemoryToolArgs] = SetThreadMemoryToolArgs
+    args_schema: type[SetThreadMemoryToolArgs] = SetThreadMemoryToolArgs
 
     def _run(self, *args, **kwargs) -> str:
         return asyncio.run(self._arun(*args, **kwargs))
@@ -29,7 +30,7 @@ class SetThreadMemoryTool(BaseTool):
             thread_id = config["configurable"].get("thread_id")
             assert thread_id is not None
             await ThreadModel.set(thread_id, "memory", memory)
-            return f"Successfully updated thread memory"
+            return "Successfully updated thread memory"
         except Exception as e:
             logger.error(f"Failed to update thread memory: {e}", exc_info=True)
             raise e

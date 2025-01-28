@@ -1,7 +1,8 @@
-from typing import Literal, List, Any
+from typing import Any, Literal
+
 from pydantic import BaseModel
 
 
 class MediaEvent(BaseModel):
     type: Literal["media"] = "media"
-    media: List[Any]
+    media: list[Any]

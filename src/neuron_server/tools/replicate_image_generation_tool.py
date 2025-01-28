@@ -1,29 +1,29 @@
-from langchain.tools import BaseTool
-from typing import Type, Optional, Literal
-from pydantic import BaseModel, Field
-import replicate.helpers
 import asyncio
-import replicate
-from uuid import uuid4
+import logging
 import os
-from neuron_server.config import config as neuron_config
+import random
+import time
+from datetime import datetime
+from io import BytesIO
+from typing import Literal
+from uuid import uuid4
+
 import aiofiles
 import aiohttp
-from PIL import PngImagePlugin, Image
-from datetime import datetime
-from neuron_server.util.image_utilities import create_thumbnails, create_image_url
-import time
-import logging
-from io import BytesIO
+import replicate
+import replicate.helpers
 from langchain.schema import HumanMessage
-from langchain_openai import ChatOpenAI
-from pydantic import BaseModel, Field
+from langchain.tools import BaseTool
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from neuron_server.util.slug import safe_filename
-from neuron_server.models.media_item_model import MediaItemModel
-import random
 from langchain_core.runnables import RunnableConfig
+from langchain_openai import ChatOpenAI
+from PIL import Image, PngImagePlugin
+from pydantic import BaseModel, Field
 
+from neuron_server.config import config as neuron_config
+from neuron_server.models.media_item_model import MediaItemModel
+from neuron_server.util.image_utilities import create_image_url, create_thumbnails
+from neuron_server.util.slug import safe_filename
 
 logger = logging.getLogger(__name__)
 
@@ -115,90 +115,41 @@ Prompt Tips:
 - Experiment with Unusual Perspectives: "Illustrate a 'bug's-eye view' of a picnic in a lush garden."
 """.strip(),
     )
-    model: Optional[
-        Literal[
-            "isuttell/flux-lora-isaac:c2c37f42d4f435bd70a75479e241890f07459b0b1828ede06a6030b21768ad2f",
-            "black-forest-labs/flux-1.1-pro-ultra",
-            "black-forest-labs/flux-1.1-pro",
-            "recraft-ai/recraft-20b",
-            "ideogram-ai/ideogram-v2",
-        ]
-    ] = Field(
+    model: Literal["isuttell/flux-lora-isaac:c2c37f42d4f435bd70a75479e241890f07459b0b1828ede06a6030b21768ad2f", "black-forest-labs/flux-1.1-pro-ultra", "black-forest-labs/flux-1.1-pro", "recraft-ai/recraft-20b", "ideogram-ai/ideogram-v2"] | None = Field(
         description="The model to use for the image generation. Use the flux-1.1-pro-ultra model by default for the highest quality and resolution image, flux-1.1-pro produces the same quality but at a lower resolution and faster, and flux-lora-isaac when you need to generate images of Isaac. Use recraft-20b when trying to replicate a specific style. ideogram-v2 excels at creating captivating designs, innovative logos and posters with unique text rendering capabilities. Use ideogram-v2 when you need to create a logo or poster or need to generate clean looking text.",
         default="black-forest-labs/flux-1.1-pro-ultra",
     )
-    aspect_ratio: Optional[
-        Literal[
-            "1:1",
-            "16:9",
-            "3:2",
-            "2:3",
-            "4:5",
-            "5:4",
-            "3:4",
-            "4:3",
-            "9:16",
-        ]
-    ] = Field(
+    aspect_ratio: Literal["1:1", "16:9", "3:2", "2:3", "4:5", "5:4", "3:4", "4:3", "9:16"] | None = Field(
         description="The aspect ratio to use for the image generation.",
         default="3:2",
     )
-    num_inference_steps: Optional[int] = Field(
+    num_inference_steps: int | None = Field(
         description="The number of inference steps to use for the image generation",
         default=25,
     )
-    style: Optional[
-        Literal[
-            "realistic_image",
-            "realistic_image/b_and_w",
-            "realistic_image/enterprise",
-            "realistic_image/hard_flash",
-            "realistic_image/hdr",
-            "realistic_image/motion_blur",
-            "realistic_image/natural_light",
-            "realistic_image/studio_portrait",
-            "digital_illustration",
-            "digital_illustration/2d_art_poster",
-            "digital_illustration/2d_art_poster_2",
-            "digital_illustration/3d",
-            "digital_illustration/80s",
-            "digital_illustration/engraving_color",
-            "digital_illustration/glow",
-            "digital_illustration/grain",
-            "digital_illustration/hand_drawn",
-            "digital_illustration/hand_drawn_outline",
-            "digital_illustration/handmade_3d",
-            "digital_illustration/infantile_sketch",
-            "digital_illustration/kawaii",
-            "digital_illustration/pixel_art",
-            "digital_illustration/psychedelic",
-            "digital_illustration/seamless",
-            "digital_illustration/voxel",
-            "digital_illustration/watercolor",
-        ]
-    ] = Field(
+    style: Literal["realistic_image", "realistic_image/b_and_w", "realistic_image/enterprise", "realistic_image/hard_flash", "realistic_image/hdr", "realistic_image/motion_blur", "realistic_image/natural_light", "realistic_image/studio_portrait", "digital_illustration", "digital_illustration/2d_art_poster", "digital_illustration/2d_art_poster_2", "digital_illustration/3d", "digital_illustration/80s", "digital_illustration/engraving_color", "digital_illustration/glow", "digital_illustration/grain", "digital_illustration/hand_drawn", "digital_illustration/hand_drawn_outline", "digital_illustration/handmade_3d", "digital_illustration/infantile_sketch", "digital_illustration/kawaii", "digital_illustration/pixel_art", "digital_illustration/psychedelic", "digital_illustration/seamless", "digital_illustration/voxel", "digital_illustration/watercolor"] | None = Field(
         description="The style to use for the image generation. This only works with the recraft-20b model.",
         default="realistic_image",
     )
-    image_url: Optional[str] = Field(
+    image_url: str | None = Field(
         description="Use this to generate an image based on an existing image. e.g. when the user wants to iterate on an existing image or generate a variation of an existing image. This only works with the flux-1.1-pro-ultra model.",
         default=None,
     )
-    image_prompt_strength: Optional[float] = Field(
+    image_prompt_strength: float | None = Field(
         description="The strength of the image prompt. 0.4 will closely follow the image and allow minor changes while 0.1 will allow more drastic and creative changes. This only works with the flux-1.1-pro-ultra model.",
         default=0.1,
         ge=0.0,
         le=1.0,
     )
-    raw: Optional[bool] = Field(
+    raw: bool | None = Field(
         description="If true then image will be returned with less processing which can make people and places look more realistic. Use this when trying to enhance realism. This only works with the flux-1.1-pro-ultra model.",
         default=False,
     )
-    seed: Optional[int] = Field(
+    seed: int | None = Field(
         description="Random seed. Set for reproducible generation",
         default=None,
     )
-    describe: Optional[bool] = Field(
+    describe: bool | None = Field(
         description="Whether to describe the image in detail. Use this when you want to understand better what generated image looks like. Use this while telling stories to better incorporate the image into the story.",
         default=True,
     )
@@ -212,7 +163,7 @@ Use this tool to generate an image using a text prompt on replicate.com and has 
 """.strip()
     )
 
-    args_schema: Type[ReplicateImageGenerationToolArgs] = (
+    args_schema: type[ReplicateImageGenerationToolArgs] = (
         ReplicateImageGenerationToolArgs
     )
 
@@ -236,11 +187,11 @@ Use this tool to generate an image using a text prompt on replicate.com and has 
         model: str = "black-forest-labs/flux-1.1-pro-ultra",
         aspect_ratio: str = "3:2",
         num_inference_steps: int = 25,
-        style: Optional[str] = None,
-        image_url: Optional[str] = None,
+        style: str | None = None,
+        image_url: str | None = None,
         raw: bool = False,
-        image_prompt_strength: Optional[float] = None,
-        seed: Optional[int] = None,
+        image_prompt_strength: float | None = None,
+        seed: int | None = None,
         describe: bool = True,
     ) -> str:
         start_time = time.perf_counter()
@@ -342,7 +293,7 @@ Use this tool to generate an image using a text prompt on replicate.com and has 
                     ),
                 )
                 image = Image.open(file_path)
-                described_image: Optional[ImageDescription] = None
+                described_image: ImageDescription | None = None
                 if describe:
                     logger.debug(f"Describing image #{i + 1}")
                     described_image = await describe_image(prompt, image)
@@ -385,7 +336,7 @@ Use this tool to generate an image using a text prompt on replicate.com and has 
             logger.debug(
                 f"Image generation tool took {end_time - start_time:.2f} seconds"
             )
-            return f"<images>\n" + "\n".join(results) + "\n</images>"
+            return "<images>\n" + "\n".join(results) + "\n</images>"
         except Exception as e:
             logger.error(e, exc_info=True)
             raise

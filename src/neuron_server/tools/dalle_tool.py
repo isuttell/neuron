@@ -1,19 +1,20 @@
-from langchain.tools import BaseTool
-from PIL import Image, PngImagePlugin
+import asyncio
+import os
+from datetime import UTC, datetime
 from io import BytesIO
-from datetime import datetime, timezone
+from typing import Literal
+
+import aiohttp
+from langchain.tools import BaseTool
+from langchain_core.runnables import RunnableConfig
+from openai import AsyncOpenAI
+from PIL import Image, PngImagePlugin
+from pydantic import BaseModel, Field
+
 from neuron_server.config import config as neuron_config
 from neuron_server.logger import logger
-from openai import AsyncOpenAI
-from typing import Literal, Type
-from pydantic import BaseModel, Field
-import asyncio
-import aiohttp
-import os
-from typing import List
-from neuron_server.util.image_utilities import create_thumbnails
 from neuron_server.models.media_item_model import MediaItemModel
-from langchain_core.runnables import RunnableConfig
+from neuron_server.util.image_utilities import create_thumbnails
 from neuron_server.util.slug import safe_filename
 
 
@@ -22,7 +23,7 @@ async def generate_images(
     style: Literal["natural", "vivid"] = "vivid",
     size: Literal["1024x1024", "1792x1024", "1024x1792"] = "1024x1024",
     n: int = 1,
-) -> List[Image.Image]:
+) -> list[Image.Image]:
     """
     Generate an image based on the given prompt dalle
 
@@ -82,7 +83,7 @@ class DalleTool(BaseTool):
     description: str = (
         "A tool that generates detailed, realistic or semi-realistic images and charts based on a text prompt using OpenAI's DALL·E 3. Returns a markdown image tag for display."
     )
-    args_schema: Type[DalleArgs] = DalleArgs
+    args_schema: type[DalleArgs] = DalleArgs
 
     def _run(
         self,
@@ -117,7 +118,7 @@ class DalleTool(BaseTool):
                 size=size,
                 n=n,
             )
-            now = datetime.now(timezone.utc).astimezone()
+            now = datetime.now(UTC).astimezone()
             results = []
             for i, image in enumerate(images):
                 filename = safe_filename("dalle", f"{name}_{i}", "png")
@@ -157,7 +158,7 @@ class DalleTool(BaseTool):
 """
                 )
 
-            return f"<images>\n" + "\n".join(results) + "\n</images>"
+            return "<images>\n" + "\n".join(results) + "\n</images>"
         except Exception as e:
             logger.error(e, exc_info=True)
             return f"Error generating image: {str(e)}"

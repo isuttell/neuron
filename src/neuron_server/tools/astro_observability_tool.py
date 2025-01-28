@@ -1,34 +1,35 @@
-from langchain.tools import BaseTool
-from typing import Type, Optional, List, Dict, Tuple
-from pydantic import BaseModel, Field
-from datetime import datetime
 import argparse
-from astropy.coordinates import EarthLocation, SkyCoord
-from astropy import units as u
-from astropy.time import Time
-from zoneinfo import ZoneInfo
-from astroplan import AltitudeConstraint, AirmassConstraint, AtNightConstraint
-from astroplan import Observer, FixedTarget
-from astropy.time import Time
-from astroplan import (
-    time_grid_from_range,
-    observability_table,
-    is_observable,
-)
-from astropy.table import Table
-from astroplan.plots import plot_sky, plot_airmass, plot_parallactic
-from matplotlib import cm
-import matplotlib.pyplot as plt
+import os
+from datetime import datetime
 from uuid import uuid4
+from zoneinfo import ZoneInfo
+
+import matplotlib.pyplot as plt
+import pandas as pd
+from astroplan import (
+    AirmassConstraint,
+    AltitudeConstraint,
+    AtNightConstraint,
+    FixedTarget,
+    Observer,
+    is_observable,
+    observability_table,
+    time_grid_from_range,
+)
+from astroplan.plots import dark_style_sheet, plot_airmass, plot_parallactic, plot_sky
+from astropy import units as u
+from astropy.coordinates import EarthLocation, SkyCoord
+from astropy.table import Table
+from astropy.time import Time
+from langchain.tools import BaseTool
+from matplotlib import cm
+from pydantic import BaseModel, Field
+
 from neuron_server.config import config
 from neuron_server.logger import logger
-import matplotlib
-from astroplan.plots import dark_style_sheet
-import pandas as pd
-import os
 
 
-def plot_sky_plot(targets: List[FixedTarget], time: Time, observer: Observer) -> str:
+def plot_sky_plot(targets: list[FixedTarget], time: Time, observer: Observer) -> str:
     cmap = cm.Set1
     ax = None
     for i, target in enumerate(targets):
@@ -42,7 +43,7 @@ def plot_sky_plot(targets: List[FixedTarget], time: Time, observer: Observer) ->
         )
     assert ax is not None
     handles, labels = plt.gca().get_legend_handles_labels()
-    unique_legend = dict(zip(labels, handles))
+    unique_legend = dict(zip(labels, handles, strict=False))
     ax.legend(unique_legend.values(), unique_legend.keys(), loc="best")
     filename = f"ast_sky_{uuid4().hex}.png"
     file_path = os.path.abspath(os.path.join(config.static_folder, filename))
@@ -56,7 +57,7 @@ def plot_sky_plot(targets: List[FixedTarget], time: Time, observer: Observer) ->
 
 
 def plot_airmass_plot(
-    targets: List[FixedTarget], time: Time, observer: Observer
+    targets: list[FixedTarget], time: Time, observer: Observer
 ) -> str:
 
     ax = plot_airmass(
@@ -77,7 +78,7 @@ def plot_airmass_plot(
 
 
 def plot_parallactic_plot(
-    targets: List[FixedTarget], time: Time, observer: Observer
+    targets: list[FixedTarget], time: Time, observer: Observer
 ) -> str:
     cmap = cm.Set1
     ax = None
@@ -109,14 +110,14 @@ class Target(BaseModel):
 class AstroObservabilityToolArgs(BaseModel):
     latitude: float = Field(description="Observer latitude")
     longitude: float = Field(description="Observer longitude")
-    elevation: Optional[float] = Field(
+    elevation: float | None = Field(
         description="Observer elevation in meters", default=0
     )
     start_time: datetime = Field(
         description="Observation start time in UTC. Start of night."
     )
     end_time: datetime = Field(description="Observation end time in UTC. End of night.")
-    targets: List[Target] = Field(
+    targets: list[Target] = Field(
         description="A list of targets, each target must have a name and it's ra/dec coordinates in degrees"
     )
     time_resolution: float = Field(
@@ -134,7 +135,7 @@ This tool accepts a list of targets and plots the observability of the targets o
 """.strip()
     )
 
-    args_schema: Type[AstroObservabilityToolArgs] = AstroObservabilityToolArgs
+    args_schema: type[AstroObservabilityToolArgs] = AstroObservabilityToolArgs
 
     def _run(
         self,
@@ -142,7 +143,7 @@ This tool accepts a list of targets and plots the observability of the targets o
         longitude: float,
         start_time: datetime,
         end_time: datetime,
-        targets: List[Target],
+        targets: list[Target],
         elevation: float = 0,
         time_resolution: float = 0.5,
     ) -> str:
@@ -176,10 +177,10 @@ This tool accepts a list of targets and plots the observability of the targets o
             time_grid = time_grid_from_range(
                 time_range=time_range, time_resolution=time_resolution * u.hour
             )
-            changes: Dict[str, List[Tuple[Time, bool]]] = {}
+            changes: dict[str, list[tuple[Time, bool]]] = {}
             for i, time in enumerate(time_grid):
                 for target in sky_targets:
-                    if not target.name in changes:
+                    if target.name not in changes:
                         changes[target.name] = []
                     observable = is_observable(
                         constraints=constraints,

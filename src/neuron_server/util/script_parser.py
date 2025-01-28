@@ -1,5 +1,5 @@
-from typing import TypedDict, List
 import re
+from typing import TypedDict
 
 
 class SpokenLine(TypedDict):
@@ -7,7 +7,7 @@ class SpokenLine(TypedDict):
     text: str
 
 
-def parse_script(script: str, remove_actions: bool = False) -> List[SpokenLine]:
+def parse_script(script: str, remove_actions: bool = False) -> list[SpokenLine]:
     """
     Parses a script string and returns a list of dictionaries with 'voice' and 'text' keys.
 

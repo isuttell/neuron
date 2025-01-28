@@ -1,25 +1,24 @@
-from typing import Optional, Tuple
+import logging
+from uuid import UUID
+
+from openai import AsyncOpenAI
 from quart import Blueprint, request
-from neuron_server.event_router import EventRouter
-from neuron_server.models import ThreadModel, MediaItemModel
+from werkzeug.exceptions import BadRequest, NotFound
+
+from neuron_server.config import config as neuron_config
+from neuron_server.controllers.auth import requires_auth
 from neuron_server.controllers.events.message_events import (
-    PostMessage,
     CancelMessage,
-)
-from neuron_server.controllers.events.message_events import (
+    PostMessage,
     ThreadMessage,
 )
-from uuid import UUID, uuid4
+from neuron_server.event_router import EventRouter
+from neuron_server.llms import agent
 from neuron_server.llms.agent import aget_state
-from werkzeug.exceptions import NotFound, BadRequest
-import neuron_server.llms.agent as agent
-from neuron_server.pubsub import pubsub
-from neuron_server.controllers.auth import requires_auth
+from neuron_server.models import MediaItemModel, ThreadModel
 from neuron_server.models.media_item_model import MediaItemModel
+from neuron_server.pubsub import pubsub
 from neuron_server.util.file_utilities import process_uploaded_file
-from openai import AsyncOpenAI
-from neuron_server.config import config as neuron_config
-import logging
 
 logger = logging.getLogger(__name__)
 

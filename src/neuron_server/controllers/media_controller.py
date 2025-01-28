@@ -1,17 +1,18 @@
-from quart import Blueprint, request
-from typing import List, Optional
 from uuid import UUID
-from neuron_server.models.media_list_model import MediaListModel
+
+from quart import Blueprint, request
+
+from neuron_server.controllers.auth import requires_auth
 from neuron_server.models.media_item_model import MediaItemModel
 from neuron_server.models.media_list_item_model import MediaListItemModel
-from neuron_server.controllers.auth import requires_auth
+from neuron_server.models.media_list_model import MediaListModel
 
 blueprint = Blueprint("media", __name__)
 
 
 @blueprint.get("/recent")
 @requires_auth
-async def get_recent_media() -> dict[str, List[dict]]:
+async def get_recent_media() -> dict[str, list[dict]]:
     """
     Get the most recent media items for a user with pagination support.
 
@@ -61,7 +62,7 @@ async def get_media_lists() -> dict:
     """Get all media lists owned by or shared with the authenticated user"""
     assert isinstance(request.token.user_id, str)
     lists = await MediaListModel.list_for_user(request.token.user_id)
-    media_list_items: List[MediaListItemModel] = []
+    media_list_items: list[MediaListItemModel] = []
     media_item_ids = set()
     for lst in lists:
         results = await MediaListItemModel.get_by_list(lst.id)

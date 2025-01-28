@@ -1,16 +1,21 @@
-from quart import Blueprint, request
-from neuron_server.event_router import EventRouter
-from pydantic import BaseModel
-from neuron_server.graph import question_graph, OutputState
-from pydantic import BaseModel
-from neuron_server.tools.graph_arxiv_import_tool import GraphArxivImportTool
-from neuron_server.graph import process_document, encode_md5
-import pymupdf4llm
-from neuron_server.config import config as neuron_config
 import os
+
+import pymupdf4llm
+from pydantic import BaseModel
+from quart import Blueprint, request
 from werkzeug.exceptions import BadRequest
 from werkzeug.utils import secure_filename
+
+from neuron_server.config import config as neuron_config
 from neuron_server.controllers.auth import requires_auth
+from neuron_server.event_router import EventRouter
+from neuron_server.graph import (
+    OutputState,
+    encode_md5,
+    process_document,
+    question_graph,
+)
+from neuron_server.tools.graph_arxiv_import_tool import GraphArxivImportTool
 
 router = EventRouter()
 
@@ -84,7 +89,7 @@ async def post_upload_doc():
     try:
         await file.save(tmp_file_path)
 
-        with open(tmp_file_path, "r", encoding="utf-8") as f:
+        with open(tmp_file_path, encoding="utf-8") as f:
             text = f.read()
 
         # Process the document and add it to the graph

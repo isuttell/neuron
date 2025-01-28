@@ -1,13 +1,12 @@
-from langchain.tools import BaseTool
-from typing import Type
-from pydantic import BaseModel, Field
 import asyncio
-from neuron_server.pubsub import pubsub
 import logging
 from uuid import UUID
+
+from langchain.tools import BaseTool
 from langchain_core.runnables import RunnableConfig
+from pydantic import BaseModel, Field
+
 from neuron_server.models.media_list_model import MediaListModel
-from neuron_server.models.media_list_item_model import MediaListItemModel
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +22,7 @@ class MediaListAddItemTool(BaseTool):
         """This tool adds a media item to a specified media list. The user must have access to the media list."""
     )
 
-    args_schema: Type[MediaListAddItemToolArgs] = MediaListAddItemToolArgs
+    args_schema: type[MediaListAddItemToolArgs] = MediaListAddItemToolArgs
 
     def _run(self, *args, **kwargs) -> str:
         return asyncio.run(self._arun(*args, **kwargs))

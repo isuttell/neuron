@@ -1,22 +1,24 @@
-from langchain.tools import BaseTool
-from typing import Literal, Type
-from pydantic import BaseModel, Field
 import asyncio
-from neuron_server.cache import set_cache_key
-from neuron_server.pubsub import pubsub
-from neuron_server.controllers.events.app_events import SidebarImageEvent
-import shutil
-from neuron_server.config import config as neuron_config
-import os
-from uuid import uuid4
-import aiohttp
-import aiofiles
 import logging
+import os
+import shutil
+from typing import Literal
+from uuid import uuid4
+
+import aiofiles
+import aiohttp
+from langchain.tools import BaseTool
 from langchain_core.runnables import RunnableConfig
+from pydantic import BaseModel, Field
+
+from neuron_server.cache import set_cache_key
+from neuron_server.config import config as neuron_config
+from neuron_server.controllers.events.app_events import SidebarImageEvent
+from neuron_server.pubsub import pubsub
 
 logger = logging.getLogger(__name__)
-from neuron_server.models.personality_model import PersonalityModel
 from neuron_server.controllers.events.personality_events import GetPersonalityResponse
+from neuron_server.models.personality_model import PersonalityModel
 
 
 class AppImageToolArgs(BaseModel):
@@ -32,7 +34,7 @@ class AppImageTool(BaseTool):
         """This tool allows you to update the image of the sidebar, the smart home dashboard, or the active personality logo."""
     )
 
-    args_schema: Type[AppImageToolArgs] = AppImageToolArgs
+    args_schema: type[AppImageToolArgs] = AppImageToolArgs
 
     def _run(self, *args, **kwargs) -> str:
         return asyncio.run(self._arun(*args, **kwargs))

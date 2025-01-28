@@ -1,25 +1,26 @@
-from langchain.tools import BaseTool
-from typing import Type, Literal, Optional
-from pydantic import BaseModel, Field
-import replicate.helpers
-from neuron_server.logger import logger
 import asyncio
-import time
-import replicate
-import aiohttp
-from uuid import uuid4
 import os
-from neuron_server.config import config as neuron_config
+from typing import Literal
+from uuid import uuid4
+
 import aiofiles
+import aiohttp
+import replicate
+import replicate.helpers
+from langchain.tools import BaseTool
+from pydantic import BaseModel, Field
+
+from neuron_server.config import config as neuron_config
+from neuron_server.logger import logger
 
 
 class ReplicateVideoUpscalerToolArgs(BaseModel):
     video_url: str = Field(description="The URL of the video to upscale")
-    model: Optional[Literal["RealESRGAN_x4plus", "realesr-animevideov3"]] = Field(
+    model: Literal["RealESRGAN_x4plus", "realesr-animevideov3"] | None = Field(
         description="The model to use for the upscaling",
         default="RealESRGAN_x4plus",
     )
-    resolution: Optional[Literal["FHD", "2k," "4k", "8k"]] = Field(
+    resolution: Literal["FHD", "2k," "4k", "8k"] | None = Field(
         description="The resolution to upscale the video too",
         default="FHD",
     )
@@ -33,7 +34,7 @@ Real-ESRGAN Video Upscaler tool. Use this tool to upscale a generated video to a
 """.strip()
     )
 
-    args_schema: Type[ReplicateVideoUpscalerToolArgs] = ReplicateVideoUpscalerToolArgs
+    args_schema: type[ReplicateVideoUpscalerToolArgs] = ReplicateVideoUpscalerToolArgs
 
     def _run(
         self,

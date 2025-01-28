@@ -1,11 +1,12 @@
-from uuid import UUID
-from neuron_server.database import get_session, Personality
-from typing import Optional, List, Self
-from sqlalchemy import select
+import builtins
+from datetime import UTC, datetime
+from typing import Any, Self
+from uuid import UUID, uuid4
+
 from pydantic import BaseModel, Field
-from uuid import uuid4
-from datetime import datetime, timezone
-from typing import Any
+from sqlalchemy import select
+
+from neuron_server.database import Personality, get_session
 
 
 class PersonalityModel(BaseModel):
@@ -17,20 +18,20 @@ class PersonalityModel(BaseModel):
     context: str = Field(
         description="Information supplied by the personality for additional context"
     )
-    logo: Optional[str] = Field(
+    logo: str | None = Field(
         description="A URL to an image that represents the personality", default=None
     )
     memory: str = Field(
         description="Information about the personality's preferences and history"
     )
-    tool_set: Optional[str] = Field(
+    tool_set: str | None = Field(
         description="The tool set to use for the personality", default=None
     )
     created_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc).astimezone()
+        default_factory=lambda: datetime.now(UTC).astimezone()
     )
     updated_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc).astimezone()
+        default_factory=lambda: datetime.now(UTC).astimezone()
     )
 
     @classmethod
@@ -40,9 +41,9 @@ class PersonalityModel(BaseModel):
         description: str,
         context: str,
         memory: str,
-        logo: Optional[str] = None,
-        tool_set: Optional[str] = None,
-        id: Optional[UUID] = None,
+        logo: str | None = None,
+        tool_set: str | None = None,
+        id: UUID | None = None,
     ) -> Self:
         async with get_session() as session:
             personality = Personality(
@@ -72,8 +73,8 @@ class PersonalityModel(BaseModel):
         description: str,
         context: str,
         memory: str,
-        logo: Optional[str],
-        tool_set: Optional[str],
+        logo: str | None,
+        tool_set: str | None,
     ) -> Self:
         async with get_session() as session:
             personality = await session.get(Personality, id)
@@ -99,14 +100,14 @@ class PersonalityModel(BaseModel):
             return cls(**personality.__dict__)
 
     @classmethod
-    async def list(cls) -> List[Self]:
+    async def list(cls) -> list[Self]:
         async with get_session() as session:
             results = await session.execute(select(Personality))
             records = results.scalars().all()
             return [cls(**personality.__dict__) for personality in records]
 
     @classmethod
-    async def get(cls, id: UUID) -> Optional[Self]:
+    async def get(cls, id: UUID) -> Self | None:
         async with get_session() as session:
             data = await session.get(Personality, id)
             if data:
@@ -127,7 +128,7 @@ class PersonalityModel(BaseModel):
             await session.commit()
 
     @classmethod
-    async def get_many(cls, ids: List[UUID]) -> List[Self]:
+    async def get_many(cls, ids: builtins.list[UUID]) -> builtins.list[Self]:
         async with get_session() as session:
             results = await session.execute(
                 select(Personality).where(Personality.id.in_(ids))

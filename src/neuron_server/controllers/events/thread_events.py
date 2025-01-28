@@ -1,8 +1,10 @@
-from typing import Literal, Optional
-from neuron_server.event_router import OutgoingEvent, IncomingEvent
-from neuron_server.models.thread_model import ThreadModel
+from typing import Literal
 from uuid import UUID
+
 from pydantic import BaseModel
+
+from neuron_server.event_router import IncomingEvent, OutgoingEvent
+from neuron_server.models.thread_model import ThreadModel
 
 
 class GetThread(IncomingEvent):
@@ -15,12 +17,12 @@ class GetThreadResponse(OutgoingEvent):
 
 
 class GetThreads(IncomingEvent):
-    personality_id: Optional[UUID] = None
+    personality_id: UUID | None = None
 
 
 class CreateThread(BaseModel):
-    name: Optional[str] = None
-    context: Optional[str] = None
+    name: str | None = None
+    context: str | None = None
     personality_id: UUID
 
 

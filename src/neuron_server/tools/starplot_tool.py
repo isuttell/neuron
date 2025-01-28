@@ -1,14 +1,15 @@
-from langchain.tools import BaseTool
-from typing import List, Type, Literal
-from pydantic import BaseModel, Field
-from neuron_server.logger import logger
-import starplot as sp
-from datetime import datetime
-from zoneinfo import ZoneInfo
-from uuid import uuid4
-from neuron_server.config import config
-from typing import Optional
 import os
+from datetime import datetime
+from typing import Literal
+from uuid import uuid4
+from zoneinfo import ZoneInfo
+
+import starplot as sp
+from langchain.tools import BaseTool
+from pydantic import BaseModel, Field
+
+from neuron_server.config import config
+from neuron_server.logger import logger
 
 
 class Marker(BaseModel):
@@ -18,19 +19,19 @@ class Marker(BaseModel):
 
 
 class StarplotToolArgs(BaseModel):
-    latitude: Optional[float] = Field(description="The latitude of the observer")
-    longitude: Optional[float] = Field(description="The longitude of the observer")
-    time: Optional[datetime] = Field(description="The local time of the observation")
-    ra_min: Optional[float] = Field(
+    latitude: float | None = Field(description="The latitude of the observer")
+    longitude: float | None = Field(description="The longitude of the observer")
+    time: datetime | None = Field(description="The local time of the observation")
+    ra_min: float | None = Field(
         description="The minimum right ascension of the plot", default=0
     )
-    ra_max: Optional[float] = Field(
+    ra_max: float | None = Field(
         description="The maximum right ascension of the plot", default=24
     )
-    dec_min: Optional[float] = Field(
+    dec_min: float | None = Field(
         description="The minimum declination of the plot", default=-90
     )
-    dec_max: Optional[float] = Field(
+    dec_max: float | None = Field(
         description="The maximum declination of the plot", default=90
     )
     projection: Literal["zenith", "mercator"] = Field(
@@ -42,7 +43,7 @@ class StarplotToolArgs(BaseModel):
     max_dso_mag: float = Field(
         description="The maximum magnitude of DSOs to plot", default=8
     )
-    markers: Optional[List[Marker]] = Field(
+    markers: list[Marker] | None = Field(
         description="The markers to plot on the map", default=None
     )
 
@@ -55,13 +56,13 @@ Generate a star plot for the given parameters. Zenith is the default projection 
 """.strip()
     )
 
-    args_schema: Type[StarplotToolArgs] = StarplotToolArgs
+    args_schema: type[StarplotToolArgs] = StarplotToolArgs
 
     def _run(
         self,
-        latitude: Optional[float] = None,
-        longitude: Optional[float] = None,
-        time: Optional[datetime] = None,
+        latitude: float | None = None,
+        longitude: float | None = None,
+        time: datetime | None = None,
         ra_min: float = 0,
         ra_max: float = 24,
         dec_min: float = -90,
@@ -69,7 +70,7 @@ Generate a star plot for the given parameters. Zenith is the default projection 
         projection: Literal["zenith", "mercator"] = "zenith",
         min_star_mag: float = 4,
         max_dso_mag: float = 8,
-        markers: Optional[List[Marker]] = None,
+        markers: list[Marker] | None = None,
     ) -> str:
         try:
             time = time.replace(tzinfo=ZoneInfo("America/Los_Angeles"))

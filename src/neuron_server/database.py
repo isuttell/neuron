@@ -1,27 +1,29 @@
-from typing import List, Optional
+import asyncio
+import uuid
+from typing import Optional
+
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+from pgvector.sqlalchemy import Vector
+from psycopg_pool import AsyncNullConnectionPool
 from sqlalchemy import (
+    JSON,
+    Boolean,
     Column,
+    DateTime,
+    ForeignKey,
     Integer,
     String,
     Text,
-    DateTime,
-    ForeignKey,
-    JSON,
     func,
-    Boolean,
 )
-from sqlalchemy.dialects.postgresql import UUID as pgUUID, JSONB
-from pgvector.sqlalchemy import Vector
-from sqlalchemy.orm import relationship, Mapped, sessionmaker
-import uuid
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import UUID as pgUUID
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from neuron_server.config import config
+from sqlalchemy.orm import Mapped, relationship, sessionmaker
 from sqlalchemy.pool import NullPool
-from psycopg_pool import AsyncConnectionPool, AsyncNullConnectionPool
-from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
-from neuron_server.logger import logger
-import asyncio
+
+from neuron_server.config import config
 
 DB_URI = f"{config.database.user}:{config.database.password}@{config.database.host}:{config.database.port}/{config.database.database}"
 
@@ -62,10 +64,10 @@ class Personality(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
-    threads: Mapped[List["Thread"]] = relationship(
+    threads: Mapped[list["Thread"]] = relationship(
         back_populates="personality", cascade="all, delete-orphan"
     )
-    prompts: Mapped[List["Prompt"]] = relationship(
+    prompts: Mapped[list["Prompt"]] = relationship(
         back_populates="personality", cascade="all, delete-orphan"
     )
 
@@ -91,7 +93,7 @@ class Thread(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
     personality: Mapped["Personality"] = relationship(back_populates="threads")
-    media_items: Mapped[List["MediaItem"]] = relationship(
+    media_items: Mapped[list["MediaItem"]] = relationship(
         back_populates="thread", cascade="all, delete-orphan"
     )
 
@@ -116,7 +118,7 @@ class MediaItem(Base):
     updated_at = Column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
-    media_list_items: Mapped[List["MediaListItem"]] = relationship(
+    media_list_items: Mapped[list["MediaListItem"]] = relationship(
         back_populates="media_item", cascade="all, delete-orphan"
     )
 
@@ -158,7 +160,7 @@ class MediaList(Base):
     updated_at = Column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
-    items: Mapped[List["MediaListItem"]] = relationship(
+    items: Mapped[list["MediaListItem"]] = relationship(
         back_populates="media_list", cascade="all, delete-orphan"
     )
 
@@ -189,7 +191,7 @@ class LangchainPGCollection(Base):
     uuid = Column(pgUUID, primary_key=True, nullable=False)
     name = Column(String, nullable=False, unique=True)
     cmetadata = Column(JSON, nullable=True)
-    embeddings: Mapped[List["LangchainPGEmbedding"]] = relationship(
+    embeddings: Mapped[list["LangchainPGEmbedding"]] = relationship(
         back_populates="collection", cascade="all, delete-orphan"
     )
 

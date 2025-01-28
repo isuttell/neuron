@@ -1,13 +1,14 @@
-from uuid import UUID
-from neuron_server.database import get_session, MediaItem
-from typing import Optional, List, Self
-from sqlalchemy import select, desc
+import builtins
+from datetime import UTC, datetime
+from typing import Self
+from uuid import UUID, uuid4
+
 from pydantic import BaseModel, Field
-from uuid import uuid4
-from datetime import datetime, timezone
-from sqlalchemy import and_
-from neuron_server.pubsub import pubsub
+from sqlalchemy import and_, desc, select
+
 from neuron_server.controllers.events.media_events import MediaEvent
+from neuron_server.database import MediaItem, get_session
+from neuron_server.pubsub import pubsub
 
 
 class MediaItemModel(BaseModel):
@@ -16,13 +17,13 @@ class MediaItemModel(BaseModel):
     description: str = Field(default="", description="Description of the media item")
     url: str = Field(description="URL where the media is stored")
     type: str = Field(description="Type of media (image, video, audio, etc)")
-    thread_id: Optional[UUID] = Field(description="Associated thread ID", default=None)
+    thread_id: UUID | None = Field(description="Associated thread ID", default=None)
     user_id: str = Field(description="ID of the user who owns this media")
     created_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc).astimezone()
+        default_factory=lambda: datetime.now(UTC).astimezone()
     )
     updated_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc).astimezone()
+        default_factory=lambda: datetime.now(UTC).astimezone()
     )
 
     @classmethod
@@ -33,8 +34,8 @@ class MediaItemModel(BaseModel):
         user_id: str,
         name: str = "",
         description: str = "",
-        thread_id: Optional[UUID] = None,
-        id: Optional[UUID] = None,
+        thread_id: UUID | None = None,
+        id: UUID | None = None,
     ) -> Self:
         async with get_session() as session:
             media_item = MediaItem(
@@ -53,7 +54,7 @@ class MediaItemModel(BaseModel):
             return result
 
     @classmethod
-    async def get(cls, id: UUID) -> Optional[Self]:
+    async def get(cls, id: UUID) -> Self | None:
         async with get_session() as session:
             data = await session.get(MediaItem, id)
             if data:
@@ -61,7 +62,7 @@ class MediaItemModel(BaseModel):
             return None
 
     @classmethod
-    async def list(cls) -> List[Self]:
+    async def list(cls) -> list[Self]:
         async with get_session() as session:
             results = await session.execute(select(MediaItem))
             records = results.scalars().all()
@@ -70,7 +71,7 @@ class MediaItemModel(BaseModel):
     @classmethod
     async def get_recent(
         cls, user_id: str, limit: int = 20, offset: int = 0
-    ) -> List[Self]:
+    ) -> builtins.list[Self]:
         """
         Get recent media items for a user with pagination support.
 
@@ -95,7 +96,7 @@ class MediaItemModel(BaseModel):
             return [cls(**item.__dict__) for item in records]
 
     @classmethod
-    async def get_thread_media(cls, thread_id: UUID, user_id: str) -> List[Self]:
+    async def get_thread_media(cls, thread_id: UUID, user_id: str) -> builtins.list[Self]:
         """
         Get media items for a specific thread and user.
 
@@ -119,7 +120,7 @@ class MediaItemModel(BaseModel):
             return [cls(**item.__dict__) for item in records]
 
     @classmethod
-    async def get_many(cls, ids: List[UUID]) -> List[Self]:
+    async def get_many(cls, ids: builtins.list[UUID]) -> builtins.list[Self]:
         async with get_session() as session:
             results = await session.execute(
                 select(MediaItem).where(MediaItem.id.in_(ids))

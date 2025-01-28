@@ -1,20 +1,20 @@
-from langchain.tools import BaseTool
 import asyncio
-import base64
-from neuron_server.logger import logger
 import time
-from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_core.messages import BaseMessage
-from neuron_server.llms.clean_eos_tokens import clean_eos_tokens
-from pydantic import BaseModel, Field
-from typing import Type, Dict, Any
+from io import BytesIO
+from typing import Any
+
 import aiohttp
+import pandas as pd
 import piexif
+from langchain.tools import BaseTool
+from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnableConfig
 from PIL import Image
-from io import BytesIO
-import pandas as pd
+from pydantic import BaseModel, Field
+
+from neuron_server.llms.clean_eos_tokens import clean_eos_tokens
+from neuron_server.logger import logger
 from neuron_server.util.image_utilities import create_image_url
 
 
@@ -109,7 +109,7 @@ def convert_to_degrees(value):
     return d + (m / 60.0) + (s / 3600.0)
 
 
-def get_exif_data(image: Image.Image) -> Dict[str, Any]:
+def get_exif_data(image: Image.Image) -> dict[str, Any]:
     metadata = {}
     exif = image.info.get("exif")
 
@@ -130,7 +130,7 @@ def get_exif_data(image: Image.Image) -> Dict[str, Any]:
                 logger.error(f"Error decoding EXIF value for {tag_name}: {e}")
 
     # Extract GPS coordinates if available
-    gps_info: Dict[str, Any] = exif_dict.get("GPS", {})
+    gps_info: dict[str, Any] = exif_dict.get("GPS", {})
     if gps_info:
         latitude = gps_info.get(piexif.GPSIFD.GPSLatitude)
         latitude_ref = gps_info.get(piexif.GPSIFD.GPSLatitudeRef)
@@ -166,7 +166,7 @@ class InspectImageTool(BaseTool):
     description: str = (
         "This tool uses multi-modal vision capabilities to inspect an image and return a detailed description along with any metadata that is available such as EXIF data. Use this tool to when you need to answer a question about an image. For images generated with Neuron you can use this tool to find the original prompt and generation parameters."
     )
-    args_schema: Type[InspectImageToolArgs] = InspectImageToolArgs
+    args_schema: type[InspectImageToolArgs] = InspectImageToolArgs
 
     def _run(self, *args, **kwargs) -> str:
         return asyncio.run(self._arun(*args, **kwargs))

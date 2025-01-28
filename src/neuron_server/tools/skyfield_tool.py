@@ -1,11 +1,11 @@
-from langchain.tools import BaseTool
-from typing import Type
-from pydantic import BaseModel, Field
-from skyfield.api import load, wgs84, Star, utc
-from skyfield.data import hipparcos
-from datetime import datetime
 import argparse
+from datetime import datetime
+
 from astroquery.simbad import Simbad
+from langchain.tools import BaseTool
+from pydantic import BaseModel, Field
+from skyfield.api import Star, load, utc, wgs84
+from skyfield.data import hipparcos
 
 # Load ephemeris data
 eph = load("de421.bsp")
@@ -32,7 +32,7 @@ Returns a list of visible stars from the observer's location and time sorted by 
 """.strip()
     )
 
-    args_schema: Type[SkyFieldToolArgs] = SkyFieldToolArgs
+    args_schema: type[SkyFieldToolArgs] = SkyFieldToolArgs
 
     def _run(
         self,

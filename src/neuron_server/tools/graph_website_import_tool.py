@@ -1,18 +1,20 @@
-from langchain.tools import BaseTool
-from neuron_server.logger import logger
-from pydantic import BaseModel, Field
-from typing import Type, Literal, Optional
 import asyncio
-from langchain_core.runnables import RunnableConfig
-from neuron_server.graph import process_document, encode_md5
 import os
 import time
-from neuron_server.config import config as neuron_config
+from typing import Literal
+
 import aiohttp
-from langchain_community.document_loaders import FireCrawlLoader
 import pymupdf4llm
-from langchain_core.documents import Document
 import tiktoken
+from langchain.tools import BaseTool
+from langchain_community.document_loaders import FireCrawlLoader
+from langchain_core.documents import Document
+from langchain_core.runnables import RunnableConfig
+from pydantic import BaseModel, Field
+
+from neuron_server.config import config as neuron_config
+from neuron_server.graph import encode_md5, process_document
+from neuron_server.logger import logger
 
 
 async def load_pdf_from_url(url: str) -> Document:
@@ -70,7 +72,7 @@ class GraphWebsiteImportToolArgs(BaseModel):
     url: str = Field(
         description="The url of the document or website to import. Supports html websites, text files, pdfs, csvs, and markdown documents"
     )
-    mode: Optional[Literal["scrape", "crawl"]] = Field(
+    mode: Literal["scrape", "crawl"] | None = Field(
         "scrape",
         description="The mode of the website import. Can be 'scrape' or 'crawl'. Scrape is for a single url and Crawl is for the url and all accessible sub pages. Ignored when importing documents",
     )
@@ -83,7 +85,7 @@ class GraphWebsiteImportTool(BaseTool):
 This tool imports documents, or scrapes a website using Firecrawl, and adds it to the knowledge graph. Use this save information from the internet for later use or when the user asks you to save/import a website/pdf url.
 """.strip()
     )
-    args_schema: Type[GraphWebsiteImportToolArgs] = GraphWebsiteImportToolArgs
+    args_schema: type[GraphWebsiteImportToolArgs] = GraphWebsiteImportToolArgs
 
     def _run(self, url: str, config: RunnableConfig, mode: str = "scrape") -> str:
         return asyncio.run(self._arun(url, config, mode))

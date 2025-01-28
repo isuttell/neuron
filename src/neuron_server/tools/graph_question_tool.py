@@ -1,14 +1,13 @@
-from langchain.tools import BaseTool
-from neuron_server.logger import logger
-from pydantic import BaseModel, Field
-from typing import Type, List
 import asyncio
-from langchain_core.runnables import RunnableConfig
-from neuron_server.graph import question_graph, OutputState, model
-from langchain_core.messages.utils import get_buffer_string
-from langchain_core.messages import trim_messages, BaseMessage
-from langchain_core.runnables import Runnable
 
+from langchain.tools import BaseTool
+from langchain_core.messages import BaseMessage, trim_messages
+from langchain_core.messages.utils import get_buffer_string
+from langchain_core.runnables import Runnable, RunnableConfig
+from pydantic import BaseModel, Field
+
+from neuron_server.graph import OutputState, model, question_graph
+from neuron_server.logger import logger
 
 message_trimmer: Runnable = trim_messages(
     max_tokens=4096,
@@ -33,7 +32,7 @@ class GraphQuestionTool(BaseTool):
 This tool answers questions, and looks for related information from a knowledge graph database filled with arxiv articles and other knowledge. Use this tool to answer deep questions from the graph. Make sure to include as many details as possible in the question. This may take a while and use a lot of tokens so reuse past results in the history if possible when answering follow up questions.
 """.strip()
     )
-    args_schema: Type[GraphQuestionToolArgs] = GraphQuestionToolArgs
+    args_schema: type[GraphQuestionToolArgs] = GraphQuestionToolArgs
 
     def _run(self, question: str, config: RunnableConfig) -> str:
         return asyncio.run(self._arun(question, config))
@@ -50,7 +49,7 @@ This tool answers questions, and looks for related information from a knowledge 
             from neuron_server.llms.agent import aget_state
 
             state = await aget_state(thread_id=config["configurable"]["thread_id"])
-            messages: List[BaseMessage] = await message_trimmer.ainvoke(
+            messages: list[BaseMessage] = await message_trimmer.ainvoke(
                 state.values.get("messages", []),
                 config,
             )

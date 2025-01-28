@@ -1,17 +1,18 @@
 from dotenv import load_dotenv
 
 load_dotenv()
-from typing import Annotated
-from langchain_anthropic import ChatAnthropic
-from langchain_core.messages import HumanMessage, AIMessage, AIMessageChunk
-from typing_extensions import TypedDict
 import asyncio
-from langgraph.graph import StateGraph, START, END
-from langgraph.graph.message import add_messages
-from langgraph.checkpoint.memory import MemorySaver
 import os
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from datetime import datetime
+from typing import Annotated
+
+from langchain_anthropic import ChatAnthropic
+from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langgraph.checkpoint.memory import MemorySaver
+from langgraph.graph import END, START, StateGraph
+from langgraph.graph.message import add_messages
+from typing_extensions import TypedDict
 
 memory = MemorySaver()
 
@@ -119,8 +120,8 @@ def stream_message(prompt: str):
     print()
 
 
-from elevenlabs.client import ElevenLabs
 from elevenlabs import stream
+from elevenlabs.client import ElevenLabs
 
 
 async def main():

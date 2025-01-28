@@ -1,24 +1,25 @@
-from langchain.tools import BaseTool
-from typing import Type, Optional, Literal
-from pydantic import BaseModel, Field
-import replicate.helpers
-from neuron_server.logger import logger
 import asyncio
-import time
-import replicate
-import aiohttp
-from uuid import uuid4
 import os
-from neuron_server.config import config as neuron_config
+import time
+from typing import Literal
+from uuid import uuid4
+
 import aiofiles
-import re
+import aiohttp
+import replicate
+import replicate.helpers
+from langchain.tools import BaseTool
 from langchain_core.runnables import RunnableConfig
+from pydantic import BaseModel, Field
+
+from neuron_server.config import config as neuron_config
+from neuron_server.logger import logger
 from neuron_server.models.media_item_model import MediaItemModel
 from neuron_server.util.slug import safe_filename
 
 
 class ReplicateVideoGenerationToolArgs(BaseModel):
-    image_url: Optional[str] = Field(
+    image_url: str | None = Field(
         description="The URL of the image to use for the first frame of the video generation."
     )
     prompt: str = Field(
@@ -44,7 +45,7 @@ This tool uses the video generation model minimax/video-01, also known as Hailuo
 """.strip()
     )
 
-    args_schema: Type[ReplicateVideoGenerationToolArgs] = (
+    args_schema: type[ReplicateVideoGenerationToolArgs] = (
         ReplicateVideoGenerationToolArgs
     )
 
@@ -57,7 +58,7 @@ This tool uses the video generation model minimax/video-01, also known as Hailuo
         prompt: str,
         name: str,
         config: RunnableConfig,
-        image_url: Optional[str] = None,
+        image_url: str | None = None,
     ) -> str:
         start_time = time.perf_counter()
         source = f" from {image_url}" if image_url else ""

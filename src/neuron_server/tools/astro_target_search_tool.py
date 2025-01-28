@@ -1,12 +1,14 @@
-from langchain.tools import BaseTool
-from typing import Type, Optional, List, Literal
-from pydantic import BaseModel, Field
 import argparse
-from neuron_server.logger import logger
-from pyvo.dal import DALResults, TAPService
 import math
-from pandas import DataFrame
 import time
+from typing import Literal
+
+from langchain.tools import BaseTool
+from pandas import DataFrame
+from pydantic import BaseModel, Field
+from pyvo.dal import DALResults, TAPService
+
+from neuron_server.logger import logger
 
 
 class AstroTargetSearchToolArgs(BaseModel):
@@ -18,32 +20,30 @@ class AstroTargetSearchToolArgs(BaseModel):
         gte=10,
         lte=90,
     )
-    limit: Optional[int] = Field(
+    limit: int | None = Field(
         50, description="The max number of items to return", ge=0, lte=500
     )
-    min_flux: Optional[float] = Field(
+    min_flux: float | None = Field(
         6.0,
         description="The inclusive minimum relative magnitude (astronomy) to return. Values larger than 6 are too dim for the naked human eye.",
         lte=35,  # JWST limit
         gte=-28,  # SUN limit
     )
-    max_flux: Optional[float] = Field(
+    max_flux: float | None = Field(
         22.0,
         description="The inclusive maximum relative magnitude (astronomy) to return. Values greater than 22 are too dim for the capabilities of the imaging telescope.",
         lte=35,  # JWST limit
         gte=-28,  # SUN limit
     )
-    otypes: Optional[List[str]] = Field(
+    otypes: list[str] | None = Field(
         ["GNe"],
         description="The types of objects to return. If only one item is provided then it will also include all of it's descendants, e.g. 'G' will include galaxies, 'AGN', etc. '*' will include all stars. 'GNe' will include all nebulae. Any valid Simbad object type can be provided, e.g, Cld, GNe, RNe, MoC, DNe, glb, CGb, HVC, SNR, SN*, QSO, Bla, AGN, EmG, H2G, SBG, bCG, BH, G, *, Ce*, ISM, Cl*, EmO.",
     )
-    order_by: Optional[
-        Literal["nbref", "min_flux", "galdim_majaxis", "galdim_minaxis"]
-    ] = Field(
+    order_by: Literal["nbref", "min_flux", "galdim_majaxis", "galdim_minaxis"] | None = Field(
         "nbref",
         description="The fields to order the results by. 'nbref' is the number of references, 'min_flux' is the minimum flux, 'galdim_majaxis' is the major axis, and 'galdim_minaxis' is the minor axis.",
     )
-    order_direction: Optional[Literal["ASC", "DESC"]] = Field(
+    order_direction: Literal["ASC", "DESC"] | None = Field(
         "DESC",
         description="The direction to order the results by",
     )
@@ -86,7 +86,7 @@ Queries Simbad astronomical database to find celestial objects within a specifie
 """.strip()
     )
 
-    args_schema: Type[AstroTargetSearchToolArgs] = AstroTargetSearchToolArgs
+    args_schema: type[AstroTargetSearchToolArgs] = AstroTargetSearchToolArgs
 
     simbad_service: str = "http://simbad.u-strasbg.fr/simbad/sim-tap"
 
@@ -95,14 +95,12 @@ Queries Simbad astronomical database to find celestial objects within a specifie
         ra: float,
         dec: float,
         limit: int = 50,
-        min_flux: Optional[float] = 6.0,
-        max_flux: Optional[float] = 22.0,
+        min_flux: float | None = 6.0,
+        max_flux: float | None = 22.0,
         radius: float = 60,
-        otypes: Optional[List[str]] = ["GNe"],
-        order_by: Optional[
-            Literal["nbref", "min_flux", "galdim_majaxis", "galdim_minaxis"]
-        ] = "nbref",
-        order_direction: Optional[Literal["ASC", "DESC"]] = "DESC",
+        otypes: list[str] | None = ["GNe"],
+        order_by: Literal["nbref", "min_flux", "galdim_majaxis", "galdim_minaxis"] | None = "nbref",
+        order_direction: Literal["ASC", "DESC"] | None = "DESC",
     ) -> str:
         try:
             assert len(otypes) > 0, "otypes must be provided"

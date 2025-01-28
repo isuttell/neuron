@@ -1,12 +1,13 @@
-from langchain.tools import BaseTool
-from typing import Type
-from pydantic import BaseModel, Field
 import argparse
-import pyvo
-from neuron_server.cache import cache_response
-from datetime import datetime
 import asyncio
+from datetime import datetime
+
 import pandas as pd
+import pyvo
+from langchain.tools import BaseTool
+from pydantic import BaseModel, Field
+
+from neuron_server.cache import cache_response
 from neuron_server.logger import logger
 
 tap_service = pyvo.dal.TAPService("http://simbad.u-strasbg.fr/simbad/sim-tap")
@@ -171,7 +172,7 @@ Always use this tool to answer questions about an astronomical object.
 """.strip()
     )
 
-    args_schema: Type[AstroObjectSearchToolArgs] = AstroObjectSearchToolArgs
+    args_schema: type[AstroObjectSearchToolArgs] = AstroObjectSearchToolArgs
 
     def _run(
         self,

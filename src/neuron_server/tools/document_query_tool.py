@@ -1,11 +1,12 @@
-from langchain.tools import BaseTool
-from typing import Type
-from pydantic import BaseModel, Field
 import asyncio
-from neuron_server.vectorstores import document_store
-from langchain_core.runnables import RunnableConfig
-from langchain_core.documents import Document
 import json
+
+from langchain.tools import BaseTool
+from langchain_core.documents import Document
+from langchain_core.runnables import RunnableConfig
+from pydantic import BaseModel, Field
+
+from neuron_server.vectorstores import document_store
 
 
 def format_document(doc: Document) -> str:
@@ -32,7 +33,7 @@ class DocumentQueryTool(BaseTool):
         "This tool allows you to query documents for information relevant to a question using a semantic search."
     )
 
-    args_schema: Type[DocumentQueryToolArgs] = DocumentQueryToolArgs
+    args_schema: type[DocumentQueryToolArgs] = DocumentQueryToolArgs
 
     def _run(
         self,

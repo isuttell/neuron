@@ -1,14 +1,15 @@
-from langchain.tools import BaseTool
-from typing import Type, Optional
-from pydantic import BaseModel, Field
-from neuron_server.logger import logger
+import os
 from uuid import uuid4
-from neuron_server.config import config
+
+from langchain.tools import BaseTool
+from pydantic import BaseModel, Field
 from starplot import OpticPlot
 from starplot.callables import color_by_bv
 from starplot.optics import Camera
 from starplot.styles import PlotStyle, extensions
-import os
+
+from neuron_server.config import config
+from neuron_server.logger import logger
 
 
 class StarplotOpticToolArgs(BaseModel):
@@ -23,13 +24,13 @@ class StarplotOpticToolArgs(BaseModel):
     lens_focal_length: float = Field(
         description="The focal length of the camera lens (mm)"
     )
-    rotation: Optional[float] = Field(
+    rotation: float | None = Field(
         description="The angle (degrees) to rotate the camera", default=0
     )
-    star_mag: Optional[float] = Field(
+    star_mag: float | None = Field(
         description="The magnitude of stars to plot", default=15
     )
-    dso_mag: Optional[float] = Field(
+    dso_mag: float | None = Field(
         description="The magnitude of DSOs to plot", default=15
     )
 
@@ -42,7 +43,7 @@ Generates an optic plot to visualize the given target through a camera lens. Thi
 """.strip()
     )
 
-    args_schema: Type[StarplotOpticToolArgs] = StarplotOpticToolArgs
+    args_schema: type[StarplotOpticToolArgs] = StarplotOpticToolArgs
 
     def _run(
         self,
@@ -55,9 +56,9 @@ Generates an optic plot to visualize the given target through a camera lens. Thi
         sensor_height: float,
         sensor_width: float,
         lens_focal_length: float,
-        rotation: Optional[float] = 0,
-        star_mag: Optional[float] = 15,
-        dso_mag: Optional[float] = 22,
+        rotation: float | None = 0,
+        star_mag: float | None = 15,
+        dso_mag: float | None = 22,
     ) -> str:
         try:
             style = PlotStyle().extend(

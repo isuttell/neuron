@@ -1,13 +1,14 @@
-from langchain.tools import BaseTool
-from neuron_server.logger import logger
 import asyncio
+
+from langchain.tools import BaseTool
 from langchain_core.runnables import RunnableConfig
 from pydantic import BaseModel, Field
-from typing import Type, List
+
+from neuron_server.logger import logger
 
 
 class ScheduleRemoveToolArgs(BaseModel):
-    event_ids: List[str] = Field(
+    event_ids: list[str] = Field(
         description="The event_id's to remove. This is permanent and cannot be undone."
     )
 
@@ -20,14 +21,14 @@ Removes scheduled prompts by their event_id. Use the list_scheduled_prompts tool
 """.strip()
     )
 
-    args_schema: Type[ScheduleRemoveToolArgs] = ScheduleRemoveToolArgs
+    args_schema: type[ScheduleRemoveToolArgs] = ScheduleRemoveToolArgs
 
     def _run(self, *args, **kwargs) -> str:
         return asyncio.run(self._arun(*args, **kwargs))
 
     async def _arun(
         self,
-        event_ids: List[str],
+        event_ids: list[str],
         config: RunnableConfig,
     ) -> str:
         try:

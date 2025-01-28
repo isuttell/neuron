@@ -1,22 +1,23 @@
-import numpy as np
-import cv2
-from PIL import Image
-import time
-from threading import Thread
-from neuron_server.logger import logger
-from langchain.tools import BaseTool
-import base64
-from io import BytesIO
-from langchain_core.output_parsers import StrOutputParser
-from langchain_core.messages import SystemMessage, HumanMessage
 import asyncio
-from cv2.typing import MatLike
-from typing import Tuple, List, Type
-from pydantic import BaseModel, Field
+import base64
+import time
 from datetime import datetime
+from io import BytesIO
+from threading import Thread
 from typing import Literal
+
+import cv2
+import numpy as np
+from cv2.typing import MatLike
+from langchain.tools import BaseTool
 from langchain_anthropic import ChatAnthropic
+from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.output_parsers import StrOutputParser
 from langchain_openai import ChatOpenAI
+from PIL import Image
+from pydantic import BaseModel, Field
+
+from neuron_server.logger import logger
 
 
 class Camera:
@@ -42,7 +43,7 @@ class Camera:
 
 
 def convert_frame_to_base64(
-    frame: MatLike, dimensions: Tuple[int, int] = (1024, 1024)
+    frame: MatLike, dimensions: tuple[int, int] = (1024, 1024)
 ) -> str:
     frame = cv2.resize(frame.astype(np.uint8), dimensions)
     frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -68,7 +69,7 @@ class InspectWebcamTool(BaseTool):
         "Answer live questions about is happening in a webcam showing the user using OpenAI GPT-4o multi-modal vision capabilities. The prompt must include any relevant context that helps the model understand the question."
     )
 
-    args_schema: Type[InspectWebcamToolArgs] = InspectWebcamToolArgs
+    args_schema: type[InspectWebcamToolArgs] = InspectWebcamToolArgs
 
     camera: Camera
 
@@ -91,8 +92,8 @@ class InspectWebcamTool(BaseTool):
                 return
             await asyncio.sleep(0.1)
 
-    async def get_frames(self, count: int, fps: float) -> List[MatLike]:
-        logger.debug(f"Waiting for frames to be available...")
+    async def get_frames(self, count: int, fps: float) -> list[MatLike]:
+        logger.debug("Waiting for frames to be available...")
         await self.wait_for_frame()
         logger.debug(f"Frames are available, getting {count} frames...")
         frames = []
