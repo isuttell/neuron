@@ -1,7 +1,7 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import { getAccessToken } from "./getToken";
 import { Embedding } from "@/slices/embeddingsSlice";
-import { Personality } from "../slices/personalitiesSlice";
+import type { Personality } from "../slices/personalitiesSlice.d";
 
 export const fetchPersonality = createAsyncThunk(
   "personalities/fetchPersonality",
@@ -15,8 +15,11 @@ export const fetchPersonality = createAsyncThunk(
       });
       const data = await response.json();
       return data;
-    } catch (error: any) {
-      return thunkAPI.rejectWithValue(error.message);
+    } catch (error) {
+      if (error instanceof Error) {
+        return thunkAPI.rejectWithValue(error.message);
+      }
+      return thunkAPI.rejectWithValue("An unknown error occurred");
     }
   }
 );
@@ -33,8 +36,11 @@ export const fetchPersonalities = createAsyncThunk(
       });
       const data = await response.json();
       return data;
-    } catch (error: any) {
-      return thunkAPI.rejectWithValue(error.message);
+    } catch (error) {
+      if (error instanceof Error) {
+        return thunkAPI.rejectWithValue(error.message);
+      }
+      return thunkAPI.rejectWithValue("An unknown error occurred");
     }
   }
 );
@@ -63,8 +69,11 @@ export const createPersonality = createAsyncThunk(
       });
       const data = await response.json();
       return data;
-    } catch (error: any) {
-      return thunkAPI.rejectWithValue(error.message);
+    } catch (error) {
+      if (error instanceof Error) {
+        return thunkAPI.rejectWithValue(error.message);
+      }
+      return thunkAPI.rejectWithValue("An unknown error occurred");
     }
   }
 );
@@ -95,8 +104,11 @@ export const updatePersonality = createAsyncThunk(
       });
       const data = await response.json();
       return data;
-    } catch (error: any) {
-      return thunkAPI.rejectWithValue(error.message);
+    } catch (error) {
+      if (error instanceof Error) {
+        return thunkAPI.rejectWithValue(error.message);
+      }
+      return thunkAPI.rejectWithValue("An unknown error occurred");
     }
   }
 );
@@ -113,8 +125,11 @@ export const deletePersonality = createAsyncThunk(
         },
       });
       return personalityId;
-    } catch (error: any) {
-      return thunkAPI.rejectWithValue(error.message);
+    } catch (error) {
+      if (error instanceof Error) {
+        return thunkAPI.rejectWithValue(error.message);
+      }
+      return thunkAPI.rejectWithValue("An unknown error occurred");
     }
   }
 );
@@ -139,8 +154,11 @@ export const fetchPersonalityEmbeddings = createAsyncThunk(
       );
       const data = await response.json();
       return data as EmbeddingsResponse;
-    } catch (error: any) {
-      return thunkAPI.rejectWithValue(error.message);
+    } catch (error) {
+      if (error instanceof Error) {
+        return thunkAPI.rejectWithValue(error.message);
+      }
+      return thunkAPI.rejectWithValue("An unknown error occurred");
     }
   }
 );
@@ -169,8 +187,11 @@ export const uploadEmbeddings = createAsyncThunk(
 
       const data = await response.json();
       return data;
-    } catch (error: any) {
-      return thunkAPI.rejectWithValue(error.message);
+    } catch (error) {
+      if (error instanceof Error) {
+        return thunkAPI.rejectWithValue(error.message);
+      }
+      return thunkAPI.rejectWithValue("An unknown error occurred");
     }
   }
 );
@@ -196,8 +217,11 @@ export const deleteEmbedding = createAsyncThunk(
         }
       );
       return { personalityId, embeddingId };
-    } catch (error: any) {
-      return thunkAPI.rejectWithValue(error.message);
+    } catch (error) {
+      if (error instanceof Error) {
+        return thunkAPI.rejectWithValue(error.message);
+      }
+      return thunkAPI.rejectWithValue("An unknown error occurred");
     }
   }
 );

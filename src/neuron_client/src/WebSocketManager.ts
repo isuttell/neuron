@@ -1,5 +1,21 @@
 import { EventEmitter } from "events";
 import { getAccessToken } from "./actions/getToken";
+
+interface WebSocketMessage {
+  type: string;
+  [key: string]: unknown;
+}
+
+interface PostMessage extends WebSocketMessage {
+  type: "PostMessage";
+  thread_id: string;
+  prompt?: string;
+  greeting?: string;
+  personality_id: string;
+}
+
+type WebSocketPayload = PostMessage;
+
 export default class WebSocketManager {
   private socket?: WebSocket;
   private events: EventEmitter;
@@ -28,11 +44,15 @@ export default class WebSocketManager {
     });
 
     this.socket.addEventListener("message", (event) => {
-      const payload = JSON.parse(event.data);
-      if (payload.type) {
-        this.events.emit(payload.type, payload);
-      } else {
-        console.error("Received payload without type:", payload);
+      try {
+        const payload = JSON.parse(event.data) as WebSocketMessage;
+        if (payload.type) {
+          this.events.emit(payload.type, payload);
+        } else {
+          console.error("Received payload without type:", payload);
+        }
+      } catch (error) {
+        console.error("Failed to parse WebSocket message:", error);
       }
     });
 
@@ -55,28 +75,29 @@ export default class WebSocketManager {
     setTimeout(() => this.connect(), 1000);
   }
 
-  emit(payload: any) {
+  emit(payload: WebSocketPayload) {
     if (!this.socket) {
       throw new Error("WebSocket connection not established");
     }
-    this.socket.send(JSON.stringify({ type: event, payload }));
+    this.socket.send(JSON.stringify({ type: payload.type, payload }));
   }
 
-  on(event: string, listener: (...args: any[]) => void) {
+  on(event: string, listener: (payload: WebSocketPayload) => void) {
     this.events.on(event, listener);
     return {
       remove: () => this.events.off(event, listener),
     };
   }
 
-  once(event: string, listener: (...args: any[]) => void) {
-    this.events.on(event, (...args) => {
-      listener(...args);
-      this.events.off(event, listener);
-    });
+  once(event: string, listener: (payload: WebSocketPayload) => void) {
+    const wrappedListener = (payload: WebSocketPayload) => {
+      listener(payload);
+      this.events.off(event, wrappedListener);
+    };
+    this.events.on(event, wrappedListener);
   }
 
-  sendMessage(message: any) {
+  sendMessage(message: WebSocketPayload) {
     if (this.socket && this.socket.readyState === WebSocket.OPEN) {
       this.socket.send(JSON.stringify(message));
     } else {
@@ -97,8 +118,12 @@ export default class WebSocketManager {
     if (this.connected && this.socket) {
       return Promise.resolve();
     }
-    return new Promise((resolve) => {
-      this.once("open", resolve);
+    return new Promise<void>((resolve) => {
+      const openHandler = () => {
+        resolve();
+        this.events.off("open", openHandler);
+      };
+      this.events.on("open", openHandler);
     });
   }
 }

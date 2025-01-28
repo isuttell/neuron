@@ -115,7 +115,7 @@ export default function Personality() {
       toast({
         title: "Context updated",
       });
-    } catch (error) {
+    } catch {
       toast({
         title: "Failed to update personality context",
         variant: "destructive",

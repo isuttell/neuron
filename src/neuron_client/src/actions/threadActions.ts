@@ -16,8 +16,11 @@ export const fetchThread = createAsyncThunk(
       }
       const data = await response.json();
       return data;
-    } catch (error: any) {
-      return thunkAPI.rejectWithValue(error.message);
+    } catch (error) {
+      if (error instanceof Error) {
+        return thunkAPI.rejectWithValue(error.message);
+      }
+      return thunkAPI.rejectWithValue("An unknown error occurred");
     }
   }
 );
@@ -40,8 +43,11 @@ export const fetchThreadsByPersonality = createAsyncThunk(
       }
       const data = await response.json();
       return data;
-    } catch (error: any) {
-      return thunkAPI.rejectWithValue(error.message);
+    } catch (error) {
+      if (error instanceof Error) {
+        return thunkAPI.rejectWithValue(error.message);
+      }
+      return thunkAPI.rejectWithValue("An unknown error occurred");
     }
   }
 );
@@ -61,8 +67,11 @@ export const fetchRecentThreads = createAsyncThunk(
       }
       const data = await response.json();
       return data;
-    } catch (error: any) {
-      return thunkAPI.rejectWithValue(error.message);
+    } catch (error) {
+      if (error instanceof Error) {
+        return thunkAPI.rejectWithValue(error.message);
+      }
+      return thunkAPI.rejectWithValue("An unknown error occurred");
     }
   }
 );
@@ -116,11 +125,15 @@ export const createThread = createAsyncThunk(
       }
       const data = await response.json();
       return data;
-    } catch (error: any) {
-      return thunkAPI.rejectWithValue(error.message);
+    } catch (error) {
+      if (error instanceof Error) {
+        return thunkAPI.rejectWithValue(error.message);
+      }
+      return thunkAPI.rejectWithValue("An unknown error occurred");
     }
   }
 );
+
 interface UpdateThreadPayload {
   id: string;
   name: string;
@@ -145,8 +158,11 @@ export const updateThread = createAsyncThunk(
       }
       const data = await response.json();
       return data;
-    } catch (error: any) {
-      return thunkAPI.rejectWithValue(error.message);
+    } catch (error) {
+      if (error instanceof Error) {
+        return thunkAPI.rejectWithValue(error.message);
+      }
+      return thunkAPI.rejectWithValue("An unknown error occurred");
     }
   }
 );
@@ -166,8 +182,11 @@ export const deleteThread = createAsyncThunk(
         throw new Error(`Failed to delete thread (${response.status})`);
       }
       return threadId;
-    } catch (error: any) {
-      return thunkAPI.rejectWithValue(error.message);
+    } catch (error) {
+      if (error instanceof Error) {
+        return thunkAPI.rejectWithValue(error.message);
+      }
+      return thunkAPI.rejectWithValue("An unknown error occurred");
     }
   }
 );

@@ -29,7 +29,7 @@ export const store = configureStore({
     scheduler: schedulerReducer,
     providers: providersReducer,
   },
-  // @ts-ignore
+  // @ts-expect-error - Redux middleware type incompatibility
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: {

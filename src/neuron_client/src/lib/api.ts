@@ -1,5 +1,14 @@
 import { getAccessToken } from "@/actions/getToken";
 
+type JsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | JsonValue[]
+  | { [key: string]: JsonValue };
+type RequestData = Record<string, JsonValue>;
+
 class ApiClient {
   private baseUrl: string = "/api";
 
@@ -11,7 +20,7 @@ class ApiClient {
     };
   }
 
-  async get(endpoint: string) {
+  async get<T>(endpoint: string): Promise<T> {
     const headers = await this.getHeaders();
     const response = await fetch(`${this.baseUrl}${endpoint}`, { headers });
     if (!response.ok) {
@@ -20,7 +29,7 @@ class ApiClient {
     return response.json();
   }
 
-  async post(endpoint: string, data: any) {
+  async post<T>(endpoint: string, data: RequestData): Promise<T> {
     const headers = await this.getHeaders();
     const response = await fetch(`${this.baseUrl}${endpoint}`, {
       method: "POST",
@@ -33,7 +42,7 @@ class ApiClient {
     return response.json();
   }
 
-  async put(endpoint: string, data: any) {
+  async put<T>(endpoint: string, data: RequestData): Promise<T> {
     const headers = await this.getHeaders();
     const response = await fetch(`${this.baseUrl}${endpoint}`, {
       method: "PUT",
@@ -46,7 +55,7 @@ class ApiClient {
     return response.json();
   }
 
-  async delete(endpoint: string) {
+  async delete<T>(endpoint: string): Promise<T> {
     const headers = await this.getHeaders();
     const response = await fetch(`${this.baseUrl}${endpoint}`, {
       method: "DELETE",

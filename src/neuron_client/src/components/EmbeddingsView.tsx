@@ -28,7 +28,6 @@ import {
   updateEmbedding,
 } from "../actions/embeddingsActions";
 import { Textarea } from "@/components/ui/textarea";
-import { SidebarTrigger } from "@/components/ui/sidebar";
 import { DataTable } from "@/components/DataTable";
 import { sortingFns } from "@tanstack/react-table";
 
@@ -40,6 +39,17 @@ interface DeleteDialogProps {
 }
 
 import { ColumnDef } from "@tanstack/react-table";
+
+interface EmbeddingMetadata {
+  created_at?: number;
+  stats?: {
+    total?: number;
+    useful?: number;
+    last_recall_at?: number;
+    last_useful_at?: number;
+  };
+  [key: string]: unknown;
+}
 
 const DeleteDialog = ({
   open,
@@ -108,7 +118,7 @@ const EditDialog = ({
     if (id) {
       setContent(initialContent);
     }
-  }, [id]);
+  }, [id, initialContent]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -167,7 +177,7 @@ function EmbeddingsViewComponent() {
     if (personalityId) {
       dispatch(fetchPersonalityEmbeddings(personalityId));
     }
-  }, [personalityId]);
+  }, [personalityId, dispatch]);
 
   const getSelectedIds = () => {
     return Object.keys(rowSelection).map((index) => {
@@ -185,11 +195,14 @@ function EmbeddingsViewComponent() {
         title: "Embeddings deleted",
         description: `Successfully deleted ${selectedIds.length} embeddings`,
       });
-    } catch (error: any) {
+    } catch (error) {
       toast({
         variant: "destructive",
         title: "Failed to delete embeddings",
-        description: error?.message || "An unexpected error occurred",
+        description:
+          error instanceof Error
+            ? error.message
+            : "An unexpected error occurred",
       });
     }
     setDeleteTarget(null);
@@ -201,11 +214,14 @@ function EmbeddingsViewComponent() {
       toast({
         title: "Embedding deleted",
       });
-    } catch (error: any) {
+    } catch (error) {
       toast({
         variant: "destructive",
         title: "Failed to delete embedding",
-        description: error?.message || "An unexpected error occurred",
+        description:
+          error instanceof Error
+            ? error.message
+            : "An unexpected error occurred",
       });
     }
     setDeleteTarget(null);
@@ -224,11 +240,14 @@ function EmbeddingsViewComponent() {
         title: "Embedding updated",
         description: "The embedding has been successfully updated",
       });
-    } catch (error: any) {
+    } catch (error) {
       toast({
         variant: "destructive",
         title: "Failed to update embedding",
-        description: error?.message || "An unexpected error occurred",
+        description:
+          error instanceof Error
+            ? error.message
+            : "An unexpected error occurred",
       });
     }
   };
@@ -362,7 +381,7 @@ function EmbeddingsViewComponent() {
       accessorFn: (row) => row.cmetadata,
       header: "Metadata",
       cell: ({ getValue }) => {
-        const metadata = getValue() as Record<string, any>;
+        const metadata = getValue() as EmbeddingMetadata;
         return Object.entries(metadata)
           .filter(([key]) => !["created_at", "stats"].includes(key))
           .map(([key, value]) => (

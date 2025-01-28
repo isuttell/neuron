@@ -16,24 +16,29 @@ import { VirtuosoGrid } from "react-virtuoso";
 import { forwardRef } from "react";
 import type { GridComponents } from "react-virtuoso";
 import { Spinner } from "@/components/ui/spinner";
+import type { HTMLAttributes } from "react";
 
 // Ensure that this stays out of the component,
 // Otherwise the grid will remount with each render due to new component instances.
 const gridComponents: GridComponents = {
-  List: forwardRef(({ children, ...props }: any, ref) => (
-    <div
-      ref={ref}
-      {...props}
-      className="flex flex-wrap grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 lg:gap-4 xl:grid-cols-4 2xl:grid-cols-5"
-    >
-      {children}
-    </div>
-  )),
-  Item: forwardRef(({ children, ...props }: any, ref) => (
-    <div ref={ref} {...props} className="flex-none box-border">
-      {children}
-    </div>
-  )),
+  List: forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
+    ({ children, ...props }, ref) => (
+      <div
+        ref={ref}
+        {...props}
+        className="flex flex-wrap grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 lg:gap-4 xl:grid-cols-4 2xl:grid-cols-5"
+      >
+        {children}
+      </div>
+    )
+  ),
+  Item: forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
+    ({ children, ...props }, ref) => (
+      <div ref={ref} {...props} className="flex-none box-border">
+        {children}
+      </div>
+    )
+  ),
 };
 
 interface RecentMediaProps {
@@ -48,7 +53,7 @@ export default function RecentMedia({ limit = 16 }: RecentMediaProps) {
 
   useEffect(() => {
     dispatch(fetchRecentMedia({ offset: offset.current, limit }));
-  }, []);
+  }, [dispatch, limit]);
 
   if (loading && mediaItems.length === 0) {
     return (

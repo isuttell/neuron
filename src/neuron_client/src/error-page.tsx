@@ -1,7 +1,14 @@
 import { useRouteError } from "react-router-dom";
 
+interface RouterError {
+  statusText?: string;
+  message?: string;
+  stack?: string;
+  toString: () => string;
+}
+
 export default function ErrorPage() {
-  const error: Error | any = useRouteError();
+  const error = useRouteError() as RouterError;
   console.error(error);
 
   return (
@@ -10,7 +17,7 @@ export default function ErrorPage() {
       <p className="text-lg">Sorry, an unexpected error has occurred.</p>
       <div className="mt-6">
         <div className="font-bold text-center">
-          {error.statusText || error.toString()}
+          {error.statusText || error.message || error.toString()}
         </div>
         {typeof error.stack === "string" && (
           <pre className="mt-6 text-xs">{error.stack.slice(0, 1000)}</pre>

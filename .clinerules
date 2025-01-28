@@ -40,6 +40,7 @@ Neuron is a realtime chat application built with LangChain and LangGraph to allo
 #### Frontend Testing
 
 - Write unit tests for all components using Jest and React Testing Library.
+- Run linting with `cd src/neuron_client && npm run lint` after each client task and fix any errors.
 - Focus on testing business logic and DOM interactions.
 
 ### Backend Code Style and Structure
@@ -57,15 +58,10 @@ Neuron is a realtime chat application built with LangChain and LangGraph to allo
 #### Backend Testing
 
 - Write tests using Pytest.
+- Run linting with `poetry run ruff check src/neuron_server/` after each backend task and fix any errors.
 - Include tests for controllers, tools, and database models.
 - Use mocking for database and network operations to ensure isolation of tests.
 
 ### Model Notes
 
 - gpt-4o is the latest OpenAI model.
-
-
-## Commands
-
-`cd src/neuron_client && npm run lint ` - Lint the frontend
-`poetry run ruff check src/neuron_server/` - Lint the backend

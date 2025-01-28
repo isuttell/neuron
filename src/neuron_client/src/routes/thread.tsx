@@ -61,7 +61,7 @@ export default function Thread() {
   const filteredMessages = messages
     .slice()
     .map((message) => {
-      let content = Array.isArray(message.content)
+      const content = Array.isArray(message.content)
         ? message.content
             .filter((item) => item.type === "text")
             .map((item) => item.text)
@@ -96,7 +96,7 @@ export default function Thread() {
       return;
     }
     dispatch(fetchMessagesByThread(threadId));
-  }, [threadId]);
+  }, [threadId, dispatch]);
 
   useEffect(() => {
     // Only scroll when the last human message changes or system messages are toggled
@@ -114,7 +114,8 @@ export default function Thread() {
     return <Loading />;
   }
 
-  const handlePromptClick = debounce((prompt) => {
+  const handlePromptClick = debounce<[string], void>((prompt) => {
+    if (!thread) return;
     dispatch(
       postMessageByThread({
         threadId: thread.id,

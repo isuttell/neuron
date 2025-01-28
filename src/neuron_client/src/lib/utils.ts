@@ -11,13 +11,13 @@ export function cn(...inputs: ClassValue[]) {
  * @param wait - The wait time in milliseconds
  * @returns The debounced function
  */
-export function debounce<T extends (...args: any[]) => any>(
-  func: T,
+export function debounce<Args extends unknown[], R>(
+  func: (...args: Args) => R,
   wait: number
-) {
+): (...args: Args) => void {
   let timeout: NodeJS.Timeout;
-  return function (...args: Parameters<T>) {
+  return function (this: unknown, ...args: Args) {
     clearTimeout(timeout);
-    timeout = setTimeout(() => func(...args), wait);
+    timeout = setTimeout(() => func.apply(this, args), wait);
   };
 }

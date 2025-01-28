@@ -60,7 +60,7 @@ export default function ProvidersPage() {
       toast({
         title: "Provider setup successful",
       });
-    } catch (error) {
+    } catch {
       toast({
         title: "Failed to setup provider",
         variant: "destructive",

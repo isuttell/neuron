@@ -5,6 +5,8 @@ import {
   getCoreRowModel,
   useReactTable,
   getSortedRowModel,
+  RowSelectionState,
+  OnChangeFn,
 } from "@tanstack/react-table";
 import { useState } from "react";
 import {
@@ -19,7 +21,7 @@ import {
 interface DataTableProps<TData> {
   columns: ColumnDef<TData>[];
   data: TData[];
-  onRowSelectionChange?: (value: any) => void;
+  onRowSelectionChange?: OnChangeFn<RowSelectionState>;
   state?: {
     rowSelection?: Record<string, boolean>;
   };

@@ -1,5 +1,5 @@
 import React, { memo } from "react";
-import { Bot, User, Hammer, FileIcon } from "lucide-react";
+import { Bot, User, Hammer } from "lucide-react";
 import { AttachmentIndicator } from "@/components/AttachmentIndicator";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -19,6 +19,7 @@ import { useAuth0 } from "@auth0/auth0-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { RootState } from "@/store";
 import { useAppSelector } from "@/hooks";
+
 interface MessageItemProps {
   messageId: string;
   onPromptClick?: (prompt: string) => void;

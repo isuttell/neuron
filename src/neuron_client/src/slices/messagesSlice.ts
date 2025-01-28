@@ -2,6 +2,7 @@ import { createSlice } from "@reduxjs/toolkit";
 import type { PayloadAction } from "@reduxjs/toolkit";
 import type { RootState } from "../store";
 import { fetchMessagesByThread } from "../actions/messageActions";
+
 interface Content {
   text: string;
   type: string;
@@ -10,10 +11,30 @@ interface Content {
 
 type MessageRole = "ai" | "human" | "tool" | "system";
 
-interface UsageMetadata extends Record<string, any> {
+interface ToolCall {
+  id: string;
+  type: string;
+  function: {
+    name: string;
+    arguments: string;
+  };
+}
+
+interface AdditionalKwargs {
+  [key: string]: string | number | boolean | null;
+}
+
+interface ResponseMetadata {
+  model?: string;
+  finish_reason?: string;
+  [key: string]: string | number | boolean | null | undefined;
+}
+
+interface UsageMetadata {
   input_tokens?: number;
   output_tokens?: number;
   total_tokens?: number;
+  [key: string]: number | undefined;
 }
 
 export interface Message {
@@ -23,10 +44,10 @@ export interface Message {
   content: Content[] | string;
   thread_id: string;
   status?: string;
-  tool_calls?: any[];
+  tool_calls?: ToolCall[];
   tool_call_id?: string;
-  additional_kwargs?: any;
-  response_metadata?: any;
+  additional_kwargs?: AdditionalKwargs;
+  response_metadata?: ResponseMetadata;
   usage_metadata?: UsageMetadata;
   created_at?: number;
   node?: string;

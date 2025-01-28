@@ -3,7 +3,7 @@ import { UserPen, UserPlus } from "lucide-react";
 import { useAppDispatch } from "../hooks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Personality } from "../slices/personalitiesSlice";
+import type { Personality } from "../slices/personalitiesSlice.d";
 import {
   Dialog,
   DialogTrigger,
@@ -51,6 +51,10 @@ const ToolSetLabels = {
   video: "Video Generation",
   weather: "Weather",
 };
+
+interface ApiError extends Error {
+  message: string;
+}
 
 export default function EditPersonalityDialog({
   personality,
@@ -105,12 +109,13 @@ export default function EditPersonalityDialog({
         navigate(`/personality/${body.personality.id}`);
       }
       setOpen(false);
-    } catch (error: any) {
-      console.log(error);
+    } catch (error: unknown) {
+      const apiError = error as ApiError;
+      console.log(apiError);
       toast({
         variant: "destructive",
         title: "Failed to save personality",
-        description: error?.message || "An unexpected error occurred",
+        description: apiError?.message || "An unexpected error occurred",
       });
     } finally {
       setLoading(false);

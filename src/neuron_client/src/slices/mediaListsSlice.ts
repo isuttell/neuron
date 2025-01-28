@@ -2,7 +2,14 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import type { RootState } from "../store";
 import { api } from "@/lib/api";
 import { MediaItem } from "./mediaSlice";
-import { PayloadAction } from "@reduxjs/toolkit";
+
+type JsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | JsonValue[]
+  | { [key: string]: JsonValue };
 
 export interface MediaList {
   id: string;
@@ -36,18 +43,26 @@ const initialState: MediaListsState = {
   error: null,
 };
 
-export const fetchMediaList = createAsyncThunk(
+interface FetchMediaListsResponse {
+  media_lists: MediaList[];
+  media_list_items: MediaListItem[];
+  media_items: MediaItem[];
+}
+
+export const fetchMediaList = createAsyncThunk<FetchMediaListsResponse, string>(
   "mediaLists/fetchOne",
-  async (listId: string) => {
-    const response = await api.get(`/media/lists/${listId}`);
+  async (listId) => {
+    const response = await api.get<FetchMediaListsResponse>(
+      `/media/lists/${listId}`
+    );
     return response;
   }
 );
 
-export const fetchMediaLists = createAsyncThunk(
+export const fetchMediaLists = createAsyncThunk<FetchMediaListsResponse>(
   "mediaLists/fetchAll",
   async () => {
-    const response = await api.get("/media/lists");
+    const response = await api.get<FetchMediaListsResponse>("/media/lists");
     return response;
   }
 );
@@ -55,58 +70,82 @@ export const fetchMediaLists = createAsyncThunk(
 interface CreateMediaListPayload {
   name: string;
   description: string;
+  [key: string]: JsonValue; // Allow any JsonValue
 }
 
-export const createMediaList = createAsyncThunk(
-  "mediaLists/createMediaList",
-  async (payload: CreateMediaListPayload) => {
-    const response = await api.post("/media/lists", payload);
-    return response.media_lists[0];
-  }
-);
+interface CreateMediaListResponse {
+  media_lists: MediaList[];
+}
+
+export const createMediaList = createAsyncThunk<
+  MediaList,
+  CreateMediaListPayload
+>("mediaLists/createMediaList", async (payload) => {
+  const response = await api.post<CreateMediaListResponse>(
+    "/media/lists",
+    payload
+  );
+  return response.media_lists[0];
+});
+
+interface AddMediaToListRequest {
+  media_item_id: string;
+  index: number | null;
+  [key: string]: JsonValue;
+}
 
 interface AddMediaToListPayload {
   listId: string;
   mediaItemId: string;
-  index?: number;
-}
-
-export const reorderMediaListItems = createAsyncThunk(
-  "mediaLists/reorderItems",
-  async ({
-    listId,
-    mediaItemIds,
-  }: {
-    listId: string;
-    mediaItemIds: string[];
-  }) => {
-    const response = await api.post(`/media/lists/${listId}/reorder`, {
-      media_item_ids: mediaItemIds,
-    });
-    return response;
-  }
-);
-
-export const addMediaToList = createAsyncThunk(
-  "mediaLists/addMedia",
-  async (payload: AddMediaToListPayload) => {
-    const response = await api.post(`/media/lists/${payload.listId}/media`, {
-      media_item_id: payload.mediaItemId,
-      index: payload.index,
-    });
-    return response;
-  }
-);
-
-interface FetchMediaListsResponse {
-  media_lists: MediaList[];
-  media_list_items: MediaListItem[];
-  media_items: MediaItem[];
+  index: number | null;
 }
 
 interface AddMediaToListResponse {
   media_list_items: MediaListItem[];
 }
+
+interface ReorderMediaListItemsRequest {
+  media_item_ids: string[];
+  [key: string]: JsonValue;
+}
+
+interface ReorderMediaListItemsPayload {
+  listId: string;
+  mediaItemIds: string[];
+}
+
+interface ReorderMediaListItemsResponse {
+  media_list_items: MediaListItem[];
+}
+
+export const reorderMediaListItems = createAsyncThunk<
+  ReorderMediaListItemsResponse,
+  ReorderMediaListItemsPayload
+>("mediaLists/reorderItems", async ({ listId, mediaItemIds }) => {
+  const requestData: ReorderMediaListItemsRequest = {
+    media_item_ids: mediaItemIds,
+  };
+  const response = await api.post<ReorderMediaListItemsResponse>(
+    `/media/lists/${listId}/reorder`,
+    requestData
+  );
+  return response;
+});
+
+export const addMediaToList = createAsyncThunk<
+  AddMediaToListResponse,
+  AddMediaToListPayload
+>("mediaLists/addMedia", async (payload) => {
+  const requestData: AddMediaToListRequest = {
+    media_item_id: payload.mediaItemId,
+    index: payload.index,
+  };
+  const response = await api.post<AddMediaToListResponse>(
+    `/media/lists/${payload.listId}/media`,
+    requestData
+  );
+  return response;
+});
 
 const mediaListsSlice = createSlice({
   name: "mediaLists",
@@ -118,45 +157,42 @@ const mediaListsSlice = createSlice({
         state.loading = true;
         state.error = null;
       })
-      .addCase(
-        fetchMediaList.fulfilled,
-        (state, action: PayloadAction<FetchMediaListsResponse>) => {
-          state.loading = false;
-          action.payload.media_lists.forEach((list) => {
-            const existingIndex = state.lists.findIndex(
-              (item) => item.id === list.id
-            );
-            if (existingIndex !== -1) {
-              state.lists[existingIndex] = list;
-            } else {
-              state.lists.push(list);
-            }
-          });
-
-          // Update media list items
-          const updatedItems = new Map(
-            action.payload.media_list_items.map((item) => [item.id, item])
+      .addCase(fetchMediaList.fulfilled, (state, action) => {
+        state.loading = false;
+        action.payload.media_lists.forEach((list) => {
+          const existingIndex = state.lists.findIndex(
+            (item) => item.id === list.id
           );
+          if (existingIndex !== -1) {
+            state.lists[existingIndex] = list;
+          } else {
+            state.lists.push(list);
+          }
+        });
 
-          // Remove items for this list that no longer exist and update existing ones
-          state.mediaListItems = state.mediaListItems
-            .filter(
-              (item) =>
-                item.media_list_id !== action.payload.media_lists[0].id ||
-                updatedItems.has(item.id)
-            )
-            .map((item) => updatedItems.get(item.id) || item);
+        // Update media list items
+        const updatedItems = new Map(
+          action.payload.media_list_items.map((item) => [item.id, item])
+        );
 
-          // Add new items
-          action.payload.media_list_items.forEach((item) => {
-            if (
-              !state.mediaListItems.some((existing) => existing.id === item.id)
-            ) {
-              state.mediaListItems.push(item);
-            }
-          });
-        }
-      )
+        // Remove items for this list that no longer exist and update existing ones
+        state.mediaListItems = state.mediaListItems
+          .filter(
+            (item) =>
+              item.media_list_id !== action.payload.media_lists[0].id ||
+              updatedItems.has(item.id)
+          )
+          .map((item) => updatedItems.get(item.id) || item);
+
+        // Add new items
+        action.payload.media_list_items.forEach((item) => {
+          if (
+            !state.mediaListItems.some((existing) => existing.id === item.id)
+          ) {
+            state.mediaListItems.push(item);
+          }
+        });
+      })
       .addCase(fetchMediaList.rejected, (state, action) => {
         state.loading = false;
         state.error = action.error.message ?? "Failed to fetch media list";
@@ -165,41 +201,38 @@ const mediaListsSlice = createSlice({
         state.loading = true;
         state.error = null;
       })
-      .addCase(
-        fetchMediaLists.fulfilled,
-        (state, action: PayloadAction<FetchMediaListsResponse>) => {
-          state.loading = false;
-          state.error = null;
-          action.payload.media_lists.forEach((list) => {
-            const existingIndex = state.lists.findIndex(
-              (item) => item.id === list.id
-            );
-            if (existingIndex !== -1) {
-              // state.lists[existingIndex] = list;
-            } else {
-              state.lists.push(list);
-            }
-          });
-          // Update or add media list items
-          const updatedItems = new Map(
-            action.payload.media_list_items.map((item) => [item.id, item])
+      .addCase(fetchMediaLists.fulfilled, (state, action) => {
+        state.loading = false;
+        state.error = null;
+        action.payload.media_lists.forEach((list) => {
+          const existingIndex = state.lists.findIndex(
+            (item) => item.id === list.id
           );
+          if (existingIndex !== -1) {
+            // state.lists[existingIndex] = list;
+          } else {
+            state.lists.push(list);
+          }
+        });
+        // Update or add media list items
+        const updatedItems = new Map(
+          action.payload.media_list_items.map((item) => [item.id, item])
+        );
 
-          // Remove items that no longer exist and update existing ones
-          state.mediaListItems = state.mediaListItems
-            .filter((item) => updatedItems.has(item.id))
-            .map((item) => updatedItems.get(item.id) || item);
+        // Remove items that no longer exist and update existing ones
+        state.mediaListItems = state.mediaListItems
+          .filter((item) => updatedItems.has(item.id))
+          .map((item) => updatedItems.get(item.id) || item);
 
-          // Add new items
-          action.payload.media_list_items.forEach((item) => {
-            if (
-              !state.mediaListItems.some((existing) => existing.id === item.id)
-            ) {
-              state.mediaListItems.push(item);
-            }
-          });
-        }
-      )
+        // Add new items
+        action.payload.media_list_items.forEach((item) => {
+          if (
+            !state.mediaListItems.some((existing) => existing.id === item.id)
+          ) {
+            state.mediaListItems.push(item);
+          }
+        });
+      })
       .addCase(fetchMediaLists.rejected, (state, action) => {
         state.loading = false;
         state.error = action.error.message ?? "Failed to fetch media lists";
@@ -207,32 +240,21 @@ const mediaListsSlice = createSlice({
       .addCase(createMediaList.fulfilled, (state, action) => {
         state.lists.push(action.payload);
       })
-      .addCase(
-        addMediaToList.fulfilled,
-        (state, action: PayloadAction<AddMediaToListResponse>) => {
-          state.mediaListItems.push(...action.payload.media_list_items);
-        }
-      )
-      .addCase(
-        reorderMediaListItems.fulfilled,
-        (
-          state,
-          action: PayloadAction<{ media_list_items: MediaListItem[] }>
-        ) => {
-          // Update indices of reordered items
-          const updatedItems = new Map(
-            action.payload.media_list_items.map((item) => [item.id, item])
-          );
+      .addCase(addMediaToList.fulfilled, (state, action) => {
+        state.mediaListItems.push(...action.payload.media_list_items);
+      })
+      .addCase(reorderMediaListItems.fulfilled, (state, action) => {
+        // Update indices of reordered items
+        const updatedItems = new Map(
+          action.payload.media_list_items.map((item) => [item.id, item])
+        );
 
-          state.mediaListItems = state.mediaListItems.map((item) =>
-            updatedItems.has(item.id) ? updatedItems.get(item.id)! : item
-          );
-        }
-      );
+        state.mediaListItems = state.mediaListItems.map((item) =>
+          updatedItems.has(item.id) ? updatedItems.get(item.id)! : item
+        );
+      });
   },
 });
-
-export const {} = mediaListsSlice.actions;
 
 // Selectors
 export const selectAllMediaLists = (state: RootState) => state.mediaLists.lists;

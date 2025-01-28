@@ -15,8 +15,11 @@ export const fetchMessagesByThread = createAsyncThunk(
       });
       const data = await response.json();
       return data;
-    } catch (error: any) {
-      return thunkAPI.rejectWithValue(error.message);
+    } catch (error) {
+      if (error instanceof Error) {
+        return thunkAPI.rejectWithValue(error.message);
+      }
+      return thunkAPI.rejectWithValue("An unknown error occurred");
     }
   }
 );
@@ -63,8 +66,11 @@ export const postMessageByThread = createAsyncThunk(
         },
       });
       return await response.json();
-    } catch (error: any) {
-      return thunkAPI.rejectWithValue(error.message);
+    } catch (error) {
+      if (error instanceof Error) {
+        return thunkAPI.rejectWithValue(error.message);
+      }
+      return thunkAPI.rejectWithValue("An unknown error occurred");
     }
   }
 );
@@ -101,8 +107,11 @@ export const sendMessage = createAsyncThunk(
         personality_id: personalityId,
       });
       return null;
-    } catch (error: any) {
-      return rejectWithValue(error.message);
+    } catch (error) {
+      if (error instanceof Error) {
+        return rejectWithValue(error.message);
+      }
+      return rejectWithValue("An unknown error occurred");
     }
   }
 );

@@ -6,7 +6,6 @@ import {
   List,
   Calendar,
   LogOut,
-  Settings,
 } from "lucide-react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import {
@@ -35,11 +34,12 @@ import { useAppSelector } from "@/hooks";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { ThreadsUpdating } from "@/components/ThreadsUpdating";
 import { ProvidersMenuItem } from "./ProvidersMenuItem";
+import { LucideIcon } from "lucide-react";
 
 interface SidebarLink {
   to: string;
   label: string;
-  Icon: React.ComponentType<any>;
+  Icon: LucideIcon;
   onClick?: () => void;
 }
 

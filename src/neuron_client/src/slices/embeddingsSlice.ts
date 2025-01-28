@@ -6,6 +6,21 @@ import {
 import { fetchPersonalityEmbeddings } from "../actions/personalityActions";
 import { RootState } from "../store";
 
+interface MetadataStats {
+  total?: number;
+  useful?: number;
+  last_recall_at?: string;
+  last_useful_at?: string;
+}
+
+type MetadataValue =
+  | string
+  | number
+  | boolean
+  | null
+  | undefined
+  | MetadataStats;
+
 export interface Embedding {
   id: string;
   collection_id: string;
@@ -18,7 +33,8 @@ export interface Embedding {
     title?: string;
     source?: string;
     created_at?: number;
-    [key: string]: any;
+    stats?: MetadataStats;
+    [key: string]: MetadataValue;
   };
 }
 

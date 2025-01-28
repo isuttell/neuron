@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ListPlus, Plus } from "lucide-react";
+import { ListPlus } from "lucide-react";
 import { useAppDispatch } from "@/hooks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,11 +50,14 @@ const NewMediaListDialog = () => {
       setOpen(false);
       setName("");
       setDescription("");
-    } catch (error: any) {
+    } catch (error) {
       toast({
         variant: "destructive",
         title: "Failed to create list",
-        description: error?.message || "An unexpected error occurred",
+        description:
+          error instanceof Error
+            ? error.message
+            : "An unexpected error occurred",
       });
     } finally {
       setLoading(false);

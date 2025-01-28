@@ -96,7 +96,7 @@ const Auth0ProviderWithNavigate = ({
 }: {
   children: React.ReactNode;
 }) => {
-  const onRedirectCallback = (appState: any) => {
+  const onRedirectCallback = (appState: { returnTo?: string } | undefined) => {
     router.navigate(appState?.returnTo || window.location.pathname);
   };
 

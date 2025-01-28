@@ -1,4 +1,3 @@
-/// <reference path="./personalitiesSlice.d.ts" />
 import { createSlice } from "@reduxjs/toolkit";
 import type { PayloadAction } from "@reduxjs/toolkit";
 import type { RootState } from "../store";
@@ -6,7 +5,7 @@ import * as actions from "../actions/personalityActions";
 import * as threadActions from "../actions/threadActions";
 import * as promptsSlice from "./promptsSlice";
 import * as schedulerSlice from "./schedulerSlice";
-import {
+import type {
   Personality,
   IncomingPersonalityEvent,
   IncomingPersonalitiesEvent,

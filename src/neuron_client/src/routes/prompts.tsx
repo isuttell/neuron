@@ -73,7 +73,7 @@ export default function PromptsPage() {
       toast({
         title: "Prompt created",
       });
-    } catch (error) {
+    } catch {
       toast({
         title: "Failed to create prompt",
         variant: "destructive",
@@ -104,7 +104,7 @@ export default function PromptsPage() {
         toast({
           title: "Prompt updated",
         });
-      } catch (error) {
+      } catch {
         toast({
           title: "Failed to update prompt",
           variant: "destructive",
@@ -124,7 +124,7 @@ export default function PromptsPage() {
         toast({
           title: "Prompt deleted",
         });
-      } catch (error) {
+      } catch {
         toast({
           title: "There was an error deleting the prompt",
           variant: "destructive",

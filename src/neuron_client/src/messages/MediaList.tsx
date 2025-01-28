@@ -36,7 +36,7 @@ export function getMediaItems(messages: Message[]): MediaItem[] {
         /<image(?:\s+id="([^"]*)")?>[^]*?<display>\s*!\[([^\]]*)\]\(([^)]+)\)\s*<\/display>[^]*?<\/image>/gs
       );
       for (const match of imageMatches) {
-        const [_, id, alt, url] = match;
+        const [, id, alt, url] = match;
         const key = id
           ? `${message.tool_call_id}-${id}`
           : `${message.tool_call_id}-${url}`;
@@ -164,7 +164,6 @@ function MediaList({
             <VideoContent
               url={item.url}
               autoPlay={true}
-              muted={true}
               controls={false}
               loop={true}
               key={item.key}

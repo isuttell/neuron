@@ -19,6 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { MediaListDropdown } from "@/components/MediaListDropdown";
 import { MediaItem } from "@/slices/mediaSlice";
+
 interface ImageContentProps {
   className?: string;
   url: string;
@@ -65,7 +66,7 @@ const ImageContent: React.FC<ImageContentProps> = ({
         setImageLoaded(true);
       };
     }
-  }, [displayUrl]);
+  }, [displayUrl, preload]);
 
   useEffect(() => {
     if (thumbnailRef.current) {
@@ -147,7 +148,7 @@ const ImageContent: React.FC<ImageContentProps> = ({
                         toast({
                           title: "Image downloaded",
                         });
-                      } catch (error) {
+                      } catch {
                         toast({
                           title: "Download failed",
                           variant: "destructive",
@@ -213,7 +214,7 @@ const ImageContent: React.FC<ImageContentProps> = ({
                 toast({
                   title: "Image downloaded",
                 });
-              } catch (error) {
+              } catch {
                 toast({
                   title: "Download failed",
                   variant: "destructive",

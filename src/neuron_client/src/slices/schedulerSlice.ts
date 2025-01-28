@@ -1,10 +1,16 @@
-import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 import { api } from "@/lib/api";
+type JsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | JsonValue[]
+  | { [key: string]: JsonValue };
 import {
   SchedulerState,
   FetchEventsResponse,
   ScheduledEvent,
-  RecurringPattern,
 } from "./schedulerSlice.d";
 
 const initialState: SchedulerState = {
@@ -20,16 +26,24 @@ export const fetchEvents = createAsyncThunk<FetchEventsResponse>(
   }
 );
 
-export const createEvent = createAsyncThunk(
+interface CreateEventRequest {
+  prompt: string;
+  personality_id: string;
+  thread_id: string | null;
+  trigger_time: string | null;
+  recurring_pattern: {
+    interval: number;
+    unit: "seconds" | "minutes" | "hours" | "days" | "weeks" | "months";
+    timeOfDay: string | null;
+    dayOfWeek: number | null;
+    dayOfMonth: number | null;
+  } | null;
+  [key: string]: JsonValue;
+}
+
+export const createEvent = createAsyncThunk<ScheduledEvent, CreateEventRequest>(
   "scheduler/createEvent",
-  async (eventData: {
-    prompt: string;
-    personality_id: string;
-    thread_id?: string;
-    trigger_time?: string;
-    recurring_pattern?: RecurringPattern;
-    additional_data?: Record<string, any>;
-  }) => {
+  async (eventData) => {
     return await api.post("/scheduler/events", eventData);
   }
 );
@@ -42,15 +56,27 @@ export const deleteEvent = createAsyncThunk(
   }
 );
 
-export const updateEvent = createAsyncThunk(
+interface UpdateEventRequest {
+  eventId: string;
+  eventData: {
+    prompt: string | null;
+    thread_id: string | null;
+    personality_id: string | null;
+    trigger_time: string | null;
+    recurring_pattern: {
+      interval: number;
+      unit: "seconds" | "minutes" | "hours" | "days" | "weeks" | "months";
+      timeOfDay: string | null;
+      dayOfWeek: number | null;
+      dayOfMonth: number | null;
+    } | null;
+    [key: string]: JsonValue;
+  };
+}
+
+export const updateEvent = createAsyncThunk<ScheduledEvent, UpdateEventRequest>(
   "scheduler/updateEvent",
-  async ({
-    eventId,
-    eventData,
-  }: {
-    eventId: string;
-    eventData: Partial<ScheduledEvent>;
-  }) => {
+  async ({ eventId, eventData }) => {
     return await api.put(`/scheduler/events/${eventId}`, eventData);
   }
 );
@@ -75,24 +101,33 @@ const schedulerSlice = createSlice({
         state.error = action.error.message || "Failed to fetch events";
       })
       // Create event
-      .addCase(createEvent.fulfilled, (state, action) => {
-        state.events.push(action.payload);
-      })
-      // Delete event
-      .addCase(deleteEvent.fulfilled, (state, action) => {
-        state.events = state.events.filter(
-          (event) => event.event_id !== action.payload
-        );
-      })
-      // Update event
-      .addCase(updateEvent.fulfilled, (state, action) => {
-        const index = state.events.findIndex(
-          (event) => event.event_id === action.payload.event_id
-        );
-        if (index !== -1) {
-          state.events[index] = action.payload;
+      .addCase(
+        createEvent.fulfilled,
+        (state, action: PayloadAction<ScheduledEvent>) => {
+          state.events.push(action.payload);
         }
-      });
+      )
+      // Delete event
+      .addCase(
+        deleteEvent.fulfilled,
+        (state, action: PayloadAction<string>) => {
+          state.events = state.events.filter(
+            (event) => event.event_id !== action.payload
+          );
+        }
+      )
+      // Update event
+      .addCase(
+        updateEvent.fulfilled,
+        (state, action: PayloadAction<ScheduledEvent>) => {
+          const index = state.events.findIndex(
+            (event) => event.event_id === action.payload.event_id
+          );
+          if (index !== -1) {
+            state.events[index] = action.payload;
+          }
+        }
+      );
   },
 });
 

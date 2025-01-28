@@ -4,7 +4,7 @@ import { Label } from "@/components/ui/label";
 import { useParams } from "react-router-dom";
 import { useState } from "react";
 import { useAppDispatch } from "../hooks";
-import { CornerDownLeft, Upload, Mic } from "lucide-react";
+import { CornerDownLeft, Upload } from "lucide-react";
 import { AudioRecorder } from "@/components/AudioRecorder";
 import { Spinner } from "@/components/ui/spinner";
 import { postMessageByThread } from "../actions/messageActions";
@@ -61,7 +61,10 @@ export default function MessageForm({
       toast({
         variant: "destructive",
         title: "Failed to send message",
-        description: error?.message || "An unexpected error occurred",
+        description:
+          error instanceof Error
+            ? error.message
+            : "An unexpected error occurred",
       });
     });
   };
@@ -169,7 +172,10 @@ export default function MessageForm({
                 toast({
                   variant: "destructive",
                   title: "Failed to send message",
-                  description: error?.message || "An unexpected error occurred",
+                  description:
+                    error instanceof Error
+                      ? error.message
+                      : "An unexpected error occurred",
                 });
               });
               setFile(undefined);
