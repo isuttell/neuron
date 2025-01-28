@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useAppDispatch, useAppSelector } from "../hooks";
 import {
   fetchProviders,
@@ -8,9 +8,8 @@ import {
   selectActiveProviderId,
 } from "../slices/providerSlice";
 import { Button } from "@/components/ui/button";
-import { Settings } from "lucide-react";
+import { Atom } from "lucide-react";
 import { useToast } from "../hooks/use-toast";
-import { Badge } from "@/components/ui/badge";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -20,12 +19,36 @@ import {
 } from "@/components/ui/tooltip";
 import Loading from "@/lib/loading";
 
+const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
+  anthropic: "Anthropic",
+  cohere: "Cohere",
+  openai: "OpenAI",
+  openrouter: "OpenRouter",
+};
+
 export default function ProvidersPage() {
   const dispatch = useAppDispatch();
   const { toast } = useToast();
   const providers = useAppSelector(selectProviders);
   const isLoading = useAppSelector(selectProvidersLoading);
   const activeProviderId = useAppSelector(selectActiveProviderId);
+
+  const groupedProviders = useMemo(() => {
+    const groups = providers.reduce((acc, provider) => {
+      const group = acc.get(provider.provider) || [];
+      group.push(provider);
+      acc.set(provider.provider, group);
+      return acc;
+    }, new Map<string, typeof providers>());
+
+    // Convert to array and sort groups
+    return Array.from(groups.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([provider, models]) => ({
+        provider,
+        models: models.sort((a, b) => a.model_id.localeCompare(b.model_id)),
+      }));
+  }, [providers]);
 
   useEffect(() => {
     dispatch(fetchProviders());
@@ -58,45 +81,44 @@ export default function ProvidersPage() {
       </div>
       <ScrollArea className="flex-1 overflow-y-auto">
         <div className="space-y-4 max-w-[768px] mx-auto">
-          {providers
-            .sort((a, b) =>
-              `${a.provider} ${a.model_id}`.localeCompare(
-                `${b.provider} ${b.model_id}`
-              )
-            )
-            .map((provider) => (
-              <div
-                key={provider.id}
-                className="p-4 border rounded-lg flex justify-between items-start"
-              >
-                <div className="flex flex-col">
-                  <div className="text-xl ml-2">{provider.model_id}</div>
-                  <div>
-                    <Badge variant="outline" className="capitalize">
-                      {provider.provider}
-                    </Badge>
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant={
-                          activeProviderId === provider.id
-                            ? "default"
-                            : "outline"
-                        }
-                        size="icon"
-                        onClick={() => handleSetup(provider.id)}
-                      >
-                        <Settings className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Setup provider</TooltipContent>
-                  </Tooltip>
-                </div>
+          {groupedProviders.map(({ provider, models }) => (
+            <div key={provider} className="space-y-2">
+              <div className="text-xl font-semibold p-2">
+                {PROVIDER_DISPLAY_NAMES[provider] || provider}
               </div>
-            ))}
+              <div className="space-y-2">
+                {models.map((model) => (
+                  <div
+                    key={model.id}
+                    className="p-4 border rounded-lg flex justify-between items-start"
+                  >
+                    <div className="flex flex-col">
+                      <div className="text-xl ml-2">{model.model_id}</div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant={
+                              activeProviderId === model.id
+                                ? "default"
+                                : "outline"
+                            }
+                            size="icon"
+                            disabled={activeProviderId === model.id}
+                            onClick={() => handleSetup(model.id)}
+                          >
+                            <Atom className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Activate provider</TooltipContent>
+                      </Tooltip>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
           {providers.length === 0 && (
             <div className="p-4 flex justify-center items-center">
               <p className="text-sm text-gray-600">No providers available</p>
