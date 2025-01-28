@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 from abc import ABC, abstractmethod
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -18,6 +19,23 @@ logger = logging.getLogger(__name__)
 REDIS_RETRY_ATTEMPTS = 3
 REDIS_RETRY_DELAY = 0.1  # seconds
 REDIS_OPERATION_TIMEOUT = 5.0  # seconds
+
+# Time constants
+MIN_FUTURE_SECONDS = 30
+PROCESSING_LOCK_TIMEOUT = 300  # 5 minutes
+RECONCILIATION_INTERVAL = 60  # seconds
+
+# Time format constants
+TIME_PARTS_FULL = 3  # HH:MM:SS
+TIME_PARTS_SHORT = 2  # HH:MM
+
+
+@dataclass
+class TimeComponents:
+    """Time components for scheduling."""
+    hour: int
+    minute: int
+    second: int = 0
 
 
 @dataclass
@@ -42,14 +60,26 @@ class ScheduledEvent(TypedDict):
     time_remaining_seconds: int
 
 
+def parse_time_of_day(time_str: str) -> TimeComponents:
+    """Parse time string in HH:MM:SS or HH:MM format."""
+    time_parts = time_str.split(":")
+    if len(time_parts) == TIME_PARTS_FULL:
+        hour, minute, second = map(int, time_parts)
+        return TimeComponents(hour, minute, second)
+    if len(time_parts) == TIME_PARTS_SHORT:
+        hour, minute = map(int, time_parts)
+        return TimeComponents(hour, minute)
+    raise ValueError("time_of_day must be in HH:MM:SS or HH:MM format")
+
+
 class AsyncRedisEventScheduler(ABC):
     def __init__(
         self,
         host: str = "localhost",
         port: int = 6379,
         db: int = 2,
-        password: str = None,
-    ):
+        password: str | None = None,
+    ) -> None:
         """Initialize the scheduler with UTC timezone and Redis connection pool."""
         self.db = db
         self.timezone = pytz.UTC  # Always use UTC internally
@@ -86,7 +116,7 @@ class AsyncRedisEventScheduler(ABC):
         raise NotImplementedError("on_event must be implemented")
 
     @asynccontextmanager
-    async def redis_client(self):
+    async def redis_client(self) -> AsyncGenerator[redis.Redis, None]:
         """Get a Redis client from the connection pool with automatic cleanup."""
         client = redis.Redis(connection_pool=self.redis_pool)
         try:
@@ -94,14 +124,13 @@ class AsyncRedisEventScheduler(ABC):
         finally:
             await client.close()
 
-    async def get_event(self, event_id: str) -> dict | None:
+    async def get_event(self, event_id: str) -> dict[str, Any] | None:
         """Get details of a specific event. All times are in UTC."""
         try:
             async with self.redis_client() as client:
                 metadata = await client.get(f"{self.metadata_prefix}{event_id}")
                 if metadata:
-                    event_data = json.loads(metadata)
-                    return event_data
+                    return json.loads(metadata)
                 return None
         except Exception as e:
             logger.error(f"Error retrieving event: {str(e)}")
@@ -128,7 +157,8 @@ class AsyncRedisEventScheduler(ABC):
         """List all scheduled events matching the filters.
 
         Args:
-            filters: Dictionary of filters to apply to event metadata (e.g., {"user_id": "123"})
+            filters: Dictionary of filters to apply to event metadata
+                    (e.g., {"user_id": "123"})
 
         Returns:
             List of event metadata dictionaries
@@ -189,10 +219,10 @@ class AsyncRedisEventScheduler(ABC):
     async def schedule_event(
         self,
         event_id: str,
-        event_data: dict,
+        event_data: dict[str, Any],
         trigger_time: datetime | None = None,
         recurring_pattern: RecurringPattern | None = None,
-    ):
+    ) -> None:
         """Schedule an event with optional trigger_time and recurring pattern."""
         logger.debug(f"Scheduling event {event_id}")
 
@@ -211,13 +241,19 @@ class AsyncRedisEventScheduler(ABC):
         now = datetime.now(self.timezone)
         time_diff = trigger_time - now
         ttl = int(time_diff.total_seconds())
+
+        # Log scheduling details
         logger.debug(
-            f"Event will be executed in {ttl} seconds (trigger_time={trigger_time.isoformat()}, now={now.isoformat()})"
+            f"Event will be executed in {ttl} seconds "
+            f"(trigger_time={trigger_time.isoformat()}, now={now.isoformat()})"
         )
+
         if ttl <= 0:
-            logger.error(
-                f"Cannot schedule events in the past: trigger_time={trigger_time.isoformat()}, now={now.isoformat()}, diff={time_diff}"
+            msg = (
+                "Cannot schedule events in the past: "
+                f"trigger_time={trigger_time.isoformat()}, now={now.isoformat()}, diff={time_diff}"
             )
+            logger.error(msg)
             raise ValueError("Cannot schedule events in the past")
 
         try:
@@ -251,7 +287,7 @@ class AsyncRedisEventScheduler(ABC):
             logger.error(f"Error scheduling event: {str(e)}")
             raise
 
-    async def start(self):
+    async def start(self) -> None:
         """Start the scheduler and background tasks."""
         if self._running:
             return
@@ -269,7 +305,7 @@ class AsyncRedisEventScheduler(ABC):
             logger.error(f"Failed to start scheduler: {str(e)}")
             raise
 
-    async def stop(self):
+    async def stop(self) -> None:
         """Stop the scheduler and cleanup resources."""
         self._running = False
 
@@ -288,7 +324,7 @@ class AsyncRedisEventScheduler(ABC):
         # Clear connection pool
         await self.redis_pool.disconnect()
 
-    async def _listen_for_events(self):
+    async def _listen_for_events(self) -> None:
         """Listen for Redis keyspace events with automatic reconnection."""
         while self._running:
             try:
@@ -313,18 +349,21 @@ class AsyncRedisEventScheduler(ABC):
                     logger.error(f"Event listener error: {str(e)}")
                     await asyncio.sleep(1)  # Prevent rapid reconnection attempts
 
-    async def _process_expired_event(self, event_id: str):
+    async def _process_expired_event(self, event_id: str) -> None:
         """Process an expired event with proper locking and error handling."""
         async with self.redis_client() as client:
             # Add expiration to processing lock
             lock_key = f"{self.processing_events_set}:{event_id}"
-            if not await client.set(lock_key, "1", ex=300, nx=True):  # 5 min timeout
+            if not await client.set(
+                lock_key, "1", ex=PROCESSING_LOCK_TIMEOUT, nx=True
+            ):
                 logger.warning(f"Event {event_id} is already being processed")
                 return
 
             try:
+                now = datetime.now(self.timezone)
                 logger.debug(
-                    f"Processing event {event_id} at {datetime.now(self.timezone).isoformat()} UTC"
+                    f"Processing event {event_id} at {now.isoformat()} UTC"
                 )
 
                 event = await self.get_event(event_id)
@@ -353,7 +392,9 @@ class AsyncRedisEventScheduler(ABC):
             finally:
                 await client.delete(lock_key)
 
-    async def _schedule_next_occurrence(self, event_id: str, metadata: dict):
+    async def _schedule_next_occurrence(
+        self, event_id: str, metadata: dict[str, Any]
+    ) -> None:
         """Schedule the next occurrence of a recurring event."""
         if not metadata.get("recurring_pattern"):
             return
@@ -364,48 +405,47 @@ class AsyncRedisEventScheduler(ABC):
 
         try:
             # Schedule new occurrence first, then clean up old one atomically
-            async with self.redis_client() as client:
-                async with client.pipeline() as pipe:
-                    # Schedule new occurrence
-                    metadata_key = f"{self.metadata_prefix}{event_id}"
-                    event_key = f"event:{event_id}"
+            async with self.redis_client() as client, client.pipeline() as pipe:
+                # Schedule new occurrence
+                metadata_key = f"{self.metadata_prefix}{event_id}"
+                event_key = f"event:{event_id}"
 
-                    new_metadata = {
-                        "event_id": event_id,
-                        "event_data": metadata["event_data"],
-                        "scheduled_time": next_time.isoformat(timespec="seconds"),
-                        "created_at": datetime.now(self.timezone).isoformat(
-                            timespec="seconds"
-                        ),
-                        "recurring_pattern": metadata["recurring_pattern"],
-                        "time_remaining_seconds": int(
-                            (next_time - datetime.now(self.timezone)).total_seconds()
-                        ),
-                    }
+                now = datetime.now(self.timezone)
+                new_metadata = {
+                    "event_id": event_id,
+                    "event_data": metadata["event_data"],
+                    "scheduled_time": next_time.isoformat(timespec="seconds"),
+                    "created_at": now.isoformat(timespec="seconds"),
+                    "recurring_pattern": metadata["recurring_pattern"],
+                    "time_remaining_seconds": int(
+                        (next_time - now).total_seconds()
+                    ),
+                }
 
-                    # Set new event data
-                    await pipe.set(metadata_key, json.dumps(new_metadata))
-                    await pipe.setex(
-                        event_key,
-                        new_metadata["time_remaining_seconds"],
-                        json.dumps(metadata["event_data"]),
-                    )
-                    await pipe.sadd(self.active_events_set, event_id)
-                    await pipe.sadd(self.recurring_events_set, event_id)
+                # Set new event data
+                await pipe.set(metadata_key, json.dumps(new_metadata))
+                await pipe.setex(
+                    event_key,
+                    new_metadata["time_remaining_seconds"],
+                    json.dumps(metadata["event_data"]),
+                )
+                await pipe.sadd(self.active_events_set, event_id)
+                await pipe.sadd(self.recurring_events_set, event_id)
 
-                    # Execute transaction
-                    await pipe.execute()
+                # Execute transaction
+                await pipe.execute()
 
-                    logger.debug(
-                        f"Scheduled next occurrence of event {event_id} at {next_time.isoformat()}"
-                    )
+                logger.debug(
+                    f"Scheduled next occurrence of event {event_id} "
+                    f"at {next_time.isoformat()}"
+                )
         except Exception as e:
             logger.error(
                 f"Failed to schedule next occurrence of event {event_id}: {str(e)}"
             )
             raise
 
-    async def _reconcile_events(self):
+    async def _reconcile_events(self) -> None:
         """Periodically check for and clean up orphaned events."""
         while self._running:
             try:
@@ -433,7 +473,7 @@ class AsyncRedisEventScheduler(ABC):
             except Exception as e:
                 logger.error(f"Error in event reconciliation: {str(e)}")
 
-            await asyncio.sleep(60)
+            await asyncio.sleep(RECONCILIATION_INTERVAL)
 
     def _calculate_next_occurrence(
         self, pattern: RecurringPattern, last_run: datetime | None = None
@@ -448,82 +488,21 @@ class AsyncRedisEventScheduler(ABC):
 
         base_time = last_run if last_run else now
 
-        if pattern.time_of_day:
-            time_parts = pattern.time_of_day.split(":")
-            if len(time_parts) == 3:
-                hour, minute, second = map(int, time_parts)
-            elif len(time_parts) == 2:
-                hour, minute = map(int, time_parts)
-                second = 0
-            else:
-                raise ValueError("time_of_day must be in HH:MM:SS or HH:MM format")
-        else:
-            hour, minute, second = base_time.hour, base_time.minute, base_time.second
-
-        next_time = base_time
-
-        if pattern.unit == "seconds":
-            next_time = base_time + timedelta(seconds=pattern.interval)
-        elif pattern.unit == "minutes":
-            next_time = base_time + timedelta(minutes=pattern.interval)
-        elif pattern.unit == "hours":
-            next_time = base_time + timedelta(hours=pattern.interval)
-        elif pattern.unit == "days":
-            today = now.replace(hour=hour, minute=minute, second=second, microsecond=0)
-            if today <= now:
-                next_time = (now + timedelta(days=1)).replace(
-                    hour=hour, minute=minute, second=second, microsecond=0
-                )
-                if pattern.interval > 1:
-                    next_time += timedelta(days=pattern.interval - 1)
-            else:
-                next_time = today
-
-        elif pattern.unit == "weeks" and pattern.day_of_week is not None:
-            current_dow = base_time.weekday()
-            days_ahead = pattern.day_of_week - current_dow
-            if days_ahead <= 0:
-                days_ahead += 7
-            next_time = (base_time + timedelta(days=days_ahead)).replace(
-                hour=hour, minute=minute, second=second
+        # Extract time components
+        time_components = (
+            parse_time_of_day(pattern.time_of_day)
+            if pattern.time_of_day
+            else TimeComponents(
+                base_time.hour,
+                base_time.minute,
+                base_time.second
             )
-            if next_time <= now:
-                next_time += timedelta(weeks=pattern.interval)
+        )
 
-        elif pattern.unit == "months":
-            current_day = pattern.day_of_month or base_time.day
-            year = base_time.year
-            month = base_time.month
+        next_time = self._calculate_next_time(pattern, base_time, time_components)
 
-            try:
-                candidate_time = base_time.replace(
-                    day=current_day, hour=hour, minute=minute, second=second
-                )
-                if candidate_time <= now:
-                    month += pattern.interval
-                    year += (month - 1) // 12
-                    month = ((month - 1) % 12) + 1
-
-                    while True:
-                        try:
-                            next_time = base_time.replace(
-                                year=year,
-                                month=month,
-                                day=current_day,
-                                hour=hour,
-                                minute=minute,
-                                second=second,
-                            )
-                            break
-                        except ValueError:
-                            current_day -= 1
-                else:
-                    next_time = candidate_time
-            except ValueError:
-                current_day -= 1
-                next_time = self._calculate_next_occurrence(pattern, base_time)
-
-        min_future_time = now + timedelta(seconds=30)
+        # Ensure minimum future time
+        min_future_time = now + timedelta(seconds=MIN_FUTURE_SECONDS)
         if next_time < min_future_time:
             if pattern.unit in ["seconds", "minutes", "hours"]:
                 next_time = now + timedelta(**{pattern.unit: pattern.interval})
@@ -533,9 +512,124 @@ class AsyncRedisEventScheduler(ABC):
                 )
 
             if next_time < min_future_time:
-                logger.warning(
-                    f"Next occurrence time {next_time} is less than 30 seconds in the future. Adjusting to now + 30 seconds."
+                msg = (
+                    f"Next occurrence time {next_time} is less than {MIN_FUTURE_SECONDS} seconds in the "
+                    f"future. Adjusting to now + {MIN_FUTURE_SECONDS} seconds."
                 )
+                logger.warning(msg)
                 next_time = min_future_time
 
         return next_time
+
+    def _calculate_next_time(
+        self,
+        pattern: RecurringPattern,
+        base_time: datetime,
+        time_components: TimeComponents,
+    ) -> datetime:
+        """Helper method to calculate next time based on pattern."""
+        if pattern.unit == "seconds":
+            return base_time + timedelta(seconds=pattern.interval)
+        if pattern.unit == "minutes":
+            return base_time + timedelta(minutes=pattern.interval)
+        if pattern.unit == "hours":
+            return base_time + timedelta(hours=pattern.interval)
+        if pattern.unit == "days":
+            return self._calculate_daily_next_time(
+                pattern, time_components, base_time
+            )
+        if pattern.unit == "weeks" and pattern.day_of_week is not None:
+            return self._calculate_weekly_next_time(
+                pattern, base_time, time_components
+            )
+        if pattern.unit == "months":
+            return self._calculate_monthly_next_time(
+                pattern, base_time, time_components
+            )
+        raise ValueError(f"Invalid pattern unit: {pattern.unit}")
+
+    def _calculate_daily_next_time(
+        self,
+        pattern: RecurringPattern,
+        time_components: TimeComponents,
+        now: datetime,
+    ) -> datetime:
+        """Calculate next time for daily pattern."""
+        today = now.replace(
+            hour=time_components.hour,
+            minute=time_components.minute,
+            second=time_components.second,
+            microsecond=0
+        )
+        if today <= now:
+            next_time = (now + timedelta(days=1)).replace(
+                hour=time_components.hour,
+                minute=time_components.minute,
+                second=time_components.second,
+                microsecond=0
+            )
+            if pattern.interval > 1:
+                next_time += timedelta(days=pattern.interval - 1)
+            return next_time
+        return today
+
+    def _calculate_weekly_next_time(
+        self,
+        pattern: RecurringPattern,
+        base_time: datetime,
+        time_components: TimeComponents,
+    ) -> datetime:
+        """Calculate next time for weekly pattern."""
+        current_dow = base_time.weekday()
+        days_ahead = pattern.day_of_week - current_dow  # type: ignore
+        if days_ahead <= 0:
+            days_ahead += 7
+        next_time = (base_time + timedelta(days=days_ahead)).replace(
+            hour=time_components.hour,
+            minute=time_components.minute,
+            second=time_components.second
+        )
+        if next_time <= datetime.now(self.timezone):
+            next_time += timedelta(weeks=pattern.interval)
+        return next_time
+
+    def _calculate_monthly_next_time(
+        self,
+        pattern: RecurringPattern,
+        base_time: datetime,
+        time_components: TimeComponents,
+    ) -> datetime:
+        """Calculate next time for monthly pattern."""
+        current_day = pattern.day_of_month or base_time.day
+        year = base_time.year
+        month = base_time.month
+        now = datetime.now(self.timezone)
+
+        try:
+            candidate_time = base_time.replace(
+                day=current_day,
+                hour=time_components.hour,
+                minute=time_components.minute,
+                second=time_components.second
+            )
+            if candidate_time <= now:
+                month += pattern.interval
+                year += (month - 1) // 12
+                month = ((month - 1) % 12) + 1
+
+                while True:
+                    try:
+                        return base_time.replace(
+                            year=year,
+                            month=month,
+                            day=current_day,
+                            hour=time_components.hour,
+                            minute=time_components.minute,
+                            second=time_components.second,
+                        )
+                    except ValueError:
+                        current_day -= 1
+            return candidate_time
+        except ValueError:
+            current_day -= 1
+            return self._calculate_next_occurrence(pattern, base_time)

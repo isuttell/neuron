@@ -10,6 +10,17 @@ register_heif_opener()
 
 logger = logging.getLogger(__name__)
 
+# EXIF orientation constants
+ORIENTATION_TAG = 274
+ORIENTATION_NORMAL = 1
+ORIENTATION_FLIP_HORIZONTAL = 2
+ORIENTATION_ROTATE_180 = 3
+ORIENTATION_FLIP_VERTICAL = 4
+ORIENTATION_TRANSPOSE = 5
+ORIENTATION_ROTATE_270 = 6
+ORIENTATION_TRANSVERSE = 7
+ORIENTATION_ROTATE_90 = 8
+
 
 def resize_with_padding(
     image: Image.Image, target_size: tuple[int, int]
@@ -37,21 +48,25 @@ def apply_exif_rotation(image: Image.Image) -> Image.Image:
     if hasattr(image, "_getexif"):  # Check if image has EXIF
         exif: dict[int, int] | None = image._getexif()
         if exif is not None:
-            orientation = exif.get(274)  # 274 is the orientation tag
+            orientation = exif.get(ORIENTATION_TAG)
             if orientation is not None:
                 # Rotation mapping
-                rotate_values = {3: 180, 6: 270, 8: 90}
+                rotate_values = {
+                    ORIENTATION_ROTATE_180: 180,
+                    ORIENTATION_ROTATE_270: 270,
+                    ORIENTATION_ROTATE_90: 90
+                }
                 if orientation in rotate_values:
                     return image.rotate(rotate_values[orientation], expand=True)
-                if orientation == 2:
+                if orientation == ORIENTATION_FLIP_HORIZONTAL:
                     return image.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
-                if orientation == 4:
+                if orientation == ORIENTATION_FLIP_VERTICAL:
                     return image.transpose(Image.Transpose.FLIP_TOP_BOTTOM)
-                if orientation == 5:
+                if orientation == ORIENTATION_TRANSPOSE:
                     return image.transpose(Image.Transpose.FLIP_LEFT_RIGHT).rotate(
                         270, expand=True
                     )
-                if orientation == 7:
+                if orientation == ORIENTATION_TRANSVERSE:
                     return image.transpose(Image.Transpose.FLIP_LEFT_RIGHT).rotate(
                         90, expand=True
                     )
@@ -69,21 +84,18 @@ ThumbnailSizeMap = {
 
 def create_thumbnails(
     image_path: str,
-    sizes: list[str] = [
-        "t",
-        "l",
-        "xl",
-        "xxl",
-        "o",
-    ],
+    sizes: list[str] | None = None,
 ) -> None:
     """
     Create thumbnails for an image in different sizes.
 
     Args:
         image_path: Path to the original image
-        output_dir: Directory to save thumbnails
+        sizes: List of size keys to generate. Defaults to all sizes.
     """
+    if sizes is None:
+        sizes = ["t", "l", "xl", "xxl", "o"]
+
     with Image.open(image_path) as image:
         # Calculate new dimensions maintaining aspect ratio
         width, height = image.size
@@ -142,4 +154,7 @@ def create_image_url(
         optimize=True,
         quality=85,
     )
-    return f"data:image/jpeg;base64,{base64.b64encode(buffered.getvalue()).decode('utf-8')}"
+
+    # Split long line into multiple lines for better readability
+    base64_data = base64.b64encode(buffered.getvalue()).decode("utf-8")
+    return f"data:image/jpeg;base64,{base64_data}"

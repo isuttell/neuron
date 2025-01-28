@@ -59,9 +59,7 @@ async def process_uploaded_file(file: FileStorage) -> tuple[str, str, str]:
             image.save(file_path, format="JPEG", quality=95, exif=exif)
 
         if ext in [".jpg", ".jpeg", ".png", ".webp"]:
-            create_thumbnails(
-                file_path,
-            )
+            create_thumbnails(file_path)
 
     url = f"{neuron_config.static_content_url}/user/{filename}"
     return file_path, ext, url

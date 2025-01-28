@@ -1,5 +1,6 @@
 import asyncio
 import subprocess
+from typing import Any
 
 from neuron_server.logger import logger
 
@@ -8,7 +9,7 @@ async def run_subprocess(
     args: list[str],
     timeout: int | None = None,
     check: bool = True,
-    **kwargs,
+    **kwargs: Any,
 ) -> subprocess.CompletedProcess[str]:
     """
     Run a subprocess asynchronously optionally with timeout.
@@ -29,7 +30,8 @@ async def run_subprocess(
     loop = asyncio.get_running_loop()
     logger.info(f"Running: {' '.join(args)}")
 
-    run_process = lambda: subprocess.run(args, **kwargs)
+    def run_process() -> subprocess.CompletedProcess[str]:
+        return subprocess.run(args, check=False, **kwargs)
 
     if timeout:
         process: subprocess.CompletedProcess[str] = await asyncio.wait_for(

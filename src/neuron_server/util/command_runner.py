@@ -5,12 +5,16 @@ from asyncio.subprocess import PIPE
 
 
 class CommandRunner:
-    def __init__(self):
+    def __init__(self) -> None:
         if sys.platform == "win32":
             # Set the policy for Windows
             asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
-    async def run_command(self, command, shell=False):
+    async def run_command(
+        self,
+        command: str | list[str],
+        shell: bool = False
+    ) -> tuple[int, str, str]:
         """
         Run a command and return its output
 
@@ -37,7 +41,12 @@ class CommandRunner:
         except Exception as e:
             return -1, "", str(e)
 
-    async def run_with_timeout(self, command, timeout=60, shell=False):
+    async def run_with_timeout(
+        self,
+        command: str | list[str],
+        timeout: int = 60,
+        shell: bool = False
+    ) -> tuple[int, str, str]:
         """
         Run a command with a timeout
 
