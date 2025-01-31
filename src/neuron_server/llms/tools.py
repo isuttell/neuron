@@ -1,4 +1,3 @@
-
 from langchain.tools import BaseTool
 from langchain_community.tools.tavily_search import TavilySearchResults
 
@@ -12,7 +11,9 @@ from neuron_server.tools.astro_finder_image_tool import AstroFinderImageTool
 from neuron_server.tools.astro_object_search_tool import AstroObjectSearchTool
 from neuron_server.tools.astro_observability_tool import AstroObservabilityTool
 from neuron_server.tools.astro_target_search_tool import AstroTargetSearchTool
-from neuron_server.tools.astrospheric_forecast_tool import AstrosphericForecastTool
+from neuron_server.tools.astrospheric_forecast_tool import (
+    AstrosphericForecastTool,
+)
 from neuron_server.tools.automatic1111_tool import Automatic1111API, Automatic1111Tool
 from neuron_server.tools.code_interpreter_tool import CodeInterpreterTool
 from neuron_server.tools.dalle_tool import DalleTool
@@ -30,11 +31,17 @@ from neuron_server.tools.graph_website_import_tool import GraphWebsiteImportTool
 from neuron_server.tools.hd2_galactic_war_report_tool import (
     HD2GalacticWarReportTool,
 )
-from neuron_server.tools.hd2_liberation_history_tool import HD2LiberationHistoryTool
+from neuron_server.tools.hd2_liberation_history_tool import (
+    HD2LiberationHistoryTool,
+)
 from neuron_server.tools.homeassistant_api import HomeAssistantAPI
-from neuron_server.tools.homeassistant_sensor_tool import HomeAssistantSensorTool
-from neuron_server.tools.homeassistant_service_tool import HomeAssistantServiceTool
-from neuron_server.tools.inspect_document_tool import DocumentInspectTool
+from neuron_server.tools.homeassistant_sensor_tool import (
+    HomeAssistantSensorTool,
+)
+from neuron_server.tools.homeassistant_service_tool import (
+    HomeAssistantServiceTool,
+)
+from neuron_server.tools.inspect_document_tool import InspectDocumentTool
 from neuron_server.tools.inspect_image_tool import InspectImageTool
 from neuron_server.tools.media_list_access_tool import MediaListAccessTool
 from neuron_server.tools.media_list_add_item_tool import MediaListAddItemTool
@@ -42,15 +49,23 @@ from neuron_server.tools.media_list_create_tool import MediaListCreateTool
 from neuron_server.tools.media_list_delete_tool import MediaListDeleteTool
 from neuron_server.tools.media_list_get_items_tool import MediaListGetItemsTool
 from neuron_server.tools.media_list_read_tool import MediaListReadTool
-from neuron_server.tools.media_list_remove_item_tool import MediaListRemoveItemTool
-from neuron_server.tools.media_list_reorder_items_tool import MediaListReorderItemsTool
+from neuron_server.tools.media_list_remove_item_tool import (
+    MediaListRemoveItemTool,
+)
+from neuron_server.tools.media_list_reorder_items_tool import (
+    MediaListReorderItemsTool,
+)
 from neuron_server.tools.media_list_update_tool import MediaListUpdateTool
 from neuron_server.tools.memory_recall_tool import MemoryRecallTool
 from neuron_server.tools.memory_store_tool import MemoryStoreTool
 from neuron_server.tools.moon_tool import MoonTool
 from neuron_server.tools.openai_tts_tool import OpenAITTSTool
-from neuron_server.tools.openweathermap_forecast_tool import OpenWeatherMapForecastTool
-from neuron_server.tools.openweathermap_overview_tool import OpenWeatherMapOverviewTool
+from neuron_server.tools.openweathermap_forecast_tool import (
+    OpenWeatherMapForecastTool,
+)
+from neuron_server.tools.openweathermap_overview_tool import (
+    OpenWeatherMapOverviewTool,
+)
 from neuron_server.tools.personality_prompt_tool import PersonalityPromptTool
 from neuron_server.tools.replicate_audio_generation_tool import (
     ReplicateAudioGenerationTool,
@@ -97,7 +112,7 @@ tool_sets: dict[str, list[BaseTool]] = {
     ],
     "inspect": [
         InspectImageTool(),
-        DocumentInspectTool(),
+        InspectDocumentTool(),
     ],
     "document_query": [],
     "image": [
@@ -112,7 +127,6 @@ tool_sets: dict[str, list[BaseTool]] = {
         ReplicateVideoGenerationTool(),
         ReplicateAudioGenerationTool(),
         ReplicateMusicGenerationTool(),
-        # ReplicateSoundEffectGenerationTool(),
     ],
     "audio": [
         FFmpegTool(),

@@ -12,14 +12,13 @@ class AnthropicLLM(LLM):
         self,
         model_id: str | None = "claude-3-5-sonnet-20241022",
         provider_model_id: str | None = None,
-    ):
+    ) -> None:
         model = ChatAnthropic(
             model=model_id,
             temperature=1,
             streaming=True,
         )
         title_model = ChatAnthropic(
-            # model=model_id,
             model="claude-3-5-haiku-20241022",
             temperature=1,
             max_tokens=42,

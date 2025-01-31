@@ -13,7 +13,7 @@ class CohereLLM(LLM):
         self,
         model_id: str | None = None,
         provider_model_id: str | None = None,
-    ):
+    ) -> None:
         model = ChatCohere(
             temperature=1,
             streaming=True,

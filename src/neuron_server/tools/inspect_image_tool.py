@@ -7,34 +7,14 @@ import aiohttp
 import pandas as pd
 import piexif
 from langchain.tools import BaseTool
-from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
+from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnableConfig
 from PIL import Image
 from pydantic import BaseModel, Field
 
-from neuron_server.llms.clean_eos_tokens import clean_eos_tokens
 from neuron_server.logger import logger
 from neuron_server.util.image_utilities import create_image_url
-
-
-def get_message_content(message: BaseMessage):
-    if not message.content:
-        return None
-    if isinstance(message.content, list):
-        return clean_eos_tokens(
-            "\n".join(
-                [
-                    (
-                        c["text"]
-                        if isinstance(c, dict) and "text" in c
-                        else c if isinstance(c, str) else ""
-                    )
-                    for c in message.content
-                ]
-            )
-        )
-    return clean_eos_tokens(message.content)
 
 
 class InspectImageToolArgs(BaseModel):

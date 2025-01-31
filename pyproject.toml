@@ -59,6 +59,7 @@ pi-heif = "0.21.0"
 pytest = "*"
 pytest-asyncio = "*"
 ruff = "^0.9.3"
+black = "^25.1.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

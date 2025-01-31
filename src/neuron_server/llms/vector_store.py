@@ -1,9 +1,12 @@
-from langchain_postgres import PGVector
 from langchain_postgres.vectorstores import PGVector
 
+from neuron_server.config import config
 from neuron_server.llms.embeddings import embeddings
 
-connection = "postgresql+psycopg://{config.database.user}:{config.database.password}@{config.database.host}:{config.database.port}/{config.database.database}"
+connection = (
+    f"postgresql+psycopg://{config.database.user}:{config.database.password}"
+    f"@{config.database.host}:{config.database.port}/{config.database.database}"
+)
 
 vector_store = PGVector(
     embeddings=embeddings,

@@ -15,7 +15,7 @@ class OpenRouterLLM(LLM):
         self,
         model_id: str | None = "openai/gpt-4o",
         provider_model_id: str | None = None,
-    ):
+    ) -> None:
         model = ChatOpenAI(
             model=model_id,
             temperature=1,

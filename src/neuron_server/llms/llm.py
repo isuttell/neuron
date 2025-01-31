@@ -38,21 +38,31 @@ from neuron_server.tools.memory_recall_tool import (
 tokenizer = tiktoken.encoding_for_model("gpt-4o")
 
 
-class AgentState(TypedDict):
-    """The state of the agent."""
+class AgentState(TypedDict, total=False):
+    """The state of the agent.
+
+    Attributes:
+        messages: The sequence of messages in the conversation
+        username: The username of the current user (default: "user")
+        title: The title of the conversation (default: "")
+        personality: The personality to use for responses
+        location: The user's location (default: "")
+        recall_memories: Previously recalled memories (default: "")
+    """
 
     messages: Annotated[Sequence[BaseMessage], add_messages]
-    username: str = "user"
-    title: str = ""
-    personality: str
-    location: str = ""
-    recall_memories: str = ""
+    username: str  # Optional with default "user"
+    title: str  # Optional with default ""
+    personality: str  # Required
+    location: str  # Optional with default ""
+    recall_memories: str  # Optional with default ""
 
 
 class MemoryRecallRanking(BaseModel):
     document_id: str = Field(description="The ID of the memory recall document")
     score: float = Field(
-        description="Give each recall memory a score from 1 to 10 based on how useful it was in constructing the last AI message"
+        description="Give each recall memory a score from 1 to 10 based on how useful"
+        "it was in constructing the last AI message"
     )
     useful: bool = Field(
         description="True if the memory was useful in constructing the last AI message"
@@ -61,18 +71,27 @@ class MemoryRecallRanking(BaseModel):
 
 class MemoryResponse(BaseModel):
     memory_recall_rankings: list[MemoryRecallRanking] = Field(
-        description="A list of existing recall memories ranked by usefulness to the response"
+        description="A list of existing recall memories ranked by"
+        "usefulness to the response"
     )
 
 
 class LLM:
+    """Language model wrapper for chat interactions.
+
+    Attributes:
+        model: The base language model
+        title: The title generation pipeline
+        memory: The memory generation pipeline
+        memory_model: The memory model for ranking
+        title_model: The model for generating titles
+    """
+
     model: Runnable
-    provider: str
-    chat: Runnable
     title: Runnable
     memory: Runnable
     memory_model: Runnable
-    message_trimmer: Runnable
+    title_model: Runnable | None
 
     def __init__(
         self,
@@ -80,7 +99,15 @@ class LLM:
         title_model: Runnable | None = None,
         memory_model: Runnable | None = None,
         provider_model_id: str | None = None,
-    ):
+    ) -> None:
+        """Initialize the LLM wrapper.
+
+        Args:
+            model: The base language model
+            title_model: Optional model for generating titles
+            memory_model: Optional model for memory operations
+            provider_model_id: Optional provider model identifier
+        """
         self.model = model
         self.title_model = title_model
         self.title = title_prompt | self.title_model | StrOutputParser()
@@ -91,12 +118,20 @@ class LLM:
     def create_workflow(
         self,
         tools: list[BaseTool] | None = None,
-    ):
+    ) -> StateGraph:
+        """Create a workflow for processing messages.
+
+        Args:
+            tools: Optional list of tools to bind to the model
+
+        Returns:
+            Compiled state graph for message processing
+        """
         workflow = StateGraph(AgentState)
         model = self.model.bind_tools(tools or default_tools)
         workflow.add_node("tools", ToolNode(tools or default_tools))
 
-        async def agent_node(state, config):
+        async def agent_node(state: AgentState, config: RunnableConfig) -> AgentState:
             # pass the model ith the tools into the call_model function
             return await self.call_model(model, state, config)
 
@@ -142,11 +177,20 @@ class LLM:
         self,
         state: AgentState,
         config: RunnableConfig,
-    ):
+    ) -> AgentState:
+        """Load recall memories for the conversation.
+
+        Args:
+            state: The current agent state
+            config: The runnable configuration
+
+        Returns:
+            Updated agent state with loaded memories
+        """
         logger.debug("Loading recall memories...")
         messages = [
             msg
-            for msg in state["messages"]
+            for msg in state.get("messages", [])
             if not isinstance(msg, ToolMessage) and getattr(msg, "tool_calls", []) == []
         ]
         tokens = tokenizer.encode(get_buffer_string(messages))[-1000:]
@@ -163,32 +207,48 @@ class LLM:
 
     async def aget_state(
         self, config: RunnableConfig, checkpointer: AsyncPostgresSaver
-    ):
+    ) -> AgentState:
+        """Get the current state of the workflow.
+
+        Args:
+            config: The runnable configuration
+            checkpointer: The async postgres saver for checkpointing
+
+        Returns:
+            Current state of the workflow
+        """
         graph = self.create_workflow()
         graph.checkpointer = checkpointer
         return await graph.aget_state(config)
 
-    # Define the node that calls the model
     async def call_model(
         self,
         model: Runnable,
         state: AgentState,
         config: RunnableConfig,
-    ):
+    ) -> AgentState:
+        """Call the language model with the current state.
+
+        Args:
+            model: The language model to use
+            state: The current agent state
+            config: The runnable configuration
+
+        Returns:
+            Updated agent state with model response
+        """
         # Filter out messages that don't have content
-        messages = state["messages"]
+        messages = state.get("messages", [])
 
         chain = chat_prompt | model
         logger.debug("Invoking model...")
         response: AIMessage = await chain.ainvoke(
             {
                 "messages": messages,
-                "personality": state["personality"],
-                "location": state["location"] if "location" in state else "unknown",
-                "username": state["username"] if "username" in state else "user",
-                "recall_memories": (
-                    state["recall_memories"] if "recall_memories" in state else ""
-                ),
+                "personality": state.get("personality", ""),
+                "location": state.get("location", "unknown"),
+                "username": state.get("username", "user"),
+                "recall_memories": state.get("recall_memories", ""),
                 "now": datetime.now().astimezone().isoformat(timespec="seconds"),
             },
             config,
@@ -201,11 +261,20 @@ class LLM:
         self,
         state: AgentState,
         config: RunnableConfig,
-    ):
+    ) -> AgentState:
+        """Update the conversation title.
+
+        Args:
+            state: The current agent state
+            config: The runnable configuration
+
+        Returns:
+            Updated agent state with new title
+        """
         logger.debug("Updating title...")
         messages = [
             msg
-            for msg in state["messages"]
+            for msg in state.get("messages", [])
             if not isinstance(msg, ToolMessage) and getattr(msg, "tool_calls", []) == []
         ]
         title: str = await self.title.ainvoke(
@@ -224,12 +293,21 @@ class LLM:
         self,
         state: AgentState,
         config: RunnableConfig,
-    ):
+    ) -> AgentState:
+        """Rank and update memory statistics.
+
+        Args:
+            state: The current agent state
+            config: The runnable configuration
+
+        Returns:
+            Updated agent state with ranked memories
+        """
         logger.debug("Ranking memories...")
         start_time = time.perf_counter()
         messages = [
             msg
-            for msg in state["messages"]
+            for msg in state.get("messages", [])
             if not isinstance(msg, ToolMessage) and getattr(msg, "tool_calls", []) == []
         ]
 
@@ -240,7 +318,7 @@ class LLM:
         response: MemoryResponse = await model.ainvoke(
             {
                 "messages": get_buffer_string(messages),
-                "recall_memories": state["recall_memories"],
+                "recall_memories": state.get("recall_memories", ""),
                 "now": datetime.now().astimezone().isoformat(),
             },
             config,
@@ -276,19 +354,37 @@ class LLM:
                     document.cmetadata["stats"] = stats
                     await document.save()
             logger.debug(
-                f"{len(response.memory_recall_rankings) } memories ranked - {time.perf_counter() - start_time:.2f}s"
+                f"{len(response.memory_recall_rankings) } memories ranked "
+                f"in {time.perf_counter() - start_time:.2f}s"
             )
 
     async def call_update_memory(
         self,
         state: AgentState,
         config: RunnableConfig,
-    ):
+    ) -> AgentState:
+        """Update memory rankings asynchronously.
+
+        Args:
+            state: The current agent state
+            config: The runnable configuration
+
+        Returns:
+            The unchanged agent state
+        """
         # call but don't wait for it to finish
         asyncio.create_task(self.rank_memories(state, config))
 
     def should_call_tools(self, state: AgentState) -> Literal["tools", "continue"]:
-        messages = state["messages"]
+        """Determine if tools should be called based on the last message.
+
+        Args:
+            state: The current agent state
+
+        Returns:
+            "tools" if tools should be called, "continue" otherwise
+        """
+        messages = state.get("messages", [])
         last_message = messages[-1]
         assert isinstance(last_message, AIMessage)
         # If there is no function call, then we finish
@@ -300,6 +396,14 @@ class LLM:
     def should_call_update_memory(
         self, state: AgentState
     ) -> Literal["update_memory", "continue"]:
-        if len(state["recall_memories"]) > 0:
+        """Determine if memory should be updated.
+
+        Args:
+            state: The current agent state
+
+        Returns:
+            "update_memory" if memory should be updated, "continue" otherwise
+        """
+        if len(state.get("recall_memories", "")) > 0:
             return "update_memory"
         return "continue"

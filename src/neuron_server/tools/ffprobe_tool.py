@@ -7,7 +7,7 @@ from neuron_server.logger import logger
 from neuron_server.util.subprocess_runner import run_subprocess
 
 
-class FFProbeTool(BaseTool):
+class FFprobeTool(BaseTool):
     name: str = "ffprobe"
     description: str = (
         """

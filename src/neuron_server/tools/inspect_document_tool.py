@@ -67,6 +67,10 @@ async def load_text_from_url(
                 },
             )
 
+class InspectDocumentToolError(Exception):
+    pass
+
+
 
 @cache_response(ttl=60 * 60 * 3)
 async def load_document_from_url(
@@ -90,7 +94,7 @@ async def load_document_from_url(
         doc = await load_pdf_from_url(url, metadata={"extension": "pdf", **metadata})
         return [doc]
     if "zaks.io" in url or "192.168" in url:
-        raise DocumentInspectToolFailed(
+        raise InspectDocumentToolError(
             "FireCrawl cannot access urls on the local network."
         )
 
@@ -103,11 +107,8 @@ async def load_document_from_url(
     return docs
 
 
-class DocumentInspectToolFailed(Exception):
-    pass
 
-
-class DocumentInspectToolArgs(BaseModel):
+class InspectDocumentToolArgs(BaseModel):
     url: str = Field(
         description="The url of the document or website to inspect. Supports html websites, text files, pdfs, csvs, and markdown documents"
     )
@@ -150,7 +151,7 @@ Prompt:
 )
 
 
-class DocumentInspectTool(BaseTool):
+class InspectDocumentTool(BaseTool):
     name: str = "document_inspect"
     description: str = (
         """
@@ -165,7 +166,7 @@ vtt
 pdf
 """.strip()
     )
-    args_schema: type[DocumentInspectToolArgs] = DocumentInspectToolArgs
+    args_schema: type[InspectDocumentToolArgs] = InspectDocumentToolArgs
 
     def _run(self, *args, **kwargs) -> str:
         return asyncio.run(self._arun(*args, **kwargs))
@@ -197,7 +198,7 @@ pdf
                 },
             )
             if len(docs) == 0:
-                raise DocumentInspectToolFailed("No documents found")
+                raise InspectDocumentToolError("No documents found")
 
             from neuron_server.models.provider_model import ProviderModelModel
 
@@ -272,7 +273,7 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    tool = DocumentInspectTool()
+    tool = InspectDocumentTool()
     results = tool._run(
         url=args.url,
         mode=args.mode,

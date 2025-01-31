@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Any, Protocol, TypedDict
 from uuid import UUID, uuid4
 
-from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, ToolMessage
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from werkzeug.exceptions import BadRequest
 
@@ -18,7 +18,6 @@ from neuron_server.controllers.events.thread_events import GetThreadResponse
 from neuron_server.database import pool
 from neuron_server.event_router import ErrorEvent
 from neuron_server.llms.llm import LLM
-from neuron_server.llms.message import get_message_content
 from neuron_server.llms.tools import get_tools
 from neuron_server.logger import logger
 from neuron_server.models.personality_model import PersonalityModel
@@ -31,6 +30,33 @@ connection_kwargs = {
     "prepare_threshold": 0,
 }
 
+
+
+def get_message_content(message: BaseMessage) -> str | None:
+    """Extract the content from a message and format it for display.
+
+    Args:
+        message: The message to extract content from
+
+    Returns:
+        The formatted message content or None if no content
+    """
+    if not message.content:
+        return None
+
+    if isinstance(message.content, str):
+        return message.content
+
+    if isinstance(message.content, list):
+        text_parts = []
+        for part in message.content:
+            if isinstance(part, str):
+                text_parts.append(part)
+            elif isinstance(part, dict) and part.get("type") == "text":
+                text_parts.append(part["text"])
+        return "\n".join(text_parts)
+
+    return str(message.content)
 
 class ThreadConfig(TypedDict):
     thread_id: str

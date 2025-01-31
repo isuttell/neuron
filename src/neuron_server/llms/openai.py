@@ -12,7 +12,7 @@ class OpenAILLM(LLM):
         self,
         model_id: str | None = "gpt-4o",
         provider_model_id: str | None = None,
-    ):
+    ) -> None:
         model = ChatOpenAI(
             model=model_id,
             temperature=1,
