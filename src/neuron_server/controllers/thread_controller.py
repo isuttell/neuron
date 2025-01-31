@@ -95,13 +95,13 @@ async def post_create_thread() -> dict[str, dict]:
     if prompt and len(prompt.strip()) > 0:
         # Start the conversation and stream the response in the background
         asyncio.create_task(
-            agent.astream(
-                thread_id=thread.id,
-                personality_id=personality.id,
-                user_id=request.token.user_id,
-                username=request.token.nickname,
-                prompt=prompt,
-            )
+            agent.astream({
+                "thread_id": thread.id,
+                "personality_id": personality.id,
+                "user_id": request.token.user_id,
+                "username": request.token.nickname,
+                "prompt": prompt,
+            })
         )
         thread.message_count = 1
         await thread.save()

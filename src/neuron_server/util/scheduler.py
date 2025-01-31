@@ -151,6 +151,20 @@ class AsyncRedisEventScheduler(ABC):
             logger.error(f"Error deleting event: {str(e)}")
             return False
 
+    def _matches_filters(self, event: dict[str, Any], filters: dict[str, Any]) -> bool:
+        """Check if an event matches the given filters."""
+        for key, value in filters.items():
+            # Handle nested keys in event_data
+            if key in event.get("event_data", {}):
+                if event["event_data"][key] != value:
+                    return False
+            elif key in event:
+                if event[key] != value:
+                    return False
+            else:
+                return False
+        return True
+
     async def list_events(
         self, filters: dict[str, Any] | None = None
     ) -> list[dict[str, Any]]:
@@ -189,24 +203,8 @@ class AsyncRedisEventScheduler(ABC):
                         continue
 
                     # Apply filters if provided
-                    if filters:
-                        matches = True
-                        for key, value in filters.items():
-                            # Handle nested keys in event_data
-                            if key in event.get("event_data", {}):
-                                if event["event_data"][key] != value:
-                                    matches = False
-                                    break
-                            elif key in event:
-                                if event[key] != value:
-                                    matches = False
-                                    break
-                            else:
-                                matches = False
-                                break
-
-                        if not matches:
-                            continue
+                    if filters and not self._matches_filters(event, filters):
+                        continue
 
                     events.append(event)
 
@@ -251,7 +249,9 @@ class AsyncRedisEventScheduler(ABC):
         if ttl <= 0:
             msg = (
                 "Cannot schedule events in the past: "
-                f"trigger_time={trigger_time.isoformat()}, now={now.isoformat()}, diff={time_diff}"
+                f"trigger_time={trigger_time.isoformat()}, "
+                f"now={now.isoformat()}, "
+                f"diff={time_diff}"
             )
             logger.error(msg)
             raise ValueError("Cannot schedule events in the past")
@@ -513,8 +513,9 @@ class AsyncRedisEventScheduler(ABC):
 
             if next_time < min_future_time:
                 msg = (
-                    f"Next occurrence time {next_time} is less than {MIN_FUTURE_SECONDS} seconds in the "
-                    f"future. Adjusting to now + {MIN_FUTURE_SECONDS} seconds."
+                    f"Next occurrence time {next_time} is less than "
+                    f"{MIN_FUTURE_SECONDS} seconds in the future. "
+                    f"Adjusting to now + {MIN_FUTURE_SECONDS} seconds."
                 )
                 logger.warning(msg)
                 next_time = min_future_time

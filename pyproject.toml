@@ -65,10 +65,6 @@ requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.ruff]
-# Enable pycodestyle, Pyflakes, isort, and more
-select = ["E", "F", "I", "N", "UP", "ANN", "B", "A", "C4", "RET", "SIM", "ERA", "PL"]
-ignore = []
-
 # Same as Black
 line-length = 88
 
@@ -78,17 +74,20 @@ target-version = "py311"
 # Enable auto-fixes
 fix = true
 
-# Sort imports
+[tool.ruff.lint]
+# Enable pycodestyle, Pyflakes, isort, and more
+select = ["E", "F", "I", "N", "UP", "ANN", "B", "A", "C4", "RET", "SIM", "ERA", "PL"]
+ignore = []
 extend-select = ["I"]
 
-[tool.ruff.isort]
+[tool.ruff.lint.isort]
 known-first-party = ["neuron_server"]
 
-[tool.ruff.flake8-annotations]
+[tool.ruff.lint.flake8-annotations]
 allow-star-arg-any = true
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"] # Ignore unused imports in __init__.py files
 
-[tool.ruff.pydocstyle]
+[tool.ruff.lint.pydocstyle]
 convention = "google"

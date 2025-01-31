@@ -121,13 +121,13 @@ async def post_thread_message(thread_id: UUID) -> tuple[dict[str, str], int]:
 
     prompt = await process_message_request(files, form)
 
-    await agent.astream(
-        thread_id=thread.id,
-        personality_id=UUID(personality_id),  # Convert string to UUID
-        user_id=request.token.user_id,
-        username=request.token.nickname,
-        prompt=prompt,
-    )
+    await agent.astream({
+        "thread_id": thread.id,
+        "personality_id": UUID(personality_id),  # Convert string to UUID
+        "user_id": request.token.user_id,
+        "username": request.token.nickname,
+        "prompt": prompt,
+    })
 
     return {
         "status": "success",
@@ -136,12 +136,12 @@ async def post_thread_message(thread_id: UUID) -> tuple[dict[str, str], int]:
 
 @router.on(PostMessage)
 async def apost_message(event: PostMessage) -> None:
-    await agent.astream(
-        thread_id=event.thread_id,
-        personality_id=UUID(event.personality_id),  # Convert string to UUID
-        user_id=None,
-        prompt=event.prompt,
-    )
+    await agent.astream({
+        "thread_id": event.thread_id,
+        "personality_id": UUID(event.personality_id),  # Convert string to UUID
+        "user_id": None,
+        "prompt": event.prompt,
+    })
 
 
 @router.on(CancelMessage)

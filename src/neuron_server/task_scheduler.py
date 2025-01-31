@@ -16,19 +16,19 @@ class TaskScheduler(AsyncRedisEventScheduler):
         host: str = "localhost",
         port: int = 6379,
         db: int = 2,
-        password: str = None,
-    ):
+        password: str | None = None,
+    ) -> None:
         super().__init__(host=host, port=port, db=db, password=password)
         self._active_streams: dict[str, asyncio.Task] = {}
 
-    async def on_event(self, event_id: str, metadata: dict[str, Any]):
+    async def on_event(self, event_id: str, metadata: dict[str, Any]) -> None:
         """Handle scheduled events by creating a new thread and streaming response."""
         from neuron_server.llms.agent import astream
 
         try:
-            logger.info(
-                f"Processing stream event {event_id} at {datetime.now(self.timezone).isoformat()} UTC"
-            )
+            # Format timestamp for logging
+            timestamp = datetime.now(self.timezone).isoformat()
+            logger.info(f"Processing stream event {event_id} at {timestamp} UTC")
 
             # Parse event data
             body = StreamEvent(**metadata)
@@ -54,13 +54,13 @@ class TaskScheduler(AsyncRedisEventScheduler):
 
             # Start new stream
             stream_task = asyncio.create_task(
-                astream(
-                    thread_id=thread.id,
-                    personality_id=body.personality_id,
-                    user_id=body.user_id,
-                    username=body.username,
-                    prompt=f"<|AI|>{body.prompt}<|AI|>",
-                )
+                astream({
+                    "thread_id": thread.id,
+                    "personality_id": body.personality_id,
+                    "user_id": body.user_id,
+                    "username": body.username,
+                    "prompt": f"<|AI|>{body.prompt}<|AI|>",
+                })
             )
 
             # Track active stream
