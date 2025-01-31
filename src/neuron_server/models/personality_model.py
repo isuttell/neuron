@@ -1,6 +1,7 @@
 import builtins
+from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Any, Self
+from typing import Self
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
@@ -27,73 +28,76 @@ class PersonalityModel(BaseModel):
     tool_set: str | None = Field(
         description="The tool set to use for the personality", default=None
     )
-    created_at: datetime = Field(
-        default_factory=lambda: datetime.now(UTC).astimezone()
-    )
-    updated_at: datetime = Field(
-        default_factory=lambda: datetime.now(UTC).astimezone()
-    )
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC).astimezone())
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC).astimezone())
+
+    @dataclass
+    class CreateParams:
+        name: str
+        description: str
+        context: str
+        memory: str
+        logo: str | None = None
+        tool_set: str | None = None
+        personality_id: UUID | None = None
 
     @classmethod
-    async def create(
-        cls,
-        name: str,
-        description: str,
-        context: str,
-        memory: str,
-        logo: str | None = None,
-        tool_set: str | None = None,
-        id: UUID | None = None,
-    ) -> Self:
+    async def create(cls, params: CreateParams) -> Self:
         async with get_session() as session:
             personality = Personality(
-                id=id,
-                name=name,
-                description=description,
-                context=context,
-                memory=memory,
-                tool_set=tool_set,
-                logo=logo,
+                id=params.personality_id,
+                name=params.name,
+                description=params.description,
+                context=params.context,
+                memory=params.memory,
+                tool_set=params.tool_set,
+                logo=params.logo,
             )
             session.add(personality)
             await session.commit()
             return cls(**personality.__dict__)
 
     @staticmethod
-    async def delete(id: UUID) -> None:
+    async def delete(personality_id: UUID) -> None:
         async with get_session() as session:
-            await session.delete(await session.get(Personality, id))
+            await session.delete(await session.get(Personality, personality_id))
             await session.commit()
 
+    @dataclass
+    class UpdateParams:
+        personality_id: UUID
+        name: str
+        description: str
+        context: str
+        memory: str
+        logo: str | None
+        tool_set: str | None
+
     @classmethod
-    async def update(
-        cls,
-        id: UUID,
-        name: str,
-        description: str,
-        context: str,
-        memory: str,
-        logo: str | None,
-        tool_set: str | None,
-    ) -> Self:
+    async def update(cls, params: UpdateParams) -> Self:
         async with get_session() as session:
-            personality = await session.get(Personality, id)
-            personality.name = name
-            personality.description = description
-            personality.context = context
-            personality.memory = memory
-            personality.tool_set = tool_set
-            personality.logo = logo
+            personality = await session.get(Personality, params.personality_id)
+            personality.name = params.name
+            personality.description = params.description
+            personality.context = params.context
+            personality.memory = params.memory
+            personality.tool_set = params.tool_set
+            personality.logo = params.logo
             session.add(personality)
             await session.commit()
             return cls(**personality.__dict__)
 
     @classmethod
-    async def set(cls, id: UUID, key: str, value: Any) -> Self:
+    async def set(
+        cls,
+        personality_id: UUID,
+        key: str,
+        value: str | int | float | bool | dict | list | None,
+    ) -> Self:
         async with get_session() as session:
-            personality = await session.get(Personality, id)
+            personality = await session.get(Personality, personality_id)
             if not personality:
-                raise ValueError(f"Personality with ID {str(id)} not found")
+                raise ValueError(f"Personality with ID {str(personality_id)} not found")
             setattr(personality, key, value)
             session.add(personality)
             await session.commit()
@@ -107,9 +111,9 @@ class PersonalityModel(BaseModel):
             return [cls(**personality.__dict__) for personality in records]
 
     @classmethod
-    async def get(cls, id: UUID) -> Self | None:
+    async def get(cls, personality_id: UUID) -> Self | None:
         async with get_session() as session:
-            data = await session.get(Personality, id)
+            data = await session.get(Personality, personality_id)
             if data:
                 return cls(**data.__dict__)
             return None

@@ -44,14 +44,15 @@ async def create_media_list() -> dict:
     data = await request.get_json()
     assert isinstance(request.token.user_id, str)
 
-    media_list = await MediaListModel.create(
+    create_params = MediaListModel.CreateParams(
         name=data["name"],
         description=data["description"],
         user_id=request.token.user_id,
         tags=data.get("tags", []),
         visibility=data.get("visibility", "private"),
-        shared_with=data.get("shared_with", []),
+        shared_with=data.get("shared_with", [])
     )
+    media_list = await MediaListModel.create(params=create_params)
 
     return {"media_lists": [media_list.model_dump()]}
 
@@ -81,7 +82,7 @@ async def get_media_lists() -> dict:
 async def get_media_list(list_id: UUID) -> dict:
     """Get a specific media list by ID with its media items"""
     assert isinstance(request.token.user_id, str)
-    media_list = await MediaListModel.get(list_id)
+    media_list = await MediaListModel.get(list_id=list_id)
     if not media_list:
         return {"error": "Media list not found"}, 404
 
@@ -110,7 +111,7 @@ async def get_media_list(list_id: UUID) -> dict:
 async def update_media_list(list_id: UUID) -> dict:
     """Update a media list"""
     data = await request.get_json()
-    media_list = await MediaListModel.get(list_id)
+    media_list = await MediaListModel.get(list_id=list_id)
 
     if not media_list:
         return {"error": "Media list not found"}, 404
@@ -118,14 +119,15 @@ async def update_media_list(list_id: UUID) -> dict:
     if media_list.user_id != request.token.user_id:
         return {"error": "Unauthorized"}, 403
 
-    updated_list = await MediaListModel.update(
-        id=list_id,
+    update_params = MediaListModel.UpdateParams(
+        list_id=list_id,
         name=data["name"],
         description=data["description"],
         tags=data.get("tags", []),
         visibility=data.get("visibility", "private"),
-        shared_with=data.get("shared_with", []),
+        shared_with=data.get("shared_with", [])
     )
+    updated_list = await MediaListModel.update(params=update_params)
 
     return {"media_list": updated_list.model_dump()}
 
@@ -134,7 +136,7 @@ async def update_media_list(list_id: UUID) -> dict:
 @requires_auth
 async def delete_media_list(list_id: UUID) -> dict:
     """Delete a media list"""
-    media_list = await MediaListModel.get(list_id)
+    media_list = await MediaListModel.get(list_id=list_id)
 
     if not media_list:
         return {"error": "Media list not found"}, 404
@@ -142,7 +144,7 @@ async def delete_media_list(list_id: UUID) -> dict:
     if media_list.user_id != request.token.user_id:
         return {"error": "Unauthorized"}, 403
 
-    await MediaListModel.delete(list_id)
+    await MediaListModel.delete(list_id=list_id)
     return {"success": True}
 
 
@@ -153,7 +155,7 @@ async def add_media_to_list(list_id: UUID) -> dict:
     data = await request.get_json()
     assert isinstance(request.token.user_id, str)
 
-    media_list = await MediaListModel.get(list_id)
+    media_list = await MediaListModel.get(list_id=list_id)
     if not media_list:
         return {"error": "Media list not found"}, 404
 
@@ -161,7 +163,7 @@ async def add_media_to_list(list_id: UUID) -> dict:
     if media_list.user_id != request.token.user_id:
         return {"error": "Unauthorized"}, 403
 
-    media_item = await MediaItemModel.get(data["media_item_id"])
+    media_item = await MediaItemModel.get(media_id=UUID(data["media_item_id"]))
     if not media_item:
         return {"error": "Media item not found"}, 404
 

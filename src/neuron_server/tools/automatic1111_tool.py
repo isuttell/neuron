@@ -111,14 +111,15 @@ class Automatic1111Tool(BaseTool):
                 enable_hr=enable_hr,
             )
             url = f"{neuron_config.static_content_url}/{os.path.basename(file_path)}"
-            await MediaItemModel.create(
+            create_params = MediaItemModel.CreateParams(
                 thread_id=config["configurable"].get("thread_id"),
                 user_id=config["configurable"].get("user_id"),
                 url=url,
-                type="image",
+                media_type="image",
                 name=name,
                 description=prompt,
             )
+            await MediaItemModel.create(params=create_params)
             logger.debug(f"Saved generated image to {file_path} <{url}>")
             return f"<image>![{name}]({url})</image>"
         except Exception as e:

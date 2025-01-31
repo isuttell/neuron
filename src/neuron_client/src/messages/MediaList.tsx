@@ -7,7 +7,7 @@ import { Message } from "../slices/messagesSlice";
 
 interface MediaItem {
   key: string;
-  type: string;
+  media_type: string;
   url: string;
   messageId: string;
   content?: string;
@@ -43,7 +43,7 @@ export function getMediaItems(messages: Message[]): MediaItem[] {
 
         items.push({
           key,
-          type: "image",
+          media_type: "image",
           alt,
           url,
           toolCallId: message.tool_call_id,
@@ -68,7 +68,7 @@ export function getMediaItems(messages: Message[]): MediaItem[] {
             : `${message.tool_call_id}-${url}`;
           items.push({
             key,
-            type,
+            media_type: type,
             url,
             messageId: message.id,
             content: typeof message.content === "string" ? message.content : "",
@@ -123,7 +123,7 @@ function MediaList({
   return (
     <div className={cn("flex flex-col", className)}>
       {mediaItems.map((item) => {
-        if (item.type === "image") {
+        if (item.media_type === "image") {
           return (
             <ImageContent
               key={item.key}
@@ -137,7 +137,7 @@ function MediaList({
             />
           );
         }
-        if (item.type === "link") {
+        if (item.media_type === "link") {
           return (
             <a
               href={item.url}
@@ -149,7 +149,7 @@ function MediaList({
             </a>
           );
         }
-        if (item.type === "audio") {
+        if (item.media_type === "audio") {
           return (
             <AudioContent
               className="w-full"
@@ -159,7 +159,7 @@ function MediaList({
             />
           );
         }
-        if (item.type === "video") {
+        if (item.media_type === "video") {
           return (
             <VideoContent
               url={item.url}

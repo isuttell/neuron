@@ -9,10 +9,7 @@ from neuron_server.llms.agent import execute_agent
 from neuron_server.logger import logger
 from neuron_server.tools.code_interpreter_api import run_code_interpreter
 
-blueprint = Blueprint(
-    "webhooks",
-    __name__,
-)
+blueprint = Blueprint("webhooks", __name__)
 
 
 class PromptRequest(BaseModel):
@@ -22,16 +19,19 @@ class PromptRequest(BaseModel):
 
 
 @blueprint.post("/home_prompt")
-async def prompt():
+async def prompt() -> dict[str, str]:
     body = await request.get_json()
     if not body:
-        raise BadRequest("No body provided")
+        raise BadRequest("Request body is required")
+
     payload = PromptRequest(**body)
     logger.info(f"home_prompt.prompt={payload.prompt}")
     content = await execute_agent(
-        prompt=payload.prompt
-        + "\n\nDo not ask for confirmation before responding or ask any follow questions. This is an automated request.",
-        personality_id=payload.personality_id,
+        prompt=payload.prompt + (
+            "\n\nDo not ask for confirmation before responding or ask any "
+            "follow questions. This is an automated request."
+        ),
+        personality_id=payload.personality_id
     )
     logger.info(f"home_prompt.response={content}")
     return {"status": "success", "content": content}
@@ -43,10 +43,11 @@ class CodeInterpreterRequest(BaseModel):
 
 @blueprint.post("/code-interpreter")
 @requires_auth
-async def code_interpreter():
+async def code_interpreter() -> dict[str, str]:
     body = await request.get_json()
     if not body:
-        raise BadRequest("No body provided")
+        raise BadRequest("Request body is required")
+
     payload = CodeInterpreterRequest(**body)
     status = "success"
     content = ""

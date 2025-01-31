@@ -36,17 +36,26 @@ class CreatePersonality(BaseModel):
 class UpdatePersonality(CreatePersonality):
     pass
 
+class MissingContextError(Exception):
+    def __init__(self, message: str, response: str) -> None:
+        self.message = message
+        self.response = response
+        super().__init__(self.message)
+
+    def __str__(self) -> str:
+        return f"MissingContextError: {self.message}\nResponse:\n{self.response}"
+
 
 async def ainvoke_update_personality(
     llm: LLM, personality: PersonalityModel, context: str, prompt: str
 ) -> str:
     tools = get_tools(personality.tool_set) if personality.tool_set else default_tools
-    chain: Runnable = personality_update_prompt | llm.model | StrOutputParser()
+    chain: Runnable = personality_update_prompt | llm.model.bind_tools(tools) | StrOutputParser()
     content: str = await chain.ainvoke({"context": context, "prompt": prompt})
     assert isinstance(content, str)
     match = re.search(r"<\|context\|>(.*?)</?\|context\|>", content, re.DOTALL)
     if not match:
-        raise ValueError("No context tags found in response")
+        raise MissingContextError("No context tags found in response", content)
     return match.group(1).strip()
 
 
@@ -58,8 +67,8 @@ async def ainvoke_description(llm: LLM, context: str) -> str:
 
 @blueprint.get("/<uuid:personality_id>")
 @requires_auth
-async def get_personality(personality_id: UUID):
-    personality = await PersonalityModel.get(personality_id)
+async def get_personality(personality_id: UUID) -> dict[str, dict]:
+    personality = await PersonalityModel.get(personality_id=personality_id)
     if not personality:
         raise NotFound(f"Personality with id {personality_id} not found")
     return {"personality": personality.model_dump()}
@@ -67,8 +76,8 @@ async def get_personality(personality_id: UUID):
 
 @blueprint.get("/<uuid:personality_id>/embeddings")
 @requires_auth
-async def get_personality_embeddings(personality_id: UUID):
-    personality = await PersonalityModel.get(personality_id)
+async def get_personality_embeddings(personality_id: UUID) -> dict[str, list[dict]]:
+    personality = await PersonalityModel.get(personality_id=personality_id)
     if not personality:
         raise NotFound(f"Personality with id {personality_id} not found")
     embeddings = await EmbeddingModel.filter_by_metadata(
@@ -85,8 +94,11 @@ async def get_personality_embeddings(personality_id: UUID):
 
 @blueprint.delete("/<uuid:personality_id>/embeddings/<embedding_id>")
 @requires_auth
-async def delete_personality_embedding(personality_id: UUID, embedding_id: str):
-    personality = await PersonalityModel.get(personality_id)
+async def delete_personality_embedding(
+    personality_id: UUID,
+    embedding_id: str,
+) -> Response:
+    personality = await PersonalityModel.get(personality_id=personality_id)
     if not personality:
         raise NotFound(f"Personality with id {personality_id} not found")
     embedding = await EmbeddingModel.get(embedding_id)
@@ -98,8 +110,8 @@ async def delete_personality_embedding(personality_id: UUID, embedding_id: str):
 
 @blueprint.delete("/<uuid:personality_id>/embeddings")
 @requires_auth
-async def delete_personality_embeddings(personality_id: UUID):
-    personality = await PersonalityModel.get(personality_id)
+async def delete_personality_embeddings(personality_id: UUID) -> Response:
+    personality = await PersonalityModel.get(personality_id=personality_id)
     if not personality:
         raise NotFound(f"Personality with id {personality_id} not found")
     embeddings = await EmbeddingModel.filter_by_metadata(
@@ -112,7 +124,7 @@ async def delete_personality_embeddings(personality_id: UUID):
 
 @blueprint.get("/")
 @requires_auth
-async def get_personalities():
+async def get_personalities() -> dict[str, list[dict]]:
     personalities = await PersonalityModel.list()
     return {
         "personalities": [personality.model_dump() for personality in personalities]
@@ -121,23 +133,24 @@ async def get_personalities():
 
 @blueprint.post("/")
 @requires_auth
-async def create_personality():
+async def create_personality() -> dict[str, dict]:
     body = await request.get_json()
     payload = CreatePersonality(**body)
-    personality = await PersonalityModel.create(
+    create_params = PersonalityModel.CreateParams(
         name=payload.name,
         description=payload.description,
         context=payload.context,
         memory=payload.memory,
         logo=payload.logo,
-        tool_set=payload.tool_set,
+        tool_set=payload.tool_set
     )
+    personality = await PersonalityModel.create(params=create_params)
     return {"personality": personality.model_dump()}
 
 
 @blueprint.put("/<uuid:personality_id>")
 @requires_auth
-async def update_personality(personality_id: UUID):
+async def update_personality(personality_id: UUID) -> dict[str, dict]:
     body = await request.get_json()
     payload = UpdatePersonality(**body)
 
@@ -150,22 +163,23 @@ async def update_personality(personality_id: UUID):
     ) > 0:
         description = await ainvoke_description(llm=llm, context=payload.context)
 
-    personality = await PersonalityModel.update(
-        id=personality_id,
+    update_params = PersonalityModel.UpdateParams(
+        personality_id=personality_id,
         name=payload.name,
         description=description,
         context=payload.context,
         memory=payload.memory,
         tool_set=payload.tool_set,
-        logo=payload.logo,
+        logo=payload.logo
     )
+    personality = await PersonalityModel.update(params=update_params)
     return {"personality": personality.model_dump()}
 
 
 @blueprint.delete("/<uuid:personality_id>")
 @requires_auth
-async def delete_personality(personality_id: UUID):
-    await PersonalityModel.delete(personality_id)
+async def delete_personality(personality_id: UUID) -> Response:
+    await PersonalityModel.delete(personality_id=personality_id)
     return Response(status=204)
 
 
@@ -176,11 +190,11 @@ class PostPersonalityContext(BaseModel):
 
 @blueprint.post("/<uuid:personality_id>/context")
 @requires_auth
-async def post_personality_context(personality_id: UUID):
+async def post_personality_context(personality_id: UUID) -> dict[str, str]:
     body = await request.get_json()
     payload = PostPersonalityContext(**body)
     llm: LLM = await ProviderModelModel.get_active_llm()
-    personality = await PersonalityModel.get(personality_id)
+    personality = await PersonalityModel.get(personality_id=personality_id)
     if personality is None:
         raise BadRequest("Personality not found")
     context = await ainvoke_update_personality(

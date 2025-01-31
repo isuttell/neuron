@@ -91,7 +91,7 @@ export default function RecentMedia({ limit = 16 }: RecentMediaProps) {
                 ratio={1}
                 className="max-h-[1024px] max-w-[1024px] rounded-lg border border-gray-900 flex justify-center items-center p-1"
               >
-                {mediaItem.type === "image" ? (
+                {mediaItem.media_type === "image" ? (
                   <ImageContent
                     key={mediaItem.id}
                     url={mediaItem.url}
@@ -102,14 +102,14 @@ export default function RecentMedia({ limit = 16 }: RecentMediaProps) {
                     mediaItem={mediaItem}
                   />
                 ) : null}
-                {mediaItem.type === "video" ? (
+                {mediaItem.media_type === "video" ? (
                   <VideoContent
                     key={mediaItem.id}
                     url={mediaItem.url}
                     mediaItem={mediaItem}
                   />
                 ) : null}
-                {mediaItem.type === "audio" ? (
+                {mediaItem.media_type === "audio" ? (
                   <AudioContent
                     className="w-full"
                     key={mediaItem.id}

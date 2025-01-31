@@ -168,9 +168,9 @@ This tool generates audio from a provided script using ElevenLabs' TTS APIs and 
             else:
                 shutil.copy(audio_files[0], output)
             url = neuron_config.static_content_url + "/" + filename
-            media_item = await MediaItemModel.create(
+            create_params = MediaItemModel.CreateParams(
                 url=url,
-                type="audio",
+                media_type="audio",
                 user_id=config["configurable"].get("user_id"),
                 thread_id=config["configurable"].get("thread_id"),
                 name=name,
@@ -178,6 +178,7 @@ This tool generates audio from a provided script using ElevenLabs' TTS APIs and 
                     [f"[{line.voice}]\n\n{line.text}" for line in script]
                 ),
             )
+            media_item = await MediaItemModel.create(params=create_params)
             logger.info(f"Generated audio file saved to {output} <{url}>")
             return f"""\
 <audio id="{media_item.id}">

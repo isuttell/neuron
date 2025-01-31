@@ -155,14 +155,15 @@ If you get a "Prompt is longer than audio to generate" error then the input audi
                     await file.write(chunk)
 
             url = f"{neuron_config.static_content_url}/{filename}"
-            await MediaItemModel.create(
+            create_params = MediaItemModel.CreateParams(
                 thread_id=config["configurable"].get("thread_id"),
                 user_id=config["configurable"].get("user_id"),
                 url=url,
-                type="audio",
+                media_type="audio",
                 name=name,
-                description=f"Prompt: {prompt}",
+                description=prompt,
             )
+            await MediaItemModel.create(params=create_params)
             logger.debug(f"Saved generated audio to {file_path} <{url}>")
             return f'<audio controls src="{url}"></audio>\nFilename: {file_path}'
 

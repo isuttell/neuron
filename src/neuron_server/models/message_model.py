@@ -1,5 +1,6 @@
 import builtins
 import json
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, Literal, Self
 from uuid import UUID, uuid4
@@ -44,28 +45,35 @@ class MessageModel(BaseModel):
         default_factory=lambda: datetime.now(UTC).astimezone()
     )
 
+    @classmethod
     @field_validator("tool_calls", mode="before")
-    def parse_tool_calls(cls, value):
+    def parse_tool_calls(cls, value: str | list[ToolCall]) -> list[ToolCall]:
         if isinstance(value, str):
             try:
                 return json.loads(value)
             except json.JSONDecodeError as e:
-                raise ValueError(f"Invalid JSON for tool_calls: {e}")
-        return value
-
-    @field_validator("usage_metadata", mode="before")
-    def parse_usage_metadata(cls, value):
-        if isinstance(value, str):
-            try:
-                return json.loads(value)
-            except json.JSONDecodeError as e:
-                raise ValueError(f"Invalid JSON for usage_metadata: {e}")
+                raise ValueError(f"Invalid JSON for tool_calls: {e}") from e
         return value
 
     @classmethod
-    async def set(cls, id: UUID, key: str, value: Any) -> Self:
+    @field_validator("usage_metadata", mode="before")
+    def parse_usage_metadata(cls, value: str | dict) -> dict:
+        if isinstance(value, str):
+            try:
+                return json.loads(value)
+            except json.JSONDecodeError as e:
+                raise ValueError(f"Invalid JSON for usage_metadata: {e}") from e
+        return value
+
+    @classmethod
+    async def set(
+        cls,
+        message_id: UUID,
+        key: str,
+        value: str | int | float | bool | dict | list | None
+    ) -> Self:
         async with get_session() as session:
-            message = await session.get(Message, id)
+            message = await session.get(Message, message_id)
             if not message:
                 raise ValueError("Message not found")
             setattr(message, key, value)
@@ -73,64 +81,66 @@ class MessageModel(BaseModel):
             await session.commit()
             return cls(**message.__dict__)
 
+    @dataclass
+    class CreateParams:
+        role: Role
+        thread_id: UUID
+        content: str = ""
+        tool_call_id: str | None = None
+        tool_calls: list[ToolCall] | None = None
+        usage_metadata: dict[str, int | dict] | None = None
+        message_id: UUID | None = None
+
     @classmethod
-    async def create(
-        cls,
-        role: Role,
-        thread_id: UUID,
-        content: str = "",
-        tool_call_id: str | None = None,
-        tool_calls: list[ToolCall] | None = None,
-        usage_metadata: dict[str, Any] | None = None,
-        id: UUID | None = None,
-    ) -> Self:
+    async def create(cls, params: CreateParams) -> Self:
         async with get_session() as session:
             new_message = Message(
-                id=id,
-                thread_id=thread_id,
-                content=content,
-                role=role,
-                tool_call_id=tool_call_id,
-                tool_calls=json.dumps(tool_calls or []),
-                usage_metadata=json.dumps(usage_metadata or {}),
+                id=params.message_id,
+                thread_id=params.thread_id,
+                content=params.content,
+                role=params.role,
+                tool_call_id=params.tool_call_id,
+                tool_calls=json.dumps(params.tool_calls or []),
+                usage_metadata=json.dumps(params.usage_metadata or {}),
             )
             session.add(new_message)
             await session.commit()
             return cls(**new_message.__dict__)
 
+    @dataclass
+    class UpsertParams:
+        content: str
+        role: Role
+        thread_id: UUID
+        tool_call_id: str | None = None
+        tool_calls: list[ToolCall] | None = None
+        usage_metadata: dict[str, int | dict] | None = None
+        message_id: UUID | None = None
+        created_at: str | None = None
+
     @classmethod
-    async def upsert(
-        cls,
-        content: str,
-        role: Role,
-        thread_id: UUID,
-        tool_call_id: str | None = None,
-        tool_calls: list[ToolCall] | None = None,
-        usage_metadata: dict[str, Any] | None = None,
-        id: UUID | None = None,
-        created_at: str | None = None,
-    ) -> Self:
+    async def upsert(cls, params: UpsertParams) -> Self:
         async with get_session() as session:
             stmt = (
                 pg_insert(Message)
                 .values(
-                    id=id,
-                    thread_id=thread_id,
-                    content=content,
-                    role=role,
-                    tool_call_id=tool_call_id,
-                    tool_calls=json.dumps(tool_calls or []),
-                    usage_metadata=json.dumps(usage_metadata or {}),
-                    created_at=created_at,
+                    id=params.message_id,
+                    thread_id=params.thread_id,
+                    content=params.content,
+                    role=params.role,
+                    tool_call_id=params.tool_call_id,
+                    tool_calls=json.dumps(params.tool_calls or []),
+                    usage_metadata=json.dumps(params.usage_metadata or {}),
+                    created_at=params.created_at,
                 )
                 .on_conflict_do_update(
                     index_elements=["id"],
                     set_={
-                        "content": content,
-                        "role": role,
-                        "tool_call_id": tool_call_id,
-                        "tool_calls": json.dumps(tool_calls or []),
-                        "usage_metadata": json.dumps(usage_metadata or {}),
+                        "content": params.content,
+                        "role": params.role,
+                        "tool_call_id": params.tool_call_id,
+                        "tool_calls": json.dumps(params.tool_calls or []),
+                        "usage_metadata": json.dumps(params.usage_metadata or {}),
                     },
                 )
                 .returning(Message)
@@ -175,44 +185,44 @@ class MessageModel(BaseModel):
 
     @staticmethod
     async def count(thread_id: UUID) -> int:
-        async with get_session() as session:
-            async with session.begin():
-                stmt = select(func.count(Message.id)).where(
-                    Message.thread_id == thread_id
-                )
-                result = await session.execute(stmt)
-                return result.scalar()
+        async with get_session() as session, session.begin():
+            stmt = select(func.count(Message.id)).where(
+                Message.thread_id == thread_id
+            )
+            result = await session.execute(stmt)
+            return result.scalar()
 
     @staticmethod
-    async def delete(id: UUID) -> None:
+    async def delete(message_id: UUID) -> None:
         async with get_session() as session:
-            await session.execute(delete(Message).where(Message.id == id))
+            await session.execute(delete(Message).where(Message.id == message_id))
 
     @classmethod
-    async def get(cls, id: UUID) -> Self | None:
+    async def get(cls, message_id: UUID) -> Self | None:
         async with get_session() as session:
-            data = await session.get(Message, id)
+            data = await session.get(Message, message_id)
             if data:
                 return cls(**data.__dict__)
             return None
 
+    @dataclass
+    class UpdateParams:
+        message_id: UUID
+        content: str
+        tool_call_id: str | None = None
+        tool_calls: builtins.list[ToolCall] | None = None
+        usage_metadata: dict[str, int | dict] | None = None
+
     @classmethod
-    async def update(
-        cls,
-        id: UUID,
-        content: str,
-        tool_call_id: str | None = None,
-        tool_calls: builtins.list[ToolCall] | None = None,
-        usage_metadata: dict[str, Any] | None = None,
-    ) -> Message:
+    async def update(cls, params: UpdateParams) -> Message:
         async with get_session() as session:
-            message = await session.get(Message, id)
+            message = await session.get(Message, params.message_id)
             if not message:
                 raise ValueError("Message not found")
-            message.content = content
-            message.tool_call_id = tool_call_id
-            message.tool_calls = json.dumps(tool_calls or [])
-            message.usage_metadata = json.dumps(usage_metadata or {})
+            message.content = params.content
+            message.tool_call_id = params.tool_call_id
+            message.tool_calls = json.dumps(params.tool_calls or [])
+            message.usage_metadata = json.dumps(params.usage_metadata or {})
             session.add(message)
             await session.commit()
             return cls(**message.__dict__)

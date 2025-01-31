@@ -25,8 +25,8 @@ class UpdatePrompt(CreatePrompt):
 
 @blueprint.get("/<uuid:prompt_id>")
 @requires_auth
-async def get_prompt(prompt_id: UUID):
-    prompt = await PromptModel.get(prompt_id)
+async def get_prompt(prompt_id: UUID) -> dict[str, list[dict]]:
+    prompt = await PromptModel.get(prompt_id=prompt_id)
     if not prompt:
         raise NotFound("Prompt not found")
     return {"prompts": [prompt.model_dump()]}
@@ -34,9 +34,9 @@ async def get_prompt(prompt_id: UUID):
 
 @blueprint.get("/")
 @requires_auth
-async def list_prompts():
+async def list_prompts() -> dict[str, list[dict]]:
     prompts = await PromptModel.list()
-    personality_ids = list(set([prompt.personality_id for prompt in prompts]))
+    personality_ids = {prompt.personality_id for prompt in prompts}
     personalities = await PersonalityModel.get_many(personality_ids)
     return {
         "prompts": [prompt.model_dump() for prompt in prompts],
@@ -46,23 +46,24 @@ async def list_prompts():
 
 @blueprint.post("/")
 @requires_auth
-async def create_prompt():
+async def create_prompt() -> dict[str, list[dict]]:
     body = await request.get_json()
     payload = CreatePrompt(**body)
-    prompt = await PromptModel.create(
+    create_params = PromptModel.CreateParams(
         name=payload.name,
         text=payload.text,
-        personality_id=payload.personality_id,
+        personality_id=payload.personality_id
     )
+    prompt = await PromptModel.create(params=create_params)
     return {"prompts": [prompt.model_dump()]}
 
 
 @blueprint.put("/<uuid:prompt_id>")
 @requires_auth
-async def update_prompt(prompt_id: UUID):
+async def update_prompt(prompt_id: UUID) -> dict[str, list[dict]]:
     body = await request.get_json()
     payload = UpdatePrompt(**body)
-    prompt = await PromptModel.get(prompt_id)
+    prompt = await PromptModel.get(prompt_id=prompt_id)
     if not prompt:
         raise NotFound("Prompt not found")
     prompt.name = payload.name
@@ -74,6 +75,6 @@ async def update_prompt(prompt_id: UUID):
 
 @blueprint.delete("/<uuid:prompt_id>")
 @requires_auth
-async def delete_prompt(prompt_id: UUID):
-    await PromptModel.delete(prompt_id)
+async def delete_prompt(prompt_id: UUID) -> Response:
+    await PromptModel.delete(prompt_id=prompt_id)
     return Response(status=204)

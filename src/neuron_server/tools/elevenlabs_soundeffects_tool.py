@@ -75,14 +75,15 @@ This tool generates sound effects using the Eleven Labs sound effect API from te
                     file.write(chunk)
             url = neuron_config.static_content_url + "/" + filename
             logger.debug(f"Saved generated audio to {audio_file_path} <{url}>")
-            await MediaItemModel.create(
+            create_params = MediaItemModel.CreateParams(
                 url=url,
-                type="audio",
-                user_id=config["configurable"].get("user_id"),
-                thread_id=config["configurable"].get("thread_id"),
+                media_type="audio",
                 name=name,
                 description=prompt,
+                thread_id=config["configurable"].get("thread_id"),
+                user_id=config["configurable"].get("user_id"),
             )
+            await MediaItemModel.create(params=create_params)
             return f'<audio src="{url}"></audio>'
         except Exception as e:
             logger.error(e, exc_info=True)

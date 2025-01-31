@@ -306,14 +306,15 @@ Use this tool to generate an image using a text prompt on replicate.com and has 
                     file_path,
                 )
                 url = f"{neuron_config.static_content_url}/{filename}"
-                media_item = await MediaItemModel.create(
+                create_params = MediaItemModel.CreateParams(
                     thread_id=config["configurable"].get("thread_id"),
                     user_id=config["configurable"].get("user_id"),
                     url=url,
-                    type="image",
-                    name=described_image.caption if described_image else prompt,
+                    media_type="image",
+                    name=described_image.caption if described_image else name,
                     description=described_image.description if described_image else "",
                 )
+                media_item = await MediaItemModel.create(params=create_params)
                 if described_image:
                     results.append(
                         f"""\

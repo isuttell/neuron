@@ -55,14 +55,15 @@ Transcribes speech from an audio file using OpenAI's Whisper model. Returns both
                 )
 
             # Create media item
-            media_item = await MediaItemModel.create(
+            create_params = MediaItemModel.CreateParams(
                 url=url,
-                type="audio",
-                user_id=config["configurable"].get("user_id"),
-                thread_id=config["configurable"].get("thread_id"),
+                media_type="text",
                 name=name,
                 description=transcript,
+                thread_id=config["configurable"].get("thread_id"),
+                user_id=config["configurable"].get("user_id"),
             )
+            media_item = await MediaItemModel.create(params=create_params)
 
             return f"""\
 <audio id="{media_item.id}">

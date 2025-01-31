@@ -1,5 +1,5 @@
 from datetime import UTC, datetime
-from typing import Any, Literal, Self
+from typing import Literal, Self
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field, field_serializer
@@ -34,9 +34,9 @@ class ProviderModelModel(BaseModel):
         return v.astimezone().isoformat()
 
     @classmethod
-    async def get(cls, id: UUID) -> Self | None:
+    async def get(cls, provider_id: UUID) -> Self | None:
         async with get_session() as session:
-            data = await session.get(ProviderModel, id)
+            data = await session.get(ProviderModel, provider_id)
             if data:
                 return cls(**data.__dict__)
             return None
@@ -65,7 +65,7 @@ class ProviderModelModel(BaseModel):
                 result = await session.execute(
                     select(ProviderModel)
                     .where(ProviderModel.id != self.id)
-                    .where(ProviderModel.enabled == True)
+                    .where(ProviderModel.enabled.is_(True))
                 )
                 other_providers = result.scalars().all()
 
@@ -75,7 +75,7 @@ class ProviderModelModel(BaseModel):
 
             await session.commit()
 
-    def to_llm(self):
+    def to_llm(self) -> LLM:
         if self.provider == "anthropic":
             return AnthropicLLM(model_id=self.model_id, provider_model_id=self.id)
         if self.provider == "openai":
@@ -91,7 +91,7 @@ class ProviderModelModel(BaseModel):
         """Get the currently active provider from the database"""
         async with get_session() as session:
             result = await session.execute(
-                select(ProviderModel).where(ProviderModel.enabled == True)
+                select(ProviderModel).where(ProviderModel.enabled.is_(True))
             )
             provider = result.scalar_one_or_none()
 
@@ -107,7 +107,7 @@ class ProviderModelModel(BaseModel):
         return provider.to_llm()
 
     @classmethod
-    async def setup(cls, provider_id: UUID | None = None):
+    async def setup(cls, provider_id: UUID | None = None) -> None:
         """Setup a provider as active"""
         provider = await cls.get(provider_id)
         if not provider:
@@ -116,9 +116,9 @@ class ProviderModelModel(BaseModel):
         # Find and disable currently active provider
         async with get_session() as session:
             result = await session.execute(
-                select(ProviderModel).where(ProviderModel.enabled == True)
+                select(ProviderModel).where(ProviderModel.enabled.is_(True))
             )
-            active_provider: Any | None = result.scalar_one_or_none()
+            active_provider: ProviderModel | None = result.scalar_one_or_none()
 
             if active_provider:
                 active_provider.enabled = False

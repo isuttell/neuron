@@ -1,5 +1,6 @@
 import builtins
-from typing import Any, Self
+from collections.abc import Sequence
+from typing import Self
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -33,7 +34,7 @@ class EmbeddingModel(BaseModel):
     @classmethod
     async def create(
         cls,
-        id: str,
+        embedding_id: str,
         collection_id: UUID | None = None,
         embedding: list[float] | None = None,
         document: str | None = None,
@@ -41,7 +42,7 @@ class EmbeddingModel(BaseModel):
     ) -> Self:
         async with get_session() as session:
             embedding_instance = LangchainPGEmbedding(
-                id=id,
+                id=embedding_id,
                 collection_id=collection_id,
                 embedding=embedding,
                 document=document,
@@ -51,23 +52,17 @@ class EmbeddingModel(BaseModel):
             await session.commit()
             return cls(**embedding_instance.__dict__)
 
-    @staticmethod
-    async def delete(id: str) -> None:
-        async with get_session() as session:
-            await session.delete(await session.get(LangchainPGEmbedding, id))
-            await session.commit()
-
     @classmethod
     async def update(
         cls,
-        id: str,
+        embedding_id: str,
         collection_id: UUID | None = None,
         embedding: list[float] | None = None,
         document: str | None = None,
         cmetadata: dict | None = None,
     ) -> Self:
         async with get_session() as session:
-            embedding_instance = await session.get(LangchainPGEmbedding, id)
+            embedding_instance = await session.get(LangchainPGEmbedding, embedding_id)
             if collection_id is not None:
                 embedding_instance.collection_id = collection_id
             if embedding is not None:
@@ -80,9 +75,9 @@ class EmbeddingModel(BaseModel):
             return cls(**embedding_instance.__dict__)
 
     @classmethod
-    async def get(cls, id: str) -> Self | None:
+    async def get(cls, embedding_id: str) -> Self | None:
         async with get_session() as session:
-            data = await session.get(LangchainPGEmbedding, id)
+            data = await session.get(LangchainPGEmbedding, embedding_id)
             if data:
                 return cls(**data.__dict__)
             return None
@@ -129,9 +124,14 @@ class EmbeddingModel(BaseModel):
             await session.commit()
 
     @classmethod
-    async def set(cls, id: str, key: str, value: Any) -> Self:
+    async def set(
+        cls,
+        embedding_id: str,
+        key: str,
+        value: str | int | float | bool | dict | Sequence | None
+    ) -> Self:
         async with get_session() as session:
-            embedding_instance = await session.get(LangchainPGEmbedding, id)
+            embedding_instance = await session.get(LangchainPGEmbedding, embedding_id)
             if not embedding_instance:
                 raise ValueError("Embedding not found")
             setattr(embedding_instance, key, value)
@@ -175,9 +175,9 @@ class EmbeddingModel(BaseModel):
             return embeddings
 
     @staticmethod
-    async def delete(id: str) -> None:
+    async def delete(embedding_id: str) -> None:
         async with get_session() as session:
-            embedding_instance = await session.get(LangchainPGEmbedding, id)
+            embedding_instance = await session.get(LangchainPGEmbedding, embedding_id)
             await session.delete(embedding_instance)
             await session.commit()
 

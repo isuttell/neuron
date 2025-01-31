@@ -20,7 +20,7 @@ import { useMediaPlayer } from "@/contexts/MediaPlayerContext";
 
 interface MediaItem {
   id: string;
-  type: string;
+  media_type: string;
   url: string;
   name: string;
 }
@@ -38,7 +38,7 @@ const formatTime = (seconds: number): string => {
 export function MediaListAudioPlayer({
   mediaItems,
 }: MediaListAudioPlayerProps) {
-  const audioItems = mediaItems.filter((item) => item.type === "audio");
+  const audioItems = mediaItems.filter((item) => item.media_type === "audio");
   const [currentIndex, setCurrentIndex] = useState<number>(-1);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);

@@ -1,125 +1,88 @@
-import os
-
-import pymupdf4llm
 from pydantic import BaseModel
 from quart import Blueprint, request
 from werkzeug.exceptions import BadRequest
-from werkzeug.utils import secure_filename
 
-from neuron_server.config import config as neuron_config
 from neuron_server.controllers.auth import requires_auth
-from neuron_server.event_router import EventRouter
-from neuron_server.graph import (
-    OutputState,
-    encode_md5,
-    process_document,
-    question_graph,
-)
 from neuron_server.tools.graph_arxiv_import_tool import GraphArxivImportTool
-
-router = EventRouter()
-
+from neuron_server.tools.graph_import_tool import GraphImportTool
+from neuron_server.tools.graph_question_tool import GraphQuestionTool
 
 blueprint = Blueprint("graph", __name__)
-
-
-@blueprint.post("/arxiv/<arxiv_id>")
-@requires_auth
-async def post_arxiv_import(arxiv_id: str):
-    tool = GraphArxivImportTool()
-    results = await tool.ainvoke({"arxiv_id": arxiv_id})
-    return {"status": "success", "results": results}
-
-
-@blueprint.post("/pdf")
-@requires_auth
-async def post_upload_pdf():
-    files = await request.files
-    form = await request.form
-    if "file" not in files:
-        raise BadRequest("file is required")
-    file = files["file"]
-    document_name = file.filename
-    personality_id = form.get("personality_id")
-    if not personality_id:
-        raise BadRequest("personality_id is required")
-    filename = f"{encode_md5(document_name)}.pdf"
-    tmp_file_path = os.path.abspath(os.path.join(neuron_config.temp_folder, filename))
-    try:
-        await file.save(tmp_file_path)
-
-        # Convert the PDF to markdown text
-        text = pymupdf4llm.to_markdown(tmp_file_path, show_progress=True).strip()
-
-        document_id = f"pdf:{encode_md5(document_name)}"
-        # Process the document and add it to the graph
-        await process_document(
-            text=text,
-            document_id=document_id,
-            document_name=document_name,
-            config={
-                "configurable": {
-                    "personality_id": personality_id,
-                }
-            },
-        )
-        return {"status": "success"}
-    finally:
-        if os.path.exists(tmp_file_path):
-            os.remove(tmp_file_path)
-
-
-@blueprint.post("/doc")
-@requires_auth
-async def post_upload_doc():
-    files = await request.files
-    form = await request.form
-    if "file" not in files:
-        raise BadRequest("file is required")
-    file = files["file"]
-    document_name = os.path.splitext(file.filename)[0]
-    personality_id = form.get("personality_id")
-    if not personality_id:
-        raise BadRequest("personality_id is required")
-    document_id = encode_md5(document_name)
-    tmp_filename = f"{document_id}{os.path.splitext(secure_filename(file.filename))[1]}"
-    tmp_file_path = os.path.abspath(
-        os.path.join(neuron_config.temp_folder, tmp_filename)
-    )
-    try:
-        await file.save(tmp_file_path)
-
-        with open(tmp_file_path, encoding="utf-8") as f:
-            text = f.read()
-
-        # Process the document and add it to the graph
-        await process_document(
-            text=text,
-            document_id=f"doc:{document_id}",
-            document_name=document_name,
-            source=file.filename,
-            config={
-                "configurable": {
-                    "personality_id": personality_id,
-                }
-            },
-        )
-        return {"status": "success"}
-    finally:
-        if os.path.exists(tmp_file_path):
-            os.remove(tmp_file_path)
 
 
 class QuestionRequest(BaseModel):
     question: str
 
 
+@blueprint.post("/arxiv/<arxiv_id>")
+@requires_auth
+async def post_arxiv_import(arxiv_id: str) -> dict[str, str]:
+    tool = GraphArxivImportTool()
+    results = await tool.ainvoke({"arxiv_id": arxiv_id})
+    return {"message": results}
+
+
+@blueprint.post("/pdf")
+@requires_auth
+async def post_upload_pdf() -> dict[str, str]:
+    files = await request.files
+    form = await request.form
+
+    if "file" not in files:
+        raise BadRequest("No file provided")
+
+    file = files["file"]
+    if not file.filename:
+        raise BadRequest("No filename provided")
+
+    if not file.filename.endswith(".pdf"):
+        raise BadRequest("File must be a PDF")
+
+    tool = GraphImportTool()
+    results = await tool.ainvoke({
+        "file": file,
+        "filename": file.filename,
+        "title": form.get("title", file.filename),
+        "description": form.get("description", ""),
+    })
+
+    return {"message": results}
+
+
+@blueprint.post("/doc")
+@requires_auth
+async def post_upload_doc() -> dict[str, str]:
+    files = await request.files
+    form = await request.form
+
+    if "file" not in files:
+        raise BadRequest("No file provided")
+
+    file = files["file"]
+    if not file.filename:
+        raise BadRequest("No filename provided")
+
+    if not file.filename.endswith((".doc", ".docx")):
+        raise BadRequest("File must be a DOC or DOCX")
+
+    tool = GraphImportTool()
+    results = await tool.ainvoke({
+        "file": file,
+        "filename": file.filename,
+        "title": form.get("title", file.filename),
+        "description": form.get("description", ""),
+    })
+
+    return {"message": results}
+
+
 @blueprint.post("/question")
 @requires_auth
-async def post_question():
+async def post_question() -> dict[str, str]:
     body = await request.get_json()
     payload = QuestionRequest(**body)
-    response: OutputState = await question_graph.ainvoke({"question": payload.question})
-    return {
-        "answer": response.get("answer"),
-    }
+
+    tool = GraphQuestionTool()
+    results = await tool.ainvoke({"question": payload.question})
+
+    return {"message": results}

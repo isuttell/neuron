@@ -8,7 +8,7 @@ export interface MediaItem {
   name: string;
   description: string;
   url: string;
-  type: string;
+  media_type: string;
   thread_id?: string;
   user_id: string;
   created_at: string;

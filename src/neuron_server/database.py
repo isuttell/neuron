@@ -105,7 +105,7 @@ class MediaItem(Base):
     name = Column(Text, default="")
     description = Column(Text, default="")
     url = Column(Text, nullable=False)
-    type = Column(String, nullable=False)
+    media_type = Column(String, nullable=False)
     thread_id = Column(
         pgUUID(as_uuid=True),
         ForeignKey("threads.id", ondelete="SET NULL"),

@@ -129,14 +129,15 @@ Use this tool to add realistic foley sound effects synced to a video using the z
                 async for chunk in output:
                     await file.write(chunk)
             url = f"{neuron_config.static_content_url}/{filename}"
-            media_item = await MediaItemModel.create(
+            create_params = MediaItemModel.CreateParams(
                 thread_id=config["configurable"].get("thread_id"),
                 user_id=config["configurable"].get("user_id"),
                 url=url,
-                type="video",
+                media_type="audio",
                 name=name,
-                description=f"Prompt: {prompt}",
+                description=prompt,
             )
+            media_item = await MediaItemModel.create(params=create_params)
             logger.debug(f"Saved generated video to {file_path} <{url}>")
             return f"""\
 <video id="{media_item.id}">

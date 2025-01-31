@@ -100,14 +100,15 @@ This tool uses the video generation model minimax/video-01, also known as Hailuo
                 async for chunk in output:
                     await file.write(chunk)
             url = f"{neuron_config.static_content_url}/{filename}"
-            media_item = await MediaItemModel.create(
+            create_params = MediaItemModel.CreateParams(
                 thread_id=config["configurable"].get("thread_id"),
                 user_id=config["configurable"].get("user_id"),
                 url=url,
-                type="video",
+                media_type="video",
                 name=name,
-                description=f"Prompt: {prompt}",
+                description=prompt,
             )
+            media_item = await MediaItemModel.create(params=create_params)
             logger.debug(
                 f"Saved generated video to {file_path} <{url}> - {time.perf_counter() - start_time:.2f}s"
             )

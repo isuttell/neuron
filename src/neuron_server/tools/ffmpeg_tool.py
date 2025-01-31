@@ -93,13 +93,14 @@ This tool is designed to manipulate video and audio using ffmpeg. Do not show th
             if not os.path.exists(output):
                 raise FFmpegToolError("Output file not found", process.stderr)
             url = neuron_config.static_content_url + "/" + filename
-            await MediaItemModel.create(
+            create_params = MediaItemModel.CreateParams(
                 url=url,
-                type="video" if extension == "mp4" else "audio",
+                media_type="video" if extension == "mp4" else "audio",
                 user_id=config["configurable"].get("user_id"),
                 thread_id=config["configurable"].get("thread_id"),
                 name=name,
             )
+            await MediaItemModel.create(params=create_params)
             logger.info(f"File saved to {output} <{url}>")
             return f"""
 { '<video src="{url}" controls></video>' if extension == "mp4" else '<audio src="{url}"></audio>' }

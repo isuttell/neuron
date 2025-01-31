@@ -1,44 +1,65 @@
-from datetime import datetime
-from typing import Optional
-from uuid import uuid4
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from typing import Self
+from uuid import UUID, uuid4
 
-from pydantic import UUID4, BaseModel, Field, field_serializer
+from pydantic import BaseModel, Field, field_serializer
 from sqlalchemy import select
 
 from neuron_server.database import Prompt, get_session
 
 
 class PromptModel(BaseModel):
-    id: UUID4 = Field(default_factory=lambda: uuid4())
-    name: str
-    text: str
-    personality_id: UUID4 | None = None
-    created_at: datetime
-    updated_at: datetime
+    id: UUID = Field(
+        default_factory=lambda: uuid4(),
+        description="Unique identifier for the prompt"
+    )
+    name: str = Field(description="Name of the prompt")
+    text: str = Field(description="The prompt text content")
+    personality_id: UUID | None = Field(
+        default=None,
+        description="Associated personality ID"
+    )
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC).astimezone(),
+        description="Creation timestamp"
+    )
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC).astimezone(),
+        description="Last update timestamp"
+    )
 
     @field_serializer("created_at", "updated_at")
     def parse_date(self, v: datetime) -> str:
         return v.astimezone().isoformat()
 
+    @dataclass
+    class CreateParams:
+        name: str
+        text: str
+        personality_id: UUID | None = None
+
     @classmethod
-    async def create(
-        cls, name: str, text: str, personality_id: UUID4 | None = None
-    ) -> "PromptModel":
+    async def create(cls, params: CreateParams) -> Self:
         async with get_session() as session:
-            prompt = Prompt(name=name, text=text, personality_id=personality_id)
+            prompt = Prompt(
+                name=params.name,
+                text=params.text,
+                personality_id=params.personality_id
+            )
             session.add(prompt)
             await session.commit()
             return cls(**prompt.__dict__)
 
     @classmethod
-    async def get(cls, prompt_id: UUID4) -> Optional["PromptModel"]:
+    async def get(cls, prompt_id: UUID) -> Self | None:
         async with get_session() as session:
             result = await session.execute(select(Prompt).where(Prompt.id == prompt_id))
             prompt = result.scalar_one_or_none()
             return cls(**prompt.__dict__) if prompt else None
 
     @classmethod
-    async def list(cls, personality_id: UUID4 | None = None) -> list["PromptModel"]:
+    async def list(cls, personality_id: UUID | None = None) -> list[Self]:
         async with get_session() as session:
             query = select(Prompt)
             if personality_id:
@@ -57,7 +78,7 @@ class PromptModel(BaseModel):
                 await session.commit()
 
     @classmethod
-    async def delete(cls, prompt_id: UUID4) -> None:
+    async def delete(cls, prompt_id: UUID) -> None:
         async with get_session() as session:
             prompt = await session.get(Prompt, prompt_id)
             if prompt:

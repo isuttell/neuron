@@ -1,6 +1,8 @@
 import builtins
+from collections.abc import Sequence
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from typing import Any, Self
+from typing import Self
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field, field_serializer
@@ -43,63 +45,65 @@ class ThreadModel(BaseModel):
     def parse_date(self, v: datetime) -> str:
         return v.astimezone().isoformat()
 
+    @dataclass
+    class CreateParams:
+        personality_id: UUID
+        user_id: str
+        name: str = ""
+        context: str = ""
+        memory: str = ""
+        status: str = "idle"
+        thread_id: UUID | None = None
+        message_count: int = 0
+
     @classmethod
-    async def create(
-        cls,
-        personality_id: UUID,
-        user_id: str,
-        name: str | None = "",
-        context: str | None = "",
-        memory: str | None = "",
-        status: str | None = "idle",
-        id: UUID | None = None,
-        message_count: int | None = 0,
-    ) -> Self:
+    async def create(cls, params: CreateParams) -> Self:
         async with get_session() as session:
             thread = Thread(
-                id=id,
-                user_id=user_id,
-                name=name,
-                context=context,
-                memory=memory,
-                status=status,
-                personality_id=personality_id,
-                message_count=message_count,
+                id=params.thread_id,
+                user_id=params.user_id,
+                name=params.name,
+                context=params.context,
+                memory=params.memory,
+                status=params.status,
+                personality_id=params.personality_id,
+                message_count=params.message_count,
             )
             session.add(thread)
             await session.commit()
             return cls(**thread.__dict__)
 
     @staticmethod
-    async def delete(id: UUID) -> None:
+    async def delete(thread_id: UUID) -> None:
         async with get_session() as session:
-            await session.delete(await session.get(Thread, id))
+            await session.delete(await session.get(Thread, thread_id))
             await session.commit()
 
+    @dataclass
+    class UpdateParams:
+        thread_id: UUID
+        name: str
+        context: str
+        memory: str
+        status: str
+        message_count: int
+
     @classmethod
-    async def update(
-        cls,
-        id: UUID,
-        name: str,
-        context: str,
-        memory: str,
-        status: str,
-        message_count: int,
-    ) -> Self:
+    async def update(cls, params: UpdateParams) -> Self:
         async with get_session() as session:
-            thread = await session.get(Thread, id)
-            thread.name = name
-            thread.context = context
-            thread.memory = memory
-            thread.status = status
-            thread.message_count = message_count
+            thread = await session.get(Thread, params.thread_id)
+            thread.name = params.name
+            thread.context = params.context
+            thread.memory = params.memory
+            thread.status = params.status
+            thread.message_count = params.message_count
             await session.commit()
             return cls(**thread.__dict__)
 
     @classmethod
-    async def get(cls, id: UUID) -> Self | None:
+    async def get(cls, thread_id: UUID) -> Self | None:
         async with get_session() as session:
-            data = await session.get(Thread, id)
+            data = await session.get(Thread, thread_id)
             if data:
                 return cls(**data.__dict__)
             return None
@@ -130,9 +134,14 @@ class ThreadModel(BaseModel):
             await session.commit()
 
     @classmethod
-    async def set(cls, id: UUID, key: str, value: Any) -> Self:
+    async def set(
+        cls,
+        thread_id: UUID,
+        key: str,
+        value: str | int | float | bool | dict | Sequence | None
+    ) -> Self:
         async with get_session() as session:
-            thread = await session.get(Thread, id)
+            thread = await session.get(Thread, thread_id)
             if not thread:
                 raise ValueError("Thread not found")
             setattr(thread, key, value)

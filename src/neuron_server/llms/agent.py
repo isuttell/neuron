@@ -173,9 +173,33 @@ async def wait_for_idle(thread_id: UUID, timeout: int = 300):
             raise TimeoutError(
                 f"Thread {thread.id} did not become idle within {timeout} seconds"
             )
+        logger.debug(f"Thread {thread.id} is {thread.status}. Waiting...")
         await asyncio.sleep(1)
         thread = await ThreadModel.get(thread_id)
 
+async def update_title(thread: ThreadModel, llm: LLM, human_message: HumanMessage, personality_id: UUID, user_id: UUID):
+    try:
+        logger.debug("Generating thread name...")
+        title_response = await llm.call_title(
+            state={
+                "title": thread.name,
+                "messages": [
+                    human_message,
+                ],
+            },
+            config={
+                "configurable": {
+                    "thread_id": str(thread.id),
+                    "personality_id": str(personality_id),
+                    "user_id": str(user_id),
+                },
+            },
+        )
+        thread.name = title_response["title"]
+        await ThreadModel.set(thread.id, "name", thread.name)
+        await _debounced_publish("app", GetThreadResponse(thread=thread))
+    except Exception as e:
+        logger.error(e, exc_info=True)
 
 async def astream(
     thread_id: UUID,
@@ -209,29 +233,13 @@ async def astream(
         graph = llm.create_workflow(tools)
         graph.checkpointer = AsyncPostgresSaver(pool)
 
-        human_message = HumanMessage(content=prompt, id=str(uuid4()))
-        human_message.created_at = datetime.now().astimezone().isoformat()
+        # Create the human message
+        human_message = HumanMessage(id=str(uuid4()), content=prompt,  created_at=datetime.now().astimezone().isoformat())
 
+        # Update the thread name if it's not already set
         if not thread.name:
-            logger.debug("Generating thread name...")
-            title_response = await llm.call_title(
-                state={
-                    "title": thread.name,
-                    "messages": [
-                        human_message,
-                    ],
-                },
-                config={
-                    "configurable": {
-                        "thread_id": str(thread.id),
-                        "personality_id": str(personality_id),
-                        "user_id": str(user_id),
-                    },
-                },
-            )
-            thread.name = title_response["title"]
-            await ThreadModel.set(thread.id, "name", thread.name)
-            await _debounced_publish("app", GetThreadResponse(thread=thread))
+            # Update the thread name in the background so get the response faster
+            asyncio.create_task(update_title(thread, llm, human_message, personality_id, user_id))
 
         await pubsub.publish(
             "app",

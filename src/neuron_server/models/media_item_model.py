@@ -1,4 +1,5 @@
 import builtins
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Self
 from uuid import UUID, uuid4
@@ -16,7 +17,7 @@ class MediaItemModel(BaseModel):
     name: str = Field(default="", description="Name of the media item")
     description: str = Field(default="", description="Description of the media item")
     url: str = Field(description="URL where the media is stored")
-    type: str = Field(description="Type of media (image, video, audio, etc)")
+    media_type: str = Field(description="Type of media (image, video, audio, etc)")
     thread_id: UUID | None = Field(description="Associated thread ID", default=None)
     user_id: str = Field(description="ID of the user who owns this media")
     created_at: datetime = Field(
@@ -26,26 +27,27 @@ class MediaItemModel(BaseModel):
         default_factory=lambda: datetime.now(UTC).astimezone()
     )
 
+    @dataclass
+    class CreateParams:
+        url: str
+        media_type: str
+        user_id: str
+        name: str = ""
+        description: str = ""
+        thread_id: UUID | None = None
+        media_id: UUID | None = None
+
     @classmethod
-    async def create(
-        cls,
-        url: str,
-        type: str,
-        user_id: str,
-        name: str = "",
-        description: str = "",
-        thread_id: UUID | None = None,
-        id: UUID | None = None,
-    ) -> Self:
+    async def create(cls, params: CreateParams) -> Self:
         async with get_session() as session:
             media_item = MediaItem(
-                id=id,
-                name=name,
-                description=description,
-                url=url,
-                type=type,
-                thread_id=thread_id,
-                user_id=user_id,
+                id=params.media_id,
+                name=params.name,
+                description=params.description,
+                url=params.url,
+                media_type=params.media_type,
+                thread_id=params.thread_id,
+                user_id=params.user_id,
             )
             session.add(media_item)
             await session.commit()
@@ -54,9 +56,9 @@ class MediaItemModel(BaseModel):
             return result
 
     @classmethod
-    async def get(cls, id: UUID) -> Self | None:
+    async def get(cls, media_id: UUID) -> Self | None:
         async with get_session() as session:
-            data = await session.get(MediaItem, id)
+            data = await session.get(MediaItem, media_id)
             if data:
                 return cls(**data.__dict__)
             return None
@@ -96,7 +98,11 @@ class MediaItemModel(BaseModel):
             return [cls(**item.__dict__) for item in records]
 
     @classmethod
-    async def get_thread_media(cls, thread_id: UUID, user_id: str) -> builtins.list[Self]:
+    async def get_thread_media(
+        cls,
+        thread_id: UUID,
+        user_id: str
+    ) -> builtins.list[Self]:
         """
         Get media items for a specific thread and user.
 

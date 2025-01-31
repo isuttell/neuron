@@ -32,7 +32,7 @@ function MediaItemList({
   return (
     <div className={cn("flex flex-col gap-2", className)}>
       {mediaItems.map((item) => {
-        if (item.type === "image") {
+        if (item.media_type === "image") {
           return (
             <ImageContent
               key={item.id}
@@ -47,7 +47,7 @@ function MediaItemList({
             />
           );
         }
-        if (item.type === "link") {
+        if (item.media_type === "link") {
           return (
             <a
               href={item.url}
@@ -59,7 +59,7 @@ function MediaItemList({
             </a>
           );
         }
-        if (item.type === "audio") {
+        if (item.media_type === "audio") {
           return (
             <AudioContent
               className="w-full"
@@ -71,7 +71,7 @@ function MediaItemList({
             />
           );
         }
-        if (item.type === "video") {
+        if (item.media_type === "video") {
           return (
             <VideoContent
               url={item.url}

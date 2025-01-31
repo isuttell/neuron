@@ -1,4 +1,5 @@
 import builtins
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Self
 from uuid import UUID, uuid4
@@ -27,35 +28,36 @@ class MediaListModel(BaseModel):
         default_factory=lambda: datetime.now(UTC).astimezone()
     )
 
+    @dataclass
+    class CreateParams:
+        name: str
+        description: str
+        user_id: str
+        tags: list[str] | None = None
+        visibility: str = "private"
+        shared_with: list[str] | None = None
+        list_id: UUID | None = None
+
     @classmethod
-    async def create(
-        cls,
-        name: str,
-        description: str,
-        user_id: str,
-        tags: list[str] | None = None,
-        visibility: str = "private",
-        shared_with: list[str] | None = None,
-        id: UUID | None = None,
-    ) -> Self:
+    async def create(cls, params: CreateParams) -> Self:
         async with get_session() as session:
             media_list = MediaList(
-                id=id,
-                name=name,
-                description=description,
-                tags=tags or [],
-                user_id=user_id,
-                visibility=visibility,
-                shared_with=shared_with or [],
+                id=params.list_id,
+                name=params.name,
+                description=params.description,
+                tags=params.tags or [],
+                user_id=params.user_id,
+                visibility=params.visibility,
+                shared_with=params.shared_with or [],
             )
             session.add(media_list)
             await session.commit()
             return cls(**media_list.__dict__)
 
     @classmethod
-    async def get(cls, id: UUID) -> Self | None:
+    async def get(cls, list_id: UUID) -> Self | None:
         async with get_session() as session:
-            data = await session.get(MediaList, id)
+            data = await session.get(MediaList, list_id)
             if data:
                 return cls(**data.__dict__)
             return None
@@ -68,28 +70,29 @@ class MediaListModel(BaseModel):
             return [cls(**list_item.__dict__) for list_item in records]
 
     @staticmethod
-    async def delete(id: UUID) -> None:
+    async def delete(list_id: UUID) -> None:
         async with get_session() as session:
-            await session.delete(await session.get(MediaList, id))
+            await session.delete(await session.get(MediaList, list_id))
             await session.commit()
 
+    @dataclass
+    class UpdateParams:
+        list_id: UUID
+        name: str
+        description: str
+        tags: builtins.list[str]
+        visibility: str
+        shared_with: builtins.list[str]
+
     @classmethod
-    async def update(
-        cls,
-        id: UUID,
-        name: str,
-        description: str,
-        tags: builtins.list[str],
-        visibility: str,
-        shared_with: builtins.list[str],
-    ) -> Self:
+    async def update(cls, params: UpdateParams) -> Self:
         async with get_session() as session:
-            media_list = await session.get(MediaList, id)
-            media_list.name = name
-            media_list.description = description
-            media_list.tags = tags
-            media_list.visibility = visibility
-            media_list.shared_with = shared_with
+            media_list = await session.get(MediaList, params.list_id)
+            media_list.name = params.name
+            media_list.description = params.description
+            media_list.tags = params.tags
+            media_list.visibility = params.visibility
+            media_list.shared_with = params.shared_with
             session.add(media_list)
             await session.commit()
             return cls(**media_list.__dict__)

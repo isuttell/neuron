@@ -1,4 +1,4 @@
-from typing import Any
+from collections.abc import Sequence
 
 from pydantic import BaseModel
 from quart import Blueprint, Response, request
@@ -17,12 +17,12 @@ class BulkDeleteEmbeddings(BaseModel):
 
 class EmbeddingUpsert(BaseModel):
     content: str
-    metadata: dict[str, Any] | None = None
+    metadata: dict[str, str | int | float | bool | dict | Sequence | None] | None = None
 
 
 @blueprint.post("/<string:embedding_id>")
 @requires_auth
-async def upsert_embedding(embedding_id: str):
+async def upsert_embedding(embedding_id: str) -> dict[str, list[dict]]:
     """Upsert an embedding by ID.
 
     If the embedding exists, it will be deleted and recreated with new content
@@ -36,7 +36,7 @@ async def upsert_embedding(embedding_id: str):
 
     # Get existing embedding if it exists
     existing_metadata = {}
-    existing_embedding = await EmbeddingModel.get(embedding_id)
+    existing_embedding = await EmbeddingModel.get(embedding_id=embedding_id)
     if existing_embedding:
         # Preserve existing metadata
         existing_metadata = existing_embedding.cmetadata or {}
@@ -49,7 +49,7 @@ async def upsert_embedding(embedding_id: str):
         texts=[payload.content], metadatas=[merged_metadata], ids=[embedding_id]
     )
 
-    embedding = await EmbeddingModel.get(embedding_id)
+    embedding = await EmbeddingModel.get(embedding_id=embedding_id)
 
     return {
         "embeddings": [embedding.model_dump(exclude={"embedding"})],
@@ -58,18 +58,18 @@ async def upsert_embedding(embedding_id: str):
 
 @blueprint.delete("/<string:embedding_id>")
 @requires_auth
-async def delete_embedding(embedding_id: str):
-    embedding = await EmbeddingModel.get(embedding_id)
+async def delete_embedding(embedding_id: str) -> Response:
+    embedding = await EmbeddingModel.get(embedding_id=embedding_id)
     if not embedding:
         raise NotFound("Embedding not found")
 
-    await EmbeddingModel.delete(embedding_id)
+    await EmbeddingModel.delete(embedding_id=embedding_id)
     return Response(status=204)
 
 
 @requires_auth
 @blueprint.delete("/bulk")
-async def bulk_delete_embeddings():
+async def bulk_delete_embeddings() -> Response:
     """Delete multiple embeddings at once.
 
     Returns:
@@ -79,7 +79,7 @@ async def bulk_delete_embeddings():
     payload = BulkDeleteEmbeddings(**body)
 
     # Get existing embeddings to verify they exist
-    existing_embeddings = await EmbeddingModel.get_many(payload.embedding_ids)
+    existing_embeddings = await EmbeddingModel.get_many(ids=payload.embedding_ids)
     existing_ids = {e.id for e in existing_embeddings}
 
     # Check if any requested embeddings don't exist
@@ -88,5 +88,5 @@ async def bulk_delete_embeddings():
         raise NotFound(f"Embeddings not found: {', '.join(missing_ids)}")
 
     # Delete all embeddings
-    await EmbeddingModel.delete_many(payload.embedding_ids)
+    await EmbeddingModel.delete_many(ids=payload.embedding_ids)
     return Response(status=204)

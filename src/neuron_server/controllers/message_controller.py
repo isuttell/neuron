@@ -15,7 +15,7 @@ from neuron_server.controllers.events.message_events import (
 from neuron_server.event_router import EventRouter
 from neuron_server.llms import agent
 from neuron_server.llms.agent import aget_state
-from neuron_server.models import MediaItemModel, ThreadModel
+from neuron_server.models import ThreadModel
 from neuron_server.models.media_item_model import MediaItemModel
 from neuron_server.pubsub import pubsub
 from neuron_server.util.file_utilities import process_uploaded_file
@@ -31,8 +31,8 @@ blueprint = Blueprint("message", __name__)
 
 @blueprint.get("/thread/<uuid:thread_id>")
 @requires_auth
-async def get_thread_messages(thread_id: UUID):
-    thread = await ThreadModel.get(thread_id)
+async def get_thread_messages(thread_id: UUID) -> dict[str, list[dict]]:
+    thread = await ThreadModel.get(thread_id=thread_id)
     if not thread:
         raise NotFound("Thread not found")
 
@@ -45,7 +45,8 @@ async def get_thread_messages(thread_id: UUID):
 
     # Get media items for this thread
     media_items = await MediaItemModel.get_thread_media(
-        thread_id=thread.id, user_id=request.token.user_id
+        thread_id=thread.id,
+        user_id=request.token.user_id
     )
 
     return {
@@ -85,12 +86,7 @@ async def process_message_request(files: dict, form: dict) -> str:
             # Handle other files normally
             ai_prompt = format_ai_uploaded_file(filename, ext, url)
 
-    if prompt.strip():
-        prompt = f"{ai_prompt}\n{prompt.strip()}"
-    else:
-        prompt = ai_prompt
-
-    return prompt
+    return f"{ai_prompt}\n{prompt.strip()}" if prompt.strip() else ai_prompt
 
 
 def format_ai_uploaded_file(filename: str, ext: str, url: str) -> str:
@@ -103,13 +99,16 @@ def format_ai_uploaded_file(filename: str, ext: str, url: str) -> str:
         url = f'<video src="{url}"></video>'
     else:
         url = f"<{url}>"
-    return f"<|AI|>The user has uploaded a file called '{filename}' to {url} as part the request.<|AI|>"
+    return (
+        f"<|AI|>The user has uploaded a file called '{filename}' to {url} "
+        "as part the request.<|AI|>"
+    )
 
 
 @blueprint.post("/thread/<uuid:thread_id>")
 @requires_auth
-async def post_thread_message(thread_id: UUID):
-    thread = await ThreadModel.get(thread_id)
+async def post_thread_message(thread_id: UUID) -> tuple[dict[str, str], int]:
+    thread = await ThreadModel.get(thread_id=thread_id)
     if not thread:
         raise NotFound("Thread not found")
     files = await request.files
@@ -124,7 +123,7 @@ async def post_thread_message(thread_id: UUID):
 
     await agent.astream(
         thread_id=thread.id,
-        personality_id=personality_id,
+        personality_id=UUID(personality_id),  # Convert string to UUID
         user_id=request.token.user_id,
         username=request.token.nickname,
         prompt=prompt,
@@ -139,7 +138,7 @@ async def post_thread_message(thread_id: UUID):
 async def apost_message(event: PostMessage) -> None:
     await agent.astream(
         thread_id=event.thread_id,
-        personality_id=event.personality_id,
+        personality_id=UUID(event.personality_id),  # Convert string to UUID
         user_id=None,
         prompt=event.prompt,
     )
