@@ -36,6 +36,7 @@ Neuron is a realtime chat application built with LangChain and LangGraph to allo
 - Use Redux for state management; favor slice reducers and avoid storing derived state.
 - Use fetch for API requests.
 - Use `camelCase` for variable names.
+- Do not modify shadcn/ui components in src\neuron_client\src\components\ui; prefer to extend them with additional components.
 
 #### Frontend Testing
 

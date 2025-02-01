@@ -35,6 +35,7 @@ export function MediaListDropdown({
           size={size}
           variant={variant}
           disabled={disabled || mediaLists.length === 0}
+          asChild
         >
           <ListPlus className="size-4" />
         </Button>
@@ -52,6 +53,7 @@ export function MediaListDropdown({
                 addMediaToList({
                   listId: list.id,
                   mediaItemId,
+                  index: null,
                 })
               );
               toast({
