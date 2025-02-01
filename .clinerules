@@ -41,7 +41,7 @@ Neuron is a realtime chat application built with LangChain and LangGraph to allo
 #### Frontend Testing
 
 - Write unit tests for all components using Jest and React Testing Library.
-- Run linting with `cd src/neuron_client && npm run lint` after each client task and fix any errors.
+- Run linting with `npm run lint` found in the neuron_client folder
 - Focus on testing business logic and DOM interactions.
 
 ### Backend Code Style and Structure
@@ -53,15 +53,17 @@ Neuron is a realtime chat application built with LangChain and LangGraph to allo
 - Use SQLAlchemy ORM for database interactions; avoid raw SQL unless necessary.
 - Use Quart for the web server and WebSocket handling; prioritize async operations.
 - Use `snake_case` for variable names.
-- Use ruff for formatting and linting. Always run `cd ./src/neuron_server && ruff check --fix` to check for errors after each task.
+- Use ruff for formatting and linting.
+- Use pytest for unit tests
 - **Types:** Include type hints in all functions and class methods.
 - **Commenting Style:** Use docstrings for all exported functions and classes to explain their purpose and parameters.
 - Use format specifiers instead of percent format strings.
 - Max line length is 88 characters and tabs count for 4 spaces
+- Always use types including return types
 
 #### Backend Testing
 
-- Write tests using Pytest and run them after each task
+- Always run `ruff check --fix src/neuron_server/` and `pytest src/neuron_server/` tests from the project root to check for errors after each task
 - Include tests for controllers, tools, and database models.
 - Use mocking for database and network operations to ensure isolation of tests.
 

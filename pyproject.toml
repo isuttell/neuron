@@ -57,6 +57,7 @@ pi-heif = "*"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "*"
+pytest-cov = "*"
 pytest-asyncio = "*"
 ruff = "^0.9.3"
 black = "^25.1.0"
