@@ -114,11 +114,15 @@ const MessageItem: React.FC<MessageItemProps> = ({
         </Tooltip>
         <div className="flex flex-col flex-1 ">
           {body.trim().length > 0 ? (
-            <Content
-              content={body}
-              preload={status === "streaming" ? "none" : "auto"}
-              onPromptClick={onPromptClick}
-            />
+            !showTools ? (
+              <Content
+                content={body}
+                preload={status === "streaming" ? "none" : "auto"}
+                onPromptClick={onPromptClick}
+              />
+            ) : (
+              <div className="whitespace-pre-wrap">{body}</div>
+            )
           ) : (
             <div className="space-y-2 flex-1">
               <Skeleton className="h-4 w-[250px]" />
@@ -177,9 +181,9 @@ const MessageItem: React.FC<MessageItemProps> = ({
     </Card>,
   ];
   if (mediaItems.length > 0) {
-    const hasAudio = mediaItems.some((item) => item.type === "audio");
+    const hasAudio = mediaItems.some((item) => item.media_type === "audio");
     const hasFiles = mediaItems.some((item) =>
-      ["image", "video", "link"].includes(item.type)
+      ["image", "video", "link"].includes(item.media_type)
     );
 
     if (hasAudio || hasFiles) {

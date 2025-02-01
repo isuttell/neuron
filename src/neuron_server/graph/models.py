@@ -57,6 +57,7 @@ class DocumentResult(BaseModel):
 class InputState(TypedDict):
     question: str
     history: str
+    document_ids: list[str] | None
 
 
 class OutputState(TypedDict):
@@ -70,6 +71,7 @@ class OverallState(TypedDict):
     question: str
     rational_plan: str
     notebook: str
+    document_ids: list[str] | None
     previous_actions: Annotated[list[str], add]
     check_atomic_facts_queue: list[str]
     check_chunks_queue: list[str]

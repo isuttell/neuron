@@ -26,6 +26,7 @@ from neuron_server.tools.elevenlabs_tts_tool import ElevenLabsTTSTool
 from neuron_server.tools.ffmpeg_tool import FFmpegTool
 from neuron_server.tools.graph_arxiv_import_tool import GraphArxivImportTool
 from neuron_server.tools.graph_import_tool import GraphImportTool
+from neuron_server.tools.graph_query_tool import GraphQueryTool
 from neuron_server.tools.graph_question_tool import GraphQuestionTool
 from neuron_server.tools.graph_website_import_tool import GraphWebsiteImportTool
 from neuron_server.tools.hd2_galactic_war_report_tool import (
@@ -106,6 +107,7 @@ tool_sets: dict[str, list[BaseTool]] = {
     "graph": [
         ArxivSearchTool(),
         GraphQuestionTool(),
+        GraphQueryTool(),
         GraphArxivImportTool(),
         GraphImportTool(),
         GraphWebsiteImportTool(),

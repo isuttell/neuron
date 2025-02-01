@@ -77,7 +77,9 @@ def parse_function(input_str: str) -> ParsedFunction | None:
 embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
 
 
-async def get_potential_nodes(question: str) -> list[str]:
+async def get_potential_nodes(
+    question: str, document_ids: list[str] | None = None
+) -> list[str]:
     """Get potential nodes for a question using vector similarity."""
     # Load it on demand here to generate the embeddings on the fly
     # @TODO find a better way to get the embeddings created
@@ -90,10 +92,34 @@ async def get_potential_nodes(question: str) -> list[str]:
         node_label="KeyElement",
         text_node_properties=["id"],
         embedding_node_property="embedding",
-        retrieval_query="RETURN node.id AS text, score, {} AS metadata",
+        retrieval_query="""
+MATCH (node:KeyElement)
+    <-[:HAS_KEY_ELEMENT]-(fact)
+    <-[:HAS_ATOMIC_FACT]-(chunk:Chunk)
+    <-[:HAS_CHUNK]-(doc:Document)
+RETURN node.id AS text, score, doc.id AS document_id, {
+    document_id: doc.id,
+    _embedding_: node.embedding
+} AS metadata
+""",
     )
-    data = await neo4j_vector.asimilarity_search(question, k=50)
-    return [el.page_content for el in data]
+
+    filter_query: dict[str, Any] = {}
+    if document_ids:
+        logger.debug(f"Filtering by document ids: {document_ids}")
+        filter_query["document_id"] = {"$in": document_ids}
+
+    # Use MMR to get the most relevant and diverse key elements
+    retriver = neo4j_vector.as_retriever(
+        search_type="mmr",
+        search_kwargs={
+            "k": 50,
+            "fetch_k": 250,
+            "filter": filter_query,
+        },
+    )
+    key_elements = await retriver.ainvoke(question)
+    return [el.page_content for el in key_elements]
 
 
 def get_atomic_facts(
@@ -195,15 +221,28 @@ async def initial_notebook(state: OverallState) -> dict[str, str]:
         text_node_properties=["text", "description", "document_name"],
         embedding_node_property="embedding",
         retrieval_query="""
-RETURN node.text AS text, score, {
+MATCH (node:Chunk)
+RETURN node.text AS text, score, node.document_id AS document_id, {
     document_name: node.document_name,
     description: node.description,
     document_id: node.document_id,
     chunk_id: node.id,
-    source: node.source
-} AS metadata""",
+    source: COALESCE(node.source, 'Unknown'),
+    _embedding_: node.embedding
+} AS metadata
+""",
     )
-    data = await neo4j_vector.asimilarity_search(state.get("question"), k=3)
+    filter_query: dict[str, Any] = {}
+    if state.get("document_ids"):
+        logger.debug(f"Filtering by document ids: {state.get('document_ids')}")
+        filter_query["document_id"] = {"$in": state.get("document_ids")}
+    retriver = neo4j_vector.as_retriever(
+        search_kwargs={
+            "k": 3,
+            "filter": filter_query,
+        },
+    )
+    data = await retriver.ainvoke(state.get("question"))
     logger.info(f"Retrieved {len(data)} chunks")
     docs = "".join(
         [
@@ -255,7 +294,9 @@ async def initial_node_selection(
     state: OverallState, config: RunnableConfig | None = None
 ) -> OverallState:
     """Select initial nodes for exploration."""
-    potential_nodes = await get_potential_nodes(state.get("question"))
+    potential_nodes = await get_potential_nodes(
+        state.get("question"), state.get("document_ids")
+    )
     initial_nodes: InitialNodes = await initial_nodes_chain.ainvoke(
         {
             "question": state.get("question"),
@@ -385,7 +426,9 @@ async def chunk_check(state: OverallState, config: RunnableConfig) -> OverallSta
             response["chosen_action"] = "search_neighbor"
             # Get neighbors/use vector similarity
             logger.debug(f"Neighbor rational: {read_chunk_results.rational_next_move}")
-            neighbors = await get_potential_nodes(read_chunk_results.rational_next_move)
+            neighbors = await get_potential_nodes(
+                read_chunk_results.rational_next_move, state.get("document_ids")
+            )
             response["neighbor_check_queue"] = neighbors
 
     response["check_chunks_queue"] = check_chunks_queue

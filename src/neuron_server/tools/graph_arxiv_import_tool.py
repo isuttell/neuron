@@ -11,7 +11,8 @@ from pydantic import BaseModel, Field
 from werkzeug.exceptions import BadRequest
 
 from neuron_server.config import config as neuron_config
-from neuron_server.graph import get_document, process_document
+from neuron_server.graph import get_document
+from neuron_server.graph.document import DocumentMetadata, process_document
 from neuron_server.logger import logger
 
 encoder = tiktoken.encoding_for_model("gpt-4o")
@@ -114,12 +115,13 @@ Article {document_id} already exists in knowledge graph. Skipping import.
             # Convert the PDF to markdown text
             text = pymupdf4llm.to_markdown(pdf_full_path, show_progress=True)
             # Process the document and add it to the graph
-            doc_result = await process_document(
-                text=text,
+            metadata = DocumentMetadata(
                 document_id=document_id,
                 document_name=article.title,
                 source=article.entry_id,
-                config=config,
+            )
+            doc_result = await process_document(
+                text=text, config=config, metadata=metadata
             )
             token_count = len(encoder.encode(text))
 

@@ -31,16 +31,21 @@ class GraphQuestionToolArgs(BaseModel):
             "relevant information in the question."
         )
     )
+    document_ids: list[str] | None = Field(
+        description=(
+            "The specific document ids to search for relevant information in otherwise "
+            "the graph will search for relevant information in all documents."
+        )
+    )
 
 
 class GraphQuestionTool(BaseTool):
     name: str = "graph_question_tool"
     description: str = """
 This tool answers questions, and looks for related information from a knowledge
-graph database filled with arxiv articles and other knowledge. Use this tool to
-answer deep questions from the graph. Make sure to include as many details as
-possible in the question. This may take a while and use a lot of tokens so reuse
-past results in the history if possible when answering follow up questions.
+graph database filled with arxiv articles and other knowledge provided by the user.
+Use this tool to answer questions from the graph to avoid having to load large
+documents into the context window.
 """.strip()
     args_schema: type[GraphQuestionToolArgs] = GraphQuestionToolArgs
 
@@ -51,11 +56,14 @@ past results in the history if possible when answering follow up questions.
         self,
         question: str,
         config: RunnableConfig,
+        document_ids: list[str] | None = None,
         recursion_limit: int = 500,
     ) -> str:
         try:
             assert "thread_id" in config["configurable"]
-            logger.debug(f"Graph Question: {question}")
+            logger.debug(
+                f"Graph Question: {question} with document ids: {document_ids}"
+            )
             from neuron_server.llms.agent import aget_state
 
             state = await aget_state(thread_id=config["configurable"]["thread_id"])
@@ -72,6 +80,7 @@ past results in the history if possible when answering follow up questions.
             history = get_buffer_string(messages)
             response: OutputState = await question_graph.ainvoke(
                 {
+                    "document_ids": document_ids,
                     "question": question,
                     # include recent history in case if includes relevant information
                     # to help better answer the question

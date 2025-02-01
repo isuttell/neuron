@@ -13,6 +13,7 @@ from langchain_core.documents import Document
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables import RunnableConfig
+from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field
 
 from neuron_server.cache import cache_response
@@ -167,6 +168,10 @@ Prompt:
     input_variables=["prompt", "document", "index", "now", "metadata"],
 )
 
+document_inspect_chain = (
+    document_inspect_prompt | ChatOpenAI(model="o3-mini-2025-01-31") | StrOutputParser()
+)
+
 
 class InspectDocumentTool(BaseTool):
     name: str = "document_inspect"
@@ -216,18 +221,12 @@ pdf
             if len(docs) == 0:
                 raise InspectDocumentToolError("No documents found")
 
-            from neuron_server.models.provider_model import ProviderModelModel
-
-            # Inspect the image
-            llm = await ProviderModelModel.get_active_llm()
-            chain = document_inspect_prompt | llm.model | StrOutputParser()
-
             results = []
             tasks = []
             for index, doc in enumerate(docs):
                 if summarize_prompt:
                     tasks.append(
-                        chain.ainvoke(
+                        document_inspect_chain.ainvoke(
                             {
                                 "prompt": summarize_prompt,
                                 "document": doc.page_content,
