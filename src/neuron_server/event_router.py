@@ -33,8 +33,8 @@ class EventRouter:
     def __init__(self, routes: dict[str, tuple[BaseModel, Callable]] = None) -> None:
         self.routes = routes or {}
 
-    def on(self, model: BaseModel):
-        def decorator(func):
+    def on(self, model: BaseModel) -> Callable[[Callable], Callable]:
+        def decorator(func: Callable[..., Coroutine]) -> Callable:
             if model.__name__ in self.routes:
                 raise ValueError(f"Event type {model.__name__} already registered")
             self.routes[model.__name__] = model, func

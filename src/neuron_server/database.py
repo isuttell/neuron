@@ -17,7 +17,7 @@ from sqlalchemy import (
     func,
 )
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.dialects.postgresql import UUID as pgUUID
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Mapped, relationship, sessionmaker
@@ -25,7 +25,11 @@ from sqlalchemy.pool import NullPool
 
 from neuron_server.config import config
 
-DB_URI = f"{config.database.user}:{config.database.password}@{config.database.host}:{config.database.port}/{config.database.database}"
+DB_URI = (
+    f"{config.database.user}:{config.database.password}"
+    f"@{config.database.host}:{config.database.port}"
+    f"/{config.database.database}"
+)
 
 
 engine = create_async_engine(
@@ -39,7 +43,7 @@ Base = declarative_base()
 class ProviderModel(Base):
     __tablename__ = "provider_models"
 
-    id = Column(pgUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     provider = Column(String, nullable=False)
     model_id = Column(String, nullable=False)
     enabled = Column(Boolean, nullable=False, default=False)
@@ -52,7 +56,7 @@ class ProviderModel(Base):
 class Personality(Base):
     __tablename__ = "personalities"
 
-    id = Column(pgUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(Text, nullable=False)
     context = Column(Text, nullable=False, default="")
     memory = Column(Text, nullable=False, default="")
@@ -75,7 +79,7 @@ class Personality(Base):
 class Thread(Base):
     __tablename__ = "threads"
 
-    id = Column(pgUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(Text, default="")
     context = Column(Text, default="")
     memory = Column(Text, default="")
@@ -83,7 +87,7 @@ class Thread(Base):
     message_count = Column(Integer, default=0)
     user_id = Column(String, nullable=False, index=True)
     personality_id = Column(
-        pgUUID(as_uuid=True),
+        PG_UUID(as_uuid=True),
         ForeignKey("personalities.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
@@ -101,13 +105,13 @@ class Thread(Base):
 class MediaItem(Base):
     __tablename__ = "media_items"
 
-    id = Column(pgUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(Text, default="")
     description = Column(Text, default="")
     url = Column(Text, nullable=False)
     media_type = Column(String, nullable=False)
     thread_id = Column(
-        pgUUID(as_uuid=True),
+        PG_UUID(as_uuid=True),
         ForeignKey("threads.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
@@ -126,15 +130,15 @@ class MediaItem(Base):
 class MediaListItem(Base):
     __tablename__ = "media_list_items"
 
-    id = Column(pgUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     index = Column(Integer, nullable=False)
     media_list_id = Column(
-        pgUUID(as_uuid=True),
+        PG_UUID(as_uuid=True),
         ForeignKey("media_lists.id", ondelete="CASCADE"),
         nullable=False,
     )
     media_item_id = Column(
-        pgUUID(as_uuid=True),
+        PG_UUID(as_uuid=True),
         ForeignKey("media_items.id", ondelete="CASCADE"),
         nullable=False,
     )
@@ -149,7 +153,7 @@ class MediaListItem(Base):
 class MediaList(Base):
     __tablename__ = "media_lists"
 
-    id = Column(pgUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(Text, nullable=False)
     description = Column(Text, nullable=False)
     tags = Column(JSON, nullable=False, default=list)
@@ -168,9 +172,9 @@ class MediaList(Base):
 class Message(Base):
     __tablename__ = "messages"
 
-    id = Column(pgUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     thread_id = Column(
-        pgUUID(as_uuid=True),
+        PG_UUID(as_uuid=True),
         ForeignKey("threads.id", ondelete="CASCADE"),
         nullable=False,
     )
@@ -188,7 +192,7 @@ class Message(Base):
 class LangchainPGCollection(Base):
     __tablename__ = "langchain_pg_collection"
 
-    uuid = Column(pgUUID, primary_key=True, nullable=False)
+    uuid = Column(PG_UUID, primary_key=True, nullable=False)
     name = Column(String, nullable=False, unique=True)
     cmetadata = Column(JSON, nullable=True)
     embeddings: Mapped[list["LangchainPGEmbedding"]] = relationship(
@@ -201,7 +205,7 @@ class LangchainPGEmbedding(Base):
 
     id = Column(String, primary_key=True)
     collection_id = Column(
-        pgUUID,
+        PG_UUID,
         ForeignKey("langchain_pg_collection.uuid", ondelete="CASCADE"),
         nullable=True,
     )
@@ -216,7 +220,7 @@ class LangchainPGEmbedding(Base):
 class Prompt(Base):
     __tablename__ = "prompts"
 
-    id = Column(pgUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(Text, nullable=False)
     text = Column(Text, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -224,7 +228,7 @@ class Prompt(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
     personality_id = Column(
-        pgUUID(as_uuid=True),
+        PG_UUID(as_uuid=True),
         ForeignKey("personalities.id", ondelete="CASCADE"),
         nullable=True,
     )

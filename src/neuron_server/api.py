@@ -4,6 +4,7 @@ import logging
 import os
 import re
 from functools import wraps
+from typing import Any, Callable
 
 import openai
 from quart import Blueprint, Quart, Response, send_from_directory, websocket
@@ -45,9 +46,7 @@ from neuron_server.controllers.prompt_controller import (
 from neuron_server.controllers.prompt_controller import (
     router as prompt_router,
 )
-from neuron_server.controllers.provider_controller import (
-    provider_blueprint as provider_blueprint,
-)
+from neuron_server.controllers.provider_controller import provider_blueprint
 from neuron_server.controllers.scheduler_controller import (
     blueprint as scheduler_blueprint,
 )
@@ -83,17 +82,24 @@ app = Quart(
 
 
 def cors(
-    allowed_origins: list[str] = ["*"],
-    allowed_methods: list[str] = ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowed_headers: list[str] = ["Content-Type", "Authorization"],
-):
-    def add_cors_headers(func):
+    allowed_origins: list[str] | None = None,
+    allowed_methods: list[str] | None = None,
+    allowed_headers: list[str] | None = None,
+) -> Callable:
+    if allowed_origins is None:
+        allowed_origins = ["*"]
+    if allowed_methods is None:
+        allowed_methods = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+    if allowed_headers is None:
+        allowed_headers = ["Content-Type", "Authorization"]
+
+    def add_cors_headers(func: Callable) -> Callable:
         func.required_methods = getattr(func, "required_methods", set())  # type: ignore
         func.required_methods.add("OPTIONS")  # type: ignore
         func.provide_automatic_options = False  # type: ignore
 
         @wraps(func)
-        async def wrapped_func(*args, **kwargs):
+        async def wrapped_func(*args: Any, **kwargs: Any) -> Response:
             response: Response = await func(*args, **kwargs)
             response.headers["Access-Control-Allow-Origin"] = ", ".join(allowed_origins)
             response.headers["Access-Control-Allow-Methods"] = ", ".join(
@@ -115,10 +121,10 @@ def cache_control(
     private: bool = False,
     public: bool = False,
     immutable: bool = False,
-):
-    def add_headers(func):
+) -> Callable:
+    def add_headers(func: Callable) -> Callable:
         @wraps(func)
-        async def wrapped_func(*args, **kwargs):
+        async def wrapped_func(*args: Any, **kwargs: Any) -> Response:
             response: Response = await func(*args, **kwargs)
             values = []
 
@@ -164,7 +170,7 @@ blueprint = Blueprint(
 @blueprint.get("/scheduled")
 @blueprint.get("/providers")
 @blueprint.get("/share/<list_id>")
-async def index(**kwargs):
+async def index(**kwargs: Any) -> Response:
     return await blueprint.send_static_file("index.html")
 
 
@@ -173,7 +179,7 @@ async def index(**kwargs):
 @blueprint.get("/neuron/static/<path:path>")
 @cors(allowed_methods=["GET", "OPTIONS"], allowed_headers=["Authorization"])
 @cache_control(max_age=31536000)
-async def get_static(path):
+async def get_static(path: str) -> Response:
     match = re.match(r".*_(t|l|xl|xxl|o)\.(jpe?g|png|webp)$", path)
     if match and not os.path.exists(os.path.join(config.static_folder, path)):
         size_suffix = match.group(1)
@@ -192,7 +198,7 @@ async def get_static(path):
     return await send_from_directory(config.static_folder, path)
 
 
-async def sending():
+async def sending() -> None:
     async with client.pubsub() as pubsub:
         await pubsub.subscribe("app")
         while True:
@@ -203,7 +209,7 @@ async def sending():
                 await websocket.send(message["data"].decode("utf-8"))
 
 
-async def receiving():
+async def receiving() -> None:
     while True:
         try:
             data = await websocket.receive()
@@ -214,7 +220,7 @@ async def receiving():
 
 
 @blueprint.websocket("/ws")
-async def ws():
+async def ws() -> None:
     # First message is the access token
     data = await websocket.receive()
     token = None
@@ -236,7 +242,7 @@ async def ws():
 
 
 @app.get("/status")
-async def health():
+async def health() -> dict[str, str]:
     await client.ping()
     await pool.check()
     return {"server": "neuron", "status": "healthy"}
@@ -258,7 +264,7 @@ app.register_blueprint(provider_blueprint, url_prefix="/api/providers")
 
 
 @app.errorhandler(openai.APIError)
-async def openai_api_error(error: openai.APIError):
+async def openai_api_error(error: openai.APIError) -> tuple[dict[str, str], int]:
     logger.error(error, exc_info=True)
     if error.body:
         logger.error(error.body)
@@ -266,13 +272,13 @@ async def openai_api_error(error: openai.APIError):
 
 
 @app.errorhandler(Exception)
-async def internal_error(error):
+async def internal_error(error: Exception) -> tuple[dict[str, str], int]:
     logger.error(error, exc_info=True)
     return {"error": "Internal Server Error", "message": str(error)}, 500
 
 
 @app.errorhandler(HTTPException)
-async def http_error(error):
+async def http_error(error: HTTPException) -> tuple[dict[str, str], int]:
     logger.error(error, exc_info=True)
     return {"error": error.name, "message": error.description}, error.code
 
@@ -281,6 +287,6 @@ scheduler = TaskScheduler(host=config.redis.host, port=config.redis.port, db=2)
 
 
 @app.before_serving
-async def startup():
+async def startup() -> None:
     await scheduler.start()
     logger.info("Task scheduler started")
