@@ -53,11 +53,11 @@ Neuron is a realtime chat application built with LangChain and LangGraph to allo
 - Use SQLAlchemy ORM for database interactions; avoid raw SQL unless necessary.
 - Use Quart for the web server and WebSocket handling; prioritize async operations.
 - Use `snake_case` for variable names.
-- Use ruff for formatting and linting.
+- Use ruff for formatting and linting. Always run `cd ./src/neuron_server && ruff check --fix` to check for errors after each task.
 - **Types:** Include type hints in all functions and class methods.
 - **Commenting Style:** Use docstrings for all exported functions and classes to explain their purpose and parameters.
 - Use format specifiers instead of percent format strings.
-- Max line length is 88 characters
+- Max line length is 88 characters and tabs count for 4 spaces
 
 #### Backend Testing
 

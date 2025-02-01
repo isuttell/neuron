@@ -6,7 +6,8 @@ from langchain_core.messages.utils import get_buffer_string
 from langchain_core.runnables import Runnable, RunnableConfig
 from pydantic import BaseModel, Field
 
-from neuron_server.graph import OutputState, model, question_graph
+from neuron_server.graph import OutputState, question_graph
+from neuron_server.graph.chains import model
 from neuron_server.logger import logger
 
 message_trimmer: Runnable = trim_messages(

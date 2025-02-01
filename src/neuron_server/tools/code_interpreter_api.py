@@ -91,55 +91,141 @@ async def force_stop_code_interpreter() -> None:
     )
 
 
+async def setup_execution_environment(
+    python_code: str,
+    folder_name: str,
+) -> tuple[str, str, str]:
+    """Set up the execution environment and save the code."""
+    script_filename = "main.py"
+    temp_folder = os.path.abspath(os.path.join(neuron_config.temp_folder, folder_name))
+    temp_artifacts_folder = os.path.join(temp_folder, "artifacts")
+    os.makedirs(temp_artifacts_folder, mode=0o755)
+    script_file = os.path.join(temp_folder, script_filename)
+
+    with open(script_file, "w", encoding="utf-8") as f:
+        f.write(python_code)
+
+    logger.info(f"Saved python code to {script_file} and executing...")
+    return script_file, temp_artifacts_folder, script_filename
+
+
+def get_docker_args(
+    folder_name: str,
+    memory_limit: str,
+    cpu_limit: int,
+    script_filename: str,
+    code_interpreter_image: str,
+) -> list[str]:
+    """Construct Docker run command arguments."""
+    docker_folder_reference = os.path.abspath(
+        os.path.join(neuron_config.parent_temp_folder, folder_name)
+    )
+    return [
+        "docker",
+        "run",
+        "--name",
+        "neuron-code-interpreter",
+        "--memory",
+        f"{memory_limit}",
+        "--cpus",
+        f"{cpu_limit}",
+        "--read-only",
+        "--rm",
+        "--cap-drop",
+        "ALL",
+        "--network=none",
+        "-v",
+        "tmpfs:/tmp",
+        "-v",
+        f"{docker_folder_reference}:/app",
+        code_interpreter_image,
+        script_filename,
+    ]
+
+
+async def process_artifacts(
+    folder_name: str,
+    temp_artifacts_folder: str,
+    script_file: str,
+    process_output: str,
+    config: RunnableConfig,
+) -> tuple[str, list[str]]:
+    """Process execution artifacts and generate media items."""
+    artifacts_folder = os.path.join(
+        neuron_config.static_folder, "artifacts", folder_name
+    )
+    shutil.copytree(temp_artifacts_folder, artifacts_folder)
+    artifacts: list[str] = []
+
+    # Copy source code
+    src_filename = "source_code.py"
+    src_file = os.path.join(artifacts_folder, src_filename)
+    shutil.copy(script_file, artifacts_folder)
+    os.rename(os.path.join(artifacts_folder, "main.py"), src_file)
+
+    # Save stdout
+    if process_output:
+        stdout_file = os.path.join(artifacts_folder, "stdout.md")
+        with open(stdout_file, "w", encoding="utf-8") as f:
+            f.write(process_output.strip())
+
+    # Process generated files
+    for file in os.listdir(artifacts_folder):
+        media_type = get_media_type(file)
+        if media_type == "unknown":
+            continue
+
+        url = f"{neuron_config.static_content_url}/artifacts/{folder_name}/{file}"
+        create_params = MediaItemModel.CreateParams(
+            url=url,
+            media_type=media_type,
+            user_id=config["configurable"].get("user_id"),
+            thread_id=config["configurable"].get("thread_id"),
+            name=file,
+        )
+        await MediaItemModel.create(create_params)
+
+        if media_type == "image":
+            artifacts.append(f"<image>![{file}]({url})</image>")
+            create_thumbnails(os.path.join(artifacts_folder, file))
+        elif media_type == "video":
+            artifacts.append(f'<video src="{url}" controls />')
+        elif media_type == "audio":
+            artifacts.append(f'<audio src="{url}" controls />')
+        else:
+            artifacts.append(f"<link>[{file}]({url})</link>")
+
+    return process_output.strip() if process_output else "", artifacts
+
+
 async def run_code_interpreter(
     python_code: str,
     timeout: int = 120,
     code_interpreter_image: str = "192.168.1.160:5000/code-interpreter:latest",
     config: RunnableConfig = None,
 ) -> tuple[str, list[str]]:
+    """Execute Python code in a sandboxed environment and process the results."""
     try:
         cpu_limit = config.get("cpu_limit", 16) if config else 16
         memory_limit = config.get("memory_limit", "16g") if config else "16g"
         start_time = time.perf_counter()
+
         check_for_restricted_keywords(python_code)
-        script_filename = "main.py"
         folder_name = uuid4().hex
-        temp_folder = os.path.abspath(
-            os.path.join(neuron_config.temp_folder, folder_name)
-        )
-        temp_artifacts_folder = os.path.join(temp_folder, "artifacts")
-        os.makedirs(temp_artifacts_folder, mode=0o755)
-        script_file = os.path.join(temp_folder, script_filename)
-        with open(script_file, "w", encoding="utf-8") as f:
-            f.write(python_code)
-        logger.info(f"Saved python code to {script_file} and executing...")
-        # This needs to point to the host's filesystem and not the container's
-        docker_folder_reference = os.path.abspath(
-            os.path.join(neuron_config.parent_temp_folder, folder_name)
-        )
-        args = [
-            "docker",
-            "run",
-            "--name",
-            "neuron-code-interpreter",
-            "--memory",
-            f"{memory_limit}",
-            "--cpus",
-            f"{cpu_limit}",
-            "--read-only",
-            "--rm",
-            "--cap-drop",
-            "ALL",
-            # "--user",
-            # "nobody",
-            "--network=none",
-            "-v",
-            "tmpfs:/tmp",
-            "-v",
-            f"{docker_folder_reference}:/app",
-            code_interpreter_image,
+        (
+            script_file,
+            temp_artifacts_folder,
             script_filename,
-        ]
+        ) = await setup_execution_environment(python_code, folder_name)
+
+        args = get_docker_args(
+            folder_name,
+            memory_limit,
+            cpu_limit,
+            script_filename,
+            code_interpreter_image,
+        )
+
         process = await run_subprocess(
             args=args,
             timeout=timeout,
@@ -148,57 +234,20 @@ async def run_code_interpreter(
             text=True,
             encoding="utf-8",
         )
+
         duration = time.perf_counter() - start_time
         if process.returncode != 0:
             raise Exception(f"Error executing script: stderr={process.stderr.strip()}")
         logger.info(f"Code interpreter tool execution time: {duration:.2f}s")
 
-        artifacts_folder = os.path.join(
-            neuron_config.static_folder,
-            "artifacts",
+        return await process_artifacts(
             folder_name,
-        )
-        shutil.copytree(
             temp_artifacts_folder,
-            artifacts_folder,
+            script_file,
+            process.stdout,
+            config,
         )
-        artifacts: list[str] = []
 
-        # Copy the source code to the artifacts folder
-        src_filename = "source_code.py"
-        src_file = os.path.join(artifacts_folder, src_filename)
-        shutil.copy(script_file, artifacts_folder)
-        os.rename(os.path.join(artifacts_folder, script_filename), src_file)
-
-        if process.stdout:
-            stdout_filename = "stdout.md"
-            stdout_file = os.path.join(artifacts_folder, stdout_filename)
-            with open(stdout_file, "w", encoding="utf-8") as f:
-                f.write(process.stdout.strip())
-
-        for file in os.listdir(artifacts_folder):
-            media_type = get_media_type(file)
-            if media_type == "unknown":
-                continue
-            url = f"{neuron_config.static_content_url}/artifacts/{folder_name}/{file}"
-            create_params = MediaItemModel.CreateParams(
-                url=url,
-                media_type=media_type,
-                user_id=config["configurable"].get("user_id"),
-                thread_id=config["configurable"].get("thread_id"),
-                name=file,
-            )
-            await MediaItemModel.create(create_params)
-            if media_type == "image":
-                artifacts.append(f"<image>![{file}]({url})</image>")
-                create_thumbnails(os.path.join(artifacts_folder, file))
-            elif media_type == "video":
-                artifacts.append(f'<video src="{url}" controls />')
-            elif media_type == "audio":
-                artifacts.append(f'<audio src="{url}" controls />')
-            else:
-                artifacts.append(f"<link>[{file}]({url})</link>")
-        return process.stdout.strip() if process.stdout else "", artifacts
     except TimeoutError:
         await force_stop_code_interpreter()
         raise Exception(

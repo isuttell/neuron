@@ -7,14 +7,16 @@ from neuron_server.tools.deepseek_reasoning_tool import DeepSeekReasoningTool
 
 
 @pytest.mark.asyncio
-async def test_basic_reasoning():
+async def test_basic_reasoning() -> None:
     """Test basic reasoning without variable injection"""
     tool = DeepSeekReasoningTool()
     config = RunnableConfig(configurable={"user_id": "test", "thread_id": "test"})
 
     response = await tool._arun(
         system_prompt="You are an expert at analyzing software architecture",
-        user_prompt="What are the key benefits of microservices? Keep the response short.",
+        user_prompt=(
+            "What are the key benefits of microservices? Keep the response short."
+        ),
         temperature=0.1,
         config=config,
     )
@@ -22,7 +24,7 @@ async def test_basic_reasoning():
 
 
 @pytest.mark.asyncio
-async def test_variable_injection():
+async def test_variable_injection() -> None:
     """Test reasoning with variable injection"""
     tool = DeepSeekReasoningTool()
     config = RunnableConfig(configurable={"user_id": "test", "thread_id": "test"})

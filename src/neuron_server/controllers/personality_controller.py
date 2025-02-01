@@ -36,6 +36,7 @@ class CreatePersonality(BaseModel):
 class UpdatePersonality(CreatePersonality):
     pass
 
+
 class MissingContextError(Exception):
     def __init__(self, message: str, response: str) -> None:
         self.message = message
@@ -50,7 +51,9 @@ async def ainvoke_update_personality(
     llm: LLM, personality: PersonalityModel, context: str, prompt: str
 ) -> str:
     tools = get_tools(personality.tool_set) if personality.tool_set else default_tools
-    chain: Runnable = personality_update_prompt | llm.model.bind_tools(tools) | StrOutputParser()
+    chain: Runnable = (
+        personality_update_prompt | llm.model.bind_tools(tools) | StrOutputParser()
+    )
     content: str = await chain.ainvoke({"context": context, "prompt": prompt})
     assert isinstance(content, str)
     match = re.search(r"<\|context\|>(.*?)</?\|context\|>", content, re.DOTALL)
@@ -142,7 +145,7 @@ async def create_personality() -> dict[str, dict]:
         context=payload.context,
         memory=payload.memory,
         logo=payload.logo,
-        tool_set=payload.tool_set
+        tool_set=payload.tool_set,
     )
     personality = await PersonalityModel.create(params=create_params)
     return {"personality": personality.model_dump()}
@@ -170,7 +173,7 @@ async def update_personality(personality_id: UUID) -> dict[str, dict]:
         context=payload.context,
         memory=payload.memory,
         tool_set=payload.tool_set,
-        logo=payload.logo
+        logo=payload.logo,
     )
     personality = await PersonalityModel.update(params=update_params)
     return {"personality": personality.model_dump()}

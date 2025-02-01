@@ -1,26 +1,20 @@
-from dotenv import load_dotenv
-
-# Load environment variables from a .env file
-load_dotenv()
-
-from pi_heif import register_heif_opener
-
-register_heif_opener()
-
 import asyncio
 import sys
 import time
 
 from hypercorn.asyncio import serve
 from hypercorn.config import Config
+from pi_heif import register_heif_opener
 
 from neuron_server.api import app
 from neuron_server.config import config
 from neuron_server.database import start
 from neuron_server.logger import logger
 
+register_heif_opener()
 
-async def init():
+
+async def init() -> None:
     start_time = time.perf_counter()
     logger.debug("Starting database...")
     await start()

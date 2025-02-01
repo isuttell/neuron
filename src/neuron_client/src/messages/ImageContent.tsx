@@ -80,7 +80,7 @@ const ImageContent: React.FC<ImageContentProps> = ({
       <DialogTrigger asChild>
         <div
           className={cn(
-            "relative max-h-[1024px] max-w-[1024px] w-full h-full",
+            "relative max-h-[1024px] max-w-[1024px] w-full h-full overflow-hidden",
             className
           )}
         >
