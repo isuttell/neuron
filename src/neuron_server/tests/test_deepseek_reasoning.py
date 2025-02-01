@@ -5,6 +5,8 @@ from langchain_core.runnables import RunnableConfig
 
 from neuron_server.tools.deepseek_reasoning_tool import DeepSeekReasoningTool
 
+pytestmark = pytest.mark.skip(reason="Temporarily disabled to avoid API calls")
+
 
 @pytest.mark.asyncio
 async def test_basic_reasoning() -> None:

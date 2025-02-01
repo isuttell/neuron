@@ -61,7 +61,7 @@ Neuron is a realtime chat application built with LangChain and LangGraph to allo
 
 #### Backend Testing
 
-- Write tests using Pytest.
+- Write tests using Pytest and run them after each task
 - Include tests for controllers, tools, and database models.
 - Use mocking for database and network operations to ensure isolation of tests.
 
