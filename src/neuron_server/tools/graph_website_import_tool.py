@@ -22,15 +22,17 @@ async def load_pdf_from_url(url: str) -> Document:
         os.path.join(neuron_config.temp_folder, f"{encode_md5(url)}.pdf")
     )
     try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url) as response:
-                response.raise_for_status()
-                with open(temp_file, "wb") as f:
-                    while True:
-                        chunk = await response.content.read(1024)
-                        if not chunk:
-                            break
-                        f.write(chunk)
+        async with (
+            aiohttp.ClientSession() as session,
+            session.get(url) as response,
+            open(temp_file, "wb") as f,
+        ):
+            response.raise_for_status()
+            while True:
+                chunk = await response.content.read(1024)
+                if not chunk:
+                    break
+                f.write(chunk)
         text = pymupdf4llm.to_markdown(temp_file, show_progress=True)
         return Document(
             page_content=text,
@@ -45,17 +47,16 @@ async def load_pdf_from_url(url: str) -> Document:
 
 
 async def load_text_from_url(url: str) -> Document:
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url) as response:
-            response.raise_for_status()
-            text = await response.text()
-            return Document(
-                page_content=text,
-                metadata={
-                    "title": url.rsplit("/", 1)[-1],
-                    "sourceURL": url,
-                },
-            )
+    async with aiohttp.ClientSession() as session, session.get(url) as response:
+        response.raise_for_status()
+        text = await response.text()
+        return Document(
+            page_content=text,
+            metadata={
+                "title": url.rsplit("/", 1)[-1],
+                "sourceURL": url,
+            },
+        )
 
 
 def count_tokens(text: str) -> int:
@@ -64,27 +65,30 @@ def count_tokens(text: str) -> int:
     return len(encoder.encode(text))
 
 
-class GraphWebsiteImportFailed(Exception):
+class GraphWebsiteImportError(Exception):
     pass
 
 
 class GraphWebsiteImportToolArgs(BaseModel):
     url: str = Field(
-        description="The url of the document or website to import. Supports html websites, text files, pdfs, csvs, and markdown documents"
+        description="The url of the document or website to import. "
+        "Supports html websites, text files, pdfs, csvs, and markdown documents"
     )
     mode: Literal["scrape", "crawl"] | None = Field(
         "scrape",
-        description="The mode of the website import. Can be 'scrape' or 'crawl'. Scrape is for a single url and Crawl is for the url and all accessible sub pages. Ignored when importing documents",
+        description="The mode of the website import. Can be 'scrape' or 'crawl'. "
+        "Scrape is for a single url and Crawl is for the url and all accessible "
+        "sub pages. Ignored when importing documents",
     )
 
 
 class GraphWebsiteImportTool(BaseTool):
     name: str = "graph_website_import"
-    description: str = (
-        """
-This tool imports documents, or scrapes a website using Firecrawl, and adds it to the knowledge graph. Use this save information from the internet for later use or when the user asks you to save/import a website/pdf url.
+    description: str = """
+This tool imports documents, or scrapes a website using Firecrawl, and adds it to
+the knowledge graph. Use this save information from the internet for later use or
+when the user asks you to save/import a website/pdf url.
 """.strip()
-    )
     args_schema: type[GraphWebsiteImportToolArgs] = GraphWebsiteImportToolArgs
 
     def _run(self, url: str, config: RunnableConfig, mode: str = "scrape") -> str:
@@ -117,7 +121,7 @@ This tool imports documents, or scrapes a website using Firecrawl, and adds it t
                 docs = [doc]
             else:
                 if "zaks.io" in url or "192.168" in url:
-                    raise GraphWebsiteImportFailed(
+                    raise GraphWebsiteImportError(
                         "FireCrawl cannot access urls on the local network."
                     )
 
@@ -127,10 +131,13 @@ This tool imports documents, or scrapes a website using Firecrawl, and adds it t
                 docs = await loader.aload()
 
             if len(docs) == 0:
-                raise GraphWebsiteImportFailed("No documents found")
+                raise GraphWebsiteImportError("No documents found")
 
             # Process the documents and add them to the graph
-            result = f"# Knowledge Graph Import Results\n\nImported '{url}' to the knowledge graph in {len(docs)} document(s)"
+            result = (
+                f"# Knowledge Graph Import Results\n\n"
+                f"Imported '{url}' to the knowledge graph in {len(docs)} document(s)"
+            )
             for doc in docs:
                 source = doc.metadata.get("sourceURL", doc.metadata.get("url", url))
                 # Count tokens in the document
@@ -151,9 +158,9 @@ This tool imports documents, or scrapes a website using Firecrawl, and adds it t
 
 ## Document {doc_result.document_id}
 
-* **Name:** {doc_result.document_name or 'unknown'}
-* **Source:** {doc_result.source or 'unknown'}
-* **Keywords:** {keywords or 'None'}
+* **Name:** {doc_result.document_name or "unknown"}
+* **Source:** {doc_result.source or "unknown"}
+* **Keywords:** {keywords or "None"}
 * **Tokens:** {token_count:,}
 
 ### Summary

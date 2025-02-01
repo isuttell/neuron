@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from typing import Any
 
 from langchain.tools import BaseTool
 from langchain_core.runnables import RunnableConfig
@@ -33,17 +34,17 @@ class MediaListCreateTool(BaseTool):
 
     args_schema: type[MediaListCreateToolArgs] = MediaListCreateToolArgs
 
-    def _run(self, *args, **kwargs) -> str:
+    def _run(self, *args: Any, **kwargs: Any) -> str:
         return asyncio.run(self._arun(*args, **kwargs))
 
-    async def _arun(
+    async def _arun(  # noqa: PLR0913
         self,
         name: str,
         description: str,
         tags: list[str] | None = None,
         visibility: str = "private",
         shared_with: list[str] | None = None,
-        config: RunnableConfig = None,
+        config: RunnableConfig | None = None,
     ) -> str:
         try:
             user_id = config["configurable"].get("user_id")
@@ -60,8 +61,15 @@ class MediaListCreateTool(BaseTool):
                 shared_with=shared_with,
             )
 
-            logger.debug(f"Created media list: {media_list.name} (ID: {media_list.id})")
-            return f"Successfully created media list '{media_list.name}' (ID: {media_list.id})"
+            logger.debug(
+                "Created media list: %s (ID: %s)",
+                media_list.name,
+                media_list.id,
+            )
+            return (
+                f"Successfully created media list '{media_list.name}' "
+                f"(ID: {media_list.id})"
+            )
 
         except Exception as e:
             logger.error(f"Failed to create media list: {e}", exc_info=True)

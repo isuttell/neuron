@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from typing import Any
 from uuid import UUID
 
 from langchain.tools import BaseTool
@@ -19,12 +20,13 @@ class MediaListAddItemToolArgs(BaseModel):
 class MediaListAddItemTool(BaseTool):
     name: str = "media_list_add_item"
     description: str = (
-        """This tool adds a media item to a specified media list. The user must have access to the media list."""
+        "This tool adds a media item to a specified media list. "
+        "The user must have access to the media list."
     )
 
     args_schema: type[MediaListAddItemToolArgs] = MediaListAddItemToolArgs
 
-    def _run(self, *args, **kwargs) -> str:
+    def _run(self, *args: Any, **kwargs: Any) -> str:
         return asyncio.run(self._arun(*args, **kwargs))
 
     async def _arun(
@@ -51,7 +53,10 @@ class MediaListAddItemTool(BaseTool):
             await MediaListModel.add_media_item(list_id, media_item_id, new_index)
 
             logger.debug(
-                f"Added media item {media_item_id} to list {list_id} at index {new_index}"
+                "Added media item %s to list %s at index %d",
+                media_item_id,
+                list_id,
+                new_index,
             )
             return f"Successfully added media item to {media_list.name}"
 

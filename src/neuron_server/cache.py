@@ -18,7 +18,7 @@ client = redis.Redis(
 )
 
 
-async def set_cache_key(key: str, value: Any, ttl: ExpiryT | None = None):
+async def set_cache_key(key: str, value: Any, ttl: ExpiryT | None = None) -> None:
     await client.set(key, pickle.dumps(value, protocol=pickle.HIGHEST_PROTOCOL), ex=ttl)
 
 

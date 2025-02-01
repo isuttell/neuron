@@ -21,17 +21,26 @@ message_trimmer: Runnable = trim_messages(
 
 class GraphQuestionToolArgs(BaseModel):
     question: str = Field(
-        description="The question to ask or instructions to give to the graph. Be specific and give semantic context. If you're asking a question that could be interpreted in multiple ways, be specific and give context to get the most relevant answer. Include any constraints or requirements that the answer must meet. Make no assumptions in this question. Include all relevant information in the question."
+        description=(
+            "The question to ask or instructions to give to the graph. Be specific "
+            "and give semantic context. If you're asking a question that could be "
+            "interpreted in multiple ways, be specific and give context to get the "
+            "most relevant answer. Include any constraints or requirements that the "
+            "answer must meet. Make no assumptions in this question. Include all "
+            "relevant information in the question."
+        )
     )
 
 
 class GraphQuestionTool(BaseTool):
     name: str = "graph_question_tool"
-    description: str = (
-        """
-This tool answers questions, and looks for related information from a knowledge graph database filled with arxiv articles and other knowledge. Use this tool to answer deep questions from the graph. Make sure to include as many details as possible in the question. This may take a while and use a lot of tokens so reuse past results in the history if possible when answering follow up questions.
+    description: str = """
+This tool answers questions, and looks for related information from a knowledge
+graph database filled with arxiv articles and other knowledge. Use this tool to
+answer deep questions from the graph. Make sure to include as many details as
+possible in the question. This may take a while and use a lot of tokens so reuse
+past results in the history if possible when answering follow up questions.
 """.strip()
-    )
     args_schema: type[GraphQuestionToolArgs] = GraphQuestionToolArgs
 
     def _run(self, question: str, config: RunnableConfig) -> str:
@@ -68,11 +77,11 @@ This tool answers questions, and looks for related information from a knowledge 
             )
             return f"""
 <answer>
-{response['answer']}
+{response["answer"]}
 </answer>
 
 <research_analysis>
-{response['analysis']}
+{response["analysis"]}
 </research_analysis>
 """.strip()
         except Exception as e:

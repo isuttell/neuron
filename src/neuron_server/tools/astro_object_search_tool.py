@@ -15,7 +15,10 @@ tap_service = pyvo.dal.TAPService("http://simbad.u-strasbg.fr/simbad/sim-tap")
 
 class AstroObjectSearchToolArgs(BaseModel):
     main_id: str = Field(
-        description="The exact object identifier to search for, e.g. 'M31', 'M 42', 'NGC 2247', 'alf Lyr', 'alf CMa'"
+        description=(
+            "The exact object identifier to search for, e.g. 'M31', 'M 42', "
+            "'NGC 2247', 'alf Lyr', 'alf CMa'"
+        )
     )
 
 
@@ -140,11 +143,23 @@ async def search_object(
 
 ## Distances
 
-{object_distances.to_markdown(index=False) if len(object_distances) > 0 else "No distance data found"}
+{
+        (
+            object_distances.to_markdown(index=False)
+            if len(object_distances) > 0
+            else "No distance data found"
+        )
+    }
 
 ## Diameter
 
-{object_diameter.to_markdown(index=False) if len(object_diameter) > 0 else "No diameter data found"}
+{
+        (
+            object_diameter.to_markdown(index=False)
+            if len(object_diameter) > 0
+            else "No diameter data found"
+        )
+    }
 
 ## Flux
 
@@ -152,17 +167,25 @@ async def search_object(
 
 ## Related Identifiers
 
-{object_identifiers.to_markdown(index=False) if len(object_identifiers) > 0 else "No related identifiers found"}
+{
+        (
+            object_identifiers.to_markdown(index=False)
+            if len(object_identifiers) > 0
+            else "No related identifiers found"
+        )
+    }
 """.strip()
 
 
 class AstroObjectSearchTool(BaseTool):
     name: str = "astro_object_search"
-    description: str = (
-        """
-This tool provides detailed information about an astronomical target specified by it's main identifier from Simbad. It returns the following information:
+    description: str = """
+This tool provides detailed information about an astronomical target specified by
+it's main identifier from Simbad. It returns the following information:
 
-1. Basic Object Details: Retrieves basic details about the object using the provided identifier such as the object type, precise ra/dec coordinates, redshift (rvz_redshift), parallax (rvz_parallax), angular size, and other details.
+1. Basic Object Details: Retrieves basic details about the object using the provided
+   identifier such as the object type, precise ra/dec coordinates, redshift
+   (rvz_redshift), parallax (rvz_parallax), angular size, and other details.
 2. Distances: Retrieves distance measurements related to the object.
 3. Diameter: Retrieves diameter measurements of the object.
 4. Flux: Retrieves flux measurements of the object.
@@ -170,7 +193,6 @@ This tool provides detailed information about an astronomical target specified b
 
 Always use this tool to answer questions about an astronomical object.
 """.strip()
-    )
 
     args_schema: type[AstroObjectSearchToolArgs] = AstroObjectSearchToolArgs
 
@@ -191,7 +213,7 @@ Always use this tool to answer questions about an astronomical object.
             return f"Error with Simbad object search: {str(e)}"
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Astro Tool CLI")
     parser.add_argument(
         "--main_id",

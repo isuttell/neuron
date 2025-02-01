@@ -28,15 +28,14 @@ async def load_pdf_from_url(
         os.path.join(neuron_config.temp_folder, f"{encode_md5(url)}.pdf")
     )
     try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url) as response:
-                response.raise_for_status()
-                with open(temp_file, "wb") as f:
-                    while True:
-                        chunk = await response.content.read(1024)
-                        if not chunk:
-                            break
-                        f.write(chunk)
+        async with aiohttp.ClientSession() as session, session.get(url) as response:
+            response.raise_for_status()
+            with open(temp_file, "wb") as f:
+                while True:
+                    chunk = await response.content.read(1024)
+                    if not chunk:
+                        break
+                    f.write(chunk)
         text = pymupdf4llm.to_markdown(temp_file, show_progress=True)
         return Document(
             page_content=text,
@@ -54,22 +53,21 @@ async def load_pdf_from_url(
 async def load_text_from_url(
     url: str, metadata: dict[str, Any] | None = None
 ) -> Document:
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url) as response:
-            response.raise_for_status()
-            text = await response.text()
-            return Document(
-                page_content=text,
-                metadata={
-                    "title": url.rsplit("/", 1)[-1],
-                    "sourceURL": url,
-                    **(metadata or {}),
-                },
-            )
+    async with aiohttp.ClientSession() as session, session.get(url) as response:
+        response.raise_for_status()
+        text = await response.text()
+        return Document(
+            page_content=text,
+            metadata={
+                "title": url.rsplit("/", 1)[-1],
+                "sourceURL": url,
+                **(metadata or {}),
+            },
+        )
+
 
 class InspectDocumentToolError(Exception):
     pass
-
 
 
 @cache_response(ttl=60 * 60 * 3)
@@ -107,28 +105,47 @@ async def load_document_from_url(
     return docs
 
 
-
 class InspectDocumentToolArgs(BaseModel):
     url: str = Field(
-        description="The url of the document or website to inspect. Supports html websites, text files, pdfs, csvs, and markdown documents"
+        description=(
+            "The url of the document or website to inspect. Supports html websites, "
+            "text files, pdfs, csvs, and markdown documents"
+        )
     )
     mode: Literal["scrape", "crawl"] | None = Field(
         "scrape",
-        description="The mode of the website import. Can be 'scrape' or 'crawl'. Scrape is for a single url and Crawl is for the url and all accessible sub pages. Ignored when importing documents",
+        description=(
+            "The mode of the website import. Can be 'scrape' or 'crawl'. Scrape is "
+            "for a single url and Crawl is for the url and all accessible sub pages. "
+            "Ignored when importing documents"
+        ),
     )
     add_facts_to_store: bool | None = Field(
         False,
-        description="If True, the document's atomic facts will be extracted and added to the document store. This is useful for long term memory.",
+        description=(
+            "If True, the document's atomic facts will be extracted and added to the "
+            "document store. This is useful for long term memory."
+        ),
     )
     summarize_prompt: str | None = Field(
         None,
-        description="If provided, the prompt will be used to summarize the document instead of returning the raw text. Use this to extract specific information from the document and reduce the amount of information returned. It should be in second person and be a detailed step by step guide to follow. It should include how detailed of an analysis to perform. Include relevant context to aid the analysis.",
+        description=(
+            "If provided, the prompt will be used to summarize the document instead of "
+            "returning the raw text. Use this to extract specific information from the "
+            "document and reduce the amount of information returned. It should be in "
+            "second person and be a detailed step by step guide to follow. It should "
+            "include how detailed of an analysis to perform. Include relevant context "
+            "to aid the analysis."
+        ),
     )
 
 
 document_inspect_prompt = PromptTemplate(
     template="""
-You are an intelligent assistant and will be given a text document and a prompt. Your job is to comprehensively summarize the document in a way that is useful for answering the prompt. Be as long and detailed as needed. Accuracy is important. Include quotes and markdown links to sources. Use markdown to format the output.
+You are an intelligent assistant and will be given a text document and a prompt. Your
+job is to comprehensively summarize the document in a way that is useful for answering
+the prompt. Be as long and detailed as needed. Accuracy is important. Include quotes
+and markdown links to sources. Use markdown to format the output.
 
 Now: {now}
 
@@ -153,9 +170,9 @@ Prompt:
 
 class InspectDocumentTool(BaseTool):
     name: str = "document_inspect"
-    description: str = (
-        """
-This tool downloads documents, or scrapes a website using Firecrawl, and returns its raw text. Use this to answer questions about a website or document.
+    description: str = """
+This tool downloads documents, or scrapes a website using Firecrawl, and returns its
+raw text. Use this to answer questions about a website or document.
 
 Supported document types:
 txt
@@ -165,10 +182,9 @@ srt
 vtt
 pdf
 """.strip()
-    )
     args_schema: type[InspectDocumentToolArgs] = InspectDocumentToolArgs
 
-    def _run(self, *args, **kwargs) -> str:
+    def _run(self, *args: tuple[Any, ...], **kwargs: dict[str, Any]) -> str:
         return asyncio.run(self._arun(*args, **kwargs))
 
     async def _arun(
@@ -224,24 +240,26 @@ pdf
                         )
                     )
                 else:
+                    metadata_str = json.dumps(doc.metadata or {}, indent=2)
                     results.append(
                         f"""\
         <document index="{index}">
             <source>{doc.metadata.get("source", url)}</source>
             <document_content>{doc.page_content.strip()}</document_content>
-            <document_metadata>{json.dumps(doc.metadata or {}, indent=2)}</document_metadata>
+            <document_metadata>{metadata_str}</document_metadata>
         </document>
     """
                     )
 
             summaries: list[str] = await asyncio.gather(*tasks)
             for index, summary in enumerate(summaries):
+                metadata_str = json.dumps(doc.metadata or {}, indent=2)
                 results.append(
                     f"""\
     <document index="{index}">
         <source>{doc.metadata.get("source", url)}</source>
         <document_summary>{summary.strip()}</document_summary>
-        <document_metadata>{json.dumps(doc.metadata or {}, indent=2)}</document_metadata>
+        <document_metadata>{metadata_str}</document_metadata>
     </document>
 """
                 )

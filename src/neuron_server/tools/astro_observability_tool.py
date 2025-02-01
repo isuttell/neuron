@@ -30,6 +30,16 @@ from neuron_server.logger import logger
 
 
 def plot_sky_plot(targets: list[FixedTarget], time: Time, observer: Observer) -> str:
+    """Generate a sky plot for the given targets.
+
+    Args:
+        targets: List of astronomical targets
+        time: Observation time range
+        observer: Observer location
+
+    Returns:
+        URL of the generated plot image
+    """
     cmap = cm.Set1
     ax = None
     for i, target in enumerate(targets):
@@ -37,7 +47,7 @@ def plot_sky_plot(targets: list[FixedTarget], time: Time, observer: Observer) ->
             target=target,
             observer=observer,
             time=time,
-            style_kwargs=dict(color=cmap(float(i) / len(targets)), label=target.name),
+            style_kwargs={"color": cmap(float(i) / len(targets)), "label": target.name},
             ax=ax,
             style_sheet=dark_style_sheet,
         )
@@ -48,18 +58,27 @@ def plot_sky_plot(targets: list[FixedTarget], time: Time, observer: Observer) ->
     filename = f"ast_sky_{uuid4().hex}.png"
     file_path = os.path.abspath(os.path.join(config.static_folder, filename))
     plt.title(
-        f"Sky Plot from {time[0].strftime('%Y-%m-%d')} to {time[-1].strftime('%Y-%m-%d')}"
+        f"Sky Plot from {time[0].strftime('%Y-%m-%d')} "
+        f"to {time[-1].strftime('%Y-%m-%d')}"
     )
     plt.savefig(file_path)
     plt.close()
-    url = f"{config.static_content_url}/{filename}"
-    return f"<image>![Sky Plot]({url})</image>"
+    return f"<image>![Sky Plot]({config.static_content_url}/{filename})</image>"
 
 
 def plot_airmass_plot(
     targets: list[FixedTarget], time: Time, observer: Observer
 ) -> str:
+    """Generate an airmass plot for the given targets.
 
+    Args:
+        targets: List of astronomical targets
+        time: Observation time range
+        observer: Observer location
+
+    Returns:
+        URL of the generated plot image
+    """
     ax = plot_airmass(
         targets=targets,
         observer=observer,
@@ -73,13 +92,22 @@ def plot_airmass_plot(
     file_path = os.path.abspath(os.path.join(config.static_folder, filename))
     plt.savefig(file_path)
     plt.close()
-    url = f"{config.static_content_url}/{filename}"
-    return f"<image>![Airmass Plot]({url})</image>"
+    return f"<image>![Airmass Plot]({config.static_content_url}/{filename})</image>"
 
 
 def plot_parallactic_plot(
     targets: list[FixedTarget], time: Time, observer: Observer
 ) -> str:
+    """Generate a parallactic angle plot for the given targets.
+
+    Args:
+        targets: List of astronomical targets
+        time: Observation time range
+        observer: Observer location
+
+    Returns:
+        URL of the generated plot image
+    """
     cmap = cm.Set1
     ax = None
     for i, target in enumerate(targets):
@@ -87,7 +115,7 @@ def plot_parallactic_plot(
             target=target,
             observer=observer,
             time=time,
-            style_kwargs=dict(color=cmap(float(i) / len(targets)), label=target.name),
+            style_kwargs={"color": cmap(float(i) / len(targets)), "label": target.name},
             ax=ax,
             style_sheet=dark_style_sheet,
         )
@@ -97,17 +125,36 @@ def plot_parallactic_plot(
     file_path = os.path.abspath(os.path.join(config.static_folder, filename))
     plt.savefig(file_path)
     plt.close()
-    url = f"{config.static_content_url}/{filename}"
-    return f"<image>![Parallactic Plot]({url})</image>"
+    return f"<image>![Parallactic Plot]({config.static_content_url}/{filename})</image>"
 
 
 class Target(BaseModel):
+    """Model representing an astronomical target.
+
+    Attributes:
+        name: Name of the target object
+        ra: Right ascension in degrees
+        dec: Declination in degrees
+    """
+
     name: str = Field(description="Target name")
     ra: float = Field(description="Target right ascension in degrees")
     dec: float = Field(description="Target declination in degrees")
 
 
 class AstroObservabilityToolArgs(BaseModel):
+    """Arguments for the AstroObservabilityTool.
+
+    Attributes:
+        latitude: Observer latitude in degrees
+        longitude: Observer longitude in degrees
+        elevation: Observer elevation in meters
+        start_time: Start of observation period (UTC)
+        end_time: End of observation period (UTC)
+        targets: List of astronomical targets to observe
+        time_resolution: Time resolution in hours
+    """
+
     latitude: float = Field(description="Observer latitude")
     longitude: float = Field(description="Observer longitude")
     elevation: float | None = Field(
@@ -118,7 +165,8 @@ class AstroObservabilityToolArgs(BaseModel):
     )
     end_time: datetime = Field(description="Observation end time in UTC. End of night.")
     targets: list[Target] = Field(
-        description="A list of targets, each target must have a name and it's ra/dec coordinates in degrees"
+        description="A list of targets, each target must have a name and it's ra/dec"
+        "coordinates in degrees"
     )
     time_resolution: float = Field(
         description="Time resolution in hours. The default is half an hour.",
@@ -128,16 +176,25 @@ class AstroObservabilityToolArgs(BaseModel):
 
 
 class AstroObservabilityTool(BaseTool):
+    """Tool for calculating astronomical object observability.
+
+    This tool calculates when astronomical objects are observable from a given location
+    and time period. It provides visualizations including sky plots, airmass plots,
+    and observability tables.
+    """
+
     name: str = "astro_observability"
-    description: str = (
-        """
-This tool accepts a list of targets and plots the observability of the targets over a given night time period at a specific location. Start and end times should always cover a full night. It returns times when the object becomes observable, and plots of the sky and airmass.  Use this to determine if an object is observable at a specific time.
+    description: str = """
+This tool accepts a list of targets and plots the observability of the targets over a
+given night time period at a specific location. Start and end times should always
+cover a full night. It returns times when the object becomes observable, and plots
+of the sky and airmass.  Use this to determine if an object is observable at a
+specific time.
 """.strip()
-    )
 
     args_schema: type[AstroObservabilityToolArgs] = AstroObservabilityToolArgs
 
-    def _run(
+    def _run(  # noqa: PLR0913
         self,
         latitude: float,
         longitude: float,
@@ -147,11 +204,28 @@ This tool accepts a list of targets and plots the observability of the targets o
         elevation: float = 0,
         time_resolution: float = 0.5,
     ) -> str:
+        """Calculate observability for given targets.
+
+        Args:
+            latitude: Observer latitude in degrees
+            longitude: Observer longitude in degrees
+            start_time: Start of observation period
+            end_time: End of observation period
+            targets: List of targets to observe
+            elevation: Observer elevation in meters
+            time_resolution: Time resolution in hours
+
+        Returns:
+            A formatted string containing observability results and plots
+        """
         try:
             start_time = start_time.astimezone()
             end_time = end_time.astimezone()
             logger.debug(
-                f"Calculating observability for {', '.join(map(lambda t: t.name, targets))} on {start_time.isoformat(timespec='minutes')} to {end_time.isoformat(timespec='minutes')}..."
+                "Calculating observability for %s on %s to %s...",
+                ", ".join(t.name for t in targets),
+                start_time.isoformat(timespec="minutes"),
+                end_time.isoformat(timespec="minutes"),
             )
             min_altitude: float = 18
             airmass_constraint: float = 3.0
@@ -249,7 +323,7 @@ This tool accepts a list of targets and plots the observability of the targets o
             return f"Error: {str(e)}"
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Astro Tool CLI")
     parser.add_argument(
         "--latitude",
@@ -280,9 +354,7 @@ def main():
         start_time = datetime.fromisoformat(args.start_time)
         end_time = datetime.fromisoformat(args.end_time)
     except ValueError:
-        print(
-            "Invalid observation time format. Please use ISO format (YYYY-MM-DDTHH:MM:SS)."
-        )
+        print("Invalid time format. Please use ISO format (YYYY-MM-DDTHH:MM:SS)")
         return
 
     tool = AstroObservabilityTool()

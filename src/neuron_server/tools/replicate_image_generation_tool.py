@@ -2,10 +2,9 @@ import asyncio
 import logging
 import os
 import random
-import time
 from datetime import datetime
-from io import BytesIO
-from typing import Literal
+from io import BufferedReader, BytesIO
+from typing import Any, Literal
 from uuid import uuid4
 
 import aiofiles
@@ -45,14 +44,11 @@ class ImageDescription(BaseModel):
     description: str = Field(description="The description of the image")
     caption: str = Field(description="A short caption for the image")
     prompt_comparison: str = Field(
-        description="A description of the differences between the prompt and the generated image highlighting any unexpected additions or subtractions"
+        description=(
+            "A description of the differences between the prompt and the generated "
+            "image highlighting any unexpected additions or subtractions"
+        )
     )
-
-
-# Inspect the image
-# model = ChatAnthropic(
-#     model="claude-3-5-sonnet-20241022", temperature=0, max_tokens=max_tokens
-# )
 
 
 model = ChatOpenAI(
@@ -60,22 +56,24 @@ model = ChatOpenAI(
     temperature=0,
 )
 
-chain = (
-    ChatPromptTemplate.from_messages(
-        [
-            (
-                "system",
-                """\
-You are an intelligent assistant that inspects AI generated images and returns descriptions of them to better understand what the image what was actually generated. Be long, descriptive and detailed in your description. Make sure to include the style of the image, the composition, the lighting, the mood, the subject, and any other relevant details. Use the prompt give context but do not use it as a direct source of information as it may not be what was actually generated. Explain your thoughts.
+chain = ChatPromptTemplate.from_messages(
+    [
+        (
+            "system",
+            """\
+You are an intelligent assistant that inspects AI generated images and returns
+descriptions of them to better understand what the image what was actually generated.
+Be long, descriptive and detailed in your description. Make sure to include the style
+of the image, the composition, the lighting, the mood, the subject, and any other
+relevant details. Use the prompt give context but do not use it as a direct source
+of information as it may not be what was actually generated. Explain your thoughts.
 
 The prompt was: <prompt>{prompt}</prompt>
 """.strip(),
-            ),
-            MessagesPlaceholder(variable_name="messages"),
-        ]
-    )
-    | model.with_structured_output(ImageDescription)
-)
+        ),
+        MessagesPlaceholder(variable_name="messages"),
+    ]
+) | model.with_structured_output(ImageDescription)
 
 
 async def describe_image(prompt: str, image: Image.Image) -> ImageDescription:
@@ -100,26 +98,58 @@ async def describe_image(prompt: str, image: Image.Image) -> ImageDescription:
 
 class ReplicateImageGenerationToolArgs(BaseModel):
     name: str = Field(
-        description="A unique display title for the image generation less than 256 characters"
+        description=(
+            "A unique display title for the image generation less than 256 characters"
+        )
     )
     prompt: str = Field(
         description="""
-Craft prompts that are detailed and specific. Clearly describe the subject, style, composition, lighting, and mood. For instance, specifying camera settings and environmental details can enhance realism. If you need to generate an image of Isaac you must include the TOK keyword. This has no additional context or history access so include all relevant details.
+Craft prompts that are detailed and specific. Clearly describe the subject, style,
+composition, lighting, and mood. For instance, specifying camera settings and
+environmental details can enhance realism. If you need to generate an image of Isaac
+you must include the TOK keyword. This has no additional context or history access
+so include all relevant details.
 
 Prompt Tips:
-- Use Artistic References: "Create an image in the style of Vincent van Gogh's 'Starry Night,' but replace the village with a futuristic cityscape"
-- Specify Technical Details: "Capture a street food vendor in Tokyo at night, shot with a wide-angle lens (24mm) at f/1.8"
-- Blend Concepts: "Illustrate 'The Last Supper' by Leonardo da Vinci, but reimagine it with robots in a futuristic setting."
-- Use Contrast and Juxtaposition: "Create an image that juxtaposes the delicate beauty of nature with the harsh reality of urban decay."
-- Incorporate Mood and Atmosphere: "Depict a cozy, warmly lit bookstore cafe on a rainy evening."
-- Experiment with Unusual Perspectives: "Illustrate a 'bug's-eye view' of a picnic in a lush garden."
+- Use Artistic References: "Create an image in the style of Vincent van Gogh's
+  'Starry Night,' but replace the village with a futuristic cityscape"
+- Specify Technical Details: "Capture a street food vendor in Tokyo at night, shot
+  with a wide-angle lens (24mm) at f/1.8"
+- Blend Concepts: "Illustrate 'The Last Supper' by Leonardo da Vinci, but reimagine
+  it with robots in a futuristic setting."
+- Use Contrast and Juxtaposition: "Create an image that juxtaposes the delicate
+  beauty of nature with the harsh reality of urban decay."
+- Incorporate Mood and Atmosphere: "Depict a cozy, warmly lit bookstore cafe on a
+  rainy evening."
+- Experiment with Unusual Perspectives: "Illustrate a 'bug's-eye view' of a picnic
+  in a lush garden."
 """.strip(),
     )
-    model: Literal["isuttell/flux-lora-isaac:c2c37f42d4f435bd70a75479e241890f07459b0b1828ede06a6030b21768ad2f", "black-forest-labs/flux-1.1-pro-ultra", "black-forest-labs/flux-1.1-pro", "recraft-ai/recraft-20b", "ideogram-ai/ideogram-v2"] | None = Field(
-        description="The model to use for the image generation. Use the flux-1.1-pro-ultra model by default for the highest quality and resolution image, flux-1.1-pro produces the same quality but at a lower resolution and faster, and flux-lora-isaac when you need to generate images of Isaac. Use recraft-20b when trying to replicate a specific style. ideogram-v2 excels at creating captivating designs, innovative logos and posters with unique text rendering capabilities. Use ideogram-v2 when you need to create a logo or poster or need to generate clean looking text.",
+    model: (
+        Literal[
+            "isuttell/flux-lora-isaac:c2c37f42d4f435bd70a75479e241890f07459b0b1828ede06a6030b21768ad2f",
+            "black-forest-labs/flux-1.1-pro-ultra",
+            "black-forest-labs/flux-1.1-pro",
+            "recraft-ai/recraft-20b",
+            "ideogram-ai/ideogram-v2",
+        ]
+        | None
+    ) = Field(
+        description=(
+            "The model to use for the image generation. Use the flux-1.1-pro-ultra "
+            "model by default for the highest quality and resolution image, "
+            "flux-1.1-pro produces the same quality but at a lower resolution and "
+            "faster, and flux-lora-isaac when you need to generate images of Isaac. "
+            "Use recraft-20b when trying to replicate a specific style. ideogram-v2 "
+            "excels at creating captivating designs, innovative logos and posters "
+            "with unique text rendering capabilities. Use ideogram-v2 when you need "
+            "to create a logo or poster or need to generate clean looking text."
+        ),
         default="black-forest-labs/flux-1.1-pro-ultra",
     )
-    aspect_ratio: Literal["1:1", "16:9", "3:2", "2:3", "4:5", "5:4", "3:4", "4:3", "9:16"] | None = Field(
+    aspect_ratio: (
+        Literal["1:1", "16:9", "3:2", "2:3", "4:5", "5:4", "3:4", "4:3", "9:16"] | None
+    ) = Field(
         description="The aspect ratio to use for the image generation.",
         default="3:2",
     )
@@ -127,22 +157,67 @@ Prompt Tips:
         description="The number of inference steps to use for the image generation",
         default=25,
     )
-    style: Literal["realistic_image", "realistic_image/b_and_w", "realistic_image/enterprise", "realistic_image/hard_flash", "realistic_image/hdr", "realistic_image/motion_blur", "realistic_image/natural_light", "realistic_image/studio_portrait", "digital_illustration", "digital_illustration/2d_art_poster", "digital_illustration/2d_art_poster_2", "digital_illustration/3d", "digital_illustration/80s", "digital_illustration/engraving_color", "digital_illustration/glow", "digital_illustration/grain", "digital_illustration/hand_drawn", "digital_illustration/hand_drawn_outline", "digital_illustration/handmade_3d", "digital_illustration/infantile_sketch", "digital_illustration/kawaii", "digital_illustration/pixel_art", "digital_illustration/psychedelic", "digital_illustration/seamless", "digital_illustration/voxel", "digital_illustration/watercolor"] | None = Field(
-        description="The style to use for the image generation. This only works with the recraft-20b model.",
+    style: (
+        Literal[
+            "realistic_image",
+            "realistic_image/b_and_w",
+            "realistic_image/enterprise",
+            "realistic_image/hard_flash",
+            "realistic_image/hdr",
+            "realistic_image/motion_blur",
+            "realistic_image/natural_light",
+            "realistic_image/studio_portrait",
+            "digital_illustration",
+            "digital_illustration/2d_art_poster",
+            "digital_illustration/2d_art_poster_2",
+            "digital_illustration/3d",
+            "digital_illustration/80s",
+            "digital_illustration/engraving_color",
+            "digital_illustration/glow",
+            "digital_illustration/grain",
+            "digital_illustration/hand_drawn",
+            "digital_illustration/hand_drawn_outline",
+            "digital_illustration/handmade_3d",
+            "digital_illustration/infantile_sketch",
+            "digital_illustration/kawaii",
+            "digital_illustration/pixel_art",
+            "digital_illustration/psychedelic",
+            "digital_illustration/seamless",
+            "digital_illustration/voxel",
+            "digital_illustration/watercolor",
+        ]
+        | None
+    ) = Field(
+        description=(
+            "The style to use for the image generation. This only works with the "
+            "recraft-20b model."
+        ),
         default="realistic_image",
     )
     image_url: str | None = Field(
-        description="Use this to generate an image based on an existing image. e.g. when the user wants to iterate on an existing image or generate a variation of an existing image. This only works with the flux-1.1-pro-ultra model.",
+        description=(
+            "Use this to generate an image based on an existing image. e.g. when "
+            "the user wants to iterate on an existing image or generate a variation "
+            "of an existing image. This only works with the flux-1.1-pro-ultra model."
+        ),
         default=None,
     )
     image_prompt_strength: float | None = Field(
-        description="The strength of the image prompt. 0.4 will closely follow the image and allow minor changes while 0.1 will allow more drastic and creative changes. This only works with the flux-1.1-pro-ultra model.",
+        description=(
+            "The strength of the image prompt. 0.4 will closely follow the image "
+            "and allow minor changes while 0.1 will allow more drastic and creative "
+            "changes. This only works with the flux-1.1-pro-ultra model."
+        ),
         default=0.1,
         ge=0.0,
         le=1.0,
     )
     raw: bool | None = Field(
-        description="If true then image will be returned with less processing which can make people and places look more realistic. Use this when trying to enhance realism. This only works with the flux-1.1-pro-ultra model.",
+        description=(
+            "If true then image will be returned with less processing which can "
+            "make people and places look more realistic. Use this when trying to "
+            "enhance realism. This only works with the flux-1.1-pro-ultra model."
+        ),
         default=False,
     )
     seed: int | None = Field(
@@ -150,7 +225,11 @@ Prompt Tips:
         default=None,
     )
     describe: bool | None = Field(
-        description="Whether to describe the image in detail. Use this when you want to understand better what generated image looks like. Use this while telling stories to better incorporate the image into the story.",
+        description=(
+            "Whether to describe the image in detail. Use this when you want to "
+            "understand better what generated image looks like. Use this while "
+            "telling stories to better incorporate the image into the story."
+        ),
         default=True,
     )
 
@@ -158,19 +237,165 @@ Prompt Tips:
 class ReplicateImageGenerationTool(BaseTool):
     name: str = "replicate_image_generation"
     description: str = (
-        """
-Use this tool to generate an image using a text prompt on replicate.com and has access to a range of models. flux-1.1-pro is the best model for most use cases, from realistic or semi-realistic images to illustrations. It outputs very high resolution images and has the best consistency between images. The ultra variant outputs at a higher resolution at the cost of speed. flux-lora-isaac a fined tuned flux dev model for generating images of Isaac. Use ideogram-v2 for logos and posters. When generating personality logos they must use a square aspect ratio and work well on a dark background.
-""".strip()
+        "Use this tool to generate an image using a text prompt on replicate.com "
+        "and has access to a range of models. flux-1.1-pro is the best model for "
+        "most use cases, from realistic or semi-realistic images to illustrations. "
+        "It outputs very high resolution images and has the best consistency "
+        "between images. The ultra variant outputs at a higher resolution at the "
+        "cost of speed. flux-lora-isaac a fined tuned flux dev model for "
+        "generating images of Isaac. Use ideogram-v2 for logos and posters. When "
+        "generating personality logos they must use a square aspect ratio and work "
+        "well on a dark background."
     )
 
     args_schema: type[ReplicateImageGenerationToolArgs] = (
         ReplicateImageGenerationToolArgs
     )
 
+    async def _process_image_prompt(
+        self, image_url: str | None
+    ) -> tuple[str | None, BufferedReader | None]:
+        """Process the image prompt if provided."""
+        tmp_upload_file = None
+        image_prompt: BufferedReader | None = None
+        if image_url:
+            tmp_upload_file = os.path.join(neuron_config.temp_folder, uuid4().hex)
+            async with (
+                aiohttp.ClientSession() as session,
+                session.get(image_url) as response,
+            ):
+                response.raise_for_status()
+                image_data = BytesIO(await response.content.read())
+                image = Image.open(image_data)
+                image.save(tmp_upload_file, format="jpeg", quality=90)
+            image_prompt = open(tmp_upload_file, "rb")  # noqa: SIM115
+        return tmp_upload_file, image_prompt
+
+    def _prepare_input_args(
+        self,
+        prompt: str,
+        model: str,
+        aspect_ratio: str,
+        num_inference_steps: int,
+        image_options: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Prepare input arguments for the model."""
+        input_args = {
+            "prompt": prompt,
+            "output_format": "png",
+            "safety_tolerance": 6,
+            "disable_safety_checker": True,
+            "num_inference_steps": num_inference_steps,
+            "raw": image_options.get("raw", False),
+        }
+
+        if "recraft" in model:
+            input_args["size"] = RECRAFT_ASPECT_RATIO_TO_SIZE.get(
+                aspect_ratio, "1024x1024"
+            )
+        else:
+            input_args["aspect_ratio"] = aspect_ratio
+
+        if image_options.get("image_prompt") is not None:
+            input_args["image_prompt"] = image_options.get("image_prompt")
+            input_args["image_prompt_strength"] = image_options.get(
+                "image_prompt_strength"
+            )
+
+        input_args["seed"] = (
+            image_options.get("seed")
+            if image_options.get("seed") is not None
+            else random.randint(0, 2147483647)
+        )
+
+        if image_options.get("style") is not None:
+            input_args["style"] = image_options.get("style")
+
+        return input_args
+
+    from dataclasses import dataclass
+
+    @dataclass
+    class ImageProcessingParams:
+        model: str
+        name: str
+        input_args: dict[str, Any]
+        prompt: str
+        describe: bool
+        config: RunnableConfig
+        index: int
+
+    async def _save_and_process_image(
+        self,
+        result: replicate.helpers.FileOutput,
+        params: ImageProcessingParams,
+    ) -> str:
+        """Save and process a single generated image."""
+        filename = safe_filename(
+            params.model.replace("/", "_").split(":")[0],
+            params.name,
+            "png",
+        )
+        file_path = os.path.abspath(os.path.join(neuron_config.static_folder, filename))
+        async with aiofiles.open(file_path, "wb") as file:
+            async for chunk in result:
+                await file.write(chunk)
+
+        pnginfo = PngImagePlugin.PngInfo()
+        pnginfo.add_text("Description", params.name)
+        pnginfo.add_text("Software", f"Model: {params.model}")
+        pnginfo.add_text(
+            "DateTimeOriginal",
+            datetime.now().astimezone().isoformat(timespec="seconds"),
+        )
+        pnginfo.add_text(
+            "Parameters",
+            "\n".join(
+                f"{key}={True if key == 'image_prompt' and value else value}"
+                for key, value in params.input_args.items()
+            ),
+        )
+
+        image = Image.open(file_path)
+        described_image: ImageDescription | None = None
+        if params.describe:
+            logger.debug(f"Describing image #{params.index + 1}")
+            described_image = await describe_image(params.prompt, image)
+            pnginfo.add_text("Description", described_image.description)
+            pnginfo.add_text("Caption", described_image.caption)
+
+        image.save(file_path, format="png", pnginfo=pnginfo, quality=90, optimize=True)
+        create_thumbnails(file_path)
+
+        url = f"{neuron_config.static_content_url}/{filename}"
+        create_params = MediaItemModel.CreateParams(
+            thread_id=params.config["configurable"].get("thread_id"),
+            user_id=params.config["configurable"].get("user_id"),
+            url=url,
+            media_type="image",
+            name=described_image.caption if described_image else params.name,
+            description=described_image.description if described_image else "",
+        )
+        media_item = await MediaItemModel.create(params=create_params)
+
+        if described_image:
+            return f"""\
+<image id="{media_item.id}">
+    <display>![{described_image.caption}]({url})</display>
+    <description>{described_image.description}</description>
+    <prompt_comparison>{described_image.prompt_comparison}</prompt_comparison>
+</image>
+"""
+        return f"""\
+<image id="{media_item.id}">
+    <display>![{params.prompt}]({url})</display>
+</image>
+"""
+
     def _run(
         self,
-        *args,
-        **kwargs,
+        *args: Any,
+        **kwargs: Any,
     ) -> str:
         return asyncio.run(
             self._arun(
@@ -179,7 +404,7 @@ Use this tool to generate an image using a text prompt on replicate.com and has 
             )
         )
 
-    async def _arun(
+    async def _arun(  # noqa: PLR0913
         self,
         prompt: str,
         name: str,
@@ -194,182 +419,52 @@ Use this tool to generate an image using a text prompt on replicate.com and has 
         seed: int | None = None,
         describe: bool = True,
     ) -> str:
-        start_time = time.perf_counter()
         logger.debug(f"Generating image using {model}")
-        tmp_upload_file = os.path.join(neuron_config.temp_folder, uuid4().hex)
         try:
-            if image_url:
-                async with aiohttp.ClientSession() as session:
-                    async with session.get(image_url) as response:
-                        response.raise_for_status()
-                        # Read response content into BytesIO buffer first
-                        image_data = BytesIO(await response.content.read())
-                        image = Image.open(image_data)
-                        # Save a jpeg to ensure the image is compatible with the model
-                        image.save(tmp_upload_file, format="jpeg", quality=90)
+            # Process image prompt if provided
+            tmp_upload_file, image_prompt = await self._process_image_prompt(image_url)
 
-            image_prompt = (
-                open(tmp_upload_file, "rb") if os.path.exists(tmp_upload_file) else None
-            )
-            input_args = {
+            # Prepare input arguments
+            image_options = {
+                "style": style,
+                "image_prompt": image_prompt,
                 "raw": raw,
-                "prompt": prompt,
-                "output_format": "png",
-                "safety_tolerance": 6,
-                "disable_safety_checker": True,
-                "num_inference_steps": num_inference_steps,
+                "image_prompt_strength": image_prompt_strength,
+                "seed": seed,
             }
+            input_args = self._prepare_input_args(
+                prompt=prompt,
+                model=model,
+                aspect_ratio=aspect_ratio,
+                num_inference_steps=num_inference_steps,
+                image_options=image_options,
+            )
 
-            # Add size parameter for recraft model, otherwise use aspect_ratio
-            if "recraft" in model:
-                input_args["size"] = RECRAFT_ASPECT_RATIO_TO_SIZE.get(
-                    aspect_ratio, "1024x1024"
-                )
-            else:
-                input_args["aspect_ratio"] = aspect_ratio
-
-            if image_prompt:
-                input_args["image_prompt"] = image_prompt
-                input_args["image_prompt_strength"] = image_prompt_strength
-
-            input_args["seed"] = seed if seed else random.randint(0, 2147483647)
-
-            if style:
-                input_args["style"] = style
-
-            for key, value in input_args.items():
-                logger.debug(
-                    f"{key}={True if key == 'image_prompt' and value else value}"
-                )
-            try:
-                output: replicate.helpers.FileOutput = await replicate.async_run(
-                    model,
-                    input=input_args,
-                )
-                logger.debug(
-                    f"Image generation job took {time.perf_counter() - start_time:.2f} seconds"
-                )
-            finally:
-                if image_prompt:
-                    image_prompt.close()
-                if os.path.exists(tmp_upload_file):
-                    os.remove(tmp_upload_file)
-            now = datetime.now().astimezone()
+            output = await replicate.async_run(
+                model,
+                input=input_args,
+            )
             if not isinstance(output, list):
                 output = [output]
-            results = []
 
+            results = []
             for i, result in enumerate(output):
                 assert isinstance(result, replicate.helpers.FileOutput)
-                logger.debug(f"Generated <{result.url}>")
-                # Ensure a unique filename
-                filename = safe_filename(
-                    model.replace("/", "_").split(":")[0],
-                    name,
-                    "png",  # We overwrite the file and convert to png regardless to embed the metadata
+                params = self.ImageProcessingParams(
+                    model=model,
+                    name=name,
+                    input_args=input_args,
+                    prompt=prompt,
+                    describe=describe,
+                    config=config,
+                    index=i,
                 )
-                file_path = os.path.abspath(
-                    os.path.join(neuron_config.static_folder, filename)
-                )
-                async with aiofiles.open(file_path, "wb") as file:
-                    async for chunk in result:
-                        await file.write(chunk)
+                results.append(await self._save_and_process_image(result, params))
 
-                # Embed the prompt and datetime in the image
-                pnginfo = PngImagePlugin.PngInfo()
-                pnginfo.add_text("Description", name)
-                pnginfo.add_text("Software", f"Model: {model}")
-                pnginfo.add_text(
-                    "DateTimeOriginal",
-                    now.isoformat(timespec="seconds"),
-                )
-                pnginfo.add_text(
-                    "Parameters",
-                    "\n".join(
-                        [
-                            f"{key}={True if key == 'image_prompt' and value else value}"
-                            for key, value in input_args.items()
-                        ]
-                    ),
-                )
-                image = Image.open(file_path)
-                described_image: ImageDescription | None = None
-                if describe:
-                    logger.debug(f"Describing image #{i + 1}")
-                    described_image = await describe_image(prompt, image)
-                    pnginfo.add_text("Description", described_image.description)
-                    pnginfo.add_text("Caption", described_image.caption)
-                image.save(
-                    file_path, format="png", pnginfo=pnginfo, quality=90, optimize=True
-                )
-                create_thumbnails(
-                    file_path,
-                )
-                url = f"{neuron_config.static_content_url}/{filename}"
-                create_params = MediaItemModel.CreateParams(
-                    thread_id=config["configurable"].get("thread_id"),
-                    user_id=config["configurable"].get("user_id"),
-                    url=url,
-                    media_type="image",
-                    name=described_image.caption if described_image else name,
-                    description=described_image.description if described_image else "",
-                )
-                media_item = await MediaItemModel.create(params=create_params)
-                if described_image:
-                    results.append(
-                        f"""\
-<image id="{media_item.id}">
-    <display>![{described_image.caption}]({url})</display>
-    <description>{described_image.description}</description>
-    <prompt_comparison>{described_image.prompt_comparison}</prompt_comparison>
-</image>
-"""
-                    )
-                else:
-                    results.append(
-                        f"""\
-<image id="{media_item.id}">
-    <display>![{prompt}]({url})</display>
-</image>
-"""
-                    )
-            end_time = time.perf_counter()
-            logger.debug(
-                f"Image generation tool took {end_time - start_time:.2f} seconds"
-            )
             return "<images>\n" + "\n".join(results) + "\n</images>"
-        except Exception as e:
-            logger.error(e, exc_info=True)
-            raise
-
-
-async def main():
-    import argparse
-
-    parser = argparse.ArgumentParser(description="Generate an image using a prompt.")
-    parser.add_argument(
-        "--prompt",
-        type=str,
-        help="The prompt to use for the image generation.",
-        default="A beautiful sunset over a calm ocean with a clear sky and a few clouds.",
-    )
-    parser.add_argument(
-        "--model",
-        type=str,
-        help="The model ID to use for the image generation.",
-        default="black-forest-labs/flux-1.1-pro-ultra",
-    )
-    parser.add_argument(
-        "--aspect_ratio",
-        type=str,
-        help="The aspect ratio to use for the image generation.",
-        default="3:2",
-    )
-    args = parser.parse_args()
-    tool = ReplicateImageGenerationTool()
-    result = await tool._arun(args.prompt, args.model, args.aspect_ratio)
-    print(result)
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
+        except Exception as error:
+            logger.error(error, exc_info=True)
+            raise error
+        finally:
+            if tmp_upload_file and os.path.exists(tmp_upload_file):
+                os.remove(tmp_upload_file)

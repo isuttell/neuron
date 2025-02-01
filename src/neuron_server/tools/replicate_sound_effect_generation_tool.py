@@ -2,6 +2,7 @@ import asyncio
 import os
 import re
 import subprocess
+from typing import Any
 from uuid import uuid4
 
 import aiofiles
@@ -16,7 +17,10 @@ from neuron_server.logger import logger
 from neuron_server.util.subprocess_runner import run_subprocess
 
 
-async def join_video_audio(video_file: str, audio_file: str, output_file: str):
+async def join_video_audio(
+    video_file: str, audio_file: str, output_file: str
+) -> tuple[str | None, str | None]:
+    """Join video and audio files using ffmpeg."""
     logger.debug(f"Joining video {video_file} with audio {audio_file} to {output_file}")
     process: subprocess.CompletedProcess[str] = await run_subprocess(
         [
@@ -53,67 +57,61 @@ class ReplicateSoundEffectGenerationToolArgs(BaseModel):
     video_url: str = Field(description="The URL of the video to add the audio to")
     prompt: str = Field(
         description="""
-Text prompt to guide audio generation. Give technical details about the sound you want to generate.
+Text prompt to guide audio generation. Give technical details about the sound you want
+to generate.
 
 Example prompts:
 - Blackbird song, summer, dusk in the forest
 - Motorcycle driving by
-                    """.strip()
+"""
     )
-    seed: int | None = Field(
-        description="Random seed for audio generation", default=-1
-    )
+    seed: int | None = Field(description="Random seed for audio generation", default=-1)
     steps: int | None = Field(description="Number of inference steps", default=100)
     cfg_scale: float | None = Field(
         description="Classifier-free guidance scale", default=6.0
     )
     slug: str = Field(
-        description="A unique identifier. Must be all lower case with no special characters or spaces. Use dashes for spaces. Keep it short and descriptive. Must be less than 256 characters",
+        description=(
+            "A unique identifier. Must be all lower case with no special characters "
+            "or spaces. Use dashes for spaces. Keep it short and descriptive. "
+            "Must be less than 256 characters"
+        )
     )
-    # sigma_max: Optional[int] = Field(description="Maximum noise level", default=500)
-    # sigma_min: Optional[float] = Field(description="Minimum noise level", default=0.03)
-    # batch_size: Optional[int] = Field(
-    #     description="Number of samples to generate", default=1
-    # )
-    # sampler_type: Optional[str] = Field(
-    #     description="Type of sampler to use", default="dpmpp-3m-sde"
-    # )
-    # seconds_start: Optional[int] = Field(description="Start time in seconds")
     seconds_total: int | None = Field(
         description="Total duration in seconds", default=6
     )
     negative_prompt: str | None = Field(
         description="Text prompt to avoid in generation"
     )
-    # init_noise_level: Optional[float] = Field(
-    #     description="Initial noise level", default=1.0
-    # )
 
 
 class ReplicateSoundEffectGenerationTool(BaseTool):
     name: str = "replicate_sound_effect_generation"
-    description: str = (
-        """
-This tool is optimized for generating short audio samples, sound effects, and production elements using text prompts using the model stackadoc/stable-audio-open-1.0. Ideal for creating drum beats, instrument riffs, ambient sounds, and other audio samples. Use this to add sound effects and other jingles to a video. Audio is not synced to the video.
-""".strip()
-    )
+    description: str = """
+This tool generates short audio samples, sound effects, and production elements using
+text prompts with the stackadoc/stable-audio-open-1.0 model. Ideal for:
+- Creating drum beats and instrument riffs
+- Generating ambient sounds and audio samples
+- Adding sound effects and jingles to videos (note: audio is not synced)
+"""
 
     args_schema: type[ReplicateSoundEffectGenerationToolArgs] = (
         ReplicateSoundEffectGenerationToolArgs
     )
 
     ref: str = (
-        "stackadoc/stable-audio-open-1.0:9aff84a639f96d0f7e6081cdea002d15133d0043727f849c40abdd166b7c75a8"
+        "stackadoc/stable-audio-open-1.0:"
+        "9aff84a639f96d0f7e6081cdea002d15133d0043727f849c40abdd166b7c75a8"
     )
 
     def _run(
         self,
-        *args,
-        **kwargs,
+        *args: tuple[Any, ...],
+        **kwargs: dict[str, Any],
     ) -> str:
         return asyncio.run(self._arun(*args, **kwargs))
 
-    async def _arun(
+    async def _arun(  # noqa: PLR0913
         self,
         video_url: str,
         prompt: str,
@@ -138,12 +136,14 @@ This tool is optimized for generating short audio samples, sound effects, and pr
                 os.path.join(neuron_config.temp_folder, f"{uuid4().hex}.mp4")
             )
             tmp_files.append(tmp_video_file)
-            async with aiohttp.ClientSession() as session:
-                async with session.get(video_url) as response:
-                    response.raise_for_status()
 
-                    async with aiofiles.open(tmp_video_file, "wb") as file:
-                        await file.write(await response.content.read())
+            async with (
+                aiohttp.ClientSession() as session,
+                session.get(video_url) as response,
+                aiofiles.open(tmp_video_file, "wb") as file,
+            ):
+                response.raise_for_status()
+                await file.write(await response.content.read())
 
             input_args = {
                 "seed": seed,
@@ -177,13 +177,17 @@ This tool is optimized for generating short audio samples, sound effects, and pr
                 async for chunk in output:
                     await file.write(chunk)
 
-            slug = re.sub(r"[^a-z0-9-_]", "", slug)[:255].lower().replace(" ", "-")
-            output_filename = f"{self.ref.split(':')[0].replace('/', '_')}_{uuid4().hex[:8]}_{slug}.mp4"
+            # Create safe filename from slug
+            safe_name = re.sub(r"[^a-z0-9-_]", "", slug)[:255].lower().replace(" ", "-")
+            output_filename = (
+                f"{self.ref.split(':')[0].replace('/', '_')}_"
+                f"{uuid4().hex[:8]}_{safe_name}.mp4"
+            )
             output_file_path = os.path.abspath(
                 os.path.join(neuron_config.static_folder, output_filename)
             )
 
-            join_video_audio(tmp_video_file, tmp_audio_file, output_file_path)
+            await join_video_audio(tmp_video_file, tmp_audio_file, output_file_path)
 
             url = f"{neuron_config.static_content_url}/{output_filename}"
             logger.debug(f"Saved generated video to {output_file_path} <{url}>")

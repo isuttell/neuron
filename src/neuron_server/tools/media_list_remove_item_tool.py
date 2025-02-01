@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from typing import Any
 from uuid import UUID
 
 from langchain.tools import BaseTool
@@ -20,12 +21,13 @@ class MediaListRemoveItemToolArgs(BaseModel):
 class MediaListRemoveItemTool(BaseTool):
     name: str = "media_list_remove_item"
     description: str = (
-        """This tool removes a media item from a specified media list. The user must have access to the media list."""
+        "This tool removes a media item from a specified media list. "
+        "The user must have access to the media list."
     )
 
     args_schema: type[MediaListRemoveItemToolArgs] = MediaListRemoveItemToolArgs
 
-    def _run(self, *args, **kwargs) -> str:
+    def _run(self, *args: Any, **kwargs: Any) -> str:
         return asyncio.run(self._arun(*args, **kwargs))
 
     async def _arun(
@@ -56,9 +58,13 @@ class MediaListRemoveItemTool(BaseTool):
             # Remove the item
             await MediaListItemModel.delete(target_item.id)
 
-            logger.debug(f"Removed media item {media_item_id} from list {list_id}")
+            logger.debug(
+                "Removed media item %s from list %s",
+                media_item_id,
+                list_id,
+            )
             return f"Successfully removed media item from {media_list.name}"
 
         except Exception as e:
-            logger.error(f"Failed to remove media item: {e}", exc_info=True)
+            logger.error("Failed to remove media item: %s", str(e), exc_info=True)
             raise

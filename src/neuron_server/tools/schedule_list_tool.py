@@ -1,6 +1,7 @@
 import asyncio
 import json
 from datetime import datetime
+from typing import Any, NoReturn
 
 from langchain.tools import BaseTool
 from langchain_core.runnables import RunnableConfig
@@ -11,12 +12,16 @@ from neuron_server.logger import logger
 class ScheduleListTool(BaseTool):
     name: str = "list_scheduled_prompts"
     description: str = (
-        """
-Lists all scheduled prompts with their event ids, scheduled time, recurring pattern, and time remaining. Time remaining must be greater than 0 for the event to be triggered.
-""".strip()
+        "Lists all scheduled prompts with their event ids, scheduled time, "
+        "recurring pattern, and time remaining. Time remaining must be greater "
+        "than 0 for the event to be triggered."
     )
 
-    def _run(self, *args, **kwargs) -> str:
+    def _run(
+        self,
+        *args: Any,
+        **kwargs: Any,
+    ) -> str:
         return asyncio.run(self._arun(*args, **kwargs))
 
     async def _arun(
@@ -38,32 +43,46 @@ Lists all scheduled prompts with their event ids, scheduled time, recurring patt
                     "time_remaining_seconds": event["time_remaining_seconds"],
                     "prompt": event["event_data"]["prompt"],
                     "link": (
-                        f"[Thread History](/thread/{event['event_data'].get('thread_id')})"
+                        f"/thread/{event['event_data'].get('thread_id')}"
                         if event["event_data"].get("thread_id")
                         else None
                     ),
                 }
                 for event in events
             ]
-            return f"# Scheduled Events\n\nThe current time is {datetime.now().astimezone().isoformat(timespec='seconds')}\n\n```json\n{json.dumps(response, indent=2)}\n```"
+            current_time = datetime.now().astimezone().isoformat(timespec="seconds")
+            return f"""
+# Scheduled Events
+
+The current time is {current_time}
+
+```json
+{json.dumps(response, indent=2)}
+```
+"""
         except Exception as e:
-            logger.error(f"Error listing scheduled events: {e}", exc_info=True)
-            raise e
+            logger.error("Error listing scheduled events: %s", str(e), exc_info=True)
+            raise RuntimeError("Failed to list scheduled events") from e
 
 
-def main():
+def main() -> NoReturn:
     tool = ScheduleListTool()
-    results = asyncio.run(
-        tool.ainvoke(
-            input={},
-            config={
-                "configurable": {
-                    "personality_id": "716f3e34-b95a-4c16-8d6f-4561c5f2b7db"
-                }
-            },
+    try:
+        results = asyncio.run(
+            tool.ainvoke(
+                input={},
+                config={
+                    "configurable": {
+                        "personality_id": "716f3e34-b95a-4c16-8d6f-4561c5f2b7db"
+                    }
+                },
+            )
         )
-    )
-    print(results)
+        print(results)
+        raise SystemExit(0)
+    except Exception as e:
+        print("Error:", str(e))
+        raise SystemExit(1) from e
 
 
 if __name__ == "__main__":

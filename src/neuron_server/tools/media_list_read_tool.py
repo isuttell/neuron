@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from typing import Any
 from uuid import UUID
 
 from langchain.tools import BaseTool
@@ -18,12 +19,13 @@ class MediaListReadToolArgs(BaseModel):
 class MediaListReadTool(BaseTool):
     name: str = "media_list_read"
     description: str = (
-        """This tool retrieves details about a specific media list. The user must have access to the list."""
+        "This tool retrieves details about a specific media list. "
+        "The user must have access to the list."
     )
 
     args_schema: type[MediaListReadToolArgs] = MediaListReadToolArgs
 
-    def _run(self, *args, **kwargs) -> str:
+    def _run(self, *args: Any, **kwargs: Any) -> str:
         return asyncio.run(self._arun(*args, **kwargs))
 
     async def _arun(self, list_id: UUID, config: RunnableConfig) -> str:
@@ -55,10 +57,12 @@ class MediaListReadTool(BaseTool):
             response += f"Last Updated: {media_list.updated_at}\n"
 
             logger.debug(
-                f"Retrieved media list: {media_list.name} (ID: {media_list.id})"
+                "Retrieved media list: %s (ID: %s)",
+                media_list.name,
+                media_list.id,
             )
             return response
 
         except Exception as e:
-            logger.error(f"Failed to read media list: {e}", exc_info=True)
+            logger.error("Failed to read media list: %s", str(e), exc_info=True)
             raise

@@ -47,10 +47,18 @@ function MediaItemList({
             />
           );
         }
-        if (item.media_type === "link") {
+        if (
+          item.media_type === "link" ||
+          item.media_type === "data" ||
+          item.media_type === "code"
+        ) {
+          let url = item.url;
+          if (item.media_type === "code" || item.media_type === "data") {
+            url = `/code-viewer?url=${url}`;
+          }
           return (
             <a
-              href={item.url}
+              href={url}
               target="_blank"
               rel="noopener noreferrer"
               key={item.id}

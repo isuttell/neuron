@@ -1,6 +1,7 @@
 import asyncio
 import os
 import shutil
+from typing import Any
 
 import aiofiles
 from langchain.tools import BaseTool
@@ -19,17 +20,19 @@ client = AsyncOpenAI(api_key=neuron_config.openai_api_key)
 class WhisperSTTToolArgs(BaseModel):
     audio_path: str = Field(description="The path to the audio file to transcribe")
     name: str = Field(
-        description="A unique display title for the audio file. Must be less than 256 characters"
+        description=(
+            "A unique display title for the audio file. "
+            "Must be less than 256 characters"
+        )
     )
 
 
 class WhisperSTTTool(BaseTool):
     name: str = "whisper_stt"
     description: str = (
-        """
-Transcribes speech from an audio file using OpenAI's Whisper model. Returns both the transcription and a link to the audio file.
-""".strip()
-    )
+        """Transcribes speech from an audio file using OpenAI's Whisper model. """
+        """Returns both the transcription and a link to the audio file."""
+    ).strip()
     args_schema: type[WhisperSTTToolArgs] = WhisperSTTToolArgs
 
     async def _arun(
@@ -75,5 +78,5 @@ Transcribes speech from an audio file using OpenAI's Whisper model. Returns both
             logger.error(e, exc_info=True)
             raise e
 
-    def _run(self, *args, **kwargs):
+    def _run(self, *args: Any, **kwargs: Any) -> str:
         return asyncio.run(self._arun(*args, **kwargs))

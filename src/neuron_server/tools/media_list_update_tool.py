@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from typing import Any
 from uuid import UUID
 
 from langchain.tools import BaseTool
@@ -23,15 +24,16 @@ class MediaListUpdateToolArgs(BaseModel):
 class MediaListUpdateTool(BaseTool):
     name: str = "media_list_update"
     description: str = (
-        """This tool updates an existing media list. The user must be the owner of the list."""
+        "This tool updates an existing media list. "
+        "The user must be the owner of the list."
     )
 
     args_schema: type[MediaListUpdateToolArgs] = MediaListUpdateToolArgs
 
-    def _run(self, *args, **kwargs) -> str:
+    def _run(self, *args: Any, **kwargs: Any) -> str:
         return asyncio.run(self._arun(*args, **kwargs))
 
-    async def _arun(
+    async def _arun(  # noqa: PLR0913
         self,
         list_id: UUID,
         name: str,
@@ -66,10 +68,12 @@ class MediaListUpdateTool(BaseTool):
             )
 
             logger.debug(
-                f"Updated media list: {updated_list.name} (ID: {updated_list.id})"
+                "Updated media list: %s (ID: %s)",
+                updated_list.name,
+                updated_list.id,
             )
             return f"Successfully updated media list '{updated_list.name}'"
 
         except Exception as e:
-            logger.error(f"Failed to update media list: {e}", exc_info=True)
+            logger.error("Failed to update media list: %s", str(e), exc_info=True)
             raise

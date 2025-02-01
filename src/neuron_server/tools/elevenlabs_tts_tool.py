@@ -2,7 +2,7 @@ import asyncio
 import os
 import shutil
 import subprocess
-from typing import Literal
+from typing import Any, Literal
 from uuid import uuid4
 
 from elevenlabs import AsyncElevenLabs
@@ -42,7 +42,8 @@ AvailableVoices = Literal[
     "Scott - drill instructor",  # Crisp middle-aged British drill instructor
     "Isaac",  # Personal cloned voice
     "Sexy Female Villain Voice",  # Seductive young American female villain
-    "Nassim - Corporate Narration",  # Deep middle-aged American male for corporate
+    "Nassim - Corporate Narration",  # Deep middle-aged American male for
+    # corporate narration
 ]
 
 
@@ -74,36 +75,53 @@ Oxley - Evil Character: Middle-aged American male with raspy evil character voic
 Scott - drill instructor: Middle-aged British male with crisp drill instructor voice
 Isaac: Personal cloned voice
 Sexy Female Villain Voice: Young American female with confident, seductive villain voice
-Nassim - Corporate Narration: Middle-aged American male with deep voice for corporate narration"""
+Nassim: Middle-aged American male with deep voice for corporate narration
+"""
     )
     text: str = Field(description="The text to be spoken.")
 
 
 class ElevenLabsTTSToolArgs(BaseModel):
     script: list[VoiceLine] = Field(
-        description="The script to generate audio from. The script should be formatted as a list of spoken lines, with each line containing a voice identifier and the text to be spoken."
+        description=(
+            "The script to generate audio from. The script should be formatted as a "
+            "list of spoken lines, with each line containing a voice identifier and "
+            "the text to be spoken."
+        )
     )
 
     name: str = Field(
-        description="A unique display title for the audio file to be generated. Must be less than 256 characters",
+        description=(
+            "A unique display title for the audio file to be generated. "
+            "Must be less than 256 characters"
+        ),
     )
 
     model: Literal["eleven_turbo_v2_5", "eleven_multilingual_v2"] | None = Field(
-        description="The model to use for the TTS. Defaults to eleven_multilingual_v2 for quality and eleven_turbo_v2_5 for speed.",
+        description=(
+            "The model to use for the TTS. Defaults to eleven_multilingual_v2 for "
+            "quality and eleven_turbo_v2_5 for speed."
+        ),
         default="eleven_turbo_v2_5",
     )
 
 
 class ElevenLabsTTSTool(BaseTool):
     name: str = "elevenlabs_tts"
-    description: str = (
-        """
-This tool generates audio from a provided script using ElevenLabs' TTS APIs and returns a link to the final audio file. Use this tool to generate high quality audio for characters when the users requests it. This returns an audio tag to be shown to the user so they can play it. Hide the filename as the user will not need it.
+    description: str = """
+This tool generates audio from a provided script using ElevenLabs' TTS APIs and
+returns a link to the final audio file. Use this tool to generate high quality
+audio for characters when the users requests it. This returns an audio tag to be
+shown to the user so they can play it. Hide the filename as the user will not
+need it.
 """.strip()
-    )
     args_schema: type[ElevenLabsTTSToolArgs] = ElevenLabsTTSToolArgs
 
-    def _run(self, *args, **kwargs) -> str:
+    def _run(
+        self,
+        *args: tuple[Any, ...],
+        **kwargs: dict[str, Any],
+    ) -> str:
         return asyncio.run(self._arun(*args, **kwargs))
 
     async def _arun(
@@ -111,7 +129,8 @@ This tool generates audio from a provided script using ElevenLabs' TTS APIs and 
         script: list[VoiceLine],
         name: str,
         config: RunnableConfig,
-        model: Literal["eleven_turbo_v2_5", "eleven_multilingual_v2"] | None = "eleven_turbo_v2_5",
+        model: Literal["eleven_turbo_v2_5", "eleven_multilingual_v2"]
+        | None = "eleven_turbo_v2_5",
     ) -> str:
         try:
             logger.debug(f"Generating elevenlabs audio using {model}...")
@@ -127,7 +146,8 @@ This tool generates audio from a provided script using ElevenLabs' TTS APIs and 
             for index, line in enumerate(script):
                 cleaned_text = clean_action_text(line.text)
                 logger.debug(
-                    f"Generating elevenlabs audio for line: [{line.voice}] {cleaned_text}"
+                    f"Generating elevenlabs audio for line: "
+                    f"[{line.voice}] {cleaned_text}"
                 )
                 response = await client.generate(
                     text=cleaned_text,
@@ -191,7 +211,7 @@ This tool generates audio from a provided script using ElevenLabs' TTS APIs and 
             shutil.rmtree(working_dir)
 
 
-def main():
+def main() -> None:
     import argparse
 
     parser = argparse.ArgumentParser(description="Generate an audio file from text.")

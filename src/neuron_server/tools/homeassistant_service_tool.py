@@ -12,8 +12,11 @@ class ServiceCallParameters(BaseModel):
     domain: str = Field(description="The domain of the service to call")
     service: str = Field(description="The service to call")
 
-    def __str__(self):
-        return f"{self.description}: entity_id={self.entity_id} domain={self.domain} service={self.service}"
+    def __str__(self) -> str:
+        return (
+            f"{self.description}: entity_id={self.entity_id} "
+            f"domain={self.domain} service={self.service}"
+        )
 
 
 calls = [
@@ -66,19 +69,19 @@ available_calls = "\n".join([str(call) for call in calls])
 
 class HomeAssistantServiceTool(BaseTool):
     name: str = "homeassistant_service"
-    description: str = (
-        f"""\
-Tool to call services on Home Assistant to control lights, switches, etc. Only call this if the user explicitly asks you to control something.
+    description: str = f"""\
+Tool to call services on Home Assistant to control lights and other
+devices. Only call this if the user explicitly asks you to control
+something.
 
 Available calls:
 \"\"\"
 {available_calls}
 \"\"\"
 """
-    )
     api: HomeAssistantAPI
 
-    def _run(self, entity_id: str, domain: str, service: str):
+    def _run(self, entity_id: str, domain: str, service: str) -> str:
         try:
             states = self.api.call_service(domain, service, entity_id)
             return "\n".join([parse_sensor_state(state) for state in states])
@@ -87,7 +90,7 @@ Available calls:
             return f"Error calling service: {str(e)}"
 
 
-async def main():
+async def main() -> None:
     parser = argparse.ArgumentParser(description="Get temperature for a specific room")
     parser.add_argument("room", type=str, help="The room to get the temperature for")
     tool = HomeAssistantServiceTool(

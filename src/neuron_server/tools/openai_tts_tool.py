@@ -2,7 +2,7 @@ import asyncio
 import os
 import shutil
 import subprocess
-from typing import Literal
+from typing import Any, Literal
 from uuid import uuid4
 
 import aiofiles
@@ -30,27 +30,39 @@ class VoiceLine(BaseModel):
 
 class OpenAITTSToolArgs(BaseModel):
     script: list[VoiceLine] = Field(
-        description="The script to generate audio from. The script should be formatted as a list of spoken lines, with each line containing a voice identifier and the text to be spoken."
+        description=(
+            "The script to generate audio from. The script should be formatted as a list "  # noqa: E501
+            "of spoken lines, with each line containing a voice identifier and the text "  # noqa: E501
+            "to be spoken."
+        )
     )
     speed: float = Field(
-        description="The speed of the audio. 1 is normal speed. 0.5 is half speed. 2 is double speed. If the user wants it slightly faster user a value of 1.04 or in that range without distorting the audio.",
+        description=(
+            "The speed of the audio. 1 is normal speed. 0.5 is half speed. "
+            "2 is double speed. If the user wants it slightly faster use a value "
+            "of 1.04 or in that range without distorting the audio."
+        ),
         default=1,
     )
     name: str = Field(
-        description="A unique display title for the audio file to be generated. Must be less than 256 characters",
+        description=(
+            "A unique display title for the audio file to be generated. "
+            "Must be less than 256 characters"
+        ),
     )
 
 
 class OpenAITTSTool(BaseTool):
     name: str = "openai_tts"
     description: str = (
-        """
-The tool will use OpenAI's TTS API to generate the audio and return a link to the audio file. Write your input text to mimic natural, conversational speech. Use this tool by default over other TTS tools when the user requests you generate spoken audio.
-""".strip()
+        "The tool will use OpenAI's TTS API to generate the audio and return a link to "
+        "the audio file. Write your input text to mimic natural, conversational speech. "  # noqa: E501
+        "Use this tool by default over other TTS tools when the user requests you "
+        "generate spoken audio."
     )
     args_schema: type[OpenAITTSToolArgs] = OpenAITTSToolArgs
 
-    def _run(self, *args, **kwargs):
+    def _run(self, *args: Any, **kwargs: Any) -> str:
         return asyncio.run(self._arun(*args, **kwargs))
 
     async def _arun(
@@ -73,7 +85,9 @@ The tool will use OpenAI's TTS API to generate the audio and return a link to th
             for index, line in enumerate(script):
                 cleaned_text = clean_action_text(line.text)
                 logger.debug(
-                    f"Generating openai audio for line: [{line.voice}] {cleaned_text}"
+                    "Generating openai audio for line: [%s] %s",
+                    line.voice,
+                    cleaned_text,
                 )
                 response = await client.audio.speech.create(
                     model="tts-1-hd",
@@ -88,7 +102,7 @@ The tool will use OpenAI's TTS API to generate the audio and return a link to th
                     for chunk in response.iter_bytes():
                         await f.write(chunk)
                 audio_files.append(audio_file_path)
-                logger.debug(f"Saved generated audio chunk at {audio_file_path}")
+                logger.debug("Saved generated audio chunk at %s", audio_file_path)
             # Concatenate all audio files using ffmpeg
             filename = safe_filename("openai_tts", name, "mp3")
             output = os.path.join(neuron_config.static_folder, filename)
@@ -121,20 +135,20 @@ The tool will use OpenAI's TTS API to generate the audio and return a link to th
                 ),
             )
             media_item = await MediaItemModel.create(params=create_params)
-            logger.debug(f"Generated audio file at {output} <{url}>")
+            logger.debug("Generated audio file at %s <%s>", output, url)
             return f"""\
 <audio id="{media_item.id}">
     <display><audio src="{url}"></audio></display>
 </audio>""".strip()
         except Exception as e:
             logger.error(e, exc_info=True)
-            raise e
+            raise
         finally:
             if os.path.exists(working_dir):
                 shutil.rmtree(working_dir)
 
 
-def main():
+def main() -> None:
     import argparse
 
     parser = argparse.ArgumentParser(description="Generate an audio file from text.")

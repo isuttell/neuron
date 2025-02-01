@@ -28,9 +28,12 @@ text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=20
 
 
 class ArxivSummaryArgs(BaseModel):
-    id: str = Field(description="The ID of the article to inspect.")
+    article_id: str = Field(description="The ID of the article to inspect.")
     force_resummarize: bool = Field(
-        description="Whether to force the tool to re-summarize the article even if a cached version is available.",
+        description=(
+            "Whether to force the tool to re-summarize the article even if a cached "
+            "version is available."
+        ),
         default=False,
     )
 
@@ -38,28 +41,30 @@ class ArxivSummaryArgs(BaseModel):
 class ArxivSummaryTool(BaseTool):
     name: str = "arxiv_summary"
     description: str = (
-        """
-This tool provides detailed, page-by-page summaries of research articles by their arXiv short IDs. The initial run may take some time as it downloads and processes the article, and adds it to the vector store for RAG, but a cached summary is saved for faster access on future requests. Only use this tool if you can't answer the question based on the information you have as it is slower than other tools.
-""".strip()
-    )
+        "This tool provides detailed, page-by-page summaries of research articles "
+        "by their arXiv short IDs. The initial run may take some time as it "
+        "downloads and processes the article, and adds it to the vector store "
+        "for RAG, but a cached summary is saved for faster access on future "
+        "requests. Only use this tool if you can't answer the question based on "
+        "the information you have as it is slower than other tools."
+    ).strip()
     args_schema: type[ArxivSummaryArgs] = ArxivSummaryArgs
 
-    def _run(self, id: str, force_resummarize: bool = False) -> str:
-        return asyncio.run(self._arun(id, force_resummarize))
+    def _run(self, article_id: str, force_resummarize: bool = False) -> str:
+        return asyncio.run(self._arun(article_id, force_resummarize))
 
     async def _arun(
         self,
-        id: str,
+        article_id: str,
         config: RunnableConfig,
         force_resummarize: bool = False,
     ) -> str:
         try:
-
-            logger.debug(f"Searching arXiv with: id_list=[{id}]")
+            logger.debug(f"Searching arXiv with: id_list=[{article_id}]")
             # Construct the default API client.
             client = arxiv.Client()
             search = arxiv.Search(
-                id_list=[id],
+                id_list=[article_id],
             )
             article = next(client.results(search), None)
             if not article:
@@ -120,10 +125,16 @@ This tool provides detailed, page-by-page summaries of research articles by thei
             if len(documents) > 0:
                 await arxiv_store.aadd_documents(documents)
             page_summaries = "\n\n".join(
-                f"# Page {i+1} AI Summary\n\n{result}"
+                f"# Page {i + 1} AI Summary\n\n{result}"
                 for i, result in enumerate(page_summaries)
             )
-            report = f"# {article.title}\n\nGenerated on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n## arxiv metadata\n\n{metadata}\n\n## AI Summary:\n{summary}\n\n{page_summaries}"
+            report = (
+                f"# {article.title}\n\n"
+                f"Generated on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+                f"## arxiv metadata\n\n{metadata}\n\n"
+                f"## AI Summary:\n{summary}\n\n"
+                f"{page_summaries}"
+            )
             with open(summary_file_path, "w", encoding="utf-8") as file:
                 file.write(report)
             logger.debug(f"Summary saved to {summary_file_path}")
@@ -147,6 +158,6 @@ if __name__ == "__main__":
 
     tool = ArxivSummaryTool()
     results = tool._run(
-        id=args.id,
+        article_id=args.id,
     )
     print(results)

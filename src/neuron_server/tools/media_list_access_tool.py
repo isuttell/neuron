@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from typing import Any
 
 from langchain.tools import BaseTool
 from langchain_core.runnables import RunnableConfig
@@ -17,12 +18,13 @@ class MediaListAccessToolArgs(BaseModel):
 class MediaListAccessTool(BaseTool):
     name: str = "media_list_access"
     description: str = (
-        """This tool returns a list of all media lists that the user has access to (either owns or shared with them)."""
+        "This tool returns a list of all media lists that the user has access to "
+        "(either owns or shared with them)."
     )
 
     args_schema: type[MediaListAccessToolArgs] = MediaListAccessToolArgs
 
-    def _run(self, *args, **kwargs) -> str:
+    def _run(self, *args: Any, **kwargs: Any) -> str:
         return asyncio.run(self._arun(*args, **kwargs))
 
     async def _arun(self, config: RunnableConfig) -> str:

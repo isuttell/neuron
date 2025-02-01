@@ -1,5 +1,6 @@
 import argparse
 from datetime import datetime
+from typing import Any, NoReturn
 
 from astroquery.simbad import Simbad
 from langchain.tools import BaseTool
@@ -7,13 +8,17 @@ from pydantic import BaseModel, Field
 from skyfield.api import Star, load, utc, wgs84
 from skyfield.data import hipparcos
 
+# Constants
+ALTITUDE_THRESHOLD = 18  # Minimum altitude in degrees for visibility
+MAGNITUDE_THRESHOLD = 4  # Maximum magnitude for star brightness filter
+
 # Load ephemeris data
 eph = load("de421.bsp")
 
 # Load Hipparcos star catalog
 with load.open(hipparcos.URL) as f:
     hipparcos_data = hipparcos.load_dataframe(f)
-    hipparcos_data = hipparcos_data[hipparcos_data["magnitude"] <= 4]
+    hipparcos_data = hipparcos_data[hipparcos_data["magnitude"] <= MAGNITUDE_THRESHOLD]
 
 
 class SkyFieldToolArgs(BaseModel):
@@ -27,14 +32,22 @@ class SkyFieldToolArgs(BaseModel):
 class SkyFieldTool(BaseTool):
     name: str = "skyfield"
     description: str = (
-        """
-Returns a list of visible stars from the observer's location and time sorted by magnitude with an altitude greater than 18° using Simbad. Returns precise ra/dec coordinates for each star. The observation time is critical for this tool and must be accurate
-""".strip()
+        "Returns a list of visible stars from the observer's location and time "
+        "sorted by magnitude with an altitude greater than 18° using Simbad. "
+        "Returns precise ra/dec coordinates for each star. The observation time "
+        "is critical for this tool and must be accurate."
     )
 
     args_schema: type[SkyFieldToolArgs] = SkyFieldToolArgs
 
     def _run(
+        self,
+        *args: Any,
+        **kwargs: Any,
+    ) -> str:
+        return self._arun(*args, **kwargs)
+
+    def _arun(
         self,
         latitude: float,
         longitude: float,
@@ -53,7 +66,7 @@ Returns a list of visible stars from the observer's location and time sorted by 
             star = Star.from_dataframe(star_data)
             astrometric = observer.at(obs_time).observe(star)
             alt, az, _ = astrometric.apparent().altaz()
-            if alt.degrees < 18:
+            if alt.degrees < ALTITUDE_THRESHOLD:
                 continue
             visible_stars.append(
                 {
@@ -72,22 +85,38 @@ Returns a list of visible stars from the observer's location and time sorted by 
                 0
             ]
 
-        visible_stars_table = "| Simbad MAIN_ID | Hipparcos ID | Altitude° | Azimuth° | Magnitude | RA° | Dec° |\n"
-        visible_stars_table += "|------|---------------|---------------|--------------|-----------|--------|---------|\n"
-        visible_stars_table += "\n".join(
-            [
-                f"| {star.get('Name', 'Unknown')} | {star['Hipparcos ID']} | {str(round(star['Altitude (°)'], 0))} | {str(round(star['Azimuth (°)'], 0))} | {str(round(star['Magnitude'], 6))} | {str(round(star['RA (°)'], 6))} | {str(round(star['Dec (°)'], 6))} |"
-                for star in visible_stars
-            ]
+        table_header = (
+            "| Simbad MAIN_ID | Hipparcos ID | Altitude° | Azimuth° | "
+            "Magnitude | RA° | Dec° |\n"
         )
-        return f"""
-Brightest stars visible at {observation_time.strftime("%Y-%m-%d %H:%M:%S %Z")} at {latitude}°N, {longitude}°E:
+        table_separator = (
+            "|---------------|--------------|-----------|-----------|"
+            "-----------|-----|-------|\n"
+        )
+        table_rows = []
+        for star in visible_stars:
+            table_rows.append(
+                f"| {star.get('Name', 'Unknown')} "
+                f"| {star['Hipparcos ID']} "
+                f"| {str(round(star['Altitude (°)'], 0))} "
+                f"| {str(round(star['Azimuth (°)'], 0))} "
+                f"| {str(round(star['Magnitude'], 6))} "
+                f"| {str(round(star['RA (°)'], 6))} "
+                f"| {str(round(star['Dec (°)'], 6))} |"
+            )
+
+        visible_stars_table = table_header + table_separator + "\n".join(table_rows)
+
+        return f"""# Brightest Stars Visible
+
+Observation Time: {observation_time.astimezone().isoformat(timespec="minutes")}
+Location: {latitude}°N, {longitude}°E
 
 {visible_stars_table}
-        """.strip()
+"""
 
 
-def main():
+def main() -> NoReturn:
     parser = argparse.ArgumentParser(description="SkyField Tool CLI")
     parser.add_argument(
         "--latitude",
@@ -96,7 +125,10 @@ def main():
         default=32.84,
     )
     parser.add_argument(
-        "--longitude", type=float, help="Observer longitude", default=-117.1
+        "--longitude",
+        type=float,
+        help="Observer longitude",
+        default=-117.1,
     )
     parser.add_argument(
         "--observation_time",
@@ -109,15 +141,17 @@ def main():
 
     try:
         observation_time = datetime.fromisoformat(args.observation_time)
-    except ValueError:
+    except ValueError as e:
         print(
-            "Invalid observation time format. Please use ISO format (YYYY-MM-DDTHH:MM:SS)."
+            "Invalid observation time format. Please use ISO format "
+            "(YYYY-MM-DDTHH:MM:SS)."
         )
-        return
+        raise SystemExit(1) from e
 
     tool = SkyFieldTool()
     result = tool._run(args.latitude, args.longitude, observation_time)
     print(result)
+    raise SystemExit(0)
 
 
 if __name__ == "__main__":

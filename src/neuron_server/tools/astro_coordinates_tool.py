@@ -21,11 +21,9 @@ class AstroCoordinatesToolArgs(BaseModel):
 
 class AstroCoordinatesTool(BaseTool):
     name: str = "astro_coordinates"
-    description: str = (
-        """
+    description: str = """
 This tool returns the RA/Dec coordinates of the sky zenith at a given location and time.
 """.strip()
-    )
 
     args_schema: type[AstroCoordinatesToolArgs] = AstroCoordinatesToolArgs
 
@@ -37,9 +35,7 @@ This tool returns the RA/Dec coordinates of the sky zenith at a given location a
         elevation: float = 0,
     ) -> str:
         try:
-            obstime = Time(
-                time.astimezone(UTC), format="datetime", scale="utc"
-            )
+            obstime = Time(time.astimezone(UTC), format="datetime", scale="utc")
             location = EarthLocation(
                 lat=latitude * u.deg, lon=longitude * u.deg, height=elevation * u.m
             )
@@ -49,7 +45,8 @@ This tool returns the RA/Dec coordinates of the sky zenith at a given location a
             ra = ra_dec.ra.degree
             dec = ra_dec.dec.degree
             return f"""
-The zenith RA/Dec coordinates of {latitude} latitude, {longitude} longitude at {time.replace(microsecond=0).isoformat()} are:
+The zenith RA/Dec coordinates of {latitude} latitude, {longitude} longitude at
+{time.replace(microsecond=0).isoformat()} are:
 RA: {round(ra, 7)} deg
 Dec: {round(dec, 7)} deg
  """.strip()
@@ -58,7 +55,7 @@ Dec: {round(dec, 7)} deg
             return f"Error: {str(e)}"
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Astro Tool CLI")
     parser.add_argument(
         "--latitude",

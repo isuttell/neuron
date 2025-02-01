@@ -43,7 +43,10 @@ class ArxivRecallToolArgs(BaseModel):
         description="The minimum score to recall a document", default=0.2, min=0, max=1
     )
     filter_short_id: str | None = Field(
-        description="The optional short id of the document to filter by. Use to ask questions from a specific paper.",
+        description=(
+            "The optional short id of the document to filter by. "
+            "Use to ask questions from a specific paper."
+        ),
         default=None,
     )
 
@@ -51,12 +54,14 @@ class ArxivRecallToolArgs(BaseModel):
 class ArxivRecallTool(BaseTool):
     name: str = "arxiv_recall"
     description: str = (
-        "This tool allows you to recall information from long term memory of arxiv papers that have been summarized. Use this to ask specific questions about a paper."
+        "This tool allows you to recall information from long term memory "
+        "of arxiv papers that have been summarized. Use this to ask specific "
+        "questions about a paper."
     )
 
     args_schema: type[ArxivRecallToolArgs] = ArxivRecallToolArgs
 
-    def _run(self, query: str, config: RunnableConfig, k: int = 10):
+    def _run(self, query: str, config: RunnableConfig, k: int = 10) -> str:
         return asyncio.run(self._arun(query, config, k))
 
     async def _arun(
@@ -68,12 +73,12 @@ class ArxivRecallTool(BaseTool):
     ) -> str:
         try:
             logger.debug(f"Searching arxiv memories for query: {query} with k={k}")
-            filter = {"short_id": filter_short_id} if filter_short_id else None
+            filter_dict = {"short_id": filter_short_id} if filter_short_id else None
             docs_scores = await arxiv_store.asimilarity_search_with_relevance_scores(
                 query,
                 k=k,
                 score_threshold=score_threshold,
-                filter=filter,
+                filter=filter_dict,
             )
             if len(docs_scores) == 0:
                 return "No documents found"

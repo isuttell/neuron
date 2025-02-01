@@ -1,6 +1,6 @@
 import asyncio
 import os
-from typing import Literal
+from typing import Any, Literal
 
 import aiohttp
 from langchain.tools import BaseTool
@@ -10,7 +10,10 @@ from pydantic import BaseModel, Field
 from neuron_server.config import config as neuron_config
 from neuron_server.logger import logger
 from neuron_server.models.media_item_model import MediaItemModel
-from neuron_server.tools.automatic1111_api import Automatic1111API
+from neuron_server.tools.automatic1111_api import Automatic1111API, GenerationSettings
+
+# HTTP status codes
+HTTP_OK = 200
 
 Automatic1111Checkpoints = Literal[
     "sdxl\\sdxlNuclearGeneralPurposeV3Semi_v30BakedVAE",
@@ -22,10 +25,21 @@ Automatic1111Checkpoints = Literal[
 
 class Automatic1111ToolArgs(BaseModel):
     name: str = Field(
-        description="The title of the image. This will be used as the name of the media item in the database."
+        description=(
+            "The title of the image. This will be used as the name of the media "
+            "item in the database."
+        )
     )
     prompt: str = Field(
-        description="The prompt to generate the image from. When generating prompts, include specific visual details, such as colors, textures, and object placements, to guide the model toward a precise result. Mention the desired style (e.g., photorealistic, cartoonish, or abstract) and add context, like background elements or lighting, for more cohesive images. Focus on clarity and conciseness in each prompt to avoid ambiguity and ensure reproducible results."
+        description=(
+            "The prompt to generate the image from. When generating prompts, "
+            "include specific visual details, such as colors, textures, and "
+            "object placements, to guide the model toward a precise result. "
+            "Mention the desired style (e.g., photorealistic, cartoonish, or "
+            "abstract) and add context, like background elements or lighting, "
+            "for more cohesive images. Focus on clarity and conciseness in "
+            "each prompt to avoid ambiguity and ensure reproducible results."
+        )
     )
     negative_prompt: str | None = Field(
         description="The negative prompt to use for generation."
@@ -34,27 +48,39 @@ class Automatic1111ToolArgs(BaseModel):
         description="The number of steps to use for generation", default=30
     )
     sd_model_checkpoint: Automatic1111Checkpoints | None = Field(
-        description="The model checkpoint to use for generation. sdxlNuclearGeneralPurposeV3Semi_v30BakedVAE is a general purpose model. betterThanWords_v30 is a realistic model for nudity. STOIQOAfroditexl_XL31 is a more photorealistic model. dreamshaperXL_v21TurboDPMSDE is the most creative model.",
+        description=(
+            "The model checkpoint to use for generation. "
+            "sdxlNuclearGeneralPurposeV3Semi_v30BakedVAE is a general purpose model. "
+            "betterThanWords_v30 is a realistic model for nudity. "
+            "STOIQOAfroditexl_XL31 is a more photorealistic model. "
+            "dreamshaperXL_v21TurboDPMSDE is the most creative model."
+        ),
         default="sdxl\\sdxlNuclearGeneralPurposeV3Semi_v30BakedVAE",
     )
     cfg_scale: float | None = Field(
         description="The CFG scale to use for generation.", default=4
     )
     enable_hr: bool | None = Field(
-        description="Whether to enable high resolution (HR) upscaling. May introduce artifacts. Defaults to False."
+        description=(
+            "Whether to enable high resolution (HR) upscaling. May introduce "
+            "artifacts. Defaults to False."
+        )
     )
     adetailer_enabled: bool | None = Field(
-        description="Whether to enable ADetailer to improve details in faces. Enable when generating faces to improve details in faces. Defaults to False."
+        description=(
+            "Whether to enable ADetailer to improve details in faces. Enable when "
+            "generating faces to improve details in faces. Defaults to False."
+        )
     )
 
 
 async def check_http_connection(url: str) -> bool:
     try:
-        async with aiohttp.ClientSession(
-            timeout=aiohttp.ClientTimeout(total=5)
-        ) as session:
-            async with session.head(url) as response:
-                return response.status == 200
+        async with (
+            aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=5)) as session,
+            session.head(url) as response,
+        ):
+            return response.status == HTTP_OK
     except Exception as e:
         logger.error(f"Connection to {url} failed: {str(e)}")
         return False
@@ -63,7 +89,10 @@ async def check_http_connection(url: str) -> bool:
 class Automatic1111Tool(BaseTool):
     name: str = "automatic1111"
     description: str = (
-        "A tool that generates an image based on a given prompt using Automatic1111 hosted on the machine called Kepler on the local network. Use this when the user asks for an image. Do not use to generate charts. Returns a markdown image tag."
+        "A tool that generates an image based on a given prompt using Automatic1111 "
+        "hosted on the machine called Kepler on the local network. Use this when the "
+        "user asks for an image. Do not use to generate charts. Returns a markdown "
+        "image tag."
     )
     args_schema: type[Automatic1111ToolArgs] = Automatic1111ToolArgs
 
@@ -71,12 +100,12 @@ class Automatic1111Tool(BaseTool):
 
     def _run(
         self,
-        *args,
-        **kwargs,
+        *args: Any,
+        **kwargs: Any,
     ) -> str:
         return asyncio.run(self._arun(*args, **kwargs))
 
-    async def _arun(
+    async def _arun(  # noqa: PLR0913
         self,
         prompt: str,
         name: str,
@@ -98,10 +127,11 @@ class Automatic1111Tool(BaseTool):
         try:
             if not await check_http_connection(self.api.endpoint):
                 raise Exception(
-                    "Failed to connect to the Automatic1111 API. Ask the user to verify Automatic1111 is running."
+                    "Failed to connect to the Automatic1111 API. Ask the user to "
+                    "verify Automatic1111 is running."
                 )
 
-            file_path = await self.api.generate(
+            settings = GenerationSettings(
                 prompt=prompt,
                 negative_prompt=negative_prompt,
                 sd_model_checkpoint=sd_model_checkpoint,
@@ -110,6 +140,7 @@ class Automatic1111Tool(BaseTool):
                 adetailer_enabled=adetailer_enabled,
                 enable_hr=enable_hr,
             )
+            file_path = await self.api.generate(settings=settings)
             url = f"{neuron_config.static_content_url}/{os.path.basename(file_path)}"
             create_params = MediaItemModel.CreateParams(
                 thread_id=config["configurable"].get("thread_id"),

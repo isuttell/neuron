@@ -14,12 +14,12 @@ from neuron_server.util.subprocess_runner import run_subprocess
 
 
 class RestrictedKeywordError(Exception):
-    def __init__(self, message: str, excerpt: str):
+    def __init__(self, message: str, excerpt: str) -> None:
         self.message = message
         self.excerpt = excerpt
         super().__init__(self.message)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"RestrictedKeywordError: {self.message}\nExcerpt:\n{self.excerpt}"
 
 
@@ -57,54 +57,35 @@ def check_for_restricted_keywords(python_code: str) -> None:
             if keyword in line:
                 excerpt = "\n".join(lines[line_number - 3 : line_number + 3])
                 raise RestrictedKeywordError(
-                    f'Unable to run code due to restricted keyword: "{keyword}" on line {line_number}. Refactor your code to remove this keyword and try again.',
-                    excerpt,
+                    f'Unable to run code due to restricted keyword: "{keyword}" '
+                    f"on line {line_number}.\n"
+                    f"Refactor your code to remove this keyword and try again.\n"
+                    f"{excerpt}"
                 )
 
 
 def get_media_type(file_path: str) -> str:
     ext = os.path.splitext(file_path)[1]
-    if ext in [
-        ".png",
-        ".jpg",
-        ".jpeg",
-        ".gif",
-        ".svg",
-        ".webp",
-    ]:
-        return "image"
-    if ext in [
-        ".mp4",
-        ".mov",
-        ".webm",
-    ]:
-        return "video"
-    if ext in [
-        ".mp3",
-        ".wav",
-        ".ogg",
-    ]:
-        return "audio"
-    if ext in [
-        ".html",
-        ".htm",
-    ]:
-        return "html"
-    if ext in [".py", ".js", ".ts", ".jsx", ".tsx"]:
-        return "code"
-    if ext in [
-        ".pdf",
-        ".csv",
-        ".txt",
-        ".json",
-        ".md",
-    ]:
-        return "data"
-    logger.warning(f"Unknown file extension: {ext}")
-    return "unknown"
+    media_type = None
+    if ext in [".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp"]:
+        media_type = "image"
+    elif ext in [".mp4", ".mov", ".webm"]:
+        media_type = "video"
+    elif ext in [".mp3", ".wav", ".ogg"]:
+        media_type = "audio"
+    elif ext in [".html", ".htm"]:
+        media_type = "html"
+    elif ext in [".py", ".js", ".ts", ".jsx", ".tsx"]:
+        media_type = "code"
+    elif ext in [".pdf", ".csv", ".txt", ".json", ".md"]:
+        media_type = "data"
+    if media_type is None:
+        logger.warning(f"Unknown file extension: {ext}")
+        media_type = "unknown"
+    return media_type
 
 
-async def force_stop_code_interpreter():
+async def force_stop_code_interpreter() -> None:
     await run_subprocess(
         ["docker", "rm", "-v", "-f", "neuron-code-interpreter"],
     )
@@ -114,11 +95,11 @@ async def run_code_interpreter(
     python_code: str,
     timeout: int = 120,
     code_interpreter_image: str = "192.168.1.160:5000/code-interpreter:latest",
-    cpu_limit: int = 16,
-    memory_limit: int | str = "16g",
     config: RunnableConfig = None,
-):
+) -> tuple[str, list[str]]:
     try:
+        cpu_limit = config.get("cpu_limit", 16) if config else 16
+        memory_limit = config.get("memory_limit", "16g") if config else "16g"
         start_time = time.perf_counter()
         check_for_restricted_keywords(python_code)
         script_filename = "main.py"
@@ -200,13 +181,14 @@ async def run_code_interpreter(
             if media_type == "unknown":
                 continue
             url = f"{neuron_config.static_content_url}/artifacts/{folder_name}/{file}"
-            await MediaItemModel.create(
+            create_params = MediaItemModel.CreateParams(
                 url=url,
-                type=media_type,
+                media_type=media_type,
                 user_id=config["configurable"].get("user_id"),
                 thread_id=config["configurable"].get("thread_id"),
                 name=file,
             )
+            await MediaItemModel.create(create_params)
             if media_type == "image":
                 artifacts.append(f"<image>![{file}]({url})</image>")
                 create_thumbnails(os.path.join(artifacts_folder, file))
@@ -219,4 +201,6 @@ async def run_code_interpreter(
         return process.stdout.strip() if process.stdout else "", artifacts
     except TimeoutError:
         await force_stop_code_interpreter()
-        raise Exception(f"python code execution timed out after {timeout} seconds")
+        raise Exception(
+            f"python code execution timed out after {timeout} seconds"
+        ) from None

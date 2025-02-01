@@ -29,10 +29,16 @@ class Target(BaseModel):
 
 class AstroFinderImageToolArgs(BaseModel):
     targets: list[Target] = Field(
-        description="A list of targets, each target must have a name and it's ra/dec coordinates in degrees. High precision is recommended."
+        description=(
+            "A list of targets, each target must have a name and it's ra/dec "
+            "coordinates in degrees. High precision is recommended."
+        )
     )
     fov_radius: float = Field(
-        description="The field of view radius in arcminutes. Take into account the camera's FOV and the target's size. Defaults to 10.",
+        description=(
+            "The field of view radius in arcminutes. Take into account the camera's "
+            "FOV and the target's size. Defaults to 10."
+        ),
         default=10,
     )
 
@@ -61,10 +67,10 @@ def create_finder_images(targets: list[FixedTarget], fov_radius: float = 10) -> 
 class AstroFinderImageTool(BaseTool):
     name: str = "astro_finder_image"
     description: str = (
-        """
-This tool accepts a list of targets and plots finder images for each target. These are used to help identify objects in the sky when looking through a telescope.
-""".strip()
-    )
+        "This tool accepts a list of targets and plots finder images for each target. "
+        "These are used to help identify objects in the sky when looking through "
+        "a telescope."
+    ).strip()
 
     args_schema: type[AstroFinderImageToolArgs] = AstroFinderImageToolArgs
 
@@ -87,7 +93,7 @@ This tool accepts a list of targets and plots finder images for each target. The
             return f"Error: {str(e)}"
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Astro Tool CLI")
     parser.add_argument(
         "--name",

@@ -1,6 +1,7 @@
 import asyncio
 import subprocess
 import time
+from typing import Any
 
 from langchain.tools import BaseTool
 from langchain_core.runnables import RunnableConfig
@@ -13,7 +14,15 @@ from neuron_server.tools.code_interpreter_api import run_code_interpreter
 class CodeInterpreterToolArgs(BaseModel):
     python_code: str = Field(
         description="""
-Must be valid, fully self contained Python 3.12 code encoded in ascii. Must include all required data in the code. Use best practices. Network requests are blocked. This is in a headless environment so do not use any GUI methods like plt.show(). You may only write to the {directory} directory. Results must be saved to the {directory}/artifacts/ directory. Print answer to the stdout with markdown formatting which is returned as the tool response. Show/print your work step by step. Do not use emojis. Never use the following methods: open, exec, eval. When using the matplot styles like the science or seaborn styles import the associated library, e.g. scienceplots first before using the style. ffmpeg is installed.
+Must be valid, fully self contained Python 3.12 code encoded in ascii. Must include
+all required data in the code. Use best practices. Network requests are blocked.
+This is in a headless environment so do not use any GUI methods like plt.show().
+You may only write to the {directory} directory. Results must be saved to the
+{directory}/artifacts/ directory. Print answer to the stdout with markdown
+formatting which is returned as the tool response. Show/print your work step by
+step. Do not use emojis. Never use the following methods: open, exec, eval. When
+using the matplot styles like the science or seaborn styles import the associated
+library, e.g. scienceplots first before using the style. ffmpeg is installed.
 
 Installed Modules:
 
@@ -37,26 +46,30 @@ Available ephemeris data:
 
 de405
 de430t
-""".format(
-            directory="/app"
-        ).strip()
+""".format(directory="/app").strip()
     )
 
 
 class CodeInterpreterTool(BaseTool):
     name: str = "code_interpreter"
-    description: str = (
-        """
-This tool executes Python code in a restricted environment for data analysis, precise computations, graphing, and visualizations for enhanced response generation. It leverages libraries such as pandas, numpy, scipy, and statsmodels for tasks like data cleaning, statistical modeling, and numerical computations. It also uses Matplotlib, Seaborn, and Plotly for customized, visually rich charts. Use this for precise calculations, data analysis, and data visualizations. The code is executed in a sandboxed, headless, noninteractive environment with no internet access. Use of eval, exec, and input is blocked. Code must complete within 300 seconds.
+    description: str = """
+This tool executes Python code in a restricted environment for data analysis,
+precise computations, graphing, and visualizations for enhanced response
+generation. It leverages libraries such as pandas, numpy, scipy, and statsmodels
+for tasks like data cleaning, statistical modeling, and numerical computations.
+It also uses Matplotlib, Seaborn, and Plotly for customized, visually rich
+charts. Use this for precise calculations, data analysis, and data visualizations.
+The code is executed in a sandboxed, headless, noninteractive environment with no
+internet access. Use of eval, exec, and input is blocked. Code must complete
+within 300 seconds.
 """.strip()
-    )
 
     args_schema: type[CodeInterpreterToolArgs] = CodeInterpreterToolArgs
 
     timeout: int = 300
     code_interpreter_image: str = "192.168.1.160:5000/code-interpreter:latest"
 
-    def _run(self, *args, **kwargs) -> str:
+    def _run(self, *args: Any, **kwargs: Any) -> str:
         return asyncio.run(self._arun(*args, **kwargs))
 
     async def _arun(self, python_code: str, config: RunnableConfig) -> str:

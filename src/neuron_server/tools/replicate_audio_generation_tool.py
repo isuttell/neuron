@@ -1,6 +1,7 @@
 import asyncio
 import os
 import random
+from typing import Any
 from uuid import uuid4
 
 import aiofiles
@@ -20,14 +21,22 @@ from neuron_server.util.slug import safe_filename
 class ReplicateAudioGenerationToolArgs(BaseModel):
     video_url: str = Field(description="The URL of the video to add the audio to")
     name: str = Field(
-        description="A unique display name for the audio generation less than 256 characters"
+        description=(
+            "A unique display name for the audio generation less than 256 characters"
+        )
     )
     prompt: str | None = Field(
-        description="Keywords to guide the audio generation. Only use if the model is not generating the audio you want.",
+        description=(
+            "Keywords to guide the audio generation. Only use if the model is not "
+            "generating the audio you want."
+        ),
         default=None,
     )
     duration: int | None = Field(
-        description="The duration of the video in seconds. The default is the image to video duration of 6 seconds.",
+        description=(
+            "The duration of the video in seconds. The default is the image to "
+            "video duration of 6 seconds."
+        ),
         default=6,
     )
     num_steps: int | None = Field(
@@ -49,23 +58,26 @@ class ReplicateAudioGenerationToolArgs(BaseModel):
 class ReplicateAudioGenerationTool(BaseTool):
     name: str = "replicate_audio_generation"
     description: str = (
-        """
-Use this tool to add realistic foley sound effects synced to a video using the zsxkib/mmaudio model on Replicate. It can even do speech, if you're not too worried about the words making sense. It uses an advanced AI model that synthesizes high-quality audio from video content, enabling seamless video-to-audio transformation. Use this tool to add foley sounds to a video. Avoid ethereal sounds.
-""".strip()
+        "Use this tool to add realistic foley sound effects synced to a video "
+        "using the zsxkib/mmaudio model on Replicate. It can even do speech, "
+        "if you're not too worried about the words making sense. It uses an "
+        "advanced AI model that "
+        "synthesizes high-quality audio from video content, enabling seamless "
+        "video-to-audio transformation. Use this tool to add foley sounds to a video. "
+        "Avoid ethereal sounds."
     )
 
     args_schema: type[ReplicateAudioGenerationToolArgs] = (
         ReplicateAudioGenerationToolArgs
     )
 
-    ref: str = (
-        "zsxkib/mmaudio:4b9f801a167b1f6cc2db6ba7ffdeb307630bf411841d4e8300e63ca992de0be9"
-    )
+    ref: str = "zsxkib/mmaudio:"
+    "4b9f801a167b1f6cc2db6ba7ffdeb307630bf411841d4e8300e63ca992de0be9"
 
     def _run(
         self,
-        *args,
-        **kwargs,
+        *args: Any,
+        **kwargs: Any,
     ) -> str:
         return asyncio.run(
             self._arun(
@@ -74,7 +86,7 @@ Use this tool to add realistic foley sound effects synced to a video using the z
             )
         )
 
-    async def _arun(
+    async def _arun(  # noqa: PLR0913
         self,
         video_url: str,
         name: str,
@@ -91,12 +103,14 @@ Use this tool to add realistic foley sound effects synced to a video using the z
             os.path.join(neuron_config.temp_folder, uuid4().hex)
         )
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(video_url) as response:
-                    response.raise_for_status()
+            async with (
+                aiohttp.ClientSession() as session,
+                session.get(video_url) as response,
+            ):
+                response.raise_for_status()
 
-                    async with aiofiles.open(tmp_upload_file, "wb") as file:
-                        await file.write(await response.content.read())
+                async with aiofiles.open(tmp_upload_file, "wb") as file:
+                    await file.write(await response.content.read())
 
             input_args = {
                 "prompt": prompt,
@@ -152,7 +166,7 @@ Use this tool to add realistic foley sound effects synced to a video using the z
                 os.remove(tmp_upload_file)
 
 
-async def main():
+async def main() -> None:
     import argparse
 
     parser = argparse.ArgumentParser(
@@ -167,7 +181,10 @@ async def main():
     parser.add_argument(
         "--prompt",
         type=str,
-        help="The prompt to use for the video generation for everything after the first frame.",
+        help=(
+            "The prompt to use for the video generation for everything after the first "
+            "frame."
+        ),
         default="panda and kitten missing each other",
     )
     args = parser.parse_args()

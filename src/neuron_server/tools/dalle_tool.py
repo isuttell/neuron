@@ -2,7 +2,7 @@ import asyncio
 import os
 from datetime import UTC, datetime
 from io import BytesIO
-from typing import Literal
+from typing import Any, Literal
 
 import aiohttp
 from langchain.tools import BaseTool
@@ -47,29 +47,47 @@ async def generate_images(
     images = []
     for image in response.data:
         image_url = image.url
-        async with aiohttp.ClientSession() as session:
-            async with session.get(image_url) as response:
-                response.raise_for_status()
-                images.append(Image.open(BytesIO(await response.content.read())))
+        try:
+            async with aiohttp.ClientSession() as session:
+                logger.debug(f"Downloading image from {image_url}")
+                async with session.get(image_url) as response:
+                    response.raise_for_status()
+                    image_data = await response.content.read()
+                    images.append(Image.open(BytesIO(image_data)))
+        except aiohttp.ClientError as e:
+            logger.error(f"Failed to download image: {str(e)}")
+            raise
     return images
 
 
 class DalleArgs(BaseModel):
     name: str = Field(
-        description="A unique display name for the image generation less than 256 characters"
+        description=(
+            "A unique display name for the image generation less than 256 characters"
+        )
     )
     prompt: str = Field(
-        description="""
-The prompt to generate the image from.
-
-When creating prompts for images, include specific visual details, such as colors, textures, and object placements, to guide the model toward a precise result. Mention the desired style (e.g., photorealistic, cartoonish, or abstract) and add context, like background elements or lighting, for more cohesive images. Focus on clarity and conciseness in each prompt to avoid ambiguity and ensure reproducible results. Unless you are trying to maintain a specific style or look add multiple random modern art styles and artistic styles to ensure variety.
-        """.strip()
+        description=(
+            "The prompt to generate the image from.\n\n"
+            "When creating prompts for images, include specific visual details, "
+            "such as colors, textures, and object placements, to guide the model "
+            "toward a precise result. Mention the desired style (e.g., "
+            "photorealistic, cartoonish, or abstract) and add context, like "
+            "background elements or lighting, for more cohesive images. Focus on "
+            "clarity and conciseness in each prompt to avoid ambiguity and ensure "
+            "reproducible results. Unless you are trying to maintain a specific "
+            "style or look add multiple random modern art styles and artistic "
+            "styles to ensure variety."
+        )
     )
     style: Literal["natural", "vivid"] = Field(
         description="The style of the image to generate.", default="vivid"
     )
     size: Literal["1024x1024", "1792x1024", "1024x1792"] = Field(
-        description="The size of the image to generate. Default to square. Use wide images for cinematic effect.",
+        description=(
+            "The size of the image to generate. Default to square. "
+            "Use wide images for cinematic effect."
+        ),
         default="1024x1024",
     )
     n: int = Field(
@@ -81,18 +99,20 @@ When creating prompts for images, include specific visual details, such as color
 class DalleTool(BaseTool):
     name: str = "dalle"
     description: str = (
-        "A tool that generates detailed, realistic or semi-realistic images and charts based on a text prompt using OpenAI's DALL·E 3. Returns a markdown image tag for display."
+        "A tool that generates detailed, realistic or semi-realistic images "
+        "and charts based on a text prompt using OpenAI's DALL·E 3. "
+        "Returns a markdown image tag for display."
     )
     args_schema: type[DalleArgs] = DalleArgs
 
     def _run(
         self,
-        *args,
-        **kwargs,
+        *args: tuple[Any, ...],
+        **kwargs: dict[str, Any],
     ) -> str:
         return asyncio.run(self._arun(*args, **kwargs))
 
-    async def _arun(
+    async def _arun(  # noqa: PLR0913
         self,
         name: str,
         prompt: str,
@@ -106,7 +126,8 @@ class DalleTool(BaseTool):
         Args:
             prompt (str): The prompt to generate the image from.
             style (Literal["natural", "vivid"]): The style of the image to generate.
-            size (Literal["1024x1024", "1792x1024", "1024x1792"]): The size of the image to generate.
+            size (Literal["1024x1024", "1792x1024", "1024x1792"]): The size of the image
+              to generate.
         Returns:
             str: A markdown string containing the generated image.
         """

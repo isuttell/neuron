@@ -245,7 +245,7 @@ pool = AsyncNullConnectionPool(
 )
 
 
-async def start():
+async def start() -> None:
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     await pool.open(wait=True)
@@ -253,7 +253,7 @@ async def start():
     await checkpointer.setup()
 
 
-async def test_database():
+async def test_database() -> None:
     from sqlalchemy import select
 
     async with get_session() as session:

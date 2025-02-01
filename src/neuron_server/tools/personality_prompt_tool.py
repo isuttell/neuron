@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from typing import Any
 
 from langchain.tools import BaseTool
 from langchain_core.runnables import RunnableConfig
@@ -12,22 +13,23 @@ from neuron_server.pubsub import pubsub
 logger = logging.getLogger(__name__)
 
 
-class PersonalityPromptToollArgs(BaseModel):
+class PersonalityPromptToolArgs(BaseModel):
     name: str = Field(description="A short informative title for the prompt")
     prompt: str = Field(
-        description="The reusable prompt for later use. It should be in second person explaining to an assistant what it needs to do."
+        description="""The reusable prompt for later use. It should be in second person
+explaining to an assistant what it needs to do."""
     )
 
 
 class PersonalityPromptTool(BaseTool):
     name: str = "personality_prompt"
-    description: str = (
-        """This tools lets you save a prompt for the active personality making it available to the user to use at any time. Only use this tool when the user has explictly asked for it."""
-    )
+    description: str = """This tools lets you save a prompt for the active personality
+making it available to the user to use at any time. Only use this tool when the
+user has explicitly asked for it."""
 
-    args_schema: type[PersonalityPromptToollArgs] = PersonalityPromptToollArgs
+    args_schema: type[PersonalityPromptToolArgs] = PersonalityPromptToolArgs
 
-    def _run(self, *args, **kwargs) -> str:
+    def _run(self, *args: Any, **kwargs: Any) -> str:
         return asyncio.run(self._arun(*args, **kwargs))
 
     async def _arun(self, name: str, prompt: str, config: RunnableConfig) -> str:

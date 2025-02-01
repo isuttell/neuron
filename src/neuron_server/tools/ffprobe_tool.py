@@ -1,5 +1,6 @@
 import asyncio
 import subprocess
+from typing import Any
 
 from langchain.tools import BaseTool
 
@@ -9,13 +10,20 @@ from neuron_server.util.subprocess_runner import run_subprocess
 
 class FFprobeTool(BaseTool):
     name: str = "ffprobe"
-    description: str = (
-        """
-This tool is designed to analyze video and audio using ffprobe. Starting with a fixed base of arguments (ffprobe -hide_banner), the LLM generates all additional arguments required to do tasks such inspect the duration, bitrate, and other metadata of a video or audio file. The tool avoids duplicating the initial arguments and focuses on creating the following functional set of arguments. Use this to determin the actual duration of a generated piece of audio or video.
+    description: str = """
+This tool is designed to analyze video and audio using ffprobe. Starting with a fixed
+base of arguments (ffprobe -hide_banner), the LLM generates all additional arguments
+required to do tasks such inspect the duration, bitrate, and other metadata of a
+video or audio file. The tool avoids duplicating the initial arguments and focuses
+on creating the following functional set of arguments. Use this to determine the
+actual duration of a generated piece of audio or video.
 """.strip()
-    )
 
-    def _run(self, *args, **kwargs) -> str:
+    def _run(
+        self,
+        *args: tuple[Any, ...],
+        **kwargs: dict[str, Any],
+    ) -> str:
         return asyncio.run(self._arun(*args, **kwargs))
 
     async def _arun(self, args: list[str]) -> str:

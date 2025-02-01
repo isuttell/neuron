@@ -20,11 +20,9 @@ class GraphImportToolArgs(BaseModel):
 
 class GraphImportTool(BaseTool):
     name: str = "graph_import"
-    description: str = (
-        """
+    description: str = """
 Use this tool to import text into the knowledge graph for long term memory.
 """.strip()
-    )
     args_schema: type[GraphImportToolArgs] = GraphImportToolArgs
 
     def _run(self, text: str, config: RunnableConfig) -> str:
@@ -53,9 +51,9 @@ Added text to knowledge graph in {round(duration)} seconds
 
 ## Document {doc_result.document_id}
 
-* **Name:** {doc_result.document_name or 'unknown'}
-* **Source:** {doc_result.source or 'unknown'}
-* **Keywords:** {keywords or 'None'}
+* **Name:** {doc_result.document_name or "unknown"}
+* **Source:** {doc_result.source or "unknown"}
+* **Keywords:** {keywords or "None"}
 * **Tokens:** {token_count:,}
 
 ### Summary

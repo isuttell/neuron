@@ -31,7 +31,6 @@ connection_kwargs = {
 }
 
 
-
 def get_message_content(message: BaseMessage) -> str | None:
     """Extract the content from a message and format it for display.
 
@@ -58,41 +57,77 @@ def get_message_content(message: BaseMessage) -> str | None:
 
     return str(message.content)
 
+
 class ThreadConfig(TypedDict):
+    """Configuration for thread operations.
+
+    Attributes:
+        thread_id: Unique identifier for the thread
+    """
+
     thread_id: str
 
 
 class PubSubEvent(Protocol):
-    """Protocol for pubsub events to avoid using Any."""
+    """Protocol for pubsub events to avoid using Any.
+
+    Methods:
+        model_dump: Convert event to dictionary format
+    """
+
     def model_dump(self) -> dict[str, Any]: ...
 
 
 class ChainEventData(TypedDict):
-    """Data structure for chain events."""
+    """Data structure for chain events.
+
+    Attributes:
+        kind: Type of chain event (start/end)
+        name: Name of the chain
+        data: Event data payload
+        run_id: Unique run identifier
+        active_runs: Map of active run IDs to their status
+    """
+
     kind: str
     name: str
-    data: dict
+    data: dict[str, Any]
     run_id: str
     active_runs: dict[str, str]
 
 
 class WorkflowTool(TypedDict):
-    """Type definition for workflow tools."""
+    """Type definition for workflow tools.
+
+    Attributes:
+        name: Tool name
+        description: Tool description
+        func: Callable function implementing the tool's logic
+    """
+
     name: str
     description: str
     func: Callable[..., Any]
 
 
 class WorkflowResult(TypedDict):
-    """Type definition for workflow results."""
+    """Type definition for workflow results.
+
+    Attributes:
+        messages: List of message objects from the workflow execution
+    """
+
     messages: list[AIMessage | HumanMessage | ToolMessage]
 
 
 class StreamGraph(Protocol):
-    """Protocol for stream graph interface."""
-    def create_workflow(
-        self, tools: list[WorkflowTool] | None
-    ) -> "StreamGraph": ...
+    """Protocol for stream graph interface.
+
+    Defines the interface for streaming graph operations including workflow creation
+    and event streaming.
+    """
+
+    def create_workflow(self, tools: list[WorkflowTool] | None) -> "StreamGraph": ...
 
     async def astream_events(
         self,
@@ -119,6 +154,7 @@ class StreamArgs(TypedDict, total=False):
         prompt: The prompt text
         location: The location string (default: San Diego coordinates)
     """
+
     thread_id: UUID
     personality_id: UUID
     user_id: str | None
@@ -129,12 +165,35 @@ class StreamArgs(TypedDict, total=False):
 
 class StreamConfig(TypedDict):
     """Configuration for streaming agent responses."""
+
     thread_id: UUID
     personality_id: UUID
     user_id: UUID
     username: str
     prompt: str
     location: str
+
+
+class ToolEventContext(TypedDict):
+    """Context for tool event handling.
+
+    Attributes:
+        thread: Thread model instance
+        kind: Event type (start/end)
+        name: Tool name
+        run_id: Unique run identifier
+        active_runs: Map of active run IDs to their status
+        data: Event data payload
+        node: Graph node identifier
+    """
+
+    thread: ThreadModel
+    kind: str
+    name: str
+    run_id: str
+    active_runs: dict[str, str]
+    data: dict[str, Any]
+    node: str | None
 
 
 DEFAULT_LOCATION = "San Diego, California at -117.1860 W and 32.84 N."
@@ -147,6 +206,21 @@ async def execute_agent(
     username: str = "Isaac",
     location: str = DEFAULT_LOCATION,
 ) -> str:
+    """Execute a one-off agent interaction without streaming.
+
+    Args:
+        prompt: User's input text
+        personality_id: ID of personality to use
+        user_id: ID of user making request (default: test user)
+        username: Name of user (default: Isaac)
+        location: Location string (default: San Diego)
+
+    Returns:
+        The agent's response text
+
+    Raises:
+        BadRequest: If personality not found
+    """
     personality = await PersonalityModel.get(personality_id)
     if personality is None:
         raise BadRequest("Personality not found")
@@ -185,6 +259,14 @@ async def execute_agent(
 
 
 async def aget_state(thread_id: UUID) -> dict[str, Any]:
+    """Get the current state for a thread.
+
+    Args:
+        thread_id: ID of thread to get state for
+
+    Returns:
+        Dictionary containing thread state
+    """
     checkpointer = AsyncPostgresSaver(pool)
     llm: LLM = await ProviderModelModel.get_active_llm()
     return await llm.aget_state(
@@ -193,19 +275,37 @@ async def aget_state(thread_id: UUID) -> dict[str, Any]:
 
 
 class Debouncer:
+    """Implements debouncing for async function calls.
+
+    Ensures that rapidly repeated function calls are throttled to prevent
+    overwhelming the system.
+
+    Attributes:
+        wait: Time in seconds to wait before executing the debounced function
+        task: Current async task if one is running
+        _future: Future object for tracking completion
+        _next_args: Arguments for next execution
+        _next_kwargs: Keyword arguments for next execution
+        _coro_func: Coroutine function to execute
+    """
+
     def __init__(self, wait: float) -> None:
+        """Initialize the debouncer.
+
+        Args:
+            wait: Time in seconds to wait before executing the debounced function
+        """
         self.wait = wait  # seconds
-        self.task: asyncio.Task | None = None
-        self._future: asyncio.Future | None = None
-        self._next_args: tuple | None = None
-        self._next_kwargs: dict | None = None
-        self._coro_func: Callable | None = None
+        self.task: asyncio.Task[None] | None = None
+        self._future: asyncio.Future[None] | None = None
+        self._next_args: tuple[Any, ...] | None = None
+        self._next_kwargs: dict[str, Any] | None = None
+        self._coro_func: Callable[..., Any] | None = None
 
     async def call(
         self, coro_func: Callable[..., Any], *args: Any, **kwargs: Any
     ) -> None:
-        """
-        Schedule a coroutine function to be executed with debouncing
+        """Schedule a coroutine function to be executed with debouncing.
 
         Args:
             coro_func: The async function to call
@@ -248,33 +348,45 @@ debounce_publish = Debouncer(wait=0.1)
 
 
 async def _debounced_publish(channel: str, event: PubSubEvent) -> None:
-    """Debounces pubsub publishes to limit frequency."""
+    """Debounces pubsub publishes to limit frequency.
+
+    Args:
+        channel: Channel to publish to
+        event: Event to publish
+    """
     await debounce_publish.call(pubsub.publish, channel, event)
 
 
 async def update_thread_status(
     thread: ThreadModel, status: str, force_update: bool = False
 ) -> None:
+    """Update thread status and publish the change.
+
+    Args:
+        thread: Thread model instance to update
+        status: New status to set
+        force_update: Whether to update even if status hasn't changed
+    """
     if thread.status != status or force_update:
         thread.status = status
 
-        async def task() -> None:
+        async def update_task() -> None:
+            """Inner task to update thread status and publish change."""
             await ThreadModel.set(thread.id, "status", status)
             await _debounced_publish("app", GetThreadResponse(thread=thread))
 
-        asyncio.create_task(task())
+        asyncio.create_task(update_task())
 
 
 async def wait_for_idle(thread_id: UUID, timeout: int = 300) -> None:
-    """
-    Wait for thread status to become idle, checking every second for up to 5 minutes.
+    """Wait for thread status to become idle, checking every second for up to 5 minutes.
 
     Args:
         thread_id: The thread id to monitor
         timeout: Maximum time to wait in seconds (default 300 seconds / 5 minutes)
 
     Raises:
-        asyncio.TimeoutError: If thread doesn't become idle within timeout period
+        TimeoutError: If thread doesn't become idle within timeout period
     """
     start_time = asyncio.get_event_loop().time()
     thread = await ThreadModel.get(thread_id)
@@ -295,6 +407,15 @@ async def update_title(
     personality_id: UUID,
     user_id: UUID,
 ) -> None:
+    """Update thread title based on message content.
+
+    Args:
+        thread: Thread model instance to update
+        llm: Language model instance
+        human_message: Message to base title on
+        personality_id: ID of personality context
+        user_id: ID of user making request
+    """
     try:
         logger.debug("Generating thread name...")
         title_response = await llm.call_title(
@@ -320,13 +441,25 @@ async def update_title(
 
 
 class ChainEvent(TypedDict):
-    """Chain event data structure."""
+    """Chain event data structure.
+
+    Attributes:
+        thread: Thread model instance
+        event_data: Chain event data
+    """
+
     thread: ThreadModel
     event_data: ChainEventData
 
 
 async def _handle_chain_event(event: ChainEvent) -> None:
-    """Handle chain start/end events."""
+    """Handle chain start/end events.
+
+    Processes chain lifecycle events and updates thread status accordingly.
+
+    Args:
+        event: Chain event data containing thread and event information
+    """
     thread = event["thread"]
     data = event["event_data"]
 
@@ -349,34 +482,55 @@ async def _handle_chain_event(event: ChainEvent) -> None:
     )
 
 
-async def _handle_tool_event(
-    thread: ThreadModel,
-    kind: str,
-    name: str,
-    run_id: str,
-    active_runs: dict[str, str],
-) -> None:
-    """Handle tool start/end events."""
-    if kind == "on_tool_start":
-        logger.debug(f"Starting tool {name}...")
-        active_runs[run_id] = (
-            name
-            if name not in ["store_memory", "recall_memory"]
+async def _handle_tool_event(ctx: ToolEventContext) -> None:
+    """Handle tool start/end events.
+
+    Processes tool lifecycle events, updates thread status, and publishes
+    tool messages.
+
+    Args:
+        ctx: Tool event context containing all event data
+    """
+    if ctx["kind"] == "on_tool_start":
+        logger.debug(f"Starting tool {ctx['name']}...")
+        ctx["active_runs"][ctx["run_id"]] = (
+            ctx["name"]
+            if ctx["name"] not in ["store_memory", "recall_memory"]
             else "update_memory"
         )
-    elif kind == "on_tool_end":
-        logger.debug(f"Finished tool {name}...")
-        del active_runs[run_id]
+    elif ctx["kind"] == "on_tool_end":
+        logger.debug(f"Finished tool {ctx['name']}...")
+        del ctx["active_runs"][ctx["run_id"]]
 
-    values = list(set(active_runs.values()))
+    if ctx["kind"] == "on_tool_end" and isinstance(ctx["data"]["output"], ToolMessage):
+        output: ToolMessage = ctx["data"]["output"]
+        output.id = ctx["run_id"] if not output.id else output.id
+        message = ThreadMessage(
+            **output.model_dump(),
+            thread_id=ctx["thread"].id,
+            node=ctx["node"],
+        )
+        await pubsub.publish("app", MessageEvent(message=message))
+
+    values = list(set(ctx["active_runs"].values()))
     await update_thread_status(
-        thread,
+        ctx["thread"],
         ", ".join(values) if len(values) > 0 else "thinking",
     )
 
 
 class StreamEventContext(TypedDict):
-    """Context for stream event processing."""
+    """Context for stream event processing.
+
+    Attributes:
+        thread: Thread model instance
+        graph: Stream graph instance
+        human_message: User's input message
+        personality: Personality model instance
+        config: Stream configuration
+        start_time: Event start timestamp
+    """
+
     thread: ThreadModel
     graph: StreamGraph
     human_message: HumanMessage
@@ -386,7 +540,20 @@ class StreamEventContext(TypedDict):
 
 
 async def _process_stream_events(ctx: StreamEventContext) -> str | None:
-    """Process stream events and return the final message content."""
+    """Process stream events and return the final message content.
+
+    Handles the streaming of events from the language model, including:
+    - Chain events (start/end)
+    - Tool events (start/end)
+    - Chat model streaming
+    - Error events
+
+    Args:
+        ctx: Stream event context containing thread, graph, and config info
+
+    Returns:
+        The final message content or None if no messages
+    """
     index = -1
     active_runs: dict[str, str] = {}
     state_result: str | None = None
@@ -436,7 +603,15 @@ async def _process_stream_events(ctx: StreamEventContext) -> str | None:
 
         elif kind in ["on_tool_start", "on_tool_end"]:
             await _handle_tool_event(
-                ctx["thread"], kind, name, run_id, active_runs
+                ToolEventContext(
+                    thread=ctx["thread"],
+                    kind=kind,
+                    name=name,
+                    run_id=run_id,
+                    active_runs=active_runs,
+                    data=data,
+                    node=node,
+                )
             )
 
         elif kind == "on_chat_model_stream" and isinstance(data["chunk"], AIMessage):
@@ -460,17 +635,6 @@ async def _process_stream_events(ctx: StreamEventContext) -> str | None:
                         )
                     ),
                 )
-
-        elif kind == "on_tool_end" and isinstance(data["output"], ToolMessage):
-            output: ToolMessage = data["output"]
-            output.id = run_id if not output.id else output.id
-            message = ThreadMessage(
-                **output.model_dump(),
-                thread_id=ctx["thread"].id,
-                node=node,
-            )
-            await pubsub.publish("app", MessageEvent(message=message))
-
         elif kind == "on_chat_model_end":
             output: AIMessage = data["output"]
             if "update_title" not in active_runs.values():
@@ -504,11 +668,22 @@ async def _process_stream_events(ctx: StreamEventContext) -> str | None:
 async def astream(args: StreamArgs) -> str | None:
     """Stream agent responses and handle message processing.
 
+    Main entry point for streaming agent responses. Handles:
+    - Thread status management
+    - Personality loading
+    - LLM initialization
+    - Message creation and publishing
+    - Event streaming
+    - Error handling
+
     Args:
-        args: StreamArgs containing all necessary parameters
+        args: StreamArgs containing thread_id, personality_id, and other parameters
 
     Returns:
         The final message content or None if no messages
+
+    Raises:
+        Exception: If thread or personality not found
     """
     config = StreamConfig(
         thread_id=args["thread_id"],

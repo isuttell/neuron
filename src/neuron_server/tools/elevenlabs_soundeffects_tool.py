@@ -15,34 +15,46 @@ tool_promp_types = """
 Prompt Tips:
 * Short prompts (e.g., "footsteps on gravel") yield single sounds.
 * Descriptors like "high-quality, Foley" improve detail.
-* Use terms like Foley (realistic effects), Whoosh (movement sounds), Impact (collisions), Drone (atmosphere), and onomatopoeias (e.g., "meow").
+* Use terms like Foley (realistic effects), Whoosh (movement sounds), Impact
+  (collisions), Drone (atmosphere), and onomatopoeias (e.g., "meow").
 """.strip()
 
 
 class ElevenLabsSoundEffectsToolArgs(BaseModel):
     name: str = Field(
-        description="A unique display name for the audio file to be generated. Must be less than 256 characters",
+        description=(
+            "A unique display title for the audio file to be generated. "
+            "Must be less than 256 characters"
+        ),
     )
     prompt: str = Field(
-        description="The prompt used to generate the sound effect.\n\n{tool_promp_types}"
+        description="The prompt to generate the sound effect.\n\n{tool_promp_types}"
     )
     duration_seconds: float | None = Field(
-        description="The duration of the sound which will be generated in seconds. Must be at least 0.5 and at most 22.",
+        description=(
+            "The duration of the sound which will be generated in seconds. "
+            "Must be at least 0.5 and at most 22."
+        ),
         default=None,
     )
     prompt_influence: float | None = Field(
-        description="The influence of the prompt on the sound effect. Must be between 0 and 1. Defaults to 0.3",
+        description=(
+            "The influence of the prompt on the sound effect. "
+            "Must be between 0 and 1. Defaults to 0.3"
+        ),
         default=0.3,
     )
 
 
 class ElevenLabsSoundEffectsTool(BaseTool):
     name: str = "elevenlabs_sound_effects"
-    description: str = (
-        """
-This tool generates sound effects using the Eleven Labs sound effect API from text prompts. Provide a prompt, and the tool returns a sound file with an <audio> tag for playback. Complex sequences (e.g., "a man walks through a hallway, then falls") must be created with individual effects and later combined using ffmpeg for optimal quality.
+    description: str = """
+This tool generates sound effects using the Eleven Labs sound effect API from text
+prompts. Provide a prompt, and the tool returns a sound file with an <audio> tag
+for playback. Complex sequences (e.g., "a man walks through a hallway, then falls")
+must be created with individual effects and later combined using ffmpeg for optimal
+quality.
 """.strip()
-    )
     args_schema: type[ElevenLabsSoundEffectsToolArgs] = ElevenLabsSoundEffectsToolArgs
 
     def _run(self, prompt: str, duration_seconds: float | None = None) -> str:
@@ -58,7 +70,8 @@ This tool generates sound effects using the Eleven Labs sound effect API from te
     ) -> str:
         try:
             logger.debug(
-                f"Generating sound effect for prompt {prompt} with duration {duration_seconds}"
+                f"Generating sound effect for prompt {prompt} "
+                f"with duration {duration_seconds}"
             )
             client = AsyncElevenLabs(api_key=neuron_config.elevenlabs_api_key)
             response = client.text_to_sound_effects.convert(
@@ -90,7 +103,7 @@ This tool generates sound effects using the Eleven Labs sound effect API from te
             raise
 
 
-def main():
+def main() -> None:
     import argparse
 
     parser = argparse.ArgumentParser(

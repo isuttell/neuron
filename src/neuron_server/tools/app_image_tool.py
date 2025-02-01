@@ -2,7 +2,7 @@ import asyncio
 import logging
 import os
 import shutil
-from typing import Literal
+from typing import Any, Literal
 from uuid import uuid4
 
 import aiofiles
@@ -14,32 +14,41 @@ from pydantic import BaseModel, Field
 from neuron_server.cache import set_cache_key
 from neuron_server.config import config as neuron_config
 from neuron_server.controllers.events.app_events import SidebarImageEvent
+from neuron_server.controllers.events.personality_events import GetPersonalityResponse
+from neuron_server.models.personality_model import PersonalityModel
 from neuron_server.pubsub import pubsub
 
 logger = logging.getLogger(__name__)
-from neuron_server.controllers.events.personality_events import GetPersonalityResponse
-from neuron_server.models.personality_model import PersonalityModel
 
 
 class AppImageToolArgs(BaseModel):
     url: str = Field(description="The URL of the image")
     key: Literal["sidebar_image", "dashboard_image", "personality_logo"] = Field(
-        description="The key to update. The sidebar image is updated with the key 'sidebar_image', the smart home dashboard image is updated with the key 'dashboard_image', and the personality logo is updated with the key 'personality_logo'"
+        description=(
+            "The key to update. The sidebar image is updated with the key "
+            "'sidebar_image', the smart home dashboard image is updated with the key "
+            "'dashboard_image', and the personality logo is updated with the key "
+            "'personality_logo'"
+        )
     )
 
 
 class AppImageTool(BaseTool):
     name: str = "app_image"
-    description: str = (
-        """This tool allows you to update the image of the sidebar, the smart home dashboard, or the active personality logo."""
-    )
+    description: str = """This tool allows you to update the image of the sidebar,
+    the smart home dashboard, or the active personality logo."""
 
     args_schema: type[AppImageToolArgs] = AppImageToolArgs
 
-    def _run(self, *args, **kwargs) -> str:
+    def _run(self, *args: Any, **kwargs: Any) -> str:
         return asyncio.run(self._arun(*args, **kwargs))
 
-    async def _arun(self, key: str, url: str, config: RunnableConfig) -> str:
+    async def _arun(
+        self,
+        key: str,
+        url: str,
+        config: RunnableConfig,
+    ) -> str:
         try:
             if key == "sidebar_image":
                 await set_cache_key(
@@ -55,15 +64,17 @@ class AppImageTool(BaseTool):
                     # we're writing to so the mime types don't get confused. Basically
                     # We're trying to prevent a jpeg being saved as a.png.
                     raise Exception(
-                        f"Invalid image URL. The image URL must end with {required_extension}"
+                        f"Invalid image URL. The image URL must end with "
+                        f"{required_extension}"
                     )
                 try:
-                    async with aiohttp.ClientSession() as session:
-                        async with session.get(url) as response:
-                            response.raise_for_status()
-
-                            async with aiofiles.open(tmp_upload_file, "wb") as file:
-                                await file.write(await response.content.read())
+                    async with (
+                        aiohttp.ClientSession() as session,
+                        session.get(url) as response,
+                        aiofiles.open(tmp_upload_file, "wb") as file,
+                    ):
+                        response.raise_for_status()
+                        await file.write(await response.content.read())
 
                     shutil.copy(tmp_upload_file, neuron_config.tablet_image_filename)
                     logger.debug(

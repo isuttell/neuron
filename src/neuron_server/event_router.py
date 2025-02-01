@@ -30,7 +30,7 @@ class ErrorEvent(Event):
 class EventRouter:
     routes: dict[str, tuple[BaseModel, Callable]]
 
-    def __init__(self, routes: dict[str, tuple[BaseModel, Callable]] = None):
+    def __init__(self, routes: dict[str, tuple[BaseModel, Callable]] = None) -> None:
         self.routes = routes or {}
 
     def on(self, model: BaseModel):
@@ -42,7 +42,7 @@ class EventRouter:
 
         return decorator
 
-    def register_controller(self, event_router: Self):
+    def register_controller(self, event_router: Self) -> None:
         self.routes.update(event_router.routes)
 
     async def dispatch(self, event: dict[str, Any]) -> Coroutine[Any, Any, None]:

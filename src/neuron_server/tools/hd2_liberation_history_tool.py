@@ -14,28 +14,36 @@ async def get(url: str) -> str:
     start_time = time.perf_counter()
     status_code = None
     try:
-        async with aiohttp.ClientSession(
-            timeout=aiohttp.ClientTimeout(total=10)
-        ) as session:
-            async with session.get(url) as response:
-                status_code = response.status
-                return await response.text()
+        async with (
+            aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=10)) as session,
+            session.get(url) as response,
+        ):
+            status_code = response.status
+            return await response.text()
     finally:
         logger.debug(
-            f"GET {url} - {time.perf_counter() - start_time:.2f}s - {status_code or '-1'}"
+            f"GET {url} - {time.perf_counter() - start_time:.2f}s - "
+            f"{status_code or '-1'}"
         )
 
 
 class HD2LiberationHistoryToolArgs(BaseModel):
     planet_index: int = Field(
-        description="The index of the planet to get the liberation history for. Found in the galactic war report."
+        description=(
+            "The index of the planet to get the liberation history for. "
+            "Found in the galactic war report."
+        )
     )
 
 
 class HD2LiberationHistoryTool(BaseTool):
     name: str = "hd2_liberation_history"
     description: str = (
-        "Provides the detailed liberation history of a given planet. Returns the liberation status in 5 minutes intervals (with some variance). Status is only recorded when planet is active during a campaign. Ordered from newest to latest, limited to 288 results (24 hours). Use it to calculate the time until a planet is liberated."
+        "Provides the detailed liberation history of a given planet. Returns the "
+        "liberation status in 5 minutes intervals (with some variance). Status is "
+        "only recorded when planet is active during a campaign. Ordered from newest "
+        "to latest, limited to 288 results (24 hours). Use it to calculate the time "
+        "until a planet is liberated."
     )
     args_schema: type[HD2LiberationHistoryToolArgs] = HD2LiberationHistoryToolArgs
 

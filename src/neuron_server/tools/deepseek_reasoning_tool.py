@@ -17,7 +17,10 @@ logger = logging.getLogger(__name__)
 class DeepSeekReasoningToolArgs(BaseModel):
     system_prompt: str = Field(
         description="""
-Define the model's role and how it approaches the task. Start with a high level and general description of how to act. Include how long of response to return, the format of the response. Optionally include key contextual information to guide the model like releveant past memories.
+Define the model's role and how it approaches the task. Start with a high level and "
+"general description of how to act. Include how long of response to return, the "
+"format of the response. Optionally include key contextual information to guide "
+"the model like relevant past memories.
 """.strip()
     )
 
@@ -47,9 +50,10 @@ Controls response randomness (0.0 to 1.0):
 
 class DeepSeekReasoningTool(OpenAICompatibleTool):
     name: str = "deepseek_reasoning"
-    description: str = (
-        """
-Access powerful thinking models through OpenRouter's API for complex reasoning tasks. Provides models specialized in careful analysis, detailed explanations, and thorough problem-solving.
+    description: str = """
+Access powerful thinking models through OpenRouter's API for complex reasoning tasks. "
+"Provides models specialized in careful analysis, detailed explanations, and "
+"thorough problem-solving.
 
 Ideal for:
 - Deep analytical thinking
@@ -59,13 +63,12 @@ Ideal for:
 - Complicated coding problems
 - Creating detailed plans
 """.strip()
-    )
 
     args_schema: type[DeepSeekReasoningToolArgs] = DeepSeekReasoningToolArgs
 
-    base_system_prompt: str = (
-        """
-You are a specialized reasoning engine focused on deep analysis and careful thinking. Your purpose is to:
+    base_system_prompt: str = """
+You are a specialized reasoning engine focused on deep analysis and careful "
+"thinking. Your purpose is to:
 1. Break down complex problems into clear, logical components
 2. Consider multiple perspectives and approaches
 3. Provide detailed, well-reasoned explanations
@@ -75,7 +78,6 @@ You are a specialized reasoning engine focused on deep analysis and careful thin
    - Only use code blocks (```) when showing actual code snippets
    - Never wrap your entire response in code blocks
 """.strip()
-    )
 
     @property
     def base_url(self) -> str:

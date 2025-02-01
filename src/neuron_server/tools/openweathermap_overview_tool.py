@@ -1,4 +1,5 @@
 import asyncio
+from typing import Any
 
 import aiohttp
 from langchain.tools import BaseTool
@@ -29,15 +30,14 @@ class OpenWeatherMapOverviewToolArgs(BaseModel):
 
 class OpenWeatherMapOverviewTool(BaseTool):
     name: str = "openweathermap_overview"
-    description: str = (
-        """
-Get a human-readable weather summary for today or tomorrow's forecast, utilizing OpenWeatherMap AI technologies. Use this for quick weather summaries. Data is updated every 10 minutes.
-""".strip()
-    )
+    description: str = """
+Get a human-readable weather summary for today or tomorrow's forecast, utilizing
+OpenWeatherMap AI technologies. Use this for quick weather summaries. Data is
+updated every 10 minutes.""".strip()
 
     args_schema: type[OpenWeatherMapOverviewToolArgs] = OpenWeatherMapOverviewToolArgs
 
-    def _run(self, *args, **kwargs):
+    def _run(self, *args: Any, **kwargs: Any) -> str:
         return asyncio.run(self._arun(*args, **kwargs))
 
     async def _arun(

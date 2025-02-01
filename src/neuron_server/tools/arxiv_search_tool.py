@@ -1,4 +1,3 @@
-
 import arxiv
 from langchain.tools import BaseTool
 from pydantic import BaseModel, Field
@@ -19,7 +18,8 @@ Query Guide:
      - `all`: All fields
 
 2. **Boolean Operators**
-   - Combine fields with `AND`, `OR`, and `ANDNOT`, e.g., `au:del_maestro+AND+ti:checkerboard`.
+   - Combine fields with `AND`, `OR`, and `ANDNOT`
+   - Example: `au:del_maestro+AND+ti:checkerboard`
    - Use `ANDNOT` for exclusions.
 
 3. **Grouping & Phrases**
@@ -34,10 +34,15 @@ client = arxiv.Client()
 
 class ArxivSearchToolArgs(BaseModel):
     query: str | None = Field(
-        description=f"The search query for arXiv. If you want to search for a specific article, use the id_list field instead.\n{arxiv_search_info}"
+        description=(
+            "The search query for arXiv. If you want to search for a specific article, "
+            f"use the id_list field instead.\n{arxiv_search_info}"
+        )
     )
     id_list: list[str] | None = Field(
-        description="The list of article IDs to search for. Either this or query is required."
+        description=(
+            "The list of article IDs to search for. Either this or query is required."
+        )
     )
     max_results: int = Field(
         description="The maximum number of results to return.", default=10
@@ -54,16 +59,17 @@ class ArxivSearchToolArgs(BaseModel):
 
 class ArxivSearchTool(BaseTool):
     name: str = "arxiv_search"
-    description: str = (
-        """
-This tool searches arXiv for research articles, and retrieves short summaries. Embed short IDs in text responses to reference original sources.
+    description: str = """
+This tool searches arXiv for research articles, and retrieves short summaries.
+Embed short IDs in text responses to reference original sources.
 
 *arXiv API Query Guide**
 
-- Use `query` with prefixes (e.g., `au:del_maestro` for author Adrian Del Maestro) to target fields like `title`, `author`, `abstract`, and `comments`.
-- For specific IDs, use `id_list` instead of `search_query=id:xxx` to handle article versions.
+- Use `query` with prefixes (e.g., `au:del_maestro` for author Adrian Del Maestro)
+  to target fields like `title`, `author`, `abstract`, and `comments`.
+- For specific IDs, use `id_list` instead of `search_query=id:xxx`
+  to handle article versions.
 """.strip()
-    )
     args_schema: type[ArxivSearchToolArgs] = ArxivSearchToolArgs
 
     def _run(
@@ -160,7 +166,7 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    tool = ArxivTool()
+    tool = ArxivSearchTool()
     results = tool._run(
         id_list=[args.id] if args.id else None,
         query=args.query,

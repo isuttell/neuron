@@ -5,7 +5,7 @@ from typing import Any, TypedDict
 import aiohttp
 from langchain.tools import BaseTool
 from langchain_core.runnables import RunnableConfig
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from neuron_server.cache import cache_response
 from neuron_server.graph import process_document
@@ -18,16 +18,20 @@ class Biome(BaseModel):
 
 
 class Campaign(BaseModel):
-    planetIndex: int
+    planet_index: int = Field(alias="planetIndex")
     name: str
     faction: str
     players: int
     health: int
-    maxHealth: int
+    max_health: int = Field(alias="maxHealth")
     percentage: float
     defense: bool
     biome: Biome | None = None
-    expireDateTime: float | None = None
+    expire_date_time: float | None = Field(alias="expireDateTime", default=None)
+
+    class Config:
+        populate_by_name = True
+        allow_population_by_field_name = True
 
 
 @cache_response(ttl=60 * 1)
@@ -45,8 +49,12 @@ class News(BaseModel):
     id: int
     published: int
     type: int
-    tagIds: list[str]
+    tag_ids: list[str] = Field(alias="tagIds")
     message: str
+
+    class Config:
+        populate_by_name = True
+        allow_population_by_field_name = True
 
 
 @cache_response(ttl=60 * 1)
@@ -81,15 +89,15 @@ async def get_planets() -> dict[str, Planet]:
             response.raise_for_status()
             data: dict[str, dict[str, Any]] = await response.json()
             results = {}
-            for id, row in data.items():
-                results[id] = Planet(**row)
+            for planet_id, row in data.items():
+                results[planet_id] = Planet(**row)
             return results
 
 
 class Task(BaseModel):
     type: int
     values: list[int]
-    valueTypes: list[int]
+    value_types: list[int] = Field(alias="valueTypes")
 
 
 class Reward(BaseModel):
@@ -100,20 +108,28 @@ class Reward(BaseModel):
 
 class Setting(BaseModel):
     type: int
-    overrideTitle: str
-    overrideBrief: str
-    taskDescription: str
+    override_title: str = Field(alias="overrideTitle")
+    override_brief: str = Field(alias="overrideBrief")
+    task_description: str = Field(alias="taskDescription")
     tasks: list[Task]
     rewards: list[Reward]
     reward: Reward
     flags: int
 
+    class Config:
+        populate_by_name = True
+        allow_population_by_field_name = True
+
 
 class MajorOrder(BaseModel):
     id32: int
     progress: list[int]
-    expiresIn: int
+    expires_in: int = Field(alias="expiresIn")
     setting: Setting
+
+    class Config:
+        populate_by_name = True
+        allow_population_by_field_name = True
 
 
 class MajorOrdersResponse(BaseModel):
@@ -132,16 +148,16 @@ async def get_major_orders() -> list[MajorOrder]:
 
 
 class GlobalEvent(TypedDict):
-    eventId: int
+    event_id: int = Field(alias="eventId")
     title: str
     message: str
 
 
 class SpaceStation(TypedDict):
     id32: int
-    planetIndex: int
-    activeEffectIds: list[int] = []
-    currentElectionEndWarTime: int
+    planet_index: int = Field(alias="planetIndex")
+    active_effect_ids: list[int] = Field(alias="activeEffectIds", default=[])
+    current_election_end_war_time: int = Field(alias="currentElectionEndWarTime")
     flags: int
 
 
@@ -154,7 +170,7 @@ class PlanetStatus(TypedDict):
     index: int
     owner: int
     health: int
-    regenPerSecond: float
+    regen_per_second: float = Field(alias="regenPerSecond")
     players: int
     position: Coordinates
 
@@ -166,12 +182,12 @@ class PlanetAttack(TypedDict):
 
 class WarStatus(TypedDict):
     time: int
-    warId: int
-    globalEvents: list[GlobalEvent]
-    spaceStations: list[SpaceStation]
-    planetStatus: list[PlanetStatus]
-    planetAttacks: list[PlanetAttack]
-    layoutVersion: int
+    war_id: int = Field(alias="warId")
+    global_events: list[GlobalEvent] = Field(alias="globalEvents")
+    space_stations: list[SpaceStation] = Field(alias="spaceStations")
+    planet_status: list[PlanetStatus] = Field(alias="planetStatus")
+    planet_attacks: list[PlanetAttack] = Field(alias="planetAttacks")
+    layout_version: int = Field(alias="layoutVersion")
 
 
 @cache_response(ttl=60 * 1)
@@ -190,19 +206,35 @@ def format_campaigns(
     if len(campaigns) == 0:
         return "No active campaigns"
 
-    headers = "| Planet | Index | Faction | Players | Health | Health Regen Per Second | Percentage | Mission Type |\n|--------|--------|--------|--------|--------------------|--------|--------|"
-    campaign_rows = "\n".join(
-        [
-            f"| {campaign.name} | {campaign.planetIndex} | {campaign.faction} | {campaign.players} | {campaign.health} | {round(planet_statuses[campaign.planetIndex]['regenPerSecond'], 2)} | {round(campaign.percentage, 2)}% | {'Defense' if campaign.defense else 'Liberate'} |"
-            for campaign in campaigns
-        ]
+    headers = (
+        "| Planet | Index | Faction | Players | Health | Health Regen Per Second | "
+        "Percentage | Mission Type |\n"
+        "|--------|--------|--------|--------|--------------------|--------|--------|"
     )
+
+    def format_campaign_row(campaign: Campaign) -> str:
+        regen = round(planet_statuses[campaign.planet_index]["regen_per_second"], 2)
+        percentage = round(campaign.percentage, 2)
+        mission_type = "Defense" if campaign.defense else "Liberate"
+        return (
+            f"| {campaign.name} | {campaign.planet_index} | {campaign.faction} | "
+            f"{campaign.players} | {campaign.health} | {regen} | "
+            f"{percentage}% | {mission_type} |"
+        )
+
+    campaign_rows = "\n".join(format_campaign_row(campaign) for campaign in campaigns)
     return f"""
 {headers}
 {campaign_rows}
-* Health is an abstract representation of the campaign's progress. It is not the actual health of the planet.
-** Health regen is how fast the enemy is retaking the planet aka reenforcement rate. 0-5 is low and means retaking the planet is easier, 6-10 is moderate meaning it's  harder to liberate and represents a balanced challenge, 11-15 is high regeneration and require significant and sustained effort to liberate, 16-20+ is extremely challenging. Talk about it using in universe terms.
-*** Only percentages are shown in game so this is the only value that should be shown to the user.""".strip()
+* Health is an abstract representation of the campaign's progress. It is not the actual
+  health of the planet.
+** Health regen is how fast the enemy is retaking the planet aka reenforcement rate.
+   0-5 is low and means retaking the planet is easier, 6-10 is moderate meaning it's
+   harder to liberate and represents a balanced challenge, 11-15 is high regeneration
+   and require significant and sustained effort to liberate, 16-20+ is extremely
+   challenging. Talk about it using in universe terms.
+*** Only percentages are shown in game so this is the only value that should be shown
+    to the user.""".strip()
 
 
 def format_major_orders(
@@ -211,14 +243,18 @@ def format_major_orders(
     if len(major_orders) == 0:
         return "No major orders."
 
-    return "\n".join(
-        f"* {major_order.setting.overrideBrief}"
-        + "".join(
-            f"\n  - {planets[str(task.values[2])].name if str(task.values[2]) in planets else 'Unknown Planet'}{' (Completed)' if major_order.progress[index] == 1 else ''}"
-            for index, task in enumerate(major_order.setting.tasks)
-        )
-        for major_order in major_orders
-    )
+    result = []
+    for major_order in major_orders:
+        order_text = f"* {major_order.setting.override_brief}"
+        for index, task in enumerate(major_order.setting.tasks):
+            planet_id = str(task.values[2])
+            planet_name = (
+                planets[planet_id].name if planet_id in planets else "Unknown Planet"
+            )
+            completed = " (Completed)" if major_order.progress[index] == 1 else ""
+            order_text += f"\n  - {planet_name}{completed}"
+        result.append(order_text)
+    return "\n".join(result)
 
 
 def format_planet_attacks(
@@ -230,11 +266,17 @@ def format_planet_attacks(
     headers = "| Source | Target |\n|--------|--------|"
     planet_attack_rows = "\n".join(
         [
-            f"| {planets[str(attack['source'])].name} | {planets[str(attack['target'])].name} |"
+            (
+                f"| {planets[str(attack['source'])].name} | "
+                f"{planets[str(attack['target'])].name} |"
+            )
             for attack in planet_attacks
         ]
     )
-    return f"{headers}\n{planet_attack_rows}\n* The target is being attacked by the source planet"
+    return (
+        f"{headers}\n{planet_attack_rows}\n"
+        "* The target is being attacked by the source planet"
+    )
 
 
 def format_environmentals(planet: Planet) -> str:
@@ -247,7 +289,9 @@ def format_environmentals(planet: Planet) -> str:
 
 
 def format_planet(planet: Planet) -> str:
-    return f"| {planet.name} | {planet.sector} | {planet.biome.description if planet.biome else 'N/A'} | {format_environmentals(planet) if planet.environmentals else 'None'} |"
+    biome_desc = planet.biome.description if planet.biome else "N/A"
+    envs = format_environmentals(planet) if planet.environmentals else "None"
+    return f"| {planet.name} | {planet.sector} | {biome_desc} | {envs} |"
 
 
 def format_planets(planets: list[Planet]) -> str:
@@ -292,13 +336,16 @@ def format_global_events(events: list[GlobalEvent]) -> str:
 
 class HD2GalacticWarReportTool(BaseTool):
     name: str = "hd2_galactic_war_report"
-    description: str = (
-        """
-Get's the latest report on the in universe Hell Divers 2 Galactic War. Includes information on global events, latest major order, in-game news, and the current status of all active campaigns with details on the planet's health, health regen per second, and percentage of the mission completed. This should be considered the source of truth for the current state of the war. Updates every 5 minutes.
+    description: str = """
+Get's the latest report on the in universe Hell Divers 2 Galactic War. Includes
+information on global events, latest major order, in-game news, and the current status
+of all active campaigns with details on the planet's health, health regen per second,
+and percentage of the mission completed. This should be considered the source of truth
+for the current state of the war. Updates every 5 minutes.
 """.strip()
-    )
+    expected_layout_version: int = 25
 
-    def _run(self, *args, **kwargs):
+    def _run(self, *args: Any, **kwargs: Any) -> str:
         return asyncio.run(self._arun(*args, **kwargs))
 
     async def _arun(
@@ -307,39 +354,47 @@ Get's the latest report on the in universe Hell Divers 2 Galactic War. Includes 
     ) -> str:
         try:
             war_status = await get_war_status()
-            if war_status["layoutVersion"] != 25:
+
+            if war_status["layout_version"] != self.expected_layout_version:
                 logger.warning(
-                    f"Layout version is not 25: {war_status['layoutVersion']}"
+                    f"Layout version is not {self.expected_layout_version}: "
+                    f"{war_status['layout_version']}"
                 )
             planets = await get_planets()
             campaigns = await get_campaigns()
             major_orders = await get_major_orders()
 
-            for global_event in war_status["globalEvents"]:
-                text = f"Hell Divers 2:\nEvent ID: {global_event['eventId']}\n{global_event['title']}\n{global_event['message']}".strip()
+            for global_event in war_status["global_events"]:
+                text = (
+                    f"Hell Divers 2:\nEvent ID: {global_event['event_id']}\n"
+                    f"{global_event['title']}\n{global_event['message']}"
+                ).strip()
                 await process_document(
                     text=text,
-                    document_id=f"global_event:{global_event['eventId']}",
+                    document_id=f"global_event:{global_event['event_id']}",
                     config=config,
                 )
 
             for major_order in major_orders:
-                text = f"Hell Divers 2:\n{major_order.setting.overrideTitle}\nMajor Order ID: {major_order.id32}\n{major_order.setting.overrideBrief}\n{major_order.setting.taskDescription}".strip()
+                text = (
+                    f"Hell Divers 2:\n{major_order.setting.override_title}\n"
+                    f"Major Order ID: {major_order.id32}\n"
+                    f"{major_order.setting.override_brief}\n"
+                    f"{major_order.setting.task_description}"
+                ).strip()
                 await process_document(
                     text=text,
                     document_id=f"major_order:{major_order.id32}",
                     config=config,
                 )
 
-            active_planets: list[Planet] = list(
-                map(
-                    lambda campaign: planets[str(campaign.planetIndex)],
-                    campaigns,
-                )
-            )
+            active_planets: list[Planet] = [
+                planets[str(campaign.planet_index)] for campaign in campaigns
+            ]
 
+            timestamp = datetime.now(UTC).isoformat(timespec="seconds")
             return f"""
-# Hell Divers 2 Galactic War Report for {datetime.now(UTC).isoformat(timespec="seconds")}
+# Hell Divers 2 Galactic War Report for {timestamp}
 
 Classified Top Secret
 
@@ -347,7 +402,7 @@ Classified Top Secret
 
 War Time: {war_status["time"]}
 
-{format_global_events(war_status["globalEvents"])}
+{format_global_events(war_status["global_events"])}
 
 ## Major Orders
 
@@ -355,11 +410,11 @@ War Time: {war_status["time"]}
 
 ## Active Campaigns
 
-{format_campaigns(campaigns, war_status["planetStatus"])}
+{format_campaigns(campaigns, war_status["planet_status"])}
 
 ## Planet Attacks
 
-{format_planet_attacks(war_status["planetAttacks"], planets)}
+{format_planet_attacks(war_status["planet_attacks"], planets)}
 
 ## Planets
 
@@ -371,7 +426,7 @@ War Time: {war_status["time"]}
             return f"Error getting HD2 Galactic War Report: {str(e)}"
 
 
-async def main():
+async def main() -> None:
     tool = HD2GalacticWarReportTool()
     print(
         await tool.ainvoke(input={}, config={"configurable": {"personality_id": "1"}})

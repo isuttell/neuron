@@ -42,11 +42,12 @@ class GraphArxivImportToolArgs(BaseModel):
 
 class GraphArxivImportTool(BaseTool):
     name: str = "arxiv_graph_import"
-    description: str = (
-        """
-Use this tool to import arXiv articles into the knowledge graph or check if an article already exists. It will return basic metadata about the article and the time it took to process. Be aware that this is a can be a slow process depending on the size of the article. Always confirm with the user before running this tool.
+    description: str = """
+Use this tool to import arXiv articles into the knowledge graph or check if an
+article already exists. It will return basic metadata about the article and the
+time it took to process. Be aware that this is a can be a slow process depending
+on the size of the article. Always confirm with the user before running this tool.
 """.strip()
-    )
     args_schema: type[GraphArxivImportToolArgs] = GraphArxivImportToolArgs
 
     def _run(self, arxiv_id: str, config: RunnableConfig) -> str:
@@ -136,9 +137,9 @@ Added '{article.title}' to knowledge graph in {round(duration)} seconds
 
 ## Document {doc_result.document_id}
 
-* **Name:** {doc_result.document_name or 'unknown'}
-* **Source:** {doc_result.source or 'unknown'}
-* **Keywords:** {keywords or 'None'}
+* **Name:** {doc_result.document_name or "unknown"}
+* **Source:** {doc_result.source or "unknown"}
+* **Keywords:** {keywords or "None"}
 * **Tokens:** {token_count:,}
 
 ### Summary

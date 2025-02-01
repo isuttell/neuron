@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from typing import Any
 from uuid import UUID
 
 from langchain.tools import BaseTool
@@ -22,13 +23,13 @@ class MediaListReorderItemsToolArgs(BaseModel):
 class MediaListReorderItemsTool(BaseTool):
     name: str = "media_list_reorder_items"
     description: str = (
-        """This tool reorders items in a media list. The user must be the owner of the list.
-        Provide the list_id and an array of media_item_ids in their desired order."""
+        "This tool reorders items in a media list. The user must be the owner of the list. "  # noqa: E501
+        "Provide the list_id and an array of media_item_ids in their desired order."
     )
 
     args_schema: type[MediaListReorderItemsToolArgs] = MediaListReorderItemsToolArgs
 
-    def _run(self, *args, **kwargs) -> str:
+    def _run(self, *args: Any, **kwargs: Any) -> str:
         return asyncio.run(self._arun(*args, **kwargs))
 
     async def _arun(
@@ -82,9 +83,18 @@ class MediaListReorderItemsTool(BaseTool):
                         media_item_id=media_item_id,
                     )
 
-            logger.debug(f"Reordered {len(media_item_ids)} items in list {list_id}")
-            return f"Successfully reordered {len(media_item_ids)} items in media list '{media_list.name}'"
+            logger.debug(
+                "Reordered %d items in list %s",
+                len(media_item_ids),
+                list_id,
+            )
+            return (
+                f"Successfully reordered {len(media_item_ids)} items in "
+                f"media list '{media_list.name}'"
+            )
 
         except Exception as e:
-            logger.error(f"Failed to reorder media list items: {e}", exc_info=True)
+            logger.error(
+                "Failed to reorder media list items: %s", str(e), exc_info=True
+            )
             raise

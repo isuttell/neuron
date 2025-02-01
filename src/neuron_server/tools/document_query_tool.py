@@ -1,5 +1,6 @@
 import asyncio
 import json
+from typing import Any
 
 from langchain.tools import BaseTool
 from langchain_core.documents import Document
@@ -30,16 +31,17 @@ class DocumentQueryToolArgs(BaseModel):
 class DocumentQueryTool(BaseTool):
     name: str = "query_documents"
     description: str = (
-        "This tool allows you to query documents for information relevant to a question using a semantic search."
+        "This tool allows you to query documents for information relevant to a "
+        "question using a semantic search."
     )
 
     args_schema: type[DocumentQueryToolArgs] = DocumentQueryToolArgs
 
     def _run(
         self,
-        *args,
-        **kwargs,
-    ):
+        *args: tuple[Any, ...],
+        **kwargs: dict[str, Any],
+    ) -> str:
         return asyncio.run(self._arun(*args, **kwargs))
 
     async def _arun(

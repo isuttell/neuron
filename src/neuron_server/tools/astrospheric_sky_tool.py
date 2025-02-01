@@ -1,4 +1,5 @@
 import asyncio
+from typing import Any
 
 import aiohttp
 from langchain.tools import BaseTool
@@ -33,21 +34,27 @@ class AstrosphericSkyToolArgs(BaseModel):
     latitude: float = Field(description="Latitude")
     longitude: float = Field(description="Longitude")
     mssinceepoch: int = Field(
-        description="Milliseconds since epoch in UTC. Round times to the nearest hour to improve caching"
+        description=(
+            "Milliseconds since epoch in UTC. Round times to the nearest hour "
+            "to improve caching"
+        )
     )
 
 
 class AstrosphericSkyTool(BaseTool):
     name: str = "astrospheric_sky"
     description: str = (
-        """
-Provided a Latitude, Longitude, and time (in UTC), this function will return the current locations of the planets and stars currently above the horizon.  The star database includes stars under a brightness magnitude 5 (the lower the number the brighter the object).  Sun and Moon information will always be included, even if their position is below the horizon. Use this tool to answer questions about the night sky.
-""".strip()
-    )
+        "Provided a Latitude, Longitude, and time (in UTC), this function will "
+        "return the current locations of the planets and stars currently above "
+        "the horizon. The star database includes stars under a brightness "
+        "magnitude 5 (the lower the number the brighter the object). Sun and "
+        "Moon information will always be included, even if their position is "
+        "below the horizon. Use this tool to answer questions about the night sky."
+    ).strip()
 
     args_schema: type[AstrosphericSkyToolArgs] = AstrosphericSkyToolArgs
 
-    def _run(self, *args, **kwargs):
+    def _run(self, *args: Any, **kwargs: Any) -> str:
         return asyncio.run(self._arun(*args, **kwargs))
 
     async def _arun(self, latitude: float, longitude: float, mssinceepoch: int) -> str:

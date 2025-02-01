@@ -1,3 +1,4 @@
+from typing import Any, Never
 
 from langchain.tools import BaseTool
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -11,7 +12,10 @@ from neuron_server.logger import logger
 class OpenAICompatibleToolArgs(BaseModel):
     model: str = Field(
         default="deepseek/deepseek-r1",
-        description="DeepSeek R1: A powerful model optimized for technical reasoning and step-by-step analysis.",
+        description=(
+            "DeepSeek R1: A powerful model optimized for technical reasoning and "
+            "step-by-step analysis."
+        ),
     )
 
     system_prompt: str = Field(
@@ -49,8 +53,7 @@ Controls response randomness (0.0 to 1.0):
 
 class OpenAICompatibleTool(BaseTool):
     name: str = "openai_compatible"
-    description: str = (
-        """
+    description: str = """
 Base tool for OpenAI-compatible APIs, designed for complex reasoning and analysis tasks.
 
 Key uses:
@@ -59,7 +62,6 @@ Key uses:
 - Strategic planning
 - Detailed explanations
 """.strip()
-    )
 
     args_schema: type[OpenAICompatibleToolArgs] = OpenAICompatibleToolArgs
 
@@ -80,7 +82,7 @@ Key uses:
             api_key=self.api_key,
         )
 
-    def _run(self, *args, **kwargs):
+    def _run(self, *args: Any, **kwargs: Any) -> Never:
         raise NotImplementedError("OpenAICompatibleTool only supports async operations")
 
     async def _arun(
@@ -101,5 +103,5 @@ Key uses:
             response = await client.ainvoke(messages, config=config)
             return response.content
         except Exception as e:
-            logger.error(e, exc_info=True)
-            raise e
+            logger.error("OpenAI API error: %s", str(e), exc_info=True)
+            raise

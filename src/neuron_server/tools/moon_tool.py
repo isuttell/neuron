@@ -28,9 +28,10 @@ class MoonToolArgs(BaseModel):
 
 class MoonTool(BaseTool):
     name: str = "moon"
-    description: str = (
-        """
-This tool provides data about the Moon at a specified location and times to help with planning astrophotography sessions.  It outputs the following in a markdown table:
+    description: str = """
+This tool provides data about the Moon at a specified location and
+times to help with planning astrophotography sessions.  It outputs
+the following in a markdown table:
 
 Time: Observation time
 Altitude (°): Moon's altitude above the horizon
@@ -40,11 +41,10 @@ Dec (°): Declination of the Moon
 Phase Angle: Angle indicating the Moon's phase
 Illumination: Percentage of the Moon's surface illuminated
 """.strip()
-    )
 
     args_schema: type[MoonToolArgs] = MoonToolArgs
 
-    def _run(
+    def _run(  # noqa: PLR0913
         self,
         latitude: float,
         longitude: float,
@@ -98,12 +98,15 @@ Illumination: Percentage of the Moon's surface illuminated
                 }
             )
         if len(results) == 0:
-            return f"No results found for the given time range: {start_time.isoformat()} to {end_time.isoformat()}"
+            return (
+                f"No results found for the given time range: "
+                f"{start_time.isoformat()} to {end_time.isoformat()}"
+            )
         df = pd.DataFrame(results)
         return df.to_markdown(index=False)
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Astro Tool CLI")
     parser.add_argument(
         "--latitude",
@@ -134,9 +137,7 @@ def main():
         start_time = datetime.fromisoformat(args.start_time)
         end_time = datetime.fromisoformat(args.end_time)
     except ValueError:
-        print(
-            "Invalid observation time format. Please use ISO format (YYYY-MM-DDTHH:MM:SS)."
-        )
+        print("Invalid observation time format")
         return
 
     tool = MoonTool()

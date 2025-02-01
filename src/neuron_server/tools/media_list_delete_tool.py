@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from typing import Any
 from uuid import UUID
 
 from langchain.tools import BaseTool
@@ -23,7 +24,7 @@ class MediaListDeleteTool(BaseTool):
 
     args_schema: type[MediaListDeleteToolArgs] = MediaListDeleteToolArgs
 
-    def _run(self, *args, **kwargs) -> str:
+    def _run(self, *args: Any, **kwargs: Any) -> str:
         return asyncio.run(self._arun(*args, **kwargs))
 
     async def _arun(self, list_id: UUID, config: RunnableConfig) -> str:
@@ -47,9 +48,13 @@ class MediaListDeleteTool(BaseTool):
             # Delete the media list
             await MediaListModel.delete(list_id)
 
-            logger.debug(f"Deleted media list: {list_name} (ID: {list_id})")
+            logger.debug(
+                "Deleted media list: %s (ID: %s)",
+                list_name,
+                list_id,
+            )
             return f"Successfully deleted media list '{list_name}'"
 
         except Exception as e:
-            logger.error(f"Failed to delete media list: {e}", exc_info=True)
+            logger.error("Failed to delete media list: %s", str(e), exc_info=True)
             raise

@@ -1,7 +1,7 @@
 import asyncio
 import math
 from datetime import UTC, datetime
-from typing import TypedDict
+from typing import Any, TypedDict
 
 from langchain.tools import BaseTool
 from langchain_core.documents import Document
@@ -20,7 +20,7 @@ def format_memory(document: Document) -> str:
     return f"""
 Document ID: {str(document.id)}
 Relevance Score: {document.metadata.get("score", 0)}%
-Recorded: {created_at.isoformat(timespec='seconds') if created_at else 'Unknown'}
+Recorded: {created_at.isoformat(timespec="seconds") if created_at else "Unknown"}
 Document:
 \"\"\"
 {document.page_content}
@@ -48,10 +48,8 @@ def decay_date(target_date: datetime, half_life: int = 7) -> float:
     # Ensure the value doesn't go below 0
     days_diff = max(0, days_diff)
 
-    # Logarithmic decay function
-    decay = 1 / (1 + math.log(1 + days_diff / half_life))
-
-    return decay
+    # Return logarithmic decay value directly
+    return 1 / (1 + math.log(1 + days_diff / half_life))
 
 
 class MemoryStats(TypedDict):
@@ -111,7 +109,11 @@ class MemoryRecallToolArgs(BaseModel):
     query: str = Field(description="The query to search for in the memories")
     k: int = Field(description="The number of memories to recall", default=3, min=3)
     score_threshold: float = Field(
-        description="The score threshold for the memories to recall.A higher threshold (e.g., 0.7) increases precision but reduces recall, while a lower threshold (e.g., 0.3) increases recall but lowers precision. 0.2 is a good default.",
+        description=(
+            "The score threshold for the memories to recall. A higher threshold "
+            "(e.g., 0.7) increases precision but reduces recall, while a lower threshold "  # noqa: E501
+            "(e.g., 0.3) increases recall but lowers precision. 0.2 is a good default."
+        ),
         default=0.2,
         gte=0.0,
         le=1.0,
@@ -128,19 +130,19 @@ NO_MEMORIES_FOUND = "No memories found"
 class MemoryRecallTool(BaseTool):
     name: str = "recall_memory"
     description: str = (
-        "This tool allows you to recall information from long term memory. Use this if you are looking for a specific memory or need a wide range of memories and the answer is not in the current recall memories."
+        "This tool allows you to recall information from long term memory. Use this if "
+        "you are looking for a specific memory or need a wide range of memories and "
+        "the answer is not in the current recall memories."
     )
 
     args_schema: type[MemoryRecallToolArgs] = MemoryRecallToolArgs
 
     def _run(
         self,
-        query: str,
-        config: RunnableConfig,
-        k: int = 3,
-        score_threshold: float = 0.2,
-    ):
-        return asyncio.run(self._arun(query, config, k, score_threshold))
+        *args: Any,
+        **kwargs: Any,
+    ) -> str:
+        return asyncio.run(self._arun(*args, **kwargs))
 
     async def _arun(
         self,
@@ -180,5 +182,4 @@ class MemoryRecallTool(BaseTool):
         if len(results) == 0:
             return "No memories found"
         results.sort(key=lambda doc: doc.metadata.get("score"), reverse=True)
-        response = "\n\n---\n\n".join([format_memory(doc) for doc in results])
-        return response
+        return "\n\n---\n\n".join([format_memory(doc) for doc in results])

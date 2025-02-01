@@ -52,14 +52,14 @@ Neuron is a realtime chat application built with LangChain and LangGraph to allo
 - Use SQLAlchemy ORM for database interactions; avoid raw SQL unless necessary.
 - Use Quart for the web server and WebSocket handling; prioritize async operations.
 - Use `snake_case` for variable names.
-- Use black for formatting and ruff for linting.
+- Use ruff for formatting and linting.
 - **Types:** Include type hints in all functions and class methods.
 - **Commenting Style:** Use docstrings for all exported functions and classes to explain their purpose and parameters.
+- Use format specifiers instead of percent format strings.
 
 #### Backend Testing
 
 - Write tests using Pytest.
-- Run linting with `poetry run ruff check src/neuron_server/` after each backend task and fix any errors.
 - Include tests for controllers, tools, and database models.
 - Use mocking for database and network operations to ensure isolation of tests.
 
