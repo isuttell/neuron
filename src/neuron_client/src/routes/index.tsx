@@ -86,7 +86,7 @@ export default function Index() {
       e.preventDefault();
     }
 
-    if (isSubmitDisabled) {
+    if (isSubmitDisabled || isLoading) {
       return;
     }
 
