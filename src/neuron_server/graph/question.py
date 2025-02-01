@@ -2,6 +2,7 @@
 
 import ast
 import json
+import logging
 import re
 from datetime import datetime
 from typing import Any, Literal, TypedDict
@@ -12,7 +13,6 @@ from langchain_openai import OpenAIEmbeddings
 from langgraph.graph import END, START, StateGraph
 
 from neuron_server.config import config
-from neuron_server.logger import logger
 
 from .chains import (
     answer_reasoning_chain,
@@ -34,6 +34,8 @@ from .models import (
     OverallState,
     RationalPlanOutput,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class ParsedFunction(TypedDict):
