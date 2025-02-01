@@ -52,16 +52,26 @@ class TaskScheduler(AsyncRedisEventScheduler):
                 logger.debug(f"Cancelling existing stream for thread {thread.id}")
                 self._active_streams[thread.id].cancel()
 
-            # Start new stream
-            stream_task = asyncio.create_task(
-                astream({
-                    "thread_id": thread.id,
-                    "personality_id": body.personality_id,
-                    "user_id": body.user_id,
-                    "username": body.username,
-                    "prompt": f"<|AI|>{body.prompt}<|AI|>",
-                })
-            )
+            # Define a wrapper to safely run the stream task
+            async def run_stream() -> None:
+                try:
+                    await astream(
+                        {
+                            "thread_id": thread.id,
+                            "personality_id": body.personality_id,
+                            "user_id": body.user_id,
+                            "username": body.username,
+                            "prompt": f"<|AI|>{body.prompt}<|AI|>",
+                        }
+                    )
+                except Exception as stream_error:
+                    logger.error(
+                        f"Stream error for thread {thread.id}: {stream_error}",
+                        exc_info=True,
+                    )
+
+            # Start new stream with error handling
+            stream_task = asyncio.create_task(run_stream())
 
             # Track active stream
             self._active_streams[thread.id] = stream_task
@@ -73,4 +83,5 @@ class TaskScheduler(AsyncRedisEventScheduler):
 
         except Exception as e:
             logger.error(f"Error processing event {event_id}: {str(e)}", exc_info=True)
-            raise
+            # Do not propagate the exception so that recurring events are rescheduled
+            return
