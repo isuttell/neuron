@@ -340,21 +340,17 @@ class LLM:
                     )
 
                     if ranking.useful:
-                        stats["last_useful_at"] = int(
-                            datetime.now(UTC).timestamp()
-                        )
+                        stats["last_useful_at"] = int(datetime.now(UTC).timestamp())
                         stats["useful"] += 1
 
                     stats["total"] += 1
-                    stats["last_recall_at"] = int(
-                        datetime.now(UTC).timestamp()
-                    )
+                    stats["last_recall_at"] = int(datetime.now(UTC).timestamp())
                     stats["scores"].append(ranking.score)
                     stats["scores"] = stats["scores"][-100:]
                     document.cmetadata["stats"] = stats
                     await document.save()
             logger.debug(
-                f"{len(response.memory_recall_rankings) } memories ranked "
+                f"{len(response.memory_recall_rankings)} memories ranked "
                 f"in {time.perf_counter() - start_time:.2f}s"
             )
 
@@ -372,7 +368,7 @@ class LLM:
         Returns:
             The unchanged agent state
         """
-        # call but don't wait for it to finish
+        # Schedule ranking memories task in background
         asyncio.create_task(self.rank_memories(state, config))
 
     def should_call_tools(self, state: AgentState) -> Literal["tools", "continue"]:

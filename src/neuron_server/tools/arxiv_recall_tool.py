@@ -38,9 +38,12 @@ class ArxivRecallToolArgs(BaseModel):
     query: str = Field(
         description="The semantic text query to search for in the arxiv memories"
     )
-    k: int = Field(description="The number of documents to recall", default=10, min=3)
+    k: int = Field(description="The number of documents to recall", default=10, ge=3)
     score_threshold: float = Field(
-        description="The minimum score to recall a document", default=0.2, min=0, max=1
+        description="The minimum score to recall a document",
+        default=0.2,
+        ge=0.0,
+        le=1.0,
     )
     filter_short_id: str | None = Field(
         description=(

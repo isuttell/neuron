@@ -185,14 +185,15 @@ async def test_process_expired_event(
     mock_redis.return_value.get.return_value = json.dumps(event_data)
 
     # Mock the on_event method
-    with patch.object(scheduler, "on_event", new_callable=AsyncMock) as mock_on_event:
+    mock_on_event = AsyncMock()
+    mock_on_event.return_value = None
+    with patch.object(scheduler, "on_event", mock_on_event):
         await scheduler._process_expired_event(event_id)
-
         mock_on_event.assert_called_once_with(event_id, event_data["event_data"])
-        # Verify lock was deleted
-        mock_redis.return_value.delete.assert_called_with(
-            f"{scheduler.processing_events_set}:{event_id}"
-        )
+    # Verify lock was deleted
+    mock_redis.return_value.delete.assert_called_with(
+        f"{scheduler.processing_events_set}:{event_id}"
+    )
 
 
 @pytest.mark.asyncio

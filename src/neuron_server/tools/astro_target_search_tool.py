@@ -17,11 +17,11 @@ class AstroTargetSearchToolArgs(BaseModel):
     radius: float = Field(
         description="Radius to search within in degrees of the RA/Dec",
         default=45,
-        gte=10,
-        lte=90,
+        ge=10,
+        le=90,
     )
     limit: int | None = Field(
-        50, description="The max number of items to return", ge=0, lte=500
+        50, description="The max number of items to return", ge=0, le=500
     )
     min_flux: float | None = Field(
         6.0,
@@ -29,8 +29,8 @@ class AstroTargetSearchToolArgs(BaseModel):
             "The inclusive minimum relative magnitude (astronomy) to return. "
             "Values larger than 6 are too dim for the naked human eye."
         ),
-        lte=35,  # JWST limit
-        gte=-28,  # SUN limit
+        le=35,  # JWST limit
+        ge=-28,  # SUN limit
     )
     max_flux: float | None = Field(
         22.0,
@@ -39,8 +39,8 @@ class AstroTargetSearchToolArgs(BaseModel):
             "Values greater than 22 are too dim for the capabilities of the "
             "imaging telescope."
         ),
-        lte=35,  # JWST limit
-        gte=-28,  # SUN limit
+        le=35,  # JWST limit
+        ge=-28,  # SUN limit
     )
     otypes: list[str] = Field(
         description=(

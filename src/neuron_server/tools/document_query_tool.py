@@ -24,7 +24,7 @@ class DocumentQueryToolArgs(BaseModel):
         description="The semantic query to search for in the documents",
     )
     k: int = Field(
-        description="The maximum number of documents to return", default=10, min=1
+        description="The maximum number of documents to return", default=10, ge=1
     )
 
 

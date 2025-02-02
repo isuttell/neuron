@@ -19,8 +19,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import Mapped, relationship, sessionmaker
+from sqlalchemy.orm import Mapped, declarative_base, relationship, sessionmaker
 from sqlalchemy.pool import NullPool
 
 from neuron_server.config import config

@@ -8,8 +8,8 @@ from neuron_server.logger import logger
 
 
 class DiceRoll(BaseModel):
-    count: int = Field(description="The number of dice to roll", min=1, default=1)
-    sides: int = Field(description="The number of sides on the dice", min=2)
+    count: int = Field(description="The number of dice to roll", default=1, ge=1)
+    sides: int = Field(description="The number of sides on the dice", ge=2)
     modifier: int | None = Field(
         description="An optional modifier to add to the total", default=None
     )

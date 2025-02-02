@@ -107,7 +107,7 @@ def calculate_score(document: Document, relevance_score: float) -> int:
 
 class MemoryRecallToolArgs(BaseModel):
     query: str = Field(description="The query to search for in the memories")
-    k: int = Field(description="The number of memories to recall", default=3, min=3)
+    k: int = Field(description="The number of memories to recall", default=3, ge=3)
     score_threshold: float = Field(
         description=(
             "The score threshold for the memories to recall. A higher threshold "
@@ -115,7 +115,7 @@ class MemoryRecallToolArgs(BaseModel):
             "(e.g., 0.3) increases recall but lowers precision. 0.2 is a good default."
         ),
         default=0.2,
-        gte=0.0,
+        ge=0.0,
         le=1.0,
     )
     filter_by_thread: bool = Field(

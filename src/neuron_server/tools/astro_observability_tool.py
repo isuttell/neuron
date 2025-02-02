@@ -170,7 +170,7 @@ class AstroObservabilityToolArgs(BaseModel):
     )
     time_resolution: float = Field(
         description="Time resolution in hours. The default is half an hour.",
-        min=0.1,
+        ge=0.1,
         default=0.5,
     )
 
