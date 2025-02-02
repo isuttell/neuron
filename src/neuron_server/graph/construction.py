@@ -40,7 +40,7 @@ construction_prompt = ChatPromptTemplate.from_messages(
     ]
 )
 
-model = ChatOpenAI(model="gpt-4o-2024-11-20", temperature=0.3, max_tokens=None)
+model = ChatOpenAI(model="o3-mini-2025-01-31")
 structured_llm = model.with_structured_output(Extraction)
 
 construction_chain = construction_prompt | structured_llm

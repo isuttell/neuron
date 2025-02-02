@@ -6,7 +6,8 @@ from langchain.tools import BaseTool
 from langchain_core.runnables import RunnableConfig
 from pydantic import BaseModel, Field
 
-from neuron_server.graph import encode_md5, process_document
+from neuron_server.graph import encode_md5
+from neuron_server.graph.document import DocumentMetadata, process_document
 from neuron_server.logger import logger
 
 encoder = tiktoken.encoding_for_model("gpt-4o")
@@ -36,10 +37,12 @@ Use this tool to import text into the knowledge graph for long term memory.
         try:
             start_time = time.perf_counter()
             # Process the document and add it to the graph
-            doc_result = await process_document(
-                text=text,
+            metadata = DocumentMetadata(
                 document_id=f"text:{encode_md5(text.strip())}",
-                config=config,
+                personality_id=config["configurable"].get("personality_id"),
+            )
+            doc_result = await process_document(
+                text=text, config=config, metadata=metadata
             )
             duration = time.perf_counter() - start_time
             keywords = ", ".join(doc_result.keywords)

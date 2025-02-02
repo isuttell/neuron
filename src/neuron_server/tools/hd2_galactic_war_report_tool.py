@@ -8,7 +8,7 @@ from langchain_core.runnables import RunnableConfig
 from pydantic import BaseModel, Field
 
 from neuron_server.cache import cache_response
-from neuron_server.graph import process_document
+from neuron_server.graph.document import DocumentMetadata, process_document
 from neuron_server.logger import logger
 
 
@@ -369,11 +369,11 @@ for the current state of the war. Updates every 5 minutes.
                     f"Hell Divers 2:\nEvent ID: {global_event['event_id']}\n"
                     f"{global_event['title']}\n{global_event['message']}"
                 ).strip()
-                await process_document(
-                    text=text,
+                metadata = DocumentMetadata(
                     document_id=f"global_event:{global_event['event_id']}",
-                    config=config,
+                    personality_id=config["configurable"].get("personality_id"),
                 )
+                await process_document(text=text, config=config, metadata=metadata)
 
             for major_order in major_orders:
                 text = (
@@ -382,11 +382,11 @@ for the current state of the war. Updates every 5 minutes.
                     f"{major_order.setting.override_brief}\n"
                     f"{major_order.setting.task_description}"
                 ).strip()
-                await process_document(
-                    text=text,
+                metadata = DocumentMetadata(
                     document_id=f"major_order:{major_order.id32}",
-                    config=config,
+                    personality_id=config["configurable"].get("personality_id"),
                 )
+                await process_document(text=text, config=config, metadata=metadata)
 
             active_planets: list[Planet] = [
                 planets[str(campaign.planet_index)] for campaign in campaigns

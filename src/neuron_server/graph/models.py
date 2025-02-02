@@ -103,9 +103,8 @@ class Node(BaseModel):
         description="""
         Relevance to the potential answer by assigning a score between 0 and 100.
         A score of 100 implies a high likelihood of relevance to the answer,
-        whereas a score of 0 suggests minimal relevance.""",
-        ge=0,
-        le=100,
+        whereas a score of 0 suggests minimal relevance. Values outside this range
+        will be clamped."""
     )
 
 

@@ -1,84 +1,32 @@
 import asyncio
-import os
 import time
 from typing import Literal
 
-import aiohttp
-import pymupdf4llm
-import tiktoken
 from langchain.tools import BaseTool
-from langchain_community.document_loaders import FireCrawlLoader
-from langchain_core.documents import Document
 from langchain_core.runnables import RunnableConfig
 from pydantic import BaseModel, Field
 
-from neuron_server.config import config as neuron_config
-from neuron_server.graph import encode_md5, process_document
+from neuron_server.graph import encode_md5
+from neuron_server.graph.document import DocumentMetadata, process_document
 from neuron_server.logger import logger
-
-
-async def load_pdf_from_url(url: str) -> Document:
-    temp_file = os.path.abspath(
-        os.path.join(neuron_config.temp_folder, f"{encode_md5(url)}.pdf")
-    )
-    try:
-        async with (
-            aiohttp.ClientSession() as session,
-            session.get(url) as response,
-            open(temp_file, "wb") as f,
-        ):
-            response.raise_for_status()
-            while True:
-                chunk = await response.content.read(1024)
-                if not chunk:
-                    break
-                f.write(chunk)
-        text = pymupdf4llm.to_markdown(temp_file, show_progress=True)
-        return Document(
-            page_content=text,
-            metadata={
-                "title": url.rsplit("/", 1)[-1],
-                "sourceURL": url,
-            },
-        )
-    finally:
-        if os.path.exists(temp_file):
-            os.remove(temp_file)
-
-
-async def load_text_from_url(url: str) -> Document:
-    async with aiohttp.ClientSession() as session, session.get(url) as response:
-        response.raise_for_status()
-        text = await response.text()
-        return Document(
-            page_content=text,
-            metadata={
-                "title": url.rsplit("/", 1)[-1],
-                "sourceURL": url,
-            },
-        )
-
-
-def count_tokens(text: str) -> int:
-    """Count the number of tokens in a text string using tokenizer."""
-    encoder = tiktoken.encoding_for_model("gpt-4o")
-    return len(encoder.encode(text))
-
-
-class GraphWebsiteImportError(Exception):
-    pass
+from neuron_server.tools.document_utils import (
+    DocumentLoadError,
+    count_tokens,
+    load_document_from_url,
+)
 
 
 class GraphWebsiteImportToolArgs(BaseModel):
     url: str = Field(
         description="The url of the document or website to import. "
-        "Supports html websites, text files, pdfs, csvs, and markdown documents"
+        "Supports html websites, text files, pdfs, csvs, markdown documents, "
+        "and YouTube video transcripts"
     )
     mode: Literal["scrape", "crawl"] | None = Field(
         "scrape",
         description="The mode of the website import. Can be 'scrape' or 'crawl'. "
         "Scrape is for a single url and Crawl is for the url and all accessible "
-        "sub pages. Ignored when importing documents",
+        "sub pages. Only used when importing websites.",
     )
 
 
@@ -87,7 +35,8 @@ class GraphWebsiteImportTool(BaseTool):
     description: str = """
 This tool imports documents, or scrapes a website using Firecrawl, and adds it to
 the knowledge graph. Use this save information from the internet for later use or
-when the user asks you to save/import a website/pdf url.
+when the user asks you to save/import a website/pdf url. Supports YouTube video
+transcripts, PDFs, text files, markdown, CSV, SRT, VTT, and web pages.
 """.strip()
     args_schema: type[GraphWebsiteImportToolArgs] = GraphWebsiteImportToolArgs
 
@@ -101,37 +50,20 @@ when the user asks you to save/import a website/pdf url.
         mode: str = "scrape",
     ) -> str:
         try:
-            logger.debug(f"Importing website '{url}' with mode '{mode}'")
+            logger.debug(f"Importing website '{url}'")
             personality_id = config["configurable"].get("personality_id")
             assert personality_id is not None
             # Record the start time for performance measurement
             start_time = time.perf_counter()
 
-            if (
-                url.endswith(".txt")
-                or url.endswith(".md")
-                or url.endswith(".csv")
-                or url.endswith(".srt")
-                or url.endswith(".vtt")
-            ):
-                doc = await load_text_from_url(url)
-                docs = [doc]
-            elif url.endswith(".pdf"):
-                doc = await load_pdf_from_url(url)
-                docs = [doc]
-            else:
-                if "zaks.io" in url or "192.168" in url:
-                    raise GraphWebsiteImportError(
-                        "FireCrawl cannot access urls on the local network."
-                    )
-
-                loader = FireCrawlLoader(
-                    api_key=neuron_config.firecrawl_api_key, url=url, mode=mode
-                )
-                docs = await loader.aload()
+            docs = await load_document_from_url(
+                url,
+                metadata={"personality_id": personality_id},
+                mode=mode,
+            )
 
             if len(docs) == 0:
-                raise GraphWebsiteImportError("No documents found")
+                raise DocumentLoadError("No documents found")
 
             # Process the documents and add them to the graph
             result = (
@@ -146,12 +78,14 @@ when the user asks you to save/import a website/pdf url.
                 # Update the document id to be the source url
                 # in case we're in crawl model
                 document_id = f"website:{encode_md5(source)}"
-                doc_result = await process_document(
-                    text=doc.page_content.strip(),
+                metadata = DocumentMetadata(
                     document_id=document_id,
                     document_name=doc.metadata.get("title", None),
                     source=source,
-                    config=config,
+                    personality_id=personality_id,
+                )
+                doc_result = await process_document(
+                    text=doc.page_content.strip(), config=config, metadata=metadata
                 )
                 keywords = ", ".join(doc_result.keywords)
                 result += f"""\

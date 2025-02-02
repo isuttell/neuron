@@ -1,116 +1,36 @@
 import asyncio
 import json
-import os
 import time
 from datetime import datetime
 from typing import Any, Literal
 
-import aiohttp
-import pymupdf4llm
 from langchain.tools import BaseTool
-from langchain_community.document_loaders import FireCrawlLoader
-from langchain_core.documents import Document
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables import RunnableConfig
 from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field
 
-from neuron_server.cache import cache_response
-from neuron_server.config import config as neuron_config
-from neuron_server.graph import encode_md5
 from neuron_server.logger import logger
+from neuron_server.tools.document_utils import (
+    DocumentLoadError as BaseDocumentError,
+)
+from neuron_server.tools.document_utils import (
+    load_document_from_url,
+)
 
 
-async def load_pdf_from_url(
-    url: str, metadata: dict[str, Any] | None = None
-) -> Document:
-    temp_file = os.path.abspath(
-        os.path.join(neuron_config.temp_folder, f"{encode_md5(url)}.pdf")
-    )
-    try:
-        async with aiohttp.ClientSession() as session, session.get(url) as response:
-            response.raise_for_status()
-            with open(temp_file, "wb") as f:
-                while True:
-                    chunk = await response.content.read(1024)
-                    if not chunk:
-                        break
-                    f.write(chunk)
-        text = pymupdf4llm.to_markdown(temp_file, show_progress=True)
-        return Document(
-            page_content=text,
-            metadata={
-                "title": url.rsplit("/", 1)[-1],
-                "sourceURL": url,
-                **(metadata or {}),
-            },
-        )
-    finally:
-        if os.path.exists(temp_file):
-            os.remove(temp_file)
+class InspectDocumentToolError(BaseDocumentError):
+    """Error raised by the InspectDocumentTool."""
 
-
-async def load_text_from_url(
-    url: str, metadata: dict[str, Any] | None = None
-) -> Document:
-    async with aiohttp.ClientSession() as session, session.get(url) as response:
-        response.raise_for_status()
-        text = await response.text()
-        return Document(
-            page_content=text,
-            metadata={
-                "title": url.rsplit("/", 1)[-1],
-                "sourceURL": url,
-                **(metadata or {}),
-            },
-        )
-
-
-class InspectDocumentToolError(Exception):
     pass
-
-
-@cache_response(ttl=60 * 60 * 3)
-async def load_document_from_url(
-    url: str,
-    metadata: dict[str, Any] | None = None,
-    mode: Literal["scrape", "crawl"] = "scrape",
-) -> list[Document]:
-    metadata = {"updated_at": int(time.time()), **(metadata or {})}
-    if (
-        url.endswith(".txt")
-        or url.endswith(".md")
-        or url.endswith(".csv")
-        or url.endswith(".srt")
-        or url.endswith(".vtt")
-    ):
-        doc = await load_text_from_url(
-            url, metadata={"extension": url.rsplit(".")[-1], **metadata}
-        )
-        return [doc]
-    if url.endswith(".pdf"):
-        doc = await load_pdf_from_url(url, metadata={"extension": "pdf", **metadata})
-        return [doc]
-    if "zaks.io" in url or "192.168" in url:
-        raise InspectDocumentToolError(
-            "FireCrawl cannot access urls on the local network."
-        )
-
-    loader = FireCrawlLoader(
-        api_key=neuron_config.firecrawl_api_key, url=url, mode=mode
-    )
-    docs = await loader.aload()
-    for doc in docs:
-        doc.metadata["updated_at"] = int(time.time())
-    return docs
 
 
 class InspectDocumentToolArgs(BaseModel):
     url: str = Field(
         description=(
             "The url of the document or website to inspect. Supports html websites, "
-            "text files, pdfs, csvs, and markdown documents"
+            "text files, pdfs, csvs, markdown documents, and youtube urls"
         )
     )
     mode: Literal["scrape", "crawl"] | None = Field(
@@ -118,35 +38,33 @@ class InspectDocumentToolArgs(BaseModel):
         description=(
             "The mode of the website import. Can be 'scrape' or 'crawl'. Scrape is "
             "for a single url and Crawl is for the url and all accessible sub pages. "
-            "Ignored when importing documents"
+            "Only used when importing websites."
         ),
     )
-    add_facts_to_store: bool | None = Field(
-        False,
-        description=(
-            "If True, the document's atomic facts will be extracted and added to the "
-            "document store. This is useful for long term memory."
-        ),
-    )
-    summarize_prompt: str | None = Field(
+    custom_instructions: str | None = Field(
         None,
         description=(
-            "If provided, the prompt will be used to summarize the document instead of "
+            "If provided, the custom instructions will be used to inspect the document "
             "returning the raw text. Use this to extract specific information from the "
-            "document and reduce the amount of information returned. It should be in "
+            "document. Use this unless you need the raw text. It should be in "
             "second person and be a detailed step by step guide to follow. It should "
-            "include how detailed of an analysis to perform. Include relevant context "
-            "to aid the analysis."
+            "include how detailed of an analysis to perform. Include relevant context. "
+            "It may include multiple questions or complicated plans to analyze the "
+            "document."
         ),
     )
 
 
-document_inspect_prompt = PromptTemplate(
+custom_instructions_prompt = PromptTemplate(
     template="""
-You are an intelligent assistant and will be given a text document and a prompt. Your
-job is to comprehensively summarize the document in a way that is useful for answering
-the prompt. Be as long and detailed as needed. Accuracy is important. Include quotes
-and markdown links to sources. Use markdown to format the output.
+You will be given a document, metadata, and custom instructions. Your
+job is to follow the custom instructions as closely as possible whether that is
+summarizing, answering questions, extracting information, etc. Be as long and detailed
+as needed. Accuracy is important. Include related context and metadata like authors,
+speakers, writers, etc. so that another agent can use this information to answer
+questions. Include quotes from the document, links to sources using the sourceURL from
+from the metadata, links to specific timestamps in youtube videos, etc.. Use markdown
+to format the output.
 
 Now: {now}
 
@@ -160,24 +78,34 @@ Document ({index}):
 {document}
 \"\"\"
 
-Prompt:
+Custom Instructions:
 \"\"\"
-{prompt}
+{custom_instructions}
 \"\"\"
 """.strip(),
-    input_variables=["prompt", "document", "index", "now", "metadata"],
+    input_variables=[
+        "custom_instructions",
+        "document",
+        "index",
+        "now",
+        "metadata",
+    ],
 )
 
-document_inspect_chain = (
-    document_inspect_prompt | ChatOpenAI(model="o3-mini-2025-01-31") | StrOutputParser()
+custom_instructions_chain = (
+    custom_instructions_prompt
+    | ChatOpenAI(model="o3-mini-2025-01-31")
+    | StrOutputParser()
 )
 
 
 class InspectDocumentTool(BaseTool):
     name: str = "document_inspect"
     description: str = """
-This tool downloads documents, or scrapes a website using Firecrawl, and returns its
-raw text. Use this to answer questions about a website or document.
+This tool downloads documents, scapes websites, extracts transcripts from youtube
+videos, and returns the raw text.
+
+Use this to answer questions about a website or document.
 
 Supported document types:
 txt
@@ -186,6 +114,7 @@ csv
 srt
 vtt
 pdf
+youtube
 """.strip()
     args_schema: type[InspectDocumentToolArgs] = InspectDocumentToolArgs
 
@@ -196,13 +125,13 @@ pdf
         self,
         url: str,
         config: RunnableConfig,
-        mode: str = "scrape",
-        summarize_prompt: str | None = None,
+        mode: str | None = None,
+        custom_instructions: str | None = None,
     ) -> str:
         try:
             # Record the start time for performance measurement
             start_time = time.perf_counter()
-            logger.debug(f"Processing '{url}' with prompt: {summarize_prompt}")
+            logger.debug(f"Processing '{url}' with instructions: {custom_instructions}")
 
             docs = await load_document_from_url(
                 url,
@@ -224,11 +153,11 @@ pdf
             results = []
             tasks = []
             for index, doc in enumerate(docs):
-                if summarize_prompt:
+                if custom_instructions:
                     tasks.append(
-                        document_inspect_chain.ainvoke(
+                        custom_instructions_chain.ainvoke(
                             {
-                                "prompt": summarize_prompt,
+                                "custom_instructions": custom_instructions,
                                 "document": doc.page_content,
                                 "index": f"{index}/{len(docs)}",
                                 "now": datetime.now()

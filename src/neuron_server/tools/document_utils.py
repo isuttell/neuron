@@ -1,0 +1,240 @@
+import os
+import re
+import time
+from typing import Any, Literal
+
+import aiohttp
+import pymupdf4llm
+import tiktoken
+from langchain_core.documents import Document
+from youtube_transcript_api import YouTubeTranscriptApi
+from youtube_transcript_api.formatters import WebVTTFormatter
+
+from neuron_server.config import config as neuron_config
+from neuron_server.graph import encode_md5
+from neuron_server.logger import logger
+
+
+class DocumentLoadError(Exception):
+    pass
+
+
+def is_youtube_url(url: str) -> bool:
+    """Check if a URL is a YouTube video URL.
+
+    Args:
+        url: The URL to check
+
+    Returns:
+        bool: True if the URL is a YouTube video URL
+    """
+    patterns = [
+        r"(?:https?:\/\/)?(?:www\.)?youtube\.com\/watch\?v=([a-zA-Z0-9_-]+)",
+        r"(?:https?:\/\/)?(?:www\.)?youtu\.be\/([a-zA-Z0-9_-]+)",
+    ]
+    return any(re.match(pattern, url) for pattern in patterns)
+
+
+def extract_video_id(url: str) -> str:
+    """Extract the video ID from a YouTube URL.
+
+    Args:
+        url: The YouTube URL
+
+    Returns:
+        str: The video ID
+
+    Raises:
+        ValueError: If the URL is not a valid YouTube URL
+    """
+    for pattern in [
+        r"(?:https?:\/\/)?(?:www\.)?youtube\.com\/watch\?v=([a-zA-Z0-9_-]+)",
+        r"(?:https?:\/\/)?(?:www\.)?youtu\.be\/([a-zA-Z0-9_-]+)",
+    ]:
+        if match := re.match(pattern, url):
+            return match.group(1)
+    raise ValueError(f"Invalid YouTube URL: {url}")
+
+
+def count_tokens(text: str) -> int:
+    """Count the number of tokens in a text string using tokenizer."""
+    encoder = tiktoken.encoding_for_model("gpt-4o")
+    return len(encoder.encode(text))
+
+
+async def load_youtube_transcript(
+    url: str,
+    metadata: dict[str, Any] | None = None,
+) -> Document:
+    """Load transcripts from a YouTube video.
+
+    Args:
+        url: The YouTube video URL
+        metadata: Optional metadata to include
+
+    Returns:
+        Document: The transcript document with pretty-printed subtitles
+
+    Raises:
+        DocumentLoadError: If transcripts cannot be loaded
+    """
+    try:
+        video_id = extract_video_id(url)
+        transcript = YouTubeTranscriptApi.get_transcript(video_id)
+        formatter = WebVTTFormatter()
+        return Document(
+            page_content=formatter.format_transcript(transcript),
+            metadata={
+                "title": f"YouTube Transcript - {video_id}",
+                "sourceURL": url,
+                "video_id": video_id,
+                "type": "youtube_transcript",
+                "updated_at": int(time.time()),
+                **(metadata or {}),
+            },
+        )
+    except Exception as e:
+        raise DocumentLoadError(f"Failed to load YouTube transcript: {str(e)}") from e
+
+
+async def load_pdf_from_url(
+    url: str, metadata: dict[str, Any] | None = None
+) -> Document:
+    """Load a PDF document from a URL.
+
+    Args:
+        url: The URL of the PDF document
+        metadata: Optional metadata to include
+
+    Returns:
+        Document: The loaded PDF document
+
+    Raises:
+        DocumentLoadError: If the PDF cannot be loaded
+    """
+    temp_file = os.path.abspath(
+        os.path.join(neuron_config.temp_folder, f"{encode_md5(url)}.pdf")
+    )
+    try:
+        async with aiohttp.ClientSession() as session, session.get(url) as response:
+            response.raise_for_status()
+            with open(temp_file, "wb") as f:
+                while True:
+                    chunk = await response.content.read(1024)
+                    if not chunk:
+                        break
+                    f.write(chunk)
+        text = pymupdf4llm.to_markdown(temp_file, show_progress=True)
+        return Document(
+            page_content=text,
+            metadata={
+                "title": url.rsplit("/", 1)[-1],
+                "sourceURL": url,
+                "type": "pdf",
+                "updated_at": int(time.time()),
+                **(metadata or {}),
+            },
+        )
+    except Exception as e:
+        raise DocumentLoadError(f"Failed to load PDF: {str(e)}") from e
+    finally:
+        if os.path.exists(temp_file):
+            os.remove(temp_file)
+
+
+async def load_text_from_url(
+    url: str, metadata: dict[str, Any] | None = None
+) -> Document:
+    """Load a text document from a URL.
+
+    Args:
+        url: The URL of the text document
+        metadata: Optional metadata to include
+
+    Returns:
+        Document: The loaded text document
+
+    Raises:
+        DocumentLoadError: If the text cannot be loaded
+    """
+    try:
+        async with aiohttp.ClientSession() as session, session.get(url) as response:
+            response.raise_for_status()
+            text = await response.text()
+            extension = url.rsplit(".", 1)[-1] if "." in url else "txt"
+            return Document(
+                page_content=text,
+                metadata={
+                    "title": url.rsplit("/", 1)[-1],
+                    "sourceURL": url,
+                    "type": extension,
+                    "updated_at": int(time.time()),
+                    **(metadata or {}),
+                },
+            )
+    except Exception as e:
+        raise DocumentLoadError(f"Failed to load text: {str(e)}") from e
+
+
+async def load_document_from_url(
+    url: str,
+    metadata: dict[str, Any] | None = None,
+    mode: Literal["scrape", "crawl"] | None = None,
+) -> list[Document]:
+    """Load documents from a URL.
+
+    Args:
+        url: The URL to load documents from
+        metadata: Optional metadata to include
+        mode: The mode for loading websites ("scrape" or "crawl")
+
+    Returns:
+        list[Document]: The loaded documents
+
+    Raises:
+        DocumentLoadError: If the documents cannot be loaded
+    """
+    try:
+        if is_youtube_url(url):
+            doc = await load_youtube_transcript(url, metadata=metadata)
+            return [doc]
+
+        if (
+            url.endswith(".txt")
+            or url.endswith(".md")
+            or url.endswith(".csv")
+            or url.endswith(".srt")
+            or url.endswith(".vtt")
+        ):
+            doc = await load_text_from_url(url, metadata=metadata)
+            return [doc]
+
+        if url.endswith(".pdf"):
+            doc = await load_pdf_from_url(url, metadata=metadata)
+            return [doc]
+
+        if "zaks.io" in url or "192.168" in url:
+            raise DocumentLoadError(
+                "FireCrawl cannot access urls on the local network."
+            )
+
+        from langchain_community.document_loaders import FireCrawlLoader
+
+        loader = FireCrawlLoader(
+            api_key=neuron_config.firecrawl_api_key,
+            url=url,
+            mode=mode,
+        )
+        docs = await loader.aload()
+        for doc in docs:
+            doc.metadata.update(
+                {
+                    "type": "webpage",
+                    "updated_at": int(time.time()),
+                    **(metadata or {}),
+                }
+            )
+        return docs
+    except Exception as e:
+        logger.error(f"Failed to load document from {url}: {e}")
+        raise DocumentLoadError(f"Failed to load document: {str(e)}") from e

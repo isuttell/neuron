@@ -5,7 +5,7 @@ description = ""
 authors = ["Isaac Suttell <isaac@isaacsuttell.com>"]
 
 [tool.poetry.dependencies]
-python = "^3.11"
+python = ">=3.11,<3.12"
 python-dotenv = "*"
 huggingface_hub = "*"
 opencv-python-headless = "*"
@@ -54,11 +54,14 @@ yt-dlp = "*"
 pyjwt = { version = "*", extras = ["crypto"] }
 lxml = "*"
 pi-heif = "*"
+youtube-transcript-api = "^0.6.3"
 
 [tool.poetry.group.dev.dependencies]
+aioresponses = "*"
 pytest = "*"
 pytest-cov = "*"
 pytest-asyncio = "*"
+pytest-aiohttp = "*"
 ruff = "^0.9.3"
 black = "^25.1.0"
 
@@ -93,3 +96,4 @@ convention = "google"
 
 [tool.pytest.ini_options]
 asyncio_default_fixture_loop_scope = "function"
+asyncio_mode = "auto"
