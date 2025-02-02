@@ -1,10 +1,15 @@
-import { Download, Copy, Play, Pause } from "lucide-react";
+import { Download, Copy, Play, Pause, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
   TooltipTrigger,
   TooltipContent,
 } from "@/components/ui/tooltip";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
 import { AudioBarVisualization } from "@/components/AudioBarVisualization";
 import { cn } from "@/lib/utils";
@@ -17,6 +22,7 @@ import { MediaItem } from "@/slices/mediaSlice";
 interface AudioContentProps {
   url: string;
   title?: string;
+  description?: string;
   className?: string;
   preload?: string;
   autoPlay?: boolean;
@@ -40,6 +46,7 @@ const formatTime = (seconds: number): string => {
 const AudioContent: React.FC<AudioContentProps> = ({
   url,
   title,
+  description,
   className,
   mediaItem,
   autoPlay = false,
@@ -188,7 +195,25 @@ const AudioContent: React.FC<AudioContentProps> = ({
         )}
 
         <div className="flex-1" />
-
+        {description && (
+          <div className="flex items-center">
+            <Popover>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <PopoverTrigger asChild>
+                    <Button size="sm" variant="ghost">
+                      <BookOpen className="size-4" />
+                    </Button>
+                  </PopoverTrigger>
+                </TooltipTrigger>
+                <TooltipContent>View description</TooltipContent>
+              </Tooltip>
+              <PopoverContent className="w-80">
+                <div className="text-sm whitespace-pre-wrap">{description}</div>
+              </PopoverContent>
+            </Popover>
+          </div>
+        )}
         <Tooltip>
           <TooltipTrigger asChild>
             <Button

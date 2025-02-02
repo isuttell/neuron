@@ -24,6 +24,7 @@ interface ImageContentProps {
   className?: string;
   url: string;
   alt?: string;
+  description?: string;
   width?: number;
   height?: number;
   thumbnail_size?: "o" | "t" | "l" | "xl" | "xxl";
@@ -37,6 +38,7 @@ interface ImageContentProps {
 const ImageContent: React.FC<ImageContentProps> = ({
   url,
   alt,
+  description,
   width,
   height,
   className,
@@ -167,8 +169,8 @@ const ImageContent: React.FC<ImageContentProps> = ({
       </DialogTrigger>
       <DialogContent className="max-w-[95vw] max-h-[95vh] mx-auto box-border h-full flex-1 flex flex-col">
         <DialogHeader>
-          <DialogTitle>Image Details</DialogTitle>
-          {alt && <DialogDescription>{alt}</DialogDescription>}
+          <DialogTitle>{alt || "Image Details"}</DialogTitle>
+          {description && <DialogDescription>{description}</DialogDescription>}
         </DialogHeader>
         <div className="w-full overflow-hidden">
           <img

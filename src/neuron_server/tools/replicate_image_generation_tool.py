@@ -131,6 +131,7 @@ Prompt Tips:
             "black-forest-labs/flux-1.1-pro-ultra",
             "black-forest-labs/flux-1.1-pro",
             "recraft-ai/recraft-20b",
+            "recraft-ai/recraft-v3",
             "ideogram-ai/ideogram-v2",
         ]
         | None
@@ -159,40 +160,33 @@ Prompt Tips:
     )
     style: (
         Literal[
-            "realistic_image",
-            "realistic_image/b_and_w",
-            "realistic_image/enterprise",
-            "realistic_image/hard_flash",
-            "realistic_image/hdr",
-            "realistic_image/motion_blur",
-            "realistic_image/natural_light",
-            "realistic_image/studio_portrait",
-            "digital_illustration",
-            "digital_illustration/2d_art_poster",
-            "digital_illustration/2d_art_poster_2",
-            "digital_illustration/3d",
-            "digital_illustration/80s",
-            "digital_illustration/engraving_color",
-            "digital_illustration/glow",
-            "digital_illustration/grain",
-            "digital_illustration/hand_drawn",
-            "digital_illustration/hand_drawn_outline",
-            "digital_illustration/handmade_3d",
-            "digital_illustration/infantile_sketch",
-            "digital_illustration/kawaii",
+            "any",
+            "realistic_image"
+            "digital_illustration"
+            "realistic_image/b_and_w"
+            "realistic_image/enterprise"
+            "realistic_image/hard_flash"
+            "realistic_image/hdr"
+            "realistic_image/motion_blur"
+            "realistic_image/natural_light"
+            "realistic_image/studio_portrait"
+            "digital_illustration/2d_art_poster"
+            "digital_illustration/2d_art_poster_2"
+            "digital_illustration/engraving_color"
+            "digital_illustration/grain"
+            "digital_illustration/hand_drawn"
+            "digital_illustration/hand_drawn_outline"
+            "digital_illustration/handmade_3d"
+            "digital_illustration/infantile_sketch"
             "digital_illustration/pixel_art",
-            "digital_illustration/psychedelic",
-            "digital_illustration/seamless",
-            "digital_illustration/voxel",
-            "digital_illustration/watercolor",
         ]
         | None
     ) = Field(
         description=(
             "The style to use for the image generation. This only works with the "
-            "recraft-20b model."
+            "recraft-20b and recraft-v3 models."
         ),
-        default="realistic_image",
+        default="any",
     )
     image_url: str | None = Field(
         description=(
@@ -204,7 +198,7 @@ Prompt Tips:
     )
     image_prompt_strength: float | None = Field(
         description=(
-            "The strength of the image prompt. 0.4 will closely follow the image "
+            "The strength of the image prompt. 0.5 will closely follow the image "
             "and allow minor changes while 0.1 will allow more drastic and creative "
             "changes. This only works with the flux-1.1-pro-ultra model."
         ),

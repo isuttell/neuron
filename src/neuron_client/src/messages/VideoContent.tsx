@@ -4,6 +4,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Download, Copy } from "lucide-react";
@@ -121,7 +122,10 @@ const VideoContent: React.FC<VideoContentProps> = ({
       </DialogTrigger>
       <DialogContent className="max-w-[95vw] max-h-[95vh] mx-auto box-border h-full flex-1 flex flex-col">
         <DialogHeader>
-          <DialogTitle>Video Details</DialogTitle>
+          <DialogTitle>{mediaItem?.name || "Video Details"}</DialogTitle>
+          {mediaItem?.description && (
+            <DialogDescription>{mediaItem.description}</DialogDescription>
+          )}
         </DialogHeader>
         <div className="flex-1 overflow-hidden">
           <video

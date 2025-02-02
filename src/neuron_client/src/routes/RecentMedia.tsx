@@ -96,10 +96,12 @@ export default function RecentMedia({ limit = 16 }: RecentMediaProps) {
                     key={mediaItem.id}
                     url={mediaItem.url}
                     alt={mediaItem.name}
+                    description={mediaItem.description}
                     width={256}
                     height={256}
                     objectFit="cover"
                     mediaItem={mediaItem}
+                    showControls={true}
                   />
                 ) : null}
                 {mediaItem.media_type === "video" ? (
@@ -107,6 +109,7 @@ export default function RecentMedia({ limit = 16 }: RecentMediaProps) {
                     key={mediaItem.id}
                     url={mediaItem.url}
                     mediaItem={mediaItem}
+                    showControls={true}
                   />
                 ) : null}
                 {mediaItem.media_type === "audio" ? (
@@ -115,6 +118,7 @@ export default function RecentMedia({ limit = 16 }: RecentMediaProps) {
                     key={mediaItem.id}
                     url={mediaItem.url}
                     title={mediaItem.name}
+                    description={mediaItem.description}
                     mediaItem={mediaItem}
                     preload="metadata"
                   />

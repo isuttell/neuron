@@ -38,6 +38,7 @@ function MediaItemList({
               key={item.id}
               url={item.url}
               alt={item.name}
+              description={item.description}
               width={1024}
               height={1024}
               thumbnail_size={thumbnail_size}
@@ -74,6 +75,7 @@ function MediaItemList({
               preload="auto"
               url={item.url}
               title={item.name}
+              description={item.description}
               key={item.id}
               mediaItem={item}
             />
