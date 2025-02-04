@@ -12,8 +12,12 @@ from aioresponses import aioresponses
 from langchain_core.documents import Document
 from youtube_transcript_api import YouTubeTranscriptApi
 
+from neuron_server.config import config as neuron_config
 from neuron_server.tools.document_utils import (
     DocumentLoadError,
+    FileFormatError,
+    LocalNetworkError,
+    NetworkError,
     count_tokens,
     extract_video_id,
     is_youtube_url,
@@ -194,15 +198,31 @@ class TestPdfLoading:
             assert doc.metadata["type"] == "pdf"
 
     @pytest.mark.asyncio
-    async def test_pdf_loading_error(
+    async def test_pdf_loading_network_error(
         self,
         mock_aiohttp_session: aiohttp.ClientSession,
         mock_aiohttp: aioresponses,
     ) -> None:
-        """Test error handling during PDF loading."""
+        """Test network error handling during PDF loading."""
         url = "https://example.com/test.pdf"
         mock_aiohttp.get(url, status=404)
-        with pytest.raises(DocumentLoadError):
+        with pytest.raises(NetworkError):
+            await load_pdf_from_url(url)
+
+    @pytest.mark.asyncio
+    async def test_pdf_loading_format_error(
+        self,
+        mock_aiohttp_session: aiohttp.ClientSession,
+        mock_aiohttp: aioresponses,
+    ) -> None:
+        """Test format error handling during PDF loading."""
+        url = "https://example.com/test.pdf"
+        mock_aiohttp.get(url, status=200, body=b"Not a PDF file")
+
+        with (
+            patch("pymupdf4llm.to_markdown", side_effect=Exception("Invalid PDF")),
+            pytest.raises(FileFormatError),
+        ):
             await load_pdf_from_url(url)
 
     @pytest.mark.asyncio
@@ -237,9 +257,7 @@ class TestPdfLoading:
             await load_pdf_from_url(url)
             # Verify temp file is cleaned up
             temp_files = [
-                f
-                for f in os.listdir(os.path.dirname(os.path.abspath(__file__)))
-                if f.endswith(".pdf")
+                f for f in os.listdir(neuron_config.temp_folder) if f.endswith(".pdf")
             ]
             assert not temp_files
 
@@ -270,6 +288,18 @@ class TestTextLoading:
         assert isinstance(doc, Document)
         assert doc.metadata["type"] == "md"
         assert doc.page_content == "# Sample markdown"
+
+    @pytest.mark.asyncio
+    async def test_csv_loading(
+        self, mock_aiohttp_session: aiohttp.ClientSession, mock_aiohttp: aioresponses
+    ) -> None:
+        """Test loading .csv file."""
+        url = "https://example.com/test.csv"
+        mock_aiohttp.get(url, status=200, body="id,name\n1,test")
+        doc = await load_text_from_url(url)
+        assert isinstance(doc, Document)
+        assert doc.metadata["type"] == "csv"
+        assert doc.page_content == "id,name\n1,test"
 
     @pytest.mark.asyncio
     async def test_loading_error(
@@ -365,6 +395,30 @@ class TestDocumentLoading:
             assert docs[0].metadata["type"] == "webpage"
 
     @pytest.mark.asyncio
+    async def test_webpage_scrape_mode(
+        self,
+        mock_aiohttp_session: aiohttp.ClientSession,
+        mock_aiohttp: aioresponses,
+    ) -> None:
+        """Test scrape mode for webpage loading."""
+        url = "https://example.com"
+        mock_docs = [Document(page_content="test content", metadata={"source": url})]
+
+        with patch(
+            "langchain_community.document_loaders.FireCrawlLoader"
+        ) as mock_loader_class:
+            mock_loader = mock_loader_class.return_value
+            mock_loader.aload = AsyncMock(return_value=mock_docs)
+            docs = await load_document_from_url(url, mode="scrape")
+            assert len(docs) == 1
+            assert docs[0].metadata["type"] == "webpage"
+            mock_loader_class.assert_called_once_with(
+                api_key=mock_loader_class.call_args[1]["api_key"],
+                url=url,
+                mode="scrape",
+            )
+
+    @pytest.mark.asyncio
     async def test_local_network_restriction(
         self,
         mock_aiohttp_session: aiohttp.ClientSession,
@@ -373,7 +427,7 @@ class TestDocumentLoading:
         """Test restriction on local network URLs."""
         urls = ["http://zaks.io/test", "http://192.168.1.1/test"]
         for url in urls:
-            with pytest.raises(DocumentLoadError):
+            with pytest.raises(LocalNetworkError):
                 await load_document_from_url(url)
 
     @pytest.mark.asyncio

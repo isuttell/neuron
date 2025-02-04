@@ -63,10 +63,11 @@ Neuron is a realtime chat application built with LangChain and LangGraph to allo
 
 #### Backend Testing
 
-- Always run `ruff check --fix src/neuron_server/` and `pytest src/neuron_server/` tests from the project root to check for errors after each task
+- Always run `ruff check --fix src/neuron_server/` and `pytest src/neuron_server/` tests to check for errors after each task
 - Include tests for controllers, tools, and database models.
+- Write unit tests for all new functions and classes.
 - Use mocking for database and network operations to ensure isolation of tests.
 
 ### Model Notes
 
-- gpt-4o is the latest OpenAI model.
+- gpt-4o and o3-mini are the latest OpenAI models.

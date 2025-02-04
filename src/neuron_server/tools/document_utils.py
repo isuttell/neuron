@@ -11,11 +11,30 @@ from youtube_transcript_api import YouTubeTranscriptApi
 from youtube_transcript_api.formatters import WebVTTFormatter
 
 from neuron_server.config import config as neuron_config
-from neuron_server.graph import encode_md5
 from neuron_server.logger import logger
 
 
 class DocumentLoadError(Exception):
+    """Base exception for document loading errors."""
+
+    pass
+
+
+class NetworkError(DocumentLoadError):
+    """Raised when network-related errors occur during document loading."""
+
+    pass
+
+
+class FileFormatError(DocumentLoadError):
+    """Raised when document format is invalid or unsupported."""
+
+    pass
+
+
+class LocalNetworkError(DocumentLoadError):
+    """Raised when attempting to access restricted local network URLs."""
+
     pass
 
 
@@ -112,19 +131,28 @@ async def load_pdf_from_url(
     Raises:
         DocumentLoadError: If the PDF cannot be loaded
     """
-    temp_file = os.path.abspath(
-        os.path.join(neuron_config.temp_folder, f"{encode_md5(url)}.pdf")
-    )
+    import tempfile
+
+    temp_file = None
     try:
-        async with aiohttp.ClientSession() as session, session.get(url) as response:
-            response.raise_for_status()
-            with open(temp_file, "wb") as f:
-                while True:
-                    chunk = await response.content.read(1024)
-                    if not chunk:
-                        break
-                    f.write(chunk)
-        text = pymupdf4llm.to_markdown(temp_file, show_progress=True)
+        # Create a temporary file that will be automatically cleaned up
+        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tf:
+            temp_file = tf.name
+            async with aiohttp.ClientSession() as session:
+                try:
+                    async with session.get(url) as response:
+                        response.raise_for_status()
+                        while True:
+                            chunk = await response.content.read(1024)
+                            if not chunk:
+                                break
+                            tf.write(chunk)
+                except aiohttp.ClientError as e:
+                    raise NetworkError(f"Failed to download PDF: {str(e)}") from e
+        try:
+            text = pymupdf4llm.to_markdown(temp_file, show_progress=True)
+        except Exception as e:
+            raise FileFormatError(f"Failed to parse PDF: {str(e)}") from e
         return Document(
             page_content=text,
             metadata={
@@ -135,8 +163,10 @@ async def load_pdf_from_url(
                 **(metadata or {}),
             },
         )
+    except (NetworkError, FileFormatError) as e:
+        raise e
     except Exception as e:
-        raise DocumentLoadError(f"Failed to load PDF: {str(e)}") from e
+        raise DocumentLoadError(f"Unexpected error loading PDF: {str(e)}") from e
     finally:
         if os.path.exists(temp_file):
             os.remove(temp_file)
@@ -214,7 +244,7 @@ async def load_document_from_url(
             return [doc]
 
         if "zaks.io" in url or "192.168" in url:
-            raise DocumentLoadError(
+            raise LocalNetworkError(
                 "FireCrawl cannot access urls on the local network."
             )
 
@@ -235,6 +265,9 @@ async def load_document_from_url(
                 }
             )
         return docs
+    except (NetworkError, FileFormatError, LocalNetworkError) as e:
+        logger.error(f"Failed to load document from {url}: {e}")
+        raise e
     except Exception as e:
         logger.error(f"Failed to load document from {url}: {e}")
         raise DocumentLoadError(f"Failed to load document: {str(e)}") from e
