@@ -237,7 +237,20 @@ personality_tools: list[BaseTool] = [
 
 
 def get_tools(query: str) -> list[BaseTool]:
-    ts = [tool for name in [*query.strip("+").split("+")] for tool in tool_sets[name]]
+    """Get tools based on query string.
+
+    Args:
+        query: Query string containing tool categories separated by '+'
+
+    Returns:
+        List of tools from requested categories plus required tools
+    """
+    ts: list[BaseTool] = []
+    if query.strip():
+        # Only process non-empty queries
+        categories = [name for name in query.strip("+").split("+") if name in tool_sets]
+        ts = [tool for name in categories for tool in tool_sets[name]]
+
     # Required Tools
     if config.memory_enabled:
         ts.extend(memory_tools)
