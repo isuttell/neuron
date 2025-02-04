@@ -1,6 +1,6 @@
 import asyncio
 import json
-from collections.abc import Generator
+from collections.abc import AsyncGenerator
 from contextlib import suppress
 from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, call, patch
@@ -15,7 +15,7 @@ from neuron_server.util.scheduler import (
 
 
 @pytest.fixture
-async def scheduler() -> AbstractAsyncRedisEventScheduler:
+async def scheduler() -> AsyncGenerator[AbstractAsyncRedisEventScheduler, None]:
     """Create a test scheduler with mocked on_event method."""
 
     class SimpleScheduler(AbstractAsyncRedisEventScheduler):
@@ -40,7 +40,7 @@ FIFTEENTH_DAY = 15
 
 
 @pytest.fixture
-def mock_redis() -> Generator[AsyncMock, None, None]:
+async def mock_redis() -> AsyncGenerator[AsyncMock, None]:
     with patch("redis.asyncio.Redis") as mock:
         # Create AsyncMock instances for Redis methods
         mock.return_value.get = AsyncMock()
@@ -61,6 +61,20 @@ def mock_redis() -> Generator[AsyncMock, None, None]:
         mock.return_value.pipeline.return_value.__aenter__.return_value = pipeline_mock
 
         yield mock
+
+        # Cleanup
+        await mock.return_value.get.aclose()
+        await mock.return_value.set.aclose()
+        await mock.return_value.setex.aclose()
+        await mock.return_value.delete.aclose()
+        await mock.return_value.sadd.aclose()
+        await mock.return_value.srem.aclose()
+        await mock.return_value.smembers.aclose()
+        await mock.return_value.exists.aclose()
+        await mock.return_value.close.aclose()
+        await mock.return_value.config_set.aclose()
+        await mock.return_value.pubsub.aclose()
+        await pipeline_mock.execute.aclose()
 
 
 @pytest.mark.asyncio
@@ -155,12 +169,15 @@ async def test_start_scheduler(
     scheduler: AbstractAsyncRedisEventScheduler, mock_redis: AsyncMock
 ) -> None:
     """Test scheduler startup"""
-    await scheduler.start()
+    try:
+        await scheduler.start()
 
-    mock_redis.return_value.config_set.assert_called_once_with(
-        "notify-keyspace-events", "KEx"
-    )
-    assert scheduler._running is True
+        mock_redis.return_value.config_set.assert_called_once_with(
+            "notify-keyspace-events", "KEx"
+        )
+        assert scheduler._running is True
+    finally:
+        await scheduler.stop()
 
 
 @pytest.mark.asyncio
@@ -217,21 +234,16 @@ async def test_process_expired_event_locked(
 ) -> None:
     """Test handling of already locked events"""
     event_id = "test_event_6"
+    lock_key = f"{scheduler.processing_events_set}:{event_id}"
 
-    # Mock failed lock acquisition
-    mock_set = AsyncMock(return_value=False)
-    mock_redis.return_value.set = mock_set
+    # Mock Redis client behavior
+    mock_redis.return_value.set.return_value = False  # Lock acquisition fails
 
-    try:
-        # Execute and await the event processing
-        await scheduler._process_expired_event(event_id)
+    # Execute and await the event processing
+    await scheduler._process_expired_event(event_id)
 
-        # Verify event was not processed
-        mock_redis.return_value.get.assert_not_called()
-        mock_set.assert_awaited_once()
-    finally:
-        # Clean up any pending coroutines
-        await mock_set.aclose()
+    # Verify lock attempt
+    mock_redis.return_value.set.assert_awaited_once_with(lock_key, "1", ex=300, nx=True)
 
 
 @pytest.mark.asyncio

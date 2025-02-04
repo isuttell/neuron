@@ -367,10 +367,7 @@ class AbstractAsyncRedisEventScheduler(ABC):
                     return
 
                 try:
-                    if asyncio.iscoroutinefunction(self.on_event):
-                        await self.on_event(event_id, event["event_data"])
-                    else:
-                        self.on_event(event_id, event["event_data"])
+                    await self.on_event(event_id, event["event_data"])
                 except Exception as e:
                     logger.error(f"Error in event handler: {str(e)}", exc_info=True)
                     return
