@@ -33,6 +33,7 @@ TIME_PARTS_SHORT = 2  # HH:MM
 @dataclass
 class TimeComponents:
     """Time components for scheduling."""
+
     hour: int
     minute: int
     second: int = 0
@@ -44,9 +45,7 @@ class RecurringPattern:
 
     interval: int
     unit: Literal["seconds", "minutes", "hours", "days", "weeks", "months"]
-    time_of_day: str | None = (
-        None  # HH:MM:SS or HH:MM format for daily/weekly/monthly
-    )
+    time_of_day: str | None = None  # HH:MM:SS or HH:MM format for daily/weekly/monthly
     day_of_week: int | None = None  # 0-6 for weekly (0 is Monday)
     day_of_month: int | None = None  # 1-31 for monthly
 
@@ -72,7 +71,7 @@ def parse_time_of_day(time_str: str) -> TimeComponents:
     raise ValueError("time_of_day must be in HH:MM:SS or HH:MM format")
 
 
-class AsyncRedisEventScheduler(ABC):
+class AbstractAsyncRedisEventScheduler(ABC):
     def __init__(
         self,
         host: str = "localhost",
@@ -354,17 +353,13 @@ class AsyncRedisEventScheduler(ABC):
         async with self.redis_client() as client:
             # Add expiration to processing lock
             lock_key = f"{self.processing_events_set}:{event_id}"
-            if not await client.set(
-                lock_key, "1", ex=PROCESSING_LOCK_TIMEOUT, nx=True
-            ):
+            if not await client.set(lock_key, "1", ex=PROCESSING_LOCK_TIMEOUT, nx=True):
                 logger.warning(f"Event {event_id} is already being processed")
                 return
 
             try:
                 now = datetime.now(self.timezone)
-                logger.debug(
-                    f"Processing event {event_id} at {now.isoformat()} UTC"
-                )
+                logger.debug(f"Processing event {event_id} at {now.isoformat()} UTC")
 
                 event = await self.get_event(event_id)
                 if not event:
@@ -417,9 +412,7 @@ class AsyncRedisEventScheduler(ABC):
                     "scheduled_time": next_time.isoformat(timespec="seconds"),
                     "created_at": now.isoformat(timespec="seconds"),
                     "recurring_pattern": metadata["recurring_pattern"],
-                    "time_remaining_seconds": int(
-                        (next_time - now).total_seconds()
-                    ),
+                    "time_remaining_seconds": int((next_time - now).total_seconds()),
                 }
 
                 # Set new event data
@@ -492,11 +485,7 @@ class AsyncRedisEventScheduler(ABC):
         time_components = (
             parse_time_of_day(pattern.time_of_day)
             if pattern.time_of_day
-            else TimeComponents(
-                base_time.hour,
-                base_time.minute,
-                base_time.second
-            )
+            else TimeComponents(base_time.hour, base_time.minute, base_time.second)
         )
 
         next_time = self._calculate_next_time(pattern, base_time, time_components)
@@ -536,13 +525,9 @@ class AsyncRedisEventScheduler(ABC):
         if pattern.unit == "hours":
             return base_time + timedelta(hours=pattern.interval)
         if pattern.unit == "days":
-            return self._calculate_daily_next_time(
-                pattern, time_components, base_time
-            )
+            return self._calculate_daily_next_time(pattern, time_components, base_time)
         if pattern.unit == "weeks" and pattern.day_of_week is not None:
-            return self._calculate_weekly_next_time(
-                pattern, base_time, time_components
-            )
+            return self._calculate_weekly_next_time(pattern, base_time, time_components)
         if pattern.unit == "months":
             return self._calculate_monthly_next_time(
                 pattern, base_time, time_components
@@ -560,14 +545,14 @@ class AsyncRedisEventScheduler(ABC):
             hour=time_components.hour,
             minute=time_components.minute,
             second=time_components.second,
-            microsecond=0
+            microsecond=0,
         )
         if today <= now:
             next_time = (now + timedelta(days=1)).replace(
                 hour=time_components.hour,
                 minute=time_components.minute,
                 second=time_components.second,
-                microsecond=0
+                microsecond=0,
             )
             if pattern.interval > 1:
                 next_time += timedelta(days=pattern.interval - 1)
@@ -588,7 +573,7 @@ class AsyncRedisEventScheduler(ABC):
         next_time = (base_time + timedelta(days=days_ahead)).replace(
             hour=time_components.hour,
             minute=time_components.minute,
-            second=time_components.second
+            second=time_components.second,
         )
         if next_time <= datetime.now(self.timezone):
             next_time += timedelta(weeks=pattern.interval)
@@ -611,7 +596,7 @@ class AsyncRedisEventScheduler(ABC):
                 day=current_day,
                 hour=time_components.hour,
                 minute=time_components.minute,
-                second=time_components.second
+                second=time_components.second,
             )
             if candidate_time <= now:
                 month += pattern.interval

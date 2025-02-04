@@ -8,7 +8,27 @@ from unittest.mock import AsyncMock, call, patch
 import pytest
 import pytz
 
-from neuron_server.util.scheduler import AsyncRedisEventScheduler, RecurringPattern
+from neuron_server.util.scheduler import (
+    AbstractAsyncRedisEventScheduler,
+    RecurringPattern,
+)
+
+
+@pytest.fixture
+async def scheduler() -> AbstractAsyncRedisEventScheduler:
+    """Create a test scheduler with mocked on_event method."""
+
+    class SimpleScheduler(AbstractAsyncRedisEventScheduler):
+        async def on_event(self, event_id: str, event_data: dict) -> None:
+            """Implementation of abstract method"""
+            pass
+
+    scheduler = SimpleScheduler(host="localhost", port=6379, db=2)
+    mock_on_event = AsyncMock()
+    scheduler.on_event = mock_on_event
+    yield scheduler
+    await mock_on_event.aclose()
+
 
 # Constants for magic numbers
 DELETE_COUNT = 2
@@ -17,18 +37,6 @@ NOON_HOUR = 12
 THREE_PM_HOUR = 15
 TEN_AM_HOUR = 10
 FIFTEENTH_DAY = 15
-
-
-class TestEventScheduler(AsyncRedisEventScheduler):
-    """Test implementation of AsyncRedisEventScheduler"""
-
-    async def on_event(self, event_id: str, event_data: dict) -> None:
-        pass
-
-
-@pytest.fixture
-def scheduler() -> TestEventScheduler:
-    return TestEventScheduler(host="localhost", port=6379, db=2)
 
 
 @pytest.fixture
@@ -57,7 +65,7 @@ def mock_redis() -> Generator[AsyncMock, None, None]:
 
 @pytest.mark.asyncio
 async def test_schedule_event_basic(
-    scheduler: TestEventScheduler, mock_redis: AsyncMock
+    scheduler: AbstractAsyncRedisEventScheduler, mock_redis: AsyncMock
 ) -> None:
     """Test basic event scheduling"""
     event_id = "test_event_1"
@@ -74,7 +82,9 @@ async def test_schedule_event_basic(
 
 
 @pytest.mark.asyncio
-async def test_schedule_event_past_time(scheduler: TestEventScheduler) -> None:
+async def test_schedule_event_past_time(
+    scheduler: AbstractAsyncRedisEventScheduler,
+) -> None:
     """Test scheduling event in the past raises ValueError"""
     event_id = "test_event_2"
     event_data = {"message": "test"}
@@ -85,7 +95,9 @@ async def test_schedule_event_past_time(scheduler: TestEventScheduler) -> None:
 
 
 @pytest.mark.asyncio
-async def test_get_event(scheduler: TestEventScheduler, mock_redis: AsyncMock) -> None:
+async def test_get_event(
+    scheduler: AbstractAsyncRedisEventScheduler, mock_redis: AsyncMock
+) -> None:
     """Test retrieving event details"""
     event_id = "test_event_3"
     event_data = {
@@ -108,7 +120,7 @@ async def test_get_event(scheduler: TestEventScheduler, mock_redis: AsyncMock) -
 
 @pytest.mark.asyncio
 async def test_delete_event(
-    scheduler: TestEventScheduler, mock_redis: AsyncMock
+    scheduler: AbstractAsyncRedisEventScheduler, mock_redis: AsyncMock
 ) -> None:
     """Test event deletion"""
     event_id = "test_event_4"
@@ -123,7 +135,7 @@ async def test_delete_event(
 
 @pytest.mark.asyncio
 async def test_recurring_event_schedule(
-    scheduler: TestEventScheduler, mock_redis: AsyncMock
+    scheduler: AbstractAsyncRedisEventScheduler, mock_redis: AsyncMock
 ) -> None:
     """Test scheduling recurring event"""
     event_id = "test_recurring_1"
@@ -140,7 +152,7 @@ async def test_recurring_event_schedule(
 
 @pytest.mark.asyncio
 async def test_start_scheduler(
-    scheduler: TestEventScheduler, mock_redis: AsyncMock
+    scheduler: AbstractAsyncRedisEventScheduler, mock_redis: AsyncMock
 ) -> None:
     """Test scheduler startup"""
     await scheduler.start()
@@ -152,7 +164,7 @@ async def test_start_scheduler(
 
 
 @pytest.mark.asyncio
-async def test_stop_scheduler(scheduler: TestEventScheduler) -> None:
+async def test_stop_scheduler(scheduler: AbstractAsyncRedisEventScheduler) -> None:
     """Test scheduler shutdown"""
     scheduler._running = True
     scheduler._listener_task = asyncio.create_task(asyncio.sleep(0))
@@ -167,7 +179,7 @@ async def test_stop_scheduler(scheduler: TestEventScheduler) -> None:
 
 @pytest.mark.asyncio
 async def test_process_expired_event(
-    scheduler: TestEventScheduler, mock_redis: AsyncMock
+    scheduler: AbstractAsyncRedisEventScheduler, mock_redis: AsyncMock
 ) -> None:
     """Test processing of expired events"""
     event_id = "test_event_5"
@@ -181,40 +193,50 @@ async def test_process_expired_event(
     }
 
     # Mock successful lock acquisition
-    mock_redis.return_value.set.return_value = True
+    mock_set = AsyncMock(return_value=True)
+    mock_redis.return_value.set = mock_set
     mock_redis.return_value.get.return_value = json.dumps(event_data)
 
-    # Mock the on_event method
-    mock_on_event = AsyncMock()
-    mock_on_event.return_value = None
-    with patch.object(scheduler, "on_event", mock_on_event):
+    try:
         await scheduler._process_expired_event(event_id)
-        mock_on_event.assert_called_once_with(event_id, event_data["event_data"])
-    # Verify lock was deleted
-    mock_redis.return_value.delete.assert_called_with(
-        f"{scheduler.processing_events_set}:{event_id}"
-    )
+
+        # Verify on_event was called with correct arguments
+        scheduler.on_event.assert_awaited_once_with(event_id, event_data["event_data"])
+
+        # Verify lock was deleted
+        mock_redis.return_value.delete.assert_called_with(
+            f"{scheduler.processing_events_set}:{event_id}"
+        )
+    finally:
+        await mock_set.aclose()
 
 
 @pytest.mark.asyncio
 async def test_process_expired_event_locked(
-    scheduler: TestEventScheduler, mock_redis: AsyncMock
+    scheduler: AbstractAsyncRedisEventScheduler, mock_redis: AsyncMock
 ) -> None:
     """Test handling of already locked events"""
     event_id = "test_event_6"
 
     # Mock failed lock acquisition
-    mock_redis.return_value.set.return_value = False
+    mock_set = AsyncMock(return_value=False)
+    mock_redis.return_value.set = mock_set
 
-    await scheduler._process_expired_event(event_id)
+    try:
+        # Execute and await the event processing
+        await scheduler._process_expired_event(event_id)
 
-    # Verify event was not processed
-    mock_redis.return_value.get.assert_not_called()
+        # Verify event was not processed
+        mock_redis.return_value.get.assert_not_called()
+        mock_set.assert_awaited_once()
+    finally:
+        # Clean up any pending coroutines
+        await mock_set.aclose()
 
 
 @pytest.mark.asyncio
 async def test_recurring_event_next_occurrence(
-    scheduler: TestEventScheduler, mock_redis: AsyncMock
+    scheduler: AbstractAsyncRedisEventScheduler, mock_redis: AsyncMock
 ) -> None:
     """Test scheduling next occurrence of recurring event"""
     event_id = "test_recurring_2"
@@ -248,7 +270,12 @@ async def test_recurring_event_next_occurrence(
 @pytest.mark.asyncio
 async def test_calculate_next_occurrence() -> None:
     """Test calculation of next occurrence for different patterns"""
-    scheduler = TestEventScheduler()
+
+    class SimpleScheduler(AbstractAsyncRedisEventScheduler):
+        async def on_event(self, event_id: str, event_data: dict) -> None:
+            pass
+
+    scheduler = SimpleScheduler()
     now = datetime.now(pytz.UTC)
 
     # Test daily pattern
@@ -284,7 +311,7 @@ async def test_calculate_next_occurrence() -> None:
 
 @pytest.mark.asyncio
 async def test_reconcile_events(
-    scheduler: TestEventScheduler, mock_redis: AsyncMock
+    scheduler: AbstractAsyncRedisEventScheduler, mock_redis: AsyncMock
 ) -> None:
     """Test event reconciliation process"""
     mock_redis.return_value.smembers.side_effect = [
@@ -312,7 +339,7 @@ async def test_reconcile_events(
 
 @pytest.mark.asyncio
 async def test_error_handling(
-    scheduler: TestEventScheduler, mock_redis: AsyncMock
+    scheduler: AbstractAsyncRedisEventScheduler, mock_redis: AsyncMock
 ) -> None:
     """Test error handling in various scenarios"""
     # Test Redis connection error
