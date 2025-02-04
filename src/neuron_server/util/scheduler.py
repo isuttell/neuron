@@ -1,4 +1,5 @@
 import asyncio
+import calendar
 import json
 import logging
 from abc import ABC, abstractmethod
@@ -29,6 +30,15 @@ RECONCILIATION_INTERVAL = 60  # seconds
 TIME_PARTS_FULL = 3  # HH:MM:SS
 TIME_PARTS_SHORT = 2  # HH:MM
 
+# Calendar constants
+MAX_WEEKDAY = 6  # 0-6 for weekly (0 is Monday)
+MAX_MONTHDAY = 31  # 1-31 for monthly
+
+# Time validation constants
+MAX_HOUR = 23  # 0-23 hours
+MAX_MINUTE = 59  # 0-59 minutes
+MAX_SECOND = 59  # 0-59 seconds
+
 
 @dataclass
 class TimeComponents:
@@ -46,8 +56,33 @@ class RecurringPattern:
     interval: int
     unit: Literal["seconds", "minutes", "hours", "days", "weeks", "months"]
     time_of_day: str | None = None  # HH:MM:SS or HH:MM format for daily/weekly/monthly
-    day_of_week: int | None = None  # 0-6 for weekly (0 is Monday)
+    day_of_week: int | None = (
+        None  # 0-6 for weekly (0 is Monday, matches calendar.MONDAY etc)
+    )
     day_of_month: int | None = None  # 1-31 for monthly
+
+    def __post_init__(self) -> None:
+        """Validate pattern parameters after initialization."""
+        if self.interval < 1:
+            raise ValueError("Interval must be positive")
+
+        if (
+            self.unit == "weeks"
+            and self.day_of_week is not None
+            and not 0 <= self.day_of_week <= MAX_WEEKDAY
+        ):
+            raise ValueError("day_of_week must be between 0 and 6")
+
+        if (
+            self.unit == "months"
+            and self.day_of_month is not None
+            and not 1 <= self.day_of_month <= MAX_MONTHDAY
+        ):
+            raise ValueError("day_of_month must be between 1 and 31")
+
+        if self.time_of_day is not None:
+            # This will raise ValueError if format is invalid
+            parse_time_of_day(self.time_of_day)
 
 
 class ScheduledEvent(TypedDict):
@@ -62,13 +97,24 @@ class ScheduledEvent(TypedDict):
 def parse_time_of_day(time_str: str) -> TimeComponents:
     """Parse time string in HH:MM:SS or HH:MM format."""
     time_parts = time_str.split(":")
-    if len(time_parts) == TIME_PARTS_FULL:
-        hour, minute, second = map(int, time_parts)
-        return TimeComponents(hour, minute, second)
-    if len(time_parts) == TIME_PARTS_SHORT:
-        hour, minute = map(int, time_parts)
-        return TimeComponents(hour, minute)
-    raise ValueError("time_of_day must be in HH:MM:SS or HH:MM format")
+    try:
+        if len(time_parts) == TIME_PARTS_FULL:
+            hour, minute, second = map(int, time_parts)
+            if not (
+                0 <= hour <= MAX_HOUR
+                and 0 <= minute <= MAX_MINUTE
+                and 0 <= second <= MAX_SECOND
+            ):
+                raise ValueError
+            return TimeComponents(hour, minute, second)
+        if len(time_parts) == TIME_PARTS_SHORT:
+            hour, minute = map(int, time_parts)
+            if not (0 <= hour <= MAX_HOUR and 0 <= minute <= MAX_MINUTE):
+                raise ValueError
+            return TimeComponents(hour, minute)
+        raise ValueError
+    except (ValueError, TypeError) as err:
+        raise ValueError("time_of_day must be in HH:MM:SS or HH:MM format") from err
 
 
 class AbstractAsyncRedisEventScheduler(ABC):
@@ -563,17 +609,31 @@ class AbstractAsyncRedisEventScheduler(ABC):
         time_components: TimeComponents,
     ) -> datetime:
         """Calculate next time for weekly pattern."""
-        current_dow = base_time.weekday()
-        days_ahead = pattern.day_of_week - current_dow  # type: ignore
-        if days_ahead <= 0:
-            days_ahead += 7
+        current_dow = calendar.weekday(base_time.year, base_time.month, base_time.day)
+        target_dow = (
+            pattern.day_of_week if pattern.day_of_week is not None else current_dow
+        )
+
+        # Calculate days until next occurrence
+        days_ahead = target_dow - current_dow
+        if days_ahead <= 0:  # Target day has passed this week
+            days_ahead += 7 * pattern.interval
+        elif (
+            pattern.interval > 1
+        ):  # Target day hasn't passed, but need to account for interval
+            days_ahead += 7 * (pattern.interval - 1)
+
         next_time = (base_time + timedelta(days=days_ahead)).replace(
             hour=time_components.hour,
             minute=time_components.minute,
             second=time_components.second,
+            microsecond=0,
         )
+
+        # If we've calculated a time in the past, move forward by interval weeks
         if next_time <= datetime.now(self.timezone):
             next_time += timedelta(weeks=pattern.interval)
+
         return next_time
 
     def _calculate_monthly_next_time(
@@ -588,31 +648,37 @@ class AbstractAsyncRedisEventScheduler(ABC):
         month = base_time.month
         now = datetime.now(self.timezone)
 
-        try:
-            candidate_time = base_time.replace(
-                day=current_day,
+        # Get valid day for current month
+        _, days_in_month = calendar.monthrange(year, month)
+        valid_day = min(current_day, days_in_month)
+
+        # Try current month first
+        candidate_time = base_time.replace(
+            day=valid_day,
+            hour=time_components.hour,
+            minute=time_components.minute,
+            second=time_components.second,
+            microsecond=0,
+        )
+
+        # If time has passed, calculate next month
+        if candidate_time <= now:
+            month += pattern.interval
+            year += (month - 1) // 12
+            month = ((month - 1) % 12) + 1
+
+            # Get valid day for target month
+            _, days_in_month = calendar.monthrange(year, month)
+            valid_day = min(current_day, days_in_month)
+
+            return base_time.replace(
+                year=year,
+                month=month,
+                day=valid_day,
                 hour=time_components.hour,
                 minute=time_components.minute,
                 second=time_components.second,
+                microsecond=0,
             )
-            if candidate_time <= now:
-                month += pattern.interval
-                year += (month - 1) // 12
-                month = ((month - 1) % 12) + 1
 
-                while True:
-                    try:
-                        return base_time.replace(
-                            year=year,
-                            month=month,
-                            day=current_day,
-                            hour=time_components.hour,
-                            minute=time_components.minute,
-                            second=time_components.second,
-                        )
-                    except ValueError:
-                        current_day -= 1
-            return candidate_time
-        except ValueError:
-            current_day -= 1
-            return self._calculate_next_occurrence(pattern, base_time)
+        return candidate_time

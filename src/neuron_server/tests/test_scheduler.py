@@ -1,4 +1,5 @@
 import asyncio
+import calendar
 import json
 from collections.abc import AsyncGenerator
 from contextlib import suppress
@@ -9,6 +10,7 @@ import pytest
 import pytz
 
 from neuron_server.util.scheduler import (
+    MAX_MONTHDAY,
     AbstractAsyncRedisEventScheduler,
     RecurringPattern,
 )
@@ -37,6 +39,8 @@ NOON_HOUR = 12
 THREE_PM_HOUR = 15
 TEN_AM_HOUR = 10
 FIFTEENTH_DAY = 15
+THURSDAY_DOW = 3  # Thursday (0 is Monday)
+TWO_WEEK_DAYS = 14  # Number of days in two weeks
 
 
 @pytest.fixture
@@ -319,6 +323,81 @@ async def test_calculate_next_occurrence() -> None:
     assert next_monthly.minute == 0
     assert next_monthly.day == FIFTEENTH_DAY
     assert next_monthly > now
+
+    # Test multi-week interval
+    multi_week_pattern = RecurringPattern(
+        interval=2,
+        unit="weeks",
+        day_of_week=3,  # Thursday
+        time_of_day="14:00",
+    )
+    next_multi_week = scheduler._calculate_next_occurrence(multi_week_pattern)
+    assert next_multi_week.weekday() == THURSDAY_DOW
+    assert next_multi_week > now
+
+    # Verify the interval is respected
+    next_next_multi_week = scheduler._calculate_next_occurrence(
+        multi_week_pattern, next_multi_week
+    )
+    assert (next_next_multi_week - next_multi_week).days == TWO_WEEK_DAYS
+
+    # Test month end handling
+    end_of_month_pattern = RecurringPattern(
+        interval=1,
+        unit="months",
+        day_of_month=31,
+        time_of_day="12:00",
+    )
+    next_end_of_month = scheduler._calculate_next_occurrence(end_of_month_pattern)
+
+    # If next month has fewer days, it should use the last day of that month
+    if (
+        calendar.monthrange(next_end_of_month.year, next_end_of_month.month)[1]
+        < MAX_MONTHDAY
+    ):
+        assert (
+            next_end_of_month.day
+            == calendar.monthrange(next_end_of_month.year, next_end_of_month.month)[1]
+        )
+    else:
+        assert next_end_of_month.day == MAX_MONTHDAY
+
+
+@pytest.mark.asyncio
+async def test_recurring_pattern_validation() -> None:
+    """Test validation of recurring pattern parameters"""
+
+    # Test invalid interval
+    with pytest.raises(ValueError, match="Interval must be positive"):
+        RecurringPattern(interval=0, unit="days")
+
+    with pytest.raises(ValueError, match="Interval must be positive"):
+        RecurringPattern(interval=-1, unit="weeks")
+
+    # Test invalid day_of_week
+    with pytest.raises(ValueError, match="day_of_week must be between 0 and 6"):
+        RecurringPattern(interval=1, unit="weeks", day_of_week=7)
+
+    with pytest.raises(ValueError, match="day_of_week must be between 0 and 6"):
+        RecurringPattern(interval=1, unit="weeks", day_of_week=-1)
+
+    # Test invalid day_of_month
+    with pytest.raises(ValueError, match="day_of_month must be between 1 and 31"):
+        RecurringPattern(interval=1, unit="months", day_of_month=32)
+
+    with pytest.raises(ValueError, match="day_of_month must be between 1 and 31"):
+        RecurringPattern(interval=1, unit="months", day_of_month=0)
+
+    # Test invalid time_of_day format
+    with pytest.raises(
+        ValueError, match="time_of_day must be in HH:MM:SS or HH:MM format"
+    ):
+        RecurringPattern(interval=1, unit="days", time_of_day="25:00")  # Invalid hour
+
+    with pytest.raises(
+        ValueError, match="time_of_day must be in HH:MM:SS or HH:MM format"
+    ):
+        RecurringPattern(interval=1, unit="days", time_of_day="12:60")  # Invalid minute
 
 
 @pytest.mark.asyncio
