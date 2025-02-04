@@ -5,12 +5,12 @@ from typing import Any
 
 from neuron_server.models.stream_event import StreamEvent
 from neuron_server.models.thread_model import ThreadModel
-from neuron_server.util.scheduler import AsyncRedisEventScheduler
+from neuron_server.util.scheduler import AbstractAsyncRedisEventScheduler
 
 logger = logging.getLogger(__name__)
 
 
-class TaskScheduler(AsyncRedisEventScheduler):
+class TaskScheduler(AbstractAsyncRedisEventScheduler):
     def __init__(
         self,
         host: str = "localhost",

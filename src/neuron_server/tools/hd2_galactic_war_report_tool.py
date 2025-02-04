@@ -31,7 +31,6 @@ class Campaign(BaseModel):
 
     class Config:
         populate_by_name = True
-        allow_population_by_field_name = True
 
 
 @cache_response(ttl=60 * 1)
@@ -54,7 +53,6 @@ class News(BaseModel):
 
     class Config:
         populate_by_name = True
-        allow_population_by_field_name = True
 
 
 @cache_response(ttl=60 * 1)
@@ -118,7 +116,6 @@ class Setting(BaseModel):
 
     class Config:
         populate_by_name = True
-        allow_population_by_field_name = True
 
 
 class MajorOrder(BaseModel):
@@ -129,7 +126,6 @@ class MajorOrder(BaseModel):
 
     class Config:
         populate_by_name = True
-        allow_population_by_field_name = True
 
 
 class MajorOrdersResponse(BaseModel):
