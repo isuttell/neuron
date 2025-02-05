@@ -2,6 +2,7 @@
 
 import os
 from collections.abc import AsyncGenerator
+from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, patch
 
@@ -12,7 +13,6 @@ from aioresponses import aioresponses
 from langchain_core.documents import Document
 from youtube_transcript_api import YouTubeTranscriptApi
 
-from neuron_server.config import config as neuron_config
 from neuron_server.tools.document_utils import (
     DocumentLoadError,
     FileFormatError,
@@ -61,6 +61,12 @@ async def mock_aiohttp_session() -> AsyncGenerator[aiohttp.ClientSession, None]:
     """Fixture for mocked aiohttp ClientSession."""
     async with aiohttp.ClientSession() as session:
         yield session
+
+
+@pytest.fixture
+def temp_test_dir(tmp_path: Path) -> Path:
+    """Fixture to provide a temporary directory for testing."""
+    return tmp_path
 
 
 class TestYouTubeUrlHandling:
@@ -248,17 +254,19 @@ class TestPdfLoading:
         mock_aiohttp_session: aiohttp.ClientSession,
         mock_aiohttp: aioresponses,
         mock_pdf_content: str,
+        temp_test_dir: Path,
     ) -> None:
         """Test cleanup of temporary PDF files."""
         url = "https://example.com/test.pdf"
         mock_aiohttp.get(url, status=200, body=b"PDF content")
 
-        with patch("pymupdf4llm.to_markdown", return_value=mock_pdf_content):
+        with (
+            patch("pymupdf4llm.to_markdown", return_value=mock_pdf_content),
+            patch("neuron_server.config.config.temp_folder", str(temp_test_dir)),
+        ):
             await load_pdf_from_url(url)
             # Verify temp file is cleaned up
-            temp_files = [
-                f for f in os.listdir(neuron_config.temp_folder) if f.endswith(".pdf")
-            ]
+            temp_files = [f for f in os.listdir(temp_test_dir) if f.endswith(".pdf")]
             assert not temp_files
 
 
