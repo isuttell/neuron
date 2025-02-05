@@ -45,6 +45,8 @@ Neuron is a realtime chat application built with LangChain and LangGraph to allo
 - Write unit tests for all components using Jest and React Testing Library.
 - Run linting with `npm run lint`
 - Run tests with `npm test` or `npm run test:coverage`
+- Run commands from the project root
+- Mock network requests
 
 ### Backend Code Style and Structure
 
@@ -69,6 +71,7 @@ Neuron is a realtime chat application built with LangChain and LangGraph to allo
 - Include tests for controllers, tools, and database models.
 - Write unit tests for all new functions and classes.
 - Use mocking for database and network operations to ensure isolation of tests.
+- Run commands from the project root
 
 ### Model Notes
 

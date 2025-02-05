@@ -83,6 +83,11 @@ export const threadsSlice = createSlice({
         (thread) => thread.id !== action.payload
       );
     },
+    reset: (state) => {
+      state.loading = false;
+      state.error = null;
+      state.threads = [];
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -159,7 +164,7 @@ export const threadsSlice = createSlice({
   },
 });
 
-export const { upsertThread, upsertThreads, deleteThread } =
+export const { upsertThread, upsertThreads, deleteThread, reset } =
   threadsSlice.actions;
 export const selectThread = (state: RootState, threadId?: string) =>
   state.threads.threads.find((thread) => thread.id === threadId);
