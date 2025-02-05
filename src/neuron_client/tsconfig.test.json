@@ -4,7 +4,12 @@
     "esModuleInterop": true,
     "module": "CommonJS",
     "moduleResolution": "node",
-    "allowImportingTsExtensions": false
+    "allowImportingTsExtensions": false,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+    "types": ["jest", "node", "@testing-library/jest-dom"]
   },
   "include": [
     "src/**/__tests__/**/*.ts",
