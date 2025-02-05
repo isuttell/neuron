@@ -3,8 +3,7 @@ import json
 import logging
 import os
 import re
-from functools import wraps
-from typing import Any, Callable
+from typing import Any
 
 import openai
 from quart import Blueprint, Quart, Response, send_from_directory, websocket
@@ -58,6 +57,7 @@ from neuron_server.controllers.thread_controller import (
 )
 from neuron_server.controllers.webhook_controller import blueprint as webhook_blueprint
 from neuron_server.database import pool
+from neuron_server.decorators.http_decorators import cache_control, cors
 from neuron_server.event_router import EventRouter
 from neuron_server.pubsub import client
 from neuron_server.task_scheduler import TaskScheduler
@@ -79,75 +79,6 @@ app = Quart(
     static_folder=config.client_assets_folder,
     root_path="/",
 )
-
-
-def cors(
-    allowed_origins: list[str] | None = None,
-    allowed_methods: list[str] | None = None,
-    allowed_headers: list[str] | None = None,
-) -> Callable:
-    if allowed_origins is None:
-        allowed_origins = ["*"]
-    if allowed_methods is None:
-        allowed_methods = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
-    if allowed_headers is None:
-        allowed_headers = ["Content-Type", "Authorization"]
-
-    def add_cors_headers(func: Callable) -> Callable:
-        func.required_methods = getattr(func, "required_methods", set())  # type: ignore
-        func.required_methods.add("OPTIONS")  # type: ignore
-        func.provide_automatic_options = False  # type: ignore
-
-        @wraps(func)
-        async def wrapped_func(*args: Any, **kwargs: Any) -> Response:
-            response: Response = await func(*args, **kwargs)
-            response.headers["Access-Control-Allow-Origin"] = ", ".join(allowed_origins)
-            response.headers["Access-Control-Allow-Methods"] = ", ".join(
-                allowed_methods
-            )
-            response.headers["Access-Control-Allow-Headers"] = ", ".join(
-                allowed_headers
-            )
-            return response
-
-        return wrapped_func
-
-    return add_cors_headers
-
-
-def cache_control(
-    max_age: int | None = None,
-    no_cache: bool = False,
-    private: bool = False,
-    public: bool = False,
-    immutable: bool = False,
-) -> Callable:
-    def add_headers(func: Callable) -> Callable:
-        @wraps(func)
-        async def wrapped_func(*args: Any, **kwargs: Any) -> Response:
-            response: Response = await func(*args, **kwargs)
-            values = []
-
-            if isinstance(max_age, int):
-                values.append(f"max-age={max_age}")
-            elif no_cache:
-                values.append("no-cache")
-
-            if private:
-                values.append("private")
-            elif public:
-                values.append("public")
-
-            if immutable:
-                values.append("immutable")
-
-            if values:
-                response.headers["Cache-Control"] = ", ".join(values)
-            return response
-
-        return wrapped_func
-
-    return add_headers
 
 
 blueprint = Blueprint(
@@ -234,7 +165,7 @@ async def ws() -> None:
         consumer = asyncio.create_task(receiving())
         await asyncio.gather(producer, consumer)
     except Exception as e:
-        websocket.close(401, str(e))
+        await websocket.close(401, str(e))
         logger.error(e)
     finally:
         if token:
