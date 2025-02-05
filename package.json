@@ -4,21 +4,22 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
-    "lint": "eslint .",
-    "preview": "vite preview",
-    "test": "jest --coverage",
-    "test:watch": "jest --watch --coverage"
+    "dev": "vite src/neuron_client",
+    "build": "tsc -b && vite build src/neuron_client",
+    "lint": "eslint src/neuron_client",
+    "preview": "vite preview src/neuron_client",
+    "test": "jest",
+    "test:coverage": "jest --coverage",
+    "test:watch": "jest --watch"
   },
   "jest": {
     "testEnvironment": "jsdom",
     "setupFilesAfterEnv": [
-      "<rootDir>/src/setupTests.ts"
+      "<rootDir>/test/setupTests.ts"
     ],
     "moduleNameMapper": {
-      "^@/(.*)$": "<rootDir>/src/$1",
-      "\\.(jpg|jpeg|png|gif|svg|eot|otf|webp|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$": "<rootDir>/src/__mocks__/fileMock.js",
+      "^@/(.*)$": "<rootDir>/src/neuron_client/src/$1",
+      "\\.(jpg|jpeg|png|gif|svg|eot|otf|webp|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$": "<rootDir>/__mocks__/fileMock.js",
       "\\.(css|less|scss|sass)$": "identity-obj-proxy"
     },
     "transform": {
@@ -32,7 +33,7 @@
       ]
     },
     "testMatch": [
-      "<rootDir>/src/**/__tests__/**/*.test.ts?(x)"
+      "<rootDir>/src/neuron_client/src/**/__tests__/**/*.test.ts?(x)"
     ],
     "moduleFileExtensions": [
       "ts",
@@ -42,14 +43,14 @@
       "json"
     ],
     "collectCoverageFrom": [
-      "src/**/*.{ts,tsx}",
-      "!src/**/*.d.ts",
-      "!src/vite-env.d.ts",
-      "!src/main.tsx",
-      "!src/components/ui/**/*",
-      "!src/lib/utils.ts",
-      "!src/**/*.stories.{ts,tsx}",
-      "!src/setupTests.ts"
+      "src/neuron_client/src/**/*.{ts,tsx}",
+      "!src/neuron_client/src/**/*.d.ts",
+      "!src/neuron_client/src/vite-env.d.ts",
+      "!src/neuron_client/src/main.tsx",
+      "!src/neuron_client/src/components/ui/**/*",
+      "!src/neuron_client/src/lib/utils.ts",
+      "!src/neuron_client/src/**/*.stories.{ts,tsx}",
+      "!src/neuron_client/src/setupTests.ts"
     ]
   },
   "dependencies": {

@@ -1,12 +1,15 @@
 FROM node:20 AS client-builder
 
-WORKDIR /app/src/neuron_client
+WORKDIR /app
 
-COPY ["src/neuron_client/package*.json", "."]
+COPY ["package*.json", "."]
 
 RUN npm ci --no-audit --no-fund
 
-COPY ["src/neuron_client/", "."]
+COPY ["tsconfig*.json", "vite.config.ts", "eslint.config.js", "postcss.config.js", "tailwind.config.js", "components.json", "./"]
+COPY ["src/neuron_client/index.html", "./src/neuron_client/"]
+COPY ["src/neuron_client/public/", "./src/neuron_client/public/"]
+COPY ["src/neuron_client/src/", "./src/neuron_client/src/"]
 
 RUN NODE_ENV=development npx vite build --mode development
 
@@ -78,4 +81,3 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 ENTRYPOINT [ "python" ]
 
 CMD ["-m", "neuron_server"]
-

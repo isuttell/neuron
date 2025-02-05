@@ -7,13 +7,13 @@
     "allowImportingTsExtensions": false,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/neuron_client/src/*"]
     },
     "types": ["jest", "node", "@testing-library/jest-dom"]
   },
   "include": [
-    "src/**/__tests__/**/*.ts",
-    "src/**/__tests__/**/*.tsx",
-    "src/setupTests.ts"
+    "src/neuron_client/src/**/__tests__/**/*.ts",
+    "src/neuron_client/src/**/__tests__/**/*.tsx",
+    "test/setupTests.ts"
   ]
 }

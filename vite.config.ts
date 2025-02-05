@@ -9,10 +9,12 @@ export default defineConfig(({ mode }) => ({
   plugins: [react(), nodePolyfills()],
   build: {
     sourcemap: mode === "development" ? "inline" : true,
+    outDir: path.resolve(__dirname, "src/neuron_client/dist"),
   },
+  root: path.resolve(__dirname, "src/neuron_client"),
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./src"),
+      "@": path.resolve(__dirname, "src/neuron_client/src"),
     },
   },
   server: {

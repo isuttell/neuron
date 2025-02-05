@@ -20,3 +20,5 @@ venv.bak/
 
 /docs
 /neo4j
+node_modules/
+coverage/
