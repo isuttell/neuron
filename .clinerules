@@ -4,6 +4,8 @@ Neuron is a realtime chat application built with LangChain and LangGraph to allo
 
 ## Project Structure
 
+- **package.json** Frontend project configuration and dependencies.
+- **pyproject.toml** Backend project configuration and dependencies
 - **src/neuron_client/src** React frontend application source code.
 - **src/neuron_client/src/components/ui** Shadcn UI components
 - **src/neuron_client/src/actions** Redux actions
