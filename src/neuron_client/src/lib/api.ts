@@ -7,52 +7,57 @@ type JsonValue =
   | null
   | JsonValue[]
   | { [key: string]: JsonValue };
-type RequestData = Record<string, JsonValue>;
+type RequestData = Record<string, JsonValue> | FormData;
 
 class ApiClient {
   private baseUrl: string = "/api";
 
-  private async getHeaders(): Promise<HeadersInit> {
+  private async getHeaders(isFormData = false): Promise<HeadersInit> {
     const accessToken = await getAccessToken();
-    return {
+    const headers: HeadersInit = {
       Authorization: `Bearer ${accessToken}`,
-      "Content-Type": "application/json",
     };
+    if (!isFormData) {
+      headers["Content-Type"] = "application/json";
+    }
+    return headers;
+  }
+
+  private async handleResponse<T>(response: Response): Promise<T> {
+    if (!response.ok) {
+      throw new Error(`API Error: ${response.statusText}`);
+    }
+    return response.json();
   }
 
   async get<T>(endpoint: string): Promise<T> {
     const headers = await this.getHeaders();
     const response = await fetch(`${this.baseUrl}${endpoint}`, { headers });
-    if (!response.ok) {
-      throw new Error(`API Error: ${response.statusText}`);
-    }
-    return response.json();
+    return this.handleResponse<T>(response);
   }
 
   async post<T>(endpoint: string, data: RequestData): Promise<T> {
-    const headers = await this.getHeaders();
+    const isFormData = data instanceof FormData;
+    const headers = await this.getHeaders(isFormData);
+    const body = isFormData ? data : JSON.stringify(data);
     const response = await fetch(`${this.baseUrl}${endpoint}`, {
       method: "POST",
       headers,
-      body: JSON.stringify(data),
+      body,
     });
-    if (!response.ok) {
-      throw new Error(`API Error: ${response.statusText}`);
-    }
-    return response.json();
+    return this.handleResponse<T>(response);
   }
 
   async put<T>(endpoint: string, data: RequestData): Promise<T> {
-    const headers = await this.getHeaders();
+    const isFormData = data instanceof FormData;
+    const headers = await this.getHeaders(isFormData);
+    const body = isFormData ? data : JSON.stringify(data);
     const response = await fetch(`${this.baseUrl}${endpoint}`, {
       method: "PUT",
       headers,
-      body: JSON.stringify(data),
+      body,
     });
-    if (!response.ok) {
-      throw new Error(`API Error: ${response.statusText}`);
-    }
-    return response.json();
+    return this.handleResponse<T>(response);
   }
 
   async delete<T>(endpoint: string): Promise<T> {
@@ -61,10 +66,7 @@ class ApiClient {
       method: "DELETE",
       headers,
     });
-    if (!response.ok) {
-      throw new Error(`API Error: ${response.statusText}`);
-    }
-    return response.json();
+    return this.handleResponse<T>(response);
   }
 }
 

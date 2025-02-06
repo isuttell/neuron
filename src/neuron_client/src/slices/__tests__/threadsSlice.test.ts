@@ -1,6 +1,5 @@
 import { configureStore } from "@reduxjs/toolkit";
 import threadsReducer, {
-  Thread,
   upsertThread,
   upsertThreads,
   deleteThread,
@@ -10,6 +9,7 @@ import threadsReducer, {
   getThreadsError,
   reset,
 } from "../threadsSlice";
+import { Thread } from "@/types/thread";
 import * as actions from "../../actions/threadActions";
 import * as messageActions from "../../actions/messageActions";
 
@@ -22,15 +22,11 @@ describe("threadsSlice", () => {
     personality_id: "test-personality",
     status: "active",
     message_count: 0,
-    created_at: new Date("2024-02-03T00:00:00Z").getTime(),
-    updated_at: new Date("2024-02-03T00:00:00Z").getTime(),
-  };
-
-  const mockIncomingThread = {
-    ...mockThread,
     created_at: "2024-02-03T00:00:00Z",
     updated_at: "2024-02-03T00:00:00Z",
   };
+
+  const mockIncomingThread = mockThread;
 
   const store = configureStore({
     reducer: {
@@ -239,9 +235,16 @@ describe("threadsSlice", () => {
     });
 
     it("should handle messageActions.fetchMessagesByThread.fulfilled", () => {
-      const threads = [mockIncomingThread];
       store.dispatch(
-        messageActions.fetchMessagesByThread.fulfilled({ threads }, "", "1")
+        messageActions.fetchMessagesByThread.fulfilled(
+          {
+            messages: [],
+            media: [],
+            threads: [mockIncomingThread],
+          },
+          "",
+          "1"
+        )
       );
       const state = store.getState().threads;
       expect(state.threads).toHaveLength(1);

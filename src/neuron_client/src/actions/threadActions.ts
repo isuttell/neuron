@@ -1,21 +1,12 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
-import { getAccessToken } from "./getToken";
+import { api } from "@/lib/api";
+import { ThreadResponse, ThreadsResponse } from "@/types/thread";
 
 export const fetchThread = createAsyncThunk(
   "threads/fetchThread",
   async (threadId: string, thunkAPI) => {
     try {
-      const accessToken = await getAccessToken();
-      const response = await fetch(`/api/threads/${threadId}`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-      if (!response.ok) {
-        throw new Error(`Thread not found (${response.status})`);
-      }
-      const data = await response.json();
-      return data;
+      return await api.get<ThreadResponse>(`/threads/${threadId}`);
     } catch (error) {
       if (error instanceof Error) {
         return thunkAPI.rejectWithValue(error.message);
@@ -29,20 +20,9 @@ export const fetchThreadsByPersonality = createAsyncThunk(
   "threads/fetchThreadsByPersonality",
   async (personalityId: string, thunkAPI) => {
     try {
-      const accessToken = await getAccessToken();
-      const response = await fetch(
-        `/api/threads/personality/${personalityId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        }
+      return await api.get<ThreadsResponse>(
+        `/threads/personality/${personalityId}`
       );
-      if (!response.ok) {
-        throw new Error(`Failed to fetch threads (${response.status})`);
-      }
-      const data = await response.json();
-      return data;
     } catch (error) {
       if (error instanceof Error) {
         return thunkAPI.rejectWithValue(error.message);
@@ -56,17 +36,7 @@ export const fetchRecentThreads = createAsyncThunk(
   "threads/fetchRecentThreads",
   async (_, thunkAPI) => {
     try {
-      const accessToken = await getAccessToken();
-      const response = await fetch(`/api/threads/recent`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-      if (!response.ok) {
-        throw new Error(`Failed to fetch recent threads (${response.status})`);
-      }
-      const data = await response.json();
-      return data;
+      return await api.get<ThreadsResponse>(`/threads/recent`);
     } catch (error) {
       if (error instanceof Error) {
         return thunkAPI.rejectWithValue(error.message);
@@ -112,19 +82,7 @@ export const createThread = createAsyncThunk(
       if (greeting) {
         formData.append("greeting", "true");
       }
-      const accessToken = await getAccessToken();
-      const response = await fetch(`/api/threads/`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: formData,
-      });
-      if (!response.ok) {
-        throw new Error(`Failed to create thread (${response.status})`);
-      }
-      const data = await response.json();
-      return data;
+      return await api.post<ThreadResponse>(`/threads/`, formData);
     } catch (error) {
       if (error instanceof Error) {
         return thunkAPI.rejectWithValue(error.message);
@@ -144,20 +102,10 @@ export const updateThread = createAsyncThunk(
   "threads/updateThread",
   async (thread: UpdateThreadPayload, thunkAPI) => {
     try {
-      const accessToken = await getAccessToken();
-      const response = await fetch(`/api/threads/${thread.id}`, {
-        method: "PUT",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ name: thread.name, context: thread.context }),
+      return await api.put<ThreadResponse>(`/threads/${thread.id}`, {
+        name: thread.name,
+        context: thread.context,
       });
-      if (!response.ok) {
-        throw new Error(`Failed to update thread (${response.status})`);
-      }
-      const data = await response.json();
-      return data;
     } catch (error) {
       if (error instanceof Error) {
         return thunkAPI.rejectWithValue(error.message);
@@ -171,16 +119,7 @@ export const deleteThread = createAsyncThunk(
   "threads/deleteThread",
   async (threadId: string, thunkAPI) => {
     try {
-      const accessToken = await getAccessToken();
-      const response = await fetch(`/api/threads/${threadId}`, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-      if (!response.ok) {
-        throw new Error(`Failed to delete thread (${response.status})`);
-      }
+      await api.delete(`/threads/${threadId}`);
       return threadId;
     } catch (error) {
       if (error instanceof Error) {

@@ -1,20 +1,14 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import { getSocket } from "../slices/socketSlice";
 import { RootState } from "../store";
-import { getAccessToken } from "./getToken";
+import { api } from "@/lib/api";
+import { MessageResponse } from "@/types/message";
 
 export const fetchMessagesByThread = createAsyncThunk(
   "messages/fetchMessagesByThread",
   async (threadId: string, thunkAPI) => {
     try {
-      const accessToken = await getAccessToken();
-      const response = await fetch(`/api/messages/thread/${threadId}`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-      const data = await response.json();
-      return data;
+      return await api.get<MessageResponse>(`/messages/thread/${threadId}`);
     } catch (error) {
       if (error instanceof Error) {
         return thunkAPI.rejectWithValue(error.message);
@@ -57,15 +51,7 @@ export const postMessageByThread = createAsyncThunk(
         }
       }
 
-      const accessToken = await getAccessToken();
-      const response = await fetch(`/api/messages/thread/${threadId}`, {
-        method: "POST",
-        body: formData,
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-      return await response.json();
+      return await api.post(`/messages/thread/${threadId}`, formData);
     } catch (error) {
       if (error instanceof Error) {
         return thunkAPI.rejectWithValue(error.message);

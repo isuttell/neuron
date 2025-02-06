@@ -1,23 +1,9 @@
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 import type { RootState } from "../store";
-import { getAccessToken } from "../actions/getToken";
+import { api } from "@/lib/api";
 import { fetchMessagesByThread } from "@/actions/messageActions";
 import { fetchMediaLists } from "./mediaListsSlice";
-export interface MediaItem {
-  id: string;
-  name: string;
-  description: string;
-  url: string;
-  media_type: string;
-  thread_id?: string;
-  user_id: string;
-  created_at: string;
-  updated_at: string;
-}
-
-interface IncomingMediaEvent {
-  media: MediaItem[];
-}
+import { MediaItem, IncomingMediaEvent } from "@/types/media";
 
 interface MediaState {
   items: MediaItem[];
@@ -31,26 +17,17 @@ const initialState: MediaState = {
   error: null,
 };
 
+interface MediaResponse {
+  media_items: MediaItem[];
+}
+
 export const fetchRecentMedia = createAsyncThunk(
   "media/fetchRecent",
-  async ({
-    limit = 20,
-    offset = 0,
-  }: { limit?: number; offset?: number } = {}) => {
-    const accessToken = await getAccessToken();
-    const response = await fetch(
-      `/api/media/recent?limit=${limit}&offset=${offset}`,
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      }
+  async (params: { limit?: number; offset?: number } = {}) => {
+    const response = await api.get<MediaResponse>(
+      `/media/recent?limit=${params.limit ?? 20}&offset=${params.offset ?? 0}`
     );
-    if (!response.ok) {
-      throw new Error("Failed to fetch media items");
-    }
-    const data = await response.json();
-    return data.media_items;
+    return response.media_items;
   }
 );
 
@@ -108,14 +85,13 @@ const mediaSlice = createSlice({
         state.loading = false;
         state.error = action.error.message ?? "Failed to fetch media items";
       })
-      .addCase(
-        fetchMessagesByThread.fulfilled,
-        (state, action: PayloadAction<IncomingMediaEvent>) => {
+      .addCase(fetchMessagesByThread.fulfilled, (state, action) => {
+        if (action.payload?.media) {
           for (const media of action.payload.media) {
             upsert(state, media);
           }
         }
-      )
+      })
       .addCase(fetchMediaLists.fulfilled, (state, action) => {
         for (const media of action.payload.media_items) {
           upsert(state, media);

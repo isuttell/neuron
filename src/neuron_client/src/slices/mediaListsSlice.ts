@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import type { RootState } from "../store";
 import { api } from "@/lib/api";
-import { MediaItem } from "./mediaSlice";
+import { MediaItem } from "@/types/media";
 
 type JsonValue =
   | string
