@@ -13,7 +13,7 @@ import { fetchConfig } from "@/slices/appSlice";
 import { ThreadTitleUpdater } from "@/components/ThreadTitleUpdater";
 import { fetchMediaLists } from "@/slices/mediaListsSlice";
 
-function Root() {
+export function RootComponent() {
   const {
     loginWithRedirect,
     isAuthenticated,
@@ -34,7 +34,7 @@ function Root() {
       dispatch(fetchConfig());
       dispatch(fetchMediaLists());
     }
-  }, [isAuthenticated, isLoading, dispatch]);
+  }, [isAuthenticated, isLoading, dispatch, error, loginWithRedirect]);
 
   useEffect(() => {
     if (getAccessTokenSilently) {
@@ -47,7 +47,7 @@ function Root() {
       // Likely old url so redirect to login
       loginWithRedirect();
     }
-  }, [error]);
+  }, [error, loginWithRedirect]);
 
   if (error) {
     return (
@@ -80,10 +80,8 @@ function Root() {
             <Outlet />
           </>
         ) : (
-          <div className="flex flex-1 items-center justify-center h-full">
-            <div className="flex flex-col items-center gap-2">
-              <Spinner />
-            </div>
+          <div className="flex flex-1 items-center justify-center h-screen w-screen">
+            <Spinner />
           </div>
         )}
       </main>
@@ -91,10 +89,12 @@ function Root() {
   );
 }
 
-export default withAuthenticationRequired(Root, {
+export const Root = withAuthenticationRequired(RootComponent, {
   onRedirecting: () => (
     <div className="flex flex-1 items-center justify-center h-screen w-screen">
       <Spinner />
     </div>
   ),
 });
+
+export default Root;

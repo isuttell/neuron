@@ -14,9 +14,9 @@ import {
   TooltipContent,
 } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
-import { MediaItem } from "@/slices/mediaSlice";
+import { MediaItem } from "@/types/media";
 import { MediaListDropdown } from "@/components/MediaListDropdown";
-import { useMediaPlayer } from "@/contexts/MediaPlayerContext";
+import { useMediaPlayer } from "@/hooks/useMediaPlayer";
 import { useId, useRef, useEffect, memo } from "react";
 interface VideoContentProps {
   url: string;

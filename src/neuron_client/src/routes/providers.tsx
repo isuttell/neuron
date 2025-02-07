@@ -52,7 +52,7 @@ export default function ProvidersPage() {
 
   useEffect(() => {
     dispatch(fetchProviders());
-  }, []);
+  }, [dispatch]);
 
   const handleSetup = async (providerId: string) => {
     try {

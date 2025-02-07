@@ -87,7 +87,7 @@ jest.mock("../../messages/MessageItem", () => ({
 
 jest.mock("../../messages/MediaItemList", () => ({
   __esModule: true,
-  default: ({ mediaItems }: { mediaItems: any[] }) => (
+  default: ({ mediaItems }: { mediaItems: MediaItem[] }) => (
     <div data-testid="media-list">
       MediaItemList ({mediaItems.length} items)
     </div>
@@ -135,7 +135,7 @@ jest.mock("@/components/MediaPanelWidth", () => ({
     onChange,
   }: {
     widthMode: string;
-    onChange: (mode: any) => void;
+    onChange: (mode: "hidden" | "narrow") => void;
   }) => (
     <button
       data-testid="media-panel-width"
@@ -271,7 +271,7 @@ describe("Thread", () => {
     message_count: 2,
   };
 
-  let originalScrollIntoView: any;
+  let originalScrollIntoView: typeof window.HTMLElement.prototype.scrollIntoView;
   let mockScrollIntoView: jest.Mock;
 
   beforeEach(() => {

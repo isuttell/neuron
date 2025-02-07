@@ -23,7 +23,7 @@ import {
   TooltipTrigger,
   TooltipContent,
 } from "@/components/ui/tooltip";
-import EmbeddingsButton from "./EmbeddingsButton";
+import { EmbeddingsButton } from "./EmbeddingsButton";
 
 interface PersonalityItemProps {
   personality: Personality;

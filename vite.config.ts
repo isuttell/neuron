@@ -11,7 +11,7 @@ export default defineConfig(({ mode }) => ({
     sourcemap: mode === "development" ? "inline" : true,
     outDir: path.resolve(__dirname, "src/neuron_client/dist"),
   },
-  root: path.resolve(__dirname, "src/neuron_client"),
+  root: "src/neuron_client",
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "src/neuron_client/src"),

@@ -1,4 +1,3 @@
-import React from "react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { Brain } from "lucide-react";
@@ -8,9 +7,9 @@ interface EmbeddingsButtonProps {
   personalityId: string;
 }
 
-const EmbeddingsButton: React.FC<EmbeddingsButtonProps> = ({
+export function EmbeddingsButtonComponent({
   personalityId,
-}) => {
+}: EmbeddingsButtonProps) {
   return (
     <Button variant="ghost" asChild size="icon">
       <Link
@@ -21,6 +20,6 @@ const EmbeddingsButton: React.FC<EmbeddingsButtonProps> = ({
       </Link>
     </Button>
   );
-};
+}
 
-export default withAdminAuth(EmbeddingsButton);
+export const EmbeddingsButton = withAdminAuth(EmbeddingsButtonComponent);

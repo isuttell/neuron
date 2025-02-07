@@ -21,7 +21,7 @@ export default function Personalities() {
 
   useEffect(() => {
     dispatch(fetchPersonalities());
-  }, []);
+  }, [dispatch]);
 
   if (loading && personalities.length < 1) {
     return (

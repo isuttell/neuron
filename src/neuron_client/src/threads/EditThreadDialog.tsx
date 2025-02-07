@@ -4,7 +4,7 @@ import { useAppDispatch } from "../hooks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Thread } from "../slices/threadsSlice";
+import { Thread } from "../types/thread";
 import {
   Dialog,
   DialogTrigger,
@@ -31,7 +31,7 @@ const EditThreadDialog: React.FC<EditThreadFormProps> = ({ thread }) => {
   useEffect(() => {
     setName(thread.name);
     setContext(thread.context);
-  }, [thread.id]);
+  }, [thread.id, thread.name, thread.context]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

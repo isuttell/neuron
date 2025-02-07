@@ -16,7 +16,7 @@ import {
 import { AudioBarVisualization } from "./AudioBarVisualization";
 import { Spinner } from "./ui/spinner";
 import { cn } from "@/lib/utils";
-import { useMediaPlayer } from "@/contexts/MediaPlayerContext";
+import { useMediaPlayer } from "@/hooks/useMediaPlayer";
 
 interface MediaItem {
   id: string;

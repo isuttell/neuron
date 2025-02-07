@@ -4,10 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite src/neuron_client",
-    "build": "tsc -b && vite build src/neuron_client",
-    "lint": "eslint src/neuron_client",
-    "preview": "vite preview src/neuron_client",
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "eslint -c eslint.config.js src/neuron_client/src",
+    "preview": "vite preview",
     "test": "jest",
     "test:coverage": "jest --coverage",
     "test:watch": "jest --watch"

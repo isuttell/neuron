@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
 
-const getFuzzyTimeAgo = (date: number) => {
+const getFuzzyTimeAgo = (date: number | string) => {
+  const timestamp = typeof date === "string" ? new Date(date).getTime() : date;
   const now = Date.now();
-  const diff = now - date;
+  const diff = now - timestamp;
 
   // Convert to seconds and use fixed thresholds
   const seconds = Math.floor(diff / 1000);
@@ -37,7 +38,7 @@ const getFuzzyTimeAgo = (date: number) => {
 };
 
 interface FuzzyTimeAgoProps {
-  timestamp: number;
+  timestamp: number | string;
   className?: string;
   ago?: boolean;
 }

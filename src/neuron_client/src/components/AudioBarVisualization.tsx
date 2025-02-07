@@ -2,7 +2,7 @@ import { cn } from "@/lib/utils";
 import { useRef, useEffect, useCallback } from "react";
 
 interface AudioBarVisualizationProps {
-  src: string;
+  src: string; // src is required for the component to function
   progress: number;
   className?: string;
   onSeek?: (progress: number) => void;
@@ -81,34 +81,40 @@ export function AudioBarVisualization({
     }
   }, [handleMouseMove, handleMouseUp, onSeek]);
 
-  const updateCanvasDimensions = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+  const drawFrame = useCallback(
+    (
+      ctx: CanvasRenderingContext2D,
+      canvas: HTMLCanvasElement,
+      progress: number,
+      waveformData: number[]
+    ) => {
+      ctx.fillStyle = backgroundColor;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    const parent = canvas.parentElement;
-    if (!parent) return;
+      const centerY = Math.round(canvas.height / 2);
+      const barCount = waveformData.length;
+      const progressPosition = Math.floor((progress / 100) * barCount);
+      const totalWidth = (barWidth + gap) * barCount;
+      const startX = (canvas.width - totalWidth) / 2;
 
-    canvas.width = parent.clientWidth;
-    canvas.height = canvas.clientHeight;
-    const ctx = canvas.getContext("2d");
+      let x = startX;
+      for (let i = 0; i < barCount; i++) {
+        const amplitude = waveformData[i];
+        const barHeight = Math.ceil(amplitude * (canvas.height / 2));
 
-    canvas.style.width = `${parent.clientWidth}px`;
-    canvas.style.height = `${canvas.clientHeight}px`;
+        const isPlayed = i <= progressPosition && progress > 0;
+        ctx.fillStyle = isPlayed
+          ? "rgb(6, 197, 255)"
+          : "rgba(255, 255, 255, 0.86)";
 
-    if (rawChannelDataRef.current) {
-      waveformDataRef.current = processAudioData(rawChannelDataRef.current);
-      if (ctx) {
-        drawFrame(ctx, canvas, progress, waveformDataRef.current);
+        ctx.fillRect(x, centerY - barHeight, barWidth, barHeight);
+        ctx.fillRect(x, centerY, barWidth, barHeight);
+
+        x += barWidth + gap;
       }
-    }
-
-    if (waveformDataRef.current.length > 0) {
-      const ctx = canvas.getContext("2d");
-      if (ctx) {
-        drawFrame(ctx, canvas, progress, waveformDataRef.current);
-      }
-    }
-  }, [progress]);
+    },
+    [backgroundColor, barWidth, gap]
+  );
 
   const processAudioData = useCallback(
     (channelData: Float32Array) => {
@@ -139,37 +145,34 @@ export function AudioBarVisualization({
     [barWidth, gap]
   );
 
-  const drawFrame = (
-    ctx: CanvasRenderingContext2D,
-    canvas: HTMLCanvasElement,
-    progress: number,
-    waveformData: number[]
-  ) => {
-    ctx.fillStyle = backgroundColor;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  const updateCanvasDimensions = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
-    const centerY = Math.round(canvas.height / 2);
-    const barCount = waveformData.length;
-    const progressPosition = Math.floor((progress / 100) * barCount);
-    const totalWidth = (barWidth + gap) * barCount;
-    const startX = (canvas.width - totalWidth) / 2;
+    const parent = canvas.parentElement;
+    if (!parent) return;
 
-    let x = startX;
-    for (let i = 0; i < barCount; i++) {
-      const amplitude = waveformData[i];
-      const barHeight = Math.ceil(amplitude * (canvas.height / 2));
+    canvas.width = parent.clientWidth;
+    canvas.height = canvas.clientHeight;
+    const ctx = canvas.getContext("2d");
 
-      const isPlayed = i <= progressPosition && progress > 0;
-      ctx.fillStyle = isPlayed
-        ? "rgb(6, 197, 255)"
-        : "rgba(255, 255, 255, 0.86)";
+    canvas.style.width = `${parent.clientWidth}px`;
+    canvas.style.height = `${canvas.clientHeight}px`;
 
-      ctx.fillRect(x, centerY - barHeight, barWidth, barHeight);
-      ctx.fillRect(x, centerY, barWidth, barHeight);
-
-      x += barWidth + gap;
+    if (rawChannelDataRef.current) {
+      waveformDataRef.current = processAudioData(rawChannelDataRef.current);
+      if (ctx) {
+        drawFrame(ctx, canvas, progress, waveformDataRef.current);
+      }
     }
-  };
+
+    if (waveformDataRef.current.length > 0) {
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        drawFrame(ctx, canvas, progress, waveformDataRef.current);
+      }
+    }
+  }, [progress, drawFrame, processAudioData]);
 
   useEffect(() => {
     const loadAudioData = async () => {
@@ -181,7 +184,7 @@ export function AudioBarVisualization({
 
       // Check cache first
       if (waveformCache.has(src)) {
-        const cached = waveformCache.get(src)!;
+        const cached = waveformCache.get(src)!; // We can assert non-null since we checked has()
         rawChannelDataRef.current = cached.rawChannelData;
         // Reprocess waveform data since it depends on canvas dimensions
         waveformDataRef.current = processAudioData(cached.rawChannelData);
@@ -225,7 +228,14 @@ export function AudioBarVisualization({
     };
 
     loadAudioData();
-  }, [src, processAudioData, updateCanvasDimensions]);
+  }, [
+    src,
+    processAudioData,
+    updateCanvasDimensions,
+    drawFrame,
+    onLoadingChange,
+    progress,
+  ]);
 
   // Add cleanup for cache if needed
   useEffect(() => {
@@ -283,7 +293,7 @@ export function AudioBarVisualization({
         animationFrameRef.current = undefined;
       }
     };
-  }, [progress]);
+  }, [progress, drawFrame]);
 
   useEffect(() => {
     if (!canvasRef.current) return;

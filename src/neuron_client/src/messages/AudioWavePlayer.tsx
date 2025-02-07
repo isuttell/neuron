@@ -1,4 +1,4 @@
-import React, { memo, useEffect, useRef } from "react";
+import React, { memo, useEffect, useRef, useCallback } from "react";
 import { cn } from "@/lib/utils";
 
 interface AudioPlayerProps {
@@ -24,6 +24,62 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
   const audioRef = useRef<HTMLAudioElement>(null);
   const waveformDataRef = useRef<number[]>([]);
   const isDraggingRef = useRef(false);
+
+  // Draw function that handles both initial render and updates
+  const drawWaveform = useCallback(
+    (
+      ctx: CanvasRenderingContext2D,
+      canvas: HTMLCanvasElement,
+      currentProgress: number
+    ) => {
+      // Clear canvas
+      ctx.fillStyle = "#111111";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const points = waveformDataRef.current.length;
+      const sliceWidth = canvas.width / points;
+      const centerY = canvas.height / 2;
+      const progressPosition = Math.floor((currentProgress / 100) * points);
+
+      // Draw center line
+      ctx.beginPath();
+      ctx.strokeStyle = "#333333";
+      ctx.lineWidth = 1;
+      ctx.moveTo(0, centerY);
+      ctx.lineTo(canvas.width, centerY);
+      ctx.stroke();
+
+      // Draw waveform
+      ctx.lineWidth = 2;
+      ctx.lineCap = "round";
+
+      // Draw played portion (blue)
+      ctx.beginPath();
+      ctx.strokeStyle = "rgb(6, 197, 255)";
+      let x = 0;
+      for (let i = 0; i < progressPosition; i++) {
+        const amplitude = waveformDataRef.current[i];
+        const barHeight = amplitude * (canvas.height / 2);
+        ctx.moveTo(x, centerY + barHeight);
+        ctx.lineTo(x, centerY - barHeight);
+        x += sliceWidth;
+      }
+      ctx.stroke();
+
+      // Draw unplayed portion (white)
+      ctx.beginPath();
+      ctx.strokeStyle = "#ffffff";
+      for (let i = progressPosition; i < points; i++) {
+        const amplitude = waveformDataRef.current[i];
+        const barHeight = amplitude * (canvas.height / 2);
+        ctx.moveTo(x, centerY + barHeight);
+        ctx.lineTo(x, centerY - barHeight);
+        x += sliceWidth;
+      }
+      ctx.stroke();
+    },
+    []
+  );
 
   // Load and analyze audio data
   useEffect(() => {
@@ -86,7 +142,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
     };
 
     loadAudioData();
-  }, [src, showWaveform]);
+  }, [src, showWaveform, drawWaveform]);
 
   // Handle resize
   useEffect(() => {
@@ -160,60 +216,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
     return () => {
       resizeObserver.disconnect();
     };
-  }, [src, showWaveform]);
-
-  // Draw function that handles both initial render and updates
-  const drawWaveform = (
-    ctx: CanvasRenderingContext2D,
-    canvas: HTMLCanvasElement,
-    currentProgress: number
-  ) => {
-    // Clear canvas
-    ctx.fillStyle = "#111111";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    const points = waveformDataRef.current.length;
-    const sliceWidth = canvas.width / points;
-    const centerY = canvas.height / 2;
-    const progressPosition = Math.floor((currentProgress / 100) * points);
-
-    // Draw center line
-    ctx.beginPath();
-    ctx.strokeStyle = "#333333";
-    ctx.lineWidth = 1;
-    ctx.moveTo(0, centerY);
-    ctx.lineTo(canvas.width, centerY);
-    ctx.stroke();
-
-    // Draw waveform
-    ctx.lineWidth = 2;
-    ctx.lineCap = "round";
-
-    // Draw played portion (blue)
-    ctx.beginPath();
-    ctx.strokeStyle = "rgb(6, 197, 255)";
-    let x = 0;
-    for (let i = 0; i < progressPosition; i++) {
-      const amplitude = waveformDataRef.current[i];
-      const barHeight = amplitude * (canvas.height / 2);
-      ctx.moveTo(x, centerY + barHeight);
-      ctx.lineTo(x, centerY - barHeight);
-      x += sliceWidth;
-    }
-    ctx.stroke();
-
-    // Draw unplayed portion (white)
-    ctx.beginPath();
-    ctx.strokeStyle = "#ffffff";
-    for (let i = progressPosition; i < points; i++) {
-      const amplitude = waveformDataRef.current[i];
-      const barHeight = amplitude * (canvas.height / 2);
-      ctx.moveTo(x, centerY + barHeight);
-      ctx.lineTo(x, centerY - barHeight);
-      x += sliceWidth;
-    }
-    ctx.stroke();
-  };
+  }, [src, showWaveform, drawWaveform]);
 
   // Update progress
   useEffect(() => {
@@ -294,27 +297,30 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
       audio.removeEventListener("loadeddata", handleLoaded);
       audio.removeEventListener("timeupdate", handleTimeUpdate);
     };
-  }, [showWaveform]);
+  }, [showWaveform, drawWaveform, audioRef]);
 
   // Function to handle seeking based on mouse position
-  const handleSeek = (e: React.MouseEvent<HTMLCanvasElement> | MouseEvent) => {
-    const canvas = canvasRef.current;
-    const audio = audioRef.current;
-    if (!canvas || !audio) return;
+  const handleSeek = useCallback(
+    (e: React.MouseEvent<HTMLCanvasElement> | MouseEvent) => {
+      const canvas = canvasRef.current;
+      const audio = audioRef.current;
+      if (!canvas || !audio) return;
 
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const percentage = Math.max(0, Math.min(100, (x / rect.width) * 100));
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const percentage = Math.max(0, Math.min(100, (x / rect.width) * 100));
 
-    // Update audio time
-    audio.currentTime = (percentage / 100) * audio.duration;
+      // Update audio time
+      audio.currentTime = (percentage / 100) * audio.duration;
 
-    // Force immediate waveform update
-    const ctx = canvas.getContext("2d");
-    if (ctx) {
-      drawWaveform(ctx, canvas, percentage);
-    }
-  };
+      // Force immediate waveform update
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        drawWaveform(ctx, canvas, percentage);
+      }
+    },
+    [drawWaveform]
+  );
 
   // Add mouse event handlers
   useEffect(() => {
@@ -357,7 +363,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
       document.removeEventListener("mousemove", handleMouseMove);
       document.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [showWaveform]);
+  }, [showWaveform, handleSeek, drawWaveform, audioRef]);
 
   return (
     <div className="flex flex-col items-center w-full gap-2">

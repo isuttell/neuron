@@ -46,7 +46,7 @@ export default function Personality() {
       return;
     }
     dispatch(fetchPersonality(personalityId));
-  }, [personalityId]);
+  }, [personalityId, dispatch]);
 
   useEffect(() => {
     if (!personality) {
@@ -54,7 +54,7 @@ export default function Personality() {
     }
     setUpdatedContext(personality.context);
     setUpdatedName(personality.name);
-  }, [personality?.id, personality?.context, personality?.name]);
+  }, [personality]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();

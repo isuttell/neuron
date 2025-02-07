@@ -14,10 +14,10 @@ import { useToast } from "@/hooks/use-toast";
 import { AudioBarVisualization } from "@/components/AudioBarVisualization";
 import { cn } from "@/lib/utils";
 import { useEffect, useState, memo, useRef, useId } from "react";
-import { useMediaPlayer } from "@/contexts/MediaPlayerContext";
+import { useMediaPlayer } from "@/hooks/useMediaPlayer";
 import { Spinner } from "@/components/ui/spinner";
 import { MediaListDropdown } from "@/components/MediaListDropdown";
-import { MediaItem } from "@/slices/mediaSlice";
+import { MediaItem } from "@/types/media";
 
 interface AudioContentProps {
   url: string;
@@ -119,7 +119,16 @@ const AudioContent: React.FC<AudioContentProps> = ({
       unregisterPlayer(id);
       audio.pause();
     };
-  }, [url, autoPlay, onPlay, onPause, onEnded]);
+  }, [
+    url,
+    autoPlay,
+    onPlay,
+    onPause,
+    onEnded,
+    id,
+    registerPlayer,
+    unregisterPlayer,
+  ]);
 
   const toggleAudio = () => {
     if (!audioRef.current) return;

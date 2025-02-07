@@ -132,12 +132,20 @@ export default function EditPersonalityDialog({
   };
 
   useEffect(() => {
-    setName(personality?.name || "");
-    setContext(personality?.context || "");
-    setToolSet((personality?.tool_set || "").split("+"));
-    setDescription(personality?.description || "");
-    setLogo(personality?.logo || "");
-  }, [open]);
+    if (personality) {
+      setName(personality.name || "");
+      setContext(personality.context || "");
+      setToolSet(personality.tool_set ? personality.tool_set.split("+") : []);
+      setDescription(personality.description || "");
+      setLogo(personality.logo || "");
+    } else {
+      setName("");
+      setContext("");
+      setToolSet([]);
+      setDescription("");
+      setLogo("");
+    }
+  }, [personality, open]);
   const active_tools = tool_set.length > 0 ? tool_set : default_tools;
   return (
     <Dialog open={open} onOpenChange={setOpen}>

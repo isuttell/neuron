@@ -5,9 +5,9 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config({
-  ignores: ["src/neuron_client/dist", "src/neuron_client/src/components/ui"],
-  extends: [js.configs.recommended, ...tseslint.configs.recommended],
   files: ["src/neuron_client/src/**/*.{ts,tsx}"],
+  ignores: ["src/neuron_client/src/components/ui/**"],
+  extends: [js.configs.recommended, ...tseslint.configs.recommended],
   languageOptions: {
     ecmaVersion: 2020,
     globals: globals.browser,

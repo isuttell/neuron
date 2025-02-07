@@ -23,7 +23,10 @@ import {
 const selectThreads = (state: RootState, personalityId?: string) =>
   state.threads.threads
     .filter((thread) => thread.personality_id === personalityId)
-    .sort((a, b) => b.updated_at - a.updated_at);
+    .sort(
+      (a, b) =>
+        new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+    );
 
 interface NavThreadsProps {
   activePathname?: string;
@@ -49,7 +52,7 @@ export default function NavThreads({ activePathname }: NavThreadsProps) {
     ]).finally(() => {
       setLoading(false);
     });
-  }, [activePersonalityId]);
+  }, [activePersonalityId, dispatch]);
 
   if (!activePersonality) {
     return (

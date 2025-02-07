@@ -91,6 +91,7 @@ const router = createBrowserRouter(
   { basename: "/" }
 );
 
+// eslint-disable-next-line react-refresh/only-export-components
 const Auth0ProviderWithNavigate = ({
   children,
 }: {

@@ -36,7 +36,7 @@ export function PromptDropdown({
     if (activePersonalityId) {
       dispatch(fetchPrompts(activePersonalityId));
     }
-  }, [activePersonalityId]);
+  }, [activePersonalityId, dispatch]);
 
   return (
     <DropdownMenu>

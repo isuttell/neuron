@@ -1,14 +1,16 @@
-import React, { createContext, useContext, useRef } from "react";
+import React, { createContext, useRef } from "react";
 
-type MediaElement = HTMLAudioElement | HTMLVideoElement;
+export type MediaElement = HTMLAudioElement | HTMLVideoElement;
 
-interface MediaPlayerContextType {
+export interface MediaPlayerContextType {
   registerPlayer: (id: string, player: MediaElement) => void;
   unregisterPlayer: (id: string) => void;
   playPlayer: (id: string) => void;
 }
 
-const MediaPlayerContext = createContext<MediaPlayerContextType | null>(null);
+export const MediaPlayerContext = createContext<MediaPlayerContextType | null>(
+  null
+);
 
 export function MediaPlayerProvider({
   children,
@@ -41,11 +43,3 @@ export function MediaPlayerProvider({
     </MediaPlayerContext.Provider>
   );
 }
-
-export const useMediaPlayer = () => {
-  const context = useContext(MediaPlayerContext);
-  if (!context) {
-    throw new Error("useMediaPlayer must be used within a MediaPlayerProvider");
-  }
-  return context;
-};

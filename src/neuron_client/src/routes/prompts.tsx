@@ -52,7 +52,7 @@ export default function PromptsPage() {
 
   useEffect(() => {
     dispatch(fetchPrompts());
-  }, []);
+  }, [dispatch]);
 
   const handleCreate = async (values: {
     name: string;

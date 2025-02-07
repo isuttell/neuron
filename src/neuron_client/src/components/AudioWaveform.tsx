@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback } from "react";
 
 interface AudioWaveformProps {
   url: string;
@@ -14,53 +14,59 @@ export function AudioWaveform({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const waveformDataRef = useRef<number[]>([]);
 
-  const processAudioData = (channelData: Float32Array, points: number) => {
-    const blockSize = Math.floor(channelData.length / points);
-    const waveform = [];
+  const processAudioData = useCallback(
+    (channelData: Float32Array, points: number) => {
+      const blockSize = Math.floor(channelData.length / points);
+      const waveform = [];
 
-    for (let i = 0; i < points; i++) {
-      const start = i * blockSize;
-      const end = start + blockSize;
-      let max = 0;
-      for (let j = start; j < end; j++) {
-        const amplitude = Math.abs(channelData[j]);
-        if (amplitude > max) {
-          max = amplitude;
+      for (let i = 0; i < points; i++) {
+        const start = i * blockSize;
+        const end = start + blockSize;
+        let max = 0;
+        for (let j = start; j < end; j++) {
+          const amplitude = Math.abs(channelData[j]);
+          if (amplitude > max) {
+            max = amplitude;
+          }
         }
-      }
-      waveform.push(max);
-    }
-
-    return waveform;
-  };
-
-  const drawWaveform = (
-    ctx: CanvasRenderingContext2D,
-    canvas: HTMLCanvasElement,
-    currentProgress: number,
-    data: number[]
-  ) => {
-    const { width, height } = canvas;
-    ctx.clearRect(0, 0, width, height);
-
-    const barWidth = width / data.length;
-    const multiplier = height / 2;
-    const progressWidth = (width * currentProgress) / 100;
-
-    data.forEach((point, i) => {
-      const x = i * barWidth;
-      const barHeight = point * multiplier;
-
-      // Draw played part
-      if (x <= progressWidth) {
-        ctx.fillStyle = "hsl(var(--primary))";
-      } else {
-        ctx.fillStyle = "hsl(var(--muted))";
+        waveform.push(max);
       }
 
-      ctx.fillRect(x, height / 2 - barHeight / 2, barWidth * 0.8, barHeight);
-    });
-  };
+      return waveform;
+    },
+    []
+  );
+
+  const drawWaveform = useCallback(
+    (
+      ctx: CanvasRenderingContext2D,
+      canvas: HTMLCanvasElement,
+      currentProgress: number,
+      data: number[]
+    ) => {
+      const { width, height } = canvas;
+      ctx.clearRect(0, 0, width, height);
+
+      const barWidth = width / data.length;
+      const multiplier = height / 2;
+      const progressWidth = (width * currentProgress) / 100;
+
+      data.forEach((point, i) => {
+        const x = i * barWidth;
+        const barHeight = point * multiplier;
+
+        // Draw played part
+        if (x <= progressWidth) {
+          ctx.fillStyle = "hsl(var(--primary))";
+        } else {
+          ctx.fillStyle = "hsl(var(--muted))";
+        }
+
+        ctx.fillRect(x, height / 2 - barHeight / 2, barWidth * 0.8, barHeight);
+      });
+    },
+    []
+  );
 
   useEffect(() => {
     const loadAudioData = async () => {
@@ -92,7 +98,7 @@ export function AudioWaveform({
     };
 
     loadAudioData();
-  }, [url]);
+  }, [url, processAudioData, drawWaveform, progress]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -102,7 +108,7 @@ export function AudioWaveform({
     if (ctx) {
       drawWaveform(ctx, canvas, progress, waveformDataRef.current);
     }
-  }, [progress]);
+  }, [progress, drawWaveform]);
 
   return (
     <canvas

@@ -31,7 +31,7 @@ export default function ScheduledEvents() {
 
   useEffect(() => {
     dispatch(fetchEvents());
-  }, []);
+  }, [dispatch]);
 
   // Group events by personality
   const eventsByPersonality = events.reduce(

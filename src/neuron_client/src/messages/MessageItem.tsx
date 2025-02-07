@@ -13,7 +13,7 @@ import Content from "./Content";
 import FuzzyTimeAgo from "@/components/FuzzyTimeAgo";
 import { formatNumber } from "../utils/numberFormat";
 import TokenMetadataTable from "./TokenMetadataTable";
-import { getMediaItems } from "./MediaList";
+import { getMediaItems } from "../utils/mediaUtils";
 import MediaList from "./MediaList";
 import { useAuth0 } from "@auth0/auth0-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";

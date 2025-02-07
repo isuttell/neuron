@@ -34,6 +34,13 @@ class ReplicateVideoGenerationToolArgs(BaseModel):
             "streetlight in a rainy alley, with the camera zooming in slowly."
         )
     )
+    prompt_optimizer: bool = Field(
+        description=(
+            "Whether to use the prompt optimizer. This will modify the prompt for the "
+            "model. Use for prompt exapnsion if your prompt is not detailed enough."
+        ),
+        default=True,
+    )
     name: str = Field(
         description=(
             "A unique display name for the video generation less than 256 characters"
@@ -81,12 +88,13 @@ complete.
     ) -> str:
         return asyncio.run(self._arun(*args, **kwargs))
 
-    async def _arun(
+    async def _arun(  # noqa: PLR0913
         self,
         ref: Literal["minimax/video-01", "minimax/video-01-live"],
         prompt: str,
         name: str,
         config: RunnableConfig,
+        prompt_optimizer: bool = True,
         image_url: str | None = None,
     ) -> str:
         start_time = time.perf_counter()
@@ -107,20 +115,23 @@ complete.
 
             input_args = {
                 "prompt": prompt,
-                "prompt_optimizer": True,
+                "prompt_optimizer": prompt_optimizer,
             }
-            if os.path.exists(tmp_upload_file):
-                async with aiofiles.open(tmp_upload_file, "rb") as f:
-                    input_args["first_frame_image"] = await f.read()
 
+            if os.path.exists(tmp_upload_file):
+                # this must not be async. replicate expects it to be sync
+                input_args["first_frame_image"] = open(tmp_upload_file, "rb")  # noqa: SIM115
             try:
                 output: replicate.helpers.FileOutput = await replicate.async_run(
                     ref, input=input_args
                 )
                 logger.debug(f"Generated <{output.url}>")
             finally:
-                if os.path.exists(tmp_upload_file):
-                    os.remove(tmp_upload_file)
+                if (
+                    "first_frame_image" in input_args
+                    and input_args["first_frame_image"]
+                ):
+                    input_args["first_frame_image"].close()
 
             filename = safe_filename(ref.replace("/", "_"), name, "mp4")
             file_path = os.path.abspath(

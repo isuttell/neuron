@@ -34,9 +34,10 @@ import {
 import { fetchPersonalities } from "../actions/personalityActions";
 
 const selectRecentThreads = (state: RootState) => {
+  const oneDayAgo = Date.now() - 1000 * 60 * 60 * 24; // 24 hours ago in milliseconds
   return Object.values(state.threads.threads)
-    .sort((a, b) => b.updated_at - a.updated_at)
-    .filter((thread) => thread.updated_at > Date.now() - 1000 * 60 * 60 * 24) // Only show threads from last day
+    .sort((a, b) => Number(b.updated_at) - Number(a.updated_at))
+    .filter((thread) => Number(thread.updated_at) > oneDayAgo) // Only show threads from last day
     .slice(0, 5)
     .map((thread) => ({
       ...thread,
@@ -70,7 +71,7 @@ export default function Index() {
   useEffect(() => {
     dispatch(fetchPersonalities());
     dispatch(fetchRecentThreads());
-  }, []);
+  }, [dispatch]);
 
   useEffect(() => {
     if (activePersonalityId) {

@@ -22,7 +22,7 @@ export default function MediaLists() {
     setTimeout(() => {
       dispatch(fetchMediaLists());
     }, 0);
-  }, []);
+  }, [dispatch]);
 
   if (error) {
     return <div className="container py-6 text-red-500">{error}</div>;

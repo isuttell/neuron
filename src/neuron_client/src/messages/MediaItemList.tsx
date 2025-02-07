@@ -1,9 +1,9 @@
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import AudioContent from "./AudioContent";
 import ImageContent from "./ImageContent";
 import VideoContent from "./VideoContent";
-import { MediaItem } from "../slices/mediaSlice";
+import { MediaItem } from "@/types/media";
 
 interface MediaListProps {
   className?: string;
@@ -21,13 +21,16 @@ function MediaItemList({
 }: MediaListProps) {
   const endRef = useRef<HTMLDivElement | null>(null);
 
+  const scrollToEnd = useCallback(() => {
+    if (endRef.current) {
+      endRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, []);
+
   useEffect(() => {
-    setTimeout(() => {
-      if (endRef.current) {
-        endRef.current.scrollIntoView({ behavior: "smooth" });
-      }
-    }, 0);
-  }, [mediaItems.length, mediaItems.length > 0, endRef.current]);
+    const timer = setTimeout(scrollToEnd, 0);
+    return () => clearTimeout(timer);
+  }, [scrollToEnd, mediaItems.length]);
 
   return (
     <div className={cn("flex flex-col gap-2", className)}>
