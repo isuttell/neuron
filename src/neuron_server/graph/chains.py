@@ -13,7 +13,7 @@ from .models import (
 )
 
 # Initialize the model
-model = ChatOpenAI(model="gpt-4o-2024-11-20", temperature=0.3, max_tokens=None)
+model = ChatOpenAI(model="o3-mini-2025-01-31")
 
 # Chain prompts and definitions
 construction_system = """
