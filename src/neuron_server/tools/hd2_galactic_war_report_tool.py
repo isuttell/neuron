@@ -1,6 +1,6 @@
 import asyncio
 from datetime import UTC, datetime
-from typing import Any, TypedDict
+from typing import Any
 
 import aiohttp
 from langchain.tools import BaseTool
@@ -143,18 +143,24 @@ async def get_major_orders() -> list[MajorOrder]:
             return [MajorOrder(**row) for row in rows]
 
 
-class GlobalEvent(TypedDict):
+class GlobalEvent(BaseModel):
     event_id: int = Field(alias="eventId")
     title: str
     message: str
 
+    class Config:
+        populate_by_name = True
 
-class SpaceStation(TypedDict):
+
+class SpaceStation(BaseModel):
     id32: int
     planet_index: int = Field(alias="planetIndex")
     active_effect_ids: list[int] = Field(alias="activeEffectIds", default=[])
     current_election_end_war_time: int = Field(alias="currentElectionEndWarTime")
     flags: int
+
+    class Config:
+        populate_by_name = True
 
 
 class Coordinates(BaseModel):
@@ -162,7 +168,7 @@ class Coordinates(BaseModel):
     y: float
 
 
-class PlanetStatus(TypedDict):
+class PlanetStatus(BaseModel):
     index: int
     owner: int
     health: int
@@ -170,20 +176,29 @@ class PlanetStatus(TypedDict):
     players: int
     position: Coordinates
 
+    class Config:
+        populate_by_name = True
 
-class PlanetAttack(TypedDict):
+
+class PlanetAttack(BaseModel):
     source: int
     target: int
 
+    class Config:
+        populate_by_name = True
 
-class WarStatus(TypedDict):
+
+class WarStatus(BaseModel):
     time: int
     war_id: int = Field(alias="warId")
     global_events: list[GlobalEvent] = Field(alias="globalEvents")
     space_stations: list[SpaceStation] = Field(alias="spaceStations")
     planet_status: list[PlanetStatus] = Field(alias="planetStatus")
     planet_attacks: list[PlanetAttack] = Field(alias="planetAttacks")
-    layout_version: int = Field(alias="layoutVersion")
+    layout_version: int | None = Field(alias="layoutVersion")
+
+    class Config:
+        populate_by_name = True
 
 
 @cache_response(ttl=60 * 1)
@@ -193,7 +208,8 @@ async def get_war_status() -> WarStatus:
         logger.debug(f"GET {url}")
         async with session.get(url) as response:
             response.raise_for_status()
-            return await response.json()
+            data = await response.json()
+            return WarStatus(**data)
 
 
 def format_campaigns(
@@ -209,7 +225,7 @@ def format_campaigns(
     )
 
     def format_campaign_row(campaign: Campaign) -> str:
-        regen = round(planet_statuses[campaign.planet_index]["regen_per_second"], 2)
+        regen = round(planet_statuses[campaign.planet_index].regen_per_second, 2)
         percentage = round(campaign.percentage, 2)
         mission_type = "Defense" if campaign.defense else "Liberate"
         return (
@@ -263,8 +279,8 @@ def format_planet_attacks(
     planet_attack_rows = "\n".join(
         [
             (
-                f"| {planets[str(attack['source'])].name} | "
-                f"{planets[str(attack['target'])].name} |"
+                f"| {planets[str(attack.source)].name} | "
+                f"{planets[str(attack.target)].name} |"
             )
             for attack in planet_attacks
         ]
@@ -322,9 +338,9 @@ def format_global_events(events: list[GlobalEvent]) -> str:
     headers = "| Title | Message |\n|--------|---------|"
     event_rows = "\n".join(
         [
-            f"| {event['title']} | {event['message']} |".replace("\n", "<br />")
+            f"| {event.title} | {event.message} |".replace("\n", "<br />")
             for event in events
-            if len(event["message"]) > 0 and "message" in event
+            if len(event.message) > 0
         ]
     )
     return f"{headers}\n{event_rows}"
@@ -339,7 +355,6 @@ of all active campaigns with details on the planet's health, health regen per se
 and percentage of the mission completed. This should be considered the source of truth
 for the current state of the war. Updates every 5 minutes.
 """.strip()
-    expected_layout_version: int = 25
 
     def _run(self, *args: Any, **kwargs: Any) -> str:
         return asyncio.run(self._arun(*args, **kwargs))
@@ -351,22 +366,17 @@ for the current state of the war. Updates every 5 minutes.
         try:
             war_status = await get_war_status()
 
-            if war_status["layout_version"] != self.expected_layout_version:
-                logger.warning(
-                    f"Layout version is not {self.expected_layout_version}: "
-                    f"{war_status['layout_version']}"
-                )
             planets = await get_planets()
             campaigns = await get_campaigns()
             major_orders = await get_major_orders()
 
-            for global_event in war_status["global_events"]:
+            for global_event in war_status.global_events:
                 text = (
-                    f"Hell Divers 2:\nEvent ID: {global_event['event_id']}\n"
-                    f"{global_event['title']}\n{global_event['message']}"
+                    f"Hell Divers 2:\nEvent ID: {global_event.event_id}\n"
+                    f"{global_event.title}\n{global_event.message}"
                 ).strip()
                 metadata = DocumentMetadata(
-                    document_id=f"global_event:{global_event['event_id']}",
+                    document_id=f"global_event:{global_event.event_id}",
                     personality_id=config["configurable"].get("personality_id"),
                 )
                 await process_document(text=text, config=config, metadata=metadata)
@@ -396,9 +406,9 @@ Classified Top Secret
 
 ## War Status
 
-War Time: {war_status["time"]}
+War Time: {war_status.time}
 
-{format_global_events(war_status["global_events"])}
+{format_global_events(war_status.global_events)}
 
 ## Major Orders
 
@@ -406,11 +416,11 @@ War Time: {war_status["time"]}
 
 ## Active Campaigns
 
-{format_campaigns(campaigns, war_status["planet_status"])}
+{format_campaigns(campaigns, war_status.planet_status)}
 
 ## Planet Attacks
 
-{format_planet_attacks(war_status["planet_attacks"], planets)}
+{format_planet_attacks(war_status.planet_attacks, planets)}
 
 ## Planets
 
