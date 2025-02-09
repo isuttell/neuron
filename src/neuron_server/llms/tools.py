@@ -24,6 +24,7 @@ from neuron_server.tools.elevenlabs_soundeffects_tool import (
 )
 from neuron_server.tools.elevenlabs_tts_tool import ElevenLabsTTSTool
 from neuron_server.tools.ffmpeg_tool import FFmpegTool
+from neuron_server.tools.glados_tools import GladosToolset
 from neuron_server.tools.graph_arxiv_import_tool import GraphArxivImportTool
 from neuron_server.tools.graph_import_tool import GraphImportTool
 from neuron_server.tools.graph_query_tool import GraphQueryTool
@@ -91,8 +92,12 @@ from neuron_server.tools.whisper_stt_tool import WhisperSTTTool
 
 homeassistant_api = HomeAssistantAPI(token=config.homeassistant.token)
 
+# Initialize toolsets that require configuration
+glados_toolset = GladosToolset()
+
 tool_sets: dict[str, list[BaseTool]] = {
     "nasa": [],
+    "glados": glados_toolset.tools,
     "charts": [],
     "reasoning": [
         DeepSeekReasoningTool(),

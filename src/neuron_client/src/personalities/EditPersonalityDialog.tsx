@@ -38,6 +38,7 @@ const ToolSetLabels = {
   audio: "Audio Generation",
   code_interpreter: "Code Interpreter",
   dice: "Dice",
+  glados: "GLaDOS",
   graph: "Knowledge Graph",
   hd2: "Hell Divers 2",
   homeassistant: "Smart Home",
