@@ -88,7 +88,7 @@ class AppImageTool(BaseTool):
                 if not personality_id:
                     raise ValueError("Personality ID is required")
                 personality = await PersonalityModel.set(
-                    id=personality_id, key="logo", value=url
+                    personality_id=personality_id, key="logo", value=url
                 )
                 await pubsub.publish(
                     "personality", GetPersonalityResponse(personality=personality)

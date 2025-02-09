@@ -41,6 +41,7 @@ class TestTools:
             "weather",
             "notifications",
             "code_interpreter",
+            "glados",
         }
         assert set(tool_sets.keys()) == expected_categories
 
