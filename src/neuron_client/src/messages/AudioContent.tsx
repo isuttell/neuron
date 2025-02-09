@@ -89,6 +89,10 @@ const AudioContent: React.FC<AudioContentProps> = ({
     };
 
     const handlePlay = () => {
+      if (audioRef.current?.paused) {
+        setIsPlaying(false);
+        return;
+      }
       setIsPlaying(true);
       if (onPlay) onPlay();
     };
@@ -130,13 +134,18 @@ const AudioContent: React.FC<AudioContentProps> = ({
     unregisterPlayer,
   ]);
 
-  const toggleAudio = () => {
+  const toggleAudio = async () => {
     if (!audioRef.current) return;
-    if (isPlaying) {
-      audioRef.current.pause();
-    } else {
-      playPlayer(id);
-      audioRef.current.play().catch(console.error);
+    try {
+      if (audioRef.current.paused) {
+        playPlayer(id);
+        await audioRef.current.play();
+      } else {
+        audioRef.current.pause();
+      }
+    } catch (error) {
+      console.error(error);
+      setIsPlaying(false);
     }
   };
 

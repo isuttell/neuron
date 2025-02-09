@@ -1,6 +1,5 @@
 import React, { memo } from "react";
 import { Bot, User, Hammer } from "lucide-react";
-import { AttachmentIndicator } from "@/components/AttachmentIndicator";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -13,8 +12,6 @@ import Content from "./Content";
 import FuzzyTimeAgo from "@/components/FuzzyTimeAgo";
 import { formatNumber } from "../utils/numberFormat";
 import TokenMetadataTable from "./TokenMetadataTable";
-import { getMediaItems } from "../utils/mediaUtils";
-import MediaList from "./MediaList";
 import { useAuth0 } from "@auth0/auth0-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { RootState } from "@/store";
@@ -61,22 +58,9 @@ const MessageItem: React.FC<MessageItemProps> = ({
     body = body.replace(/<\|AI\|>[\s\S]*?<\|AI\|>/g, "").trim();
   }
 
-  const mediaItems = getMediaItems([message]);
-
   if (!showTools && ((isTool && !showToolOutput) || body.length === 0)) {
-    if (mediaItems.length === 0) {
-      // If there are no media items, don't show the tool card
-      return <div />;
-    }
-    // If there are media items, show the media list but not the raw content
-    return (
-      <MediaList
-        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 ml-[5.5rem]"
-        mediaItems={getMediaItems([message])}
-        threadId={message.thread_id}
-        showControls
-      />
-    );
+    // If there are no media items or content, don't show anything
+    return <div />;
   }
 
   const elements = [
@@ -180,40 +164,6 @@ const MessageItem: React.FC<MessageItemProps> = ({
       </CardContent>
     </Card>,
   ];
-  if (mediaItems.length > 0) {
-    const hasAudio = mediaItems.some((item) => item.media_type === "audio");
-    const hasFiles = mediaItems.some((item) =>
-      ["image", "video", "link"].includes(item.media_type)
-    );
-
-    if (hasAudio || hasFiles) {
-      elements.push(
-        <div key={`${message.id}-indicators`} className="ml-[5.5rem] mb-2">
-          {hasAudio && (
-            <AttachmentIndicator
-              type="audio"
-              onRemove={() => {}} // Read-only in thread view
-            />
-          )}
-          {hasFiles && (
-            <AttachmentIndicator
-              type="file"
-              onRemove={() => {}} // Read-only in thread view
-            />
-          )}
-        </div>
-      );
-    }
-
-    elements.push(
-      <MediaList
-        key={`${message.id}-media`}
-        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 ml-[5.5rem]"
-        mediaItems={mediaItems}
-        threadId={message.thread_id}
-      />
-    );
-  }
   return elements;
 };
 
