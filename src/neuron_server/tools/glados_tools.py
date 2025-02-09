@@ -7,7 +7,7 @@ from uuid import uuid4
 import aiohttp
 from langchain.tools import BaseTool
 from langchain_core.runnables import RunnableConfig
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
 
 from neuron_server.config import config as neuron_config
 from neuron_server.logger import logger
@@ -30,7 +30,9 @@ class TTSRequest(BaseModel):
 
 
 class GladosTTSToolArgs(BaseModel):
-    text: str = Field(description="The text to be spoken by GLaDOS.")
+    lines: list[str] = Field(
+        description="List of text lines to be spoken by GLaDOS. Each line must be less than 500 characters."
+    )
 
     name: str = Field(
         description=(
@@ -38,6 +40,16 @@ class GladosTTSToolArgs(BaseModel):
             "Must be less than 256 characters"
         ),
     )
+
+    @validator("lines")
+    @classmethod
+    def validate_lines(cls, lines: list[str]) -> list[str]:
+        if not lines:
+            raise ValueError("At least one line must be provided")
+        for line in lines:
+            if len(line) > 500:
+                raise ValueError(f"Line exceeds 500 characters: {line[:50]}...")
+        return lines
 
 
 class GladosTTSTool(BaseTool):
@@ -58,7 +70,7 @@ returns an audio tag to be shown to the user so they can play it.
 
     async def _arun(
         self,
-        text: str,
+        lines: list[str],
         name: str,
         config: RunnableConfig,
     ) -> str:
@@ -68,45 +80,75 @@ returns an audio tag to be shown to the user so they can play it.
                 os.path.join(neuron_config.temp_folder, uuid4().hex)
             )
             os.makedirs(working_dir)
+            audio_files: list[str] = []
 
-            # Make request to GLaDOS API
             async with aiohttp.ClientSession() as session:
                 # HTTP status codes
                 http_ok = 200
 
-                async with session.post(
-                    f"{neuron_config.glados_endpoint}/api/v1/tts",
-                    json={"content": text, "style": "glados"},
-                ) as response:
-                    if response.status != http_ok:
-                        error_text = await response.text()
-                        raise ValueError(
-                            "GLaDOS API returned status "
-                            f"{response.status}: {error_text}"
-                        )
-                    data = await response.json()
-                    audio_url = data["url"]
+                for index, line in enumerate(lines):
+                    logger.debug(f"Generating GLaDOS audio for line: {line[:50]}...")
 
-                # Download the audio file
-                temp_audio_path = os.path.join(working_dir, "audio.mp3")
-                async with session.get(audio_url) as response:
-                    if response.status != http_ok:
-                        raise ValueError(
-                            f"Failed to download audio file: {response.status}"
-                        )
-                    with open(temp_audio_path, "wb") as f:
-                        while True:
-                            chunk = await response.content.read(8192)
-                            if not chunk:
-                                break
-                            f.write(chunk)
+                    # Make request to GLaDOS API
+                    async with session.post(
+                        f"{neuron_config.glados_endpoint}/api/v1/tts",
+                        json={"content": line, "style": "glados"},
+                    ) as response:
+                        if response.status != http_ok:
+                            error_text = await response.text()
+                            raise ValueError(
+                                "GLaDOS API returned status "
+                                f"{response.status}: {error_text}"
+                            )
+                        data = await response.json()
+                        audio_url = data["url"]
 
-            # Move to static folder with safe filename
+                    # Download the audio file
+                    temp_audio_path = os.path.join(working_dir, f"line-{index}.mp3")
+                    audio_files.append(temp_audio_path)
+
+                    async with session.get(audio_url) as response:
+                        if response.status != http_ok:
+                            raise ValueError(
+                                f"Failed to download audio file: {response.status}"
+                            )
+                        with open(temp_audio_path, "wb") as f:
+                            while True:
+                                chunk = await response.content.read(8192)
+                                if not chunk:
+                                    break
+                                f.write(chunk)
+
+            # Concatenate audio files if needed
             filename = safe_filename("glados_tts", name, "mp3")
             output = os.path.abspath(
                 os.path.join(neuron_config.static_folder, filename)
             )
-            shutil.copy(temp_audio_path, output)
+
+            if len(audio_files) > 1:
+                import subprocess
+                from neuron_server.util.subprocess_runner import run_subprocess
+
+                ffmpeg_command = [
+                    "ffmpeg",
+                    "-hide_banner",
+                    "-nostats",
+                    "-loglevel",
+                    "error",
+                    "-i",
+                    "concat:" + "|".join(audio_files),
+                    "-c",
+                    "copy",
+                    output,
+                ]
+                await run_subprocess(
+                    ffmpeg_command,
+                    check=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                )
+            else:
+                shutil.copy(audio_files[0], output)
 
             # Create media item
             url = neuron_config.static_content_url + "/" + filename
@@ -116,7 +158,7 @@ returns an audio tag to be shown to the user so they can play it.
                 user_id=config["configurable"].get("user_id"),
                 thread_id=config["configurable"].get("thread_id"),
                 name=name,
-                description=f"GLaDOS TTS: {text}",
+                description="GLaDOS TTS:\n\n" + "\n\n".join(lines),
             )
             media_item = await MediaItemModel.create(params=create_params)
             logger.info(f"Generated GLaDOS audio file saved to {output} <{url}>")
