@@ -18,7 +18,8 @@ class MemoryStoreToolArgs(BaseModel):
             "A detailed list of memories to save. Be specific. It will be used for in a "  # noqa: E501
             "semantic text search and RAG. Do not use pronouns. Include all relevant "
             "details and references. Each memory must be self contained and not rely on "  # noqa: E501
-            "other memories for context. Provide quotes for any specific information."
+            "other memories in the list for context. Provide quotes for any specific "
+            "information."
         )
     )
 
