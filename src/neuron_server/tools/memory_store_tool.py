@@ -13,13 +13,12 @@ from neuron_server.vectorstores import memories_store
 
 
 class MemoryStoreToolArgs(BaseModel):
-    memories: list[str] = Field(
+    memory: str = Field(
         description=(
-            "A detailed list of memories to save. Be specific. It will be used for in a "  # noqa: E501
+            "A detailed memory to save. Be specific. It will be used for in a "
             "semantic text search and RAG. Do not use pronouns. Include all relevant "
-            "details and references. Each memory must be self contained and not rely on "  # noqa: E501
-            "other memories in the list for context. Provide quotes for any specific "
-            "information."
+            "details and references. The memory must be self contained. Provide quotes "
+            "for any specific information."
         )
     )
 
@@ -27,19 +26,19 @@ class MemoryStoreToolArgs(BaseModel):
 class MemoryStoreTool(BaseTool):
     name: str = "store_memory"
     description: str = (
-        "This tool allows you to save memories for later retrieval. Use this when the "
+        "This tool allows you to save a memory for later retrieval. Use this when the "
         "user asks for you to remember something or you otherwise need to remember "
         "something novel."
     )
 
     args_schema: type[MemoryStoreToolArgs] = MemoryStoreToolArgs
 
-    def _run(self, memories: list[str], config: RunnableConfig) -> str:
-        return asyncio.run(self._arun(memories, config))
+    def _run(self, memory: str, config: RunnableConfig) -> str:
+        return asyncio.run(self._arun(memory, config))
 
     async def _arun(
         self,
-        memories: list[str],
+        memory: str,
         config: RunnableConfig,
     ) -> str:
         try:
@@ -57,16 +56,10 @@ class MemoryStoreTool(BaseTool):
                     scores=[],
                 ),
             }
-            documents = [
-                Document(page_content=memory, id=str(uuid4()), metadata=metadata)
-                for memory in memories
-            ]
-            await memories_store.aadd_documents(documents)
-            memories_str = "\n".join(
-                [f"- {memory.page_content}" for memory in documents]
-            )
-            logger.debug("Saved memories:\n%s", memories_str)
-            return "Memories saved"
+            document = Document(page_content=memory, id=str(uuid4()), metadata=metadata)
+            await memories_store.aadd_documents([document])
+            logger.debug("Saved memory: %s", memory)
+            return "Memory saved"
         except Exception as e:
             logger.error(e, exc_info=True)
             raise
