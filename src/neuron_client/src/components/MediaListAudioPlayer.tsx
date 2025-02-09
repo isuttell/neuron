@@ -50,11 +50,12 @@ export function MediaListAudioPlayer({
   const [autoPlayNew, setAutoPlayNew] = useState(false);
   const [isWaveDataLoading, setIsWaveDataLoading] = useState(false);
   const id = useId();
-  const audioRef = useRef<HTMLAudioElement>(new Audio());
+  const audioRef = useRef<HTMLAudioElement>();
   const progressRef = useRef<HTMLDivElement>(null);
   const isDraggingRef = useRef(false);
   const previousItemsLengthRef = useRef(audioItems.length);
-  const { registerPlayer, unregisterPlayer, playPlayer } = useMediaPlayer();
+  const { registerPlayer, unregisterPlayer, playPlayer, getOrCreateAudio } =
+    useMediaPlayer();
 
   const currentItem = currentIndex >= 0 ? audioItems[currentIndex] : null;
 
@@ -63,13 +64,12 @@ export function MediaListAudioPlayer({
       if (!audioRef.current || index < 0 || index >= audioItems.length) return;
       const item = audioItems[index];
 
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
+      const audio = (audioRef.current = getOrCreateAudio(item.url));
+      audio.currentTime = 0;
       setIsLoading(true);
       setError(null);
       setCurrentIndex(index);
-      audioRef.current.src = item.url;
-      audioRef.current.preload = "auto";
+      audio.preload = "auto";
 
       playPlayer(id);
       const playPromise = audioRef.current.play();
@@ -164,49 +164,59 @@ export function MediaListAudioPlayer({
 
   useEffect(() => {
     const audio = audioRef.current;
+    if (audio) {
+      const handleTimeUpdate = () => {
+        const newProgress = (audio.currentTime / audio.duration) * 100;
+        const newCurrentTime = formatTime(audio.currentTime);
+        setProgress(newProgress);
+        setCurrentTime(newCurrentTime);
+      };
 
-    const handleTimeUpdate = () => {
-      if (!audio) return;
-      const newProgress = (audio.currentTime / audio.duration) * 100;
-      const newCurrentTime = formatTime(audio.currentTime);
-      setProgress(newProgress);
-      setCurrentTime(newCurrentTime);
-    };
-
-    const handleLoadedMetadata = () => {
-      if (audio) {
+      const handleLoadedMetadata = () => {
         setDuration(formatTime(audio.duration));
-      }
-    };
+      };
 
-    const handleEnded = () => {
-      setIsPlaying(false);
-      setProgress(0);
-      if (autoAdvance && currentIndex < audioItems.length - 1) {
-        loadAndPlay(currentIndex + 1);
-      }
-    };
+      const handleEnded = () => {
+        setIsPlaying(false);
+        setProgress(0);
+        if (autoAdvance && currentIndex < audioItems.length - 1) {
+          loadAndPlay(currentIndex + 1);
+        }
+      };
 
-    registerPlayer(id, audio);
+      const handlePlay = () => setIsPlaying(true);
+      const handlePause = () => setIsPlaying(false);
 
-    audio.addEventListener("timeupdate", handleTimeUpdate);
-    audio.addEventListener("loadedmetadata", handleLoadedMetadata);
-    audio.addEventListener("ended", handleEnded);
-    audio.addEventListener("play", () => setIsPlaying(true));
-    audio.addEventListener("pause", () => setIsPlaying(false));
+      registerPlayer(id, currentItem?.url || "", audio);
 
+      audio.addEventListener("timeupdate", handleTimeUpdate);
+      audio.addEventListener("loadedmetadata", handleLoadedMetadata);
+      audio.addEventListener("ended", handleEnded);
+      audio.addEventListener("play", handlePlay);
+      audio.addEventListener("pause", handlePause);
+
+      document.addEventListener("mousemove", handleProgressMouseMove);
+      document.addEventListener("mouseup", handleProgressMouseUp);
+
+      return () => {
+        audio.removeEventListener("timeupdate", handleTimeUpdate);
+        audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
+        audio.removeEventListener("ended", handleEnded);
+        audio.removeEventListener("play", handlePlay);
+        audio.removeEventListener("pause", handlePause);
+        document.removeEventListener("mousemove", handleProgressMouseMove);
+        document.removeEventListener("mouseup", handleProgressMouseUp);
+        unregisterPlayer(id, currentItem?.url || "");
+      };
+    }
+
+    // Add event listeners for mouse events even if no audio is playing
     document.addEventListener("mousemove", handleProgressMouseMove);
     document.addEventListener("mouseup", handleProgressMouseUp);
 
     return () => {
-      audio.removeEventListener("timeupdate", handleTimeUpdate);
-      audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
-      audio.removeEventListener("ended", handleEnded);
-      audio.removeEventListener("play", () => setIsPlaying(true));
-      audio.removeEventListener("pause", () => setIsPlaying(false));
       document.removeEventListener("mousemove", handleProgressMouseMove);
       document.removeEventListener("mouseup", handleProgressMouseUp);
-      unregisterPlayer(id);
     };
   }, [
     handleProgressMouseMove,

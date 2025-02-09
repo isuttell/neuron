@@ -1,24 +1,40 @@
-import { useRef, useEffect, useCallback } from "react";
+import { useRef, useEffect, useCallback, memo, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import AudioContent from "./AudioContent";
 import ImageContent from "./ImageContent";
 import VideoContent from "./VideoContent";
-import { MediaItem } from "@/types/media";
+import { useAppSelector } from "@/hooks";
+import { selectAllMedia } from "../slices/mediaSlice";
 
 interface MediaListProps {
   className?: string;
-  mediaItems: MediaItem[];
+  threadId: string;
   thumbnail_size?: "t" | "l" | "xl";
   showControls?: boolean;
   autoPlay?: boolean;
 }
 
+const useThreadMediaItems = (threadId: string) => {
+  const mediaItems = useAppSelector(selectAllMedia);
+  return useMemo(
+    () =>
+      mediaItems
+        .filter((item) => item.thread_id === threadId)
+        .sort(
+          (a, b) =>
+            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        ),
+    [mediaItems, threadId]
+  );
+};
+
 function MediaItemList({
   className,
-  mediaItems,
+  threadId,
   thumbnail_size = "t",
   showControls = false,
 }: MediaListProps) {
+  const threadMediaItems = useThreadMediaItems(threadId);
   const endRef = useRef<HTMLDivElement | null>(null);
 
   const scrollToEnd = useCallback(() => {
@@ -30,11 +46,11 @@ function MediaItemList({
   useEffect(() => {
     const timer = setTimeout(scrollToEnd, 0);
     return () => clearTimeout(timer);
-  }, [scrollToEnd, mediaItems.length]);
+  }, [scrollToEnd, threadMediaItems.length]);
 
   return (
     <div className={cn("flex flex-col gap-2", className)}>
-      {mediaItems.map((item) => {
+      {threadMediaItems.map((item) => {
         if (item.media_type === "image") {
           return (
             <ImageContent
@@ -99,7 +115,7 @@ function MediaItemList({
         }
         return null;
       })}
-      {mediaItems.length === 0 && (
+      {threadMediaItems.length === 0 && (
         <div className="m-4 text-center text-muted-foreground">
           No media found
         </div>
@@ -110,4 +126,4 @@ function MediaItemList({
   );
 }
 
-export default MediaItemList;
+export default memo(MediaItemList);

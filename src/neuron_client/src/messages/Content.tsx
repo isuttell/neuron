@@ -17,7 +17,7 @@ import ImageContent from "./ImageContent";
 interface ContentProps {
   className?: string;
   content: string;
-  preload?: string;
+  preload?: "" | "none" | "metadata" | "auto";
   onPromptClick?: (prompt: string) => void;
 }
 
