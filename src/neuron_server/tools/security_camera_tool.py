@@ -235,7 +235,7 @@ class SecurityCameraToolArgs(BaseModel):
         )
     )
     frame_count: int | None = Field(
-        description="The number of frames to capture. Defaults to 3. Max is 10.",
+        description="The number of frames to capture. Defaults to 1. Max is 10.",
         default=1,
     )
     fps: float | None = Field(
@@ -251,7 +251,7 @@ class CameraConfig:
     prompt: str
     camera_name: CameraName
     config: RunnableConfig
-    frame_count: int = 3
+    frame_count: int = 1
     fps: float = 1
     provider: Literal["openai", "anthropic"] = "openai"
 
