@@ -127,6 +127,7 @@ returns an audio tag to be shown to the user so they can play it.
 
             if len(audio_files) > 1:
                 import subprocess
+
                 from neuron_server.util.subprocess_runner import run_subprocess
 
                 ffmpeg_command = [

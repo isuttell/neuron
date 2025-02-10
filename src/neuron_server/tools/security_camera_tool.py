@@ -22,6 +22,7 @@ from pydantic import BaseModel, Field
 
 from neuron_server.config import config as neuron_config
 from neuron_server.logger import logger
+from neuron_server.models.media_item_model import MediaItemModel
 from neuron_server.util.image_utilities import create_thumbnails
 
 
@@ -30,10 +31,12 @@ class CameraName(Enum):
     BACKYARD = "backyard"
     GARAGE = "garage"
     KITTY_CAM = "kitty_cam"
+    KITTY_CAM_2 = "kitty_cam_2"
 
 
 devices = {
     CameraName.KITTY_CAM.value: "rtsps://192.168.1.1:7441/pLwvHCxMHH1xFCml?enableSrtp",
+    CameraName.KITTY_CAM_2.value: "rtsps://192.168.1.1:7441/9dUHahBi84TK0EJ5?enableSrtp",
     CameraName.FRONT_DOOR.value: "rtsps://192.168.1.1:7441/Mmq8vE8VsAX4QxCk?enableSrtp",
     CameraName.BACKYARD.value: "rtsps://192.168.1.1:7441/Kw3HNdMJ60PvW204?enableSrtp",
     CameraName.GARAGE.value: "rtsps://192.168.1.1:7441/DKhbHhasEUaEYMMD?enableSrtpp",
@@ -41,6 +44,7 @@ devices = {
 
 device_descriptions = {
     CameraName.KITTY_CAM.value: "Kitty Cam (Master Bathroom)",
+    CameraName.KITTY_CAM_2.value: "Kitty Cam II (Office Window)",
     CameraName.FRONT_DOOR.value: "Front Door & Yard (Outside)",
     CameraName.BACKYARD.value: "Backyard (Outside)",
     CameraName.GARAGE.value: "Garage (Indoors)",
@@ -115,7 +119,7 @@ Parameters:
 
 
 async def get_frames_from_camera(
-    camera: str, frame_count: int = 3, fps: float = 1
+    camera: str, frame_count: int = 1, fps: float = 1
 ) -> list[str]:
     """Capture frames from a security camera."""
     logger.debug(f"Getting {frame_count} frames from {camera} at {fps} FPS")
@@ -162,8 +166,13 @@ async def convert_frame_to_image_url(
     return f"data:image/jpeg;base64,{image_base64}"
 
 
-def save_images(
-    image_urls: list[str], camera: str, start_time: datetime, fps: float
+async def save_images(
+    image_urls: list[str],
+    description: str,
+    camera: str,
+    start_time: datetime,
+    fps: float,
+    config: RunnableConfig,
 ) -> list[str]:
     """Save captured images to disk and return markdown URLs."""
     results: list[str] = []
@@ -172,7 +181,7 @@ def save_images(
         image_data = base64.b64decode(data_url.split(",")[1])
         image = Image.open(BytesIO(image_data))
         pnginfo = PngImagePlugin.PngInfo()
-        pnginfo.add_text("Description", device_descriptions[camera])
+        pnginfo.add_text("Description", description)
         pnginfo.add_text("Parameters", f"camera={camera}")
         pnginfo.add_text(
             "DateTimeOriginal",
@@ -185,9 +194,30 @@ def save_images(
         file_path = os.path.abspath(os.path.join(neuron_config.static_folder, filename))
         image.save(file_path, format="png", pnginfo=pnginfo)
         url = f"{neuron_config.static_content_url}/{filename}"
-        timestamp = capture_time.astimezone().isoformat(timespec="seconds")
-        results.append(f"<image>![{camera} at {timestamp}]({url})</image>")
         create_thumbnails(file_path)
+
+        # Create media item
+        create_params = MediaItemModel.CreateParams(
+            thread_id=config["configurable"].get("thread_id"),
+            user_id=config["configurable"].get("user_id"),
+            url=url,
+            media_type="image",
+            name=(f"{device_descriptions[camera]} #{i + 1}"),
+            description=(
+                f"Security camera capture from {camera} at "
+                f"{capture_time.astimezone().isoformat(timespec='seconds')}"
+                f"\n\nDescription:\n{description}"
+            ),
+        )
+        media_item = await MediaItemModel.create(params=create_params)
+
+        timestamp = capture_time.astimezone().isoformat(timespec="seconds")
+        results.append(
+            f"""<image id="{media_item.id}">
+    <display>![{camera} at {timestamp}]({url})</display>
+</image>"""
+        )
+
     return results
 
 
@@ -200,12 +230,13 @@ class SecurityCameraToolArgs(BaseModel):
     )
     camera_name: CameraName = Field(
         description=(
-            "The camera to use. Must be one of: front_door, backyard, garage, kitty_cam"
+            "The camera to use. Must be one of: front_door, backyard, garage, "
+            "kitty_cam, kitty_cam_2"
         )
     )
     frame_count: int | None = Field(
         description="The number of frames to capture. Defaults to 3. Max is 10.",
-        default=3,
+        default=1,
     )
     fps: float | None = Field(
         description="The number of frames per second to capture. Defaults to 1.",
@@ -230,11 +261,12 @@ class SecurityCameraTool(BaseTool):
     description: str = (
         "This tool captures a series of images from live security cameras and uses "
         "an AI to answer questions about them. The security cameras are located at: "
-        "front yard and door, backyard, inside the garage, and kitty cam in the "
-        "master bathroom. Use this tool to answer questions about what is happening "
-        "outside or inside the house. For example, you can use this tool to answer "
-        "questions like 'Is a package being delivered?' or 'Is anyone in the "
-        "backyard?'. Show the most relevant image in your response."
+        "front yard and door, backyard, inside the garage, kitty cam in the "
+        "master bathroom, and kitty cam 2 in the office window. Use this tool to "
+        "answer questions about what is happening outside or inside the house. "
+        "For example, you can use this tool to answer questions like 'Is a "
+        "package being delivered?' or 'Is anyone in the backyard?'. Show the most "
+        "relevant image in your response."
     )
     args_schema: type[SecurityCameraToolArgs] = SecurityCameraToolArgs
 
@@ -246,7 +278,7 @@ class SecurityCameraTool(BaseTool):
         prompt: str,
         camera_name: CameraName,
         config: RunnableConfig,
-        frame_count: int | None = 3,
+        frame_count: int | None = 1,
         fps: float | None = 1,
         provider: Literal["openai", "anthropic"] | None = "openai",
     ) -> str:
@@ -271,31 +303,33 @@ class SecurityCameraTool(BaseTool):
                 )
             )
             # Ask the AI to analyze the images and save the results while we wait
-            task = asyncio.create_task(
-                inspect_images(
-                    ImageInspectionConfig(
-                        prompt=prompt,
-                        model=model,
-                        image_urls=image_urls,
-                        start_time=start_time,
-                        fps=fps,
-                        config=config,
-                    )
+
+            content = await inspect_images(
+                ImageInspectionConfig(
+                    prompt=prompt,
+                    model=model,
+                    image_urls=image_urls,
+                    start_time=start_time,
+                    fps=fps,
+                    config=config,
                 )
             )
-            markdown_urls = save_images(
+
+            markdown_urls = await save_images(
                 image_urls=image_urls,
+                description=content,
                 camera=camera,
                 start_time=start_time,
                 fps=fps,
+                config=config,
             )
             markdown_urls_str = "\n".join(markdown_urls)
-            content = await task
             return f"""
 {content}
 
-Images:
+<images>
 {markdown_urls_str}
+</images>
     """.strip()
         except Exception as e:
             logger.error(e, exc_info=True)
