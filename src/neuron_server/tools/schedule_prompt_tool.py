@@ -99,9 +99,9 @@ class SchedulePromptTool(BaseTool):
             if action == "update":
                 await scheduler.update_event(
                     event_id=event_id,
-                    new_data={"prompt": prompt} if prompt else None,
-                    new_trigger_time=trigger_time,
-                    new_recurring_pattern=recurring_pattern,
+                    event_data={"prompt": prompt} if prompt else None,
+                    trigger_time=trigger_time,
+                    recurring_pattern=recurring_pattern,
                 )
             else:
                 if not prompt:
