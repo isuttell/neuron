@@ -27,6 +27,7 @@ Neuron is a realtime chat application built with LangChain and LangGraph to allo
 - Favor iteration and modularization over code duplication.
 - Use descriptive variable names with auxiliary verbs for clarity
 - Write concise, technical code
+- Include comments explaining the "why" behind the code
 
 ### Frontend Code Style and Structure
 

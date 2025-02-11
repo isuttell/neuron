@@ -113,8 +113,8 @@ class GladosTTSToolArgs(BaseModel):
 
     name: str = Field(
         description=(
-            "A unique display title for the audio file to be generated. "
-            "Must be less than 256 characters"
+            "A unique informative display title for the audio file to be generated. "
+            "Must be less than 256 characters. Should not include GLaDOS in the name."
         ),
     )
 
@@ -325,7 +325,7 @@ Returns an audio tag to be shown to the user so they can play it.
                 user_id=config["configurable"].get("user_id"),
                 thread_id=config["configurable"].get("thread_id"),
                 name=name,
-                description="GLaDOS TTS:\n\n" + "\n\n".join(lines),
+                description="\n\n".join(lines),
             )
             media_item = await MediaItemModel.create(params=create_params)
             logger.info(f"Generated GLaDOS audio file saved to {output} <{url}>")

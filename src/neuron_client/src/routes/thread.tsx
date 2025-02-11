@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { SpeechTab } from "@/components/SpeechTab";
 import { useParams } from "react-router-dom";
 import MessageForm from "../messages/MessageForm";
 import MessageItem from "../messages/MessageItem";
@@ -26,7 +27,10 @@ import { selectThread } from "../slices/threadsSlice";
 export default function Thread() {
   const dispatch = useAppDispatch();
   const activePersonality = useAppSelector(getActivePersonality);
-  const [activeTab, setActiveTab] = useState<"media">("media");
+  const [activeTab, setActiveTab] = useState<"media" | "audio">(
+    () =>
+      (localStorage.getItem("activeMediaTab") as "media" | "audio") || "media"
+  );
   const lastMessageRef = useRef<HTMLDivElement | null>(null);
   const { threadId } = useParams();
   const thread = useAppSelector(
@@ -175,11 +179,14 @@ export default function Thread() {
             widthMode === "hidden" && "hidden"
           )}
           onValueChange={(value) => {
-            setActiveTab(value as "media");
+            const newValue = value as "media" | "audio";
+            setActiveTab(newValue);
+            localStorage.setItem("activeMediaTab", newValue);
           }}
         >
           <TabsList>
             <TabsTrigger value="media">Media</TabsTrigger>
+            <TabsTrigger value="audio">Speech</TabsTrigger>
           </TabsList>
           <div className="flex flex-col flex-1 relative overflow-y-auto">
             <TabsContent
@@ -197,6 +204,17 @@ export default function Thread() {
                   showControls={true}
                   autoPlay={true}
                 />
+              ) : null}
+            </TabsContent>
+            <TabsContent
+              value="audio"
+              className={cn(
+                "flex flex-col flex-1 absolute top-0 left-0 right-0 bottom-0",
+                activeTab === "audio" ? "flex" : "hidden"
+              )}
+            >
+              {widthMode !== "hidden" && threadId ? (
+                <SpeechTab key={threadId} threadId={threadId} />
               ) : null}
             </TabsContent>
           </div>

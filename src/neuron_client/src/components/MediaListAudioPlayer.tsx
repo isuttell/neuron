@@ -85,7 +85,7 @@ export function MediaListAudioPlayer({
           });
       }
     },
-    [audioItems, id, playPlayer]
+    [audioItems, id, playPlayer, getOrCreateAudio]
   );
 
   const toggleAudio = useCallback(() => {
@@ -228,6 +228,7 @@ export function MediaListAudioPlayer({
     id,
     registerPlayer,
     unregisterPlayer,
+    currentItem?.url,
   ]);
 
   if (audioItems.length === 0) return null;
