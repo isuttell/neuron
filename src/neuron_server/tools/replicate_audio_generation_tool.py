@@ -17,6 +17,9 @@ from neuron_server.logger import logger
 from neuron_server.models.media_item_model import MediaItemModel
 from neuron_server.util.slug import safe_filename
 
+# Model version hash
+MMAUDIO_MODEL_HASH = "4b9f801a167b1f6cc2db6ba7ffdeb307630bf411841d4e8300e63ca992de0be9"
+
 
 class ReplicateAudioGenerationToolArgs(BaseModel):
     video_url: str = Field(description="The URL of the video to add the audio to")
@@ -71,8 +74,7 @@ class ReplicateAudioGenerationTool(BaseTool):
         ReplicateAudioGenerationToolArgs
     )
 
-    ref: str = "zsxkib/mmaudio:"
-    "4b9f801a167b1f6cc2db6ba7ffdeb307630bf411841d4e8300e63ca992de0be9"
+    ref: str = f"zsxkib/mmaudio:{MMAUDIO_MODEL_HASH}"
 
     def _run(
         self,

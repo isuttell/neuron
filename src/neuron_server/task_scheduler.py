@@ -5,7 +5,10 @@ from typing import Any
 
 from neuron_server.models.stream_event import StreamEvent
 from neuron_server.models.thread_model import ThreadModel
-from neuron_server.util.scheduler import AbstractAsyncRedisEventScheduler
+from neuron_server.util.scheduler import (
+    AbstractAsyncRedisEventScheduler,
+    RecurringPattern,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +23,29 @@ class TaskScheduler(AbstractAsyncRedisEventScheduler):
     ) -> None:
         super().__init__(host=host, port=port, db=db, password=password)
         self._active_streams: dict[str, asyncio.Task] = {}
+
+    async def update_event(
+        self,
+        event_id: str,
+        event_data: dict[str, Any],
+        trigger_time: datetime | None = None,
+        recurring_pattern: RecurringPattern | None = None,
+    ) -> None:
+        """Update an existing scheduled event with new parameters."""
+        logger.debug(f"Updating event {event_id}")
+
+        # Get existing event to preserve any unmodified fields
+        existing_event = await self.get_event(event_id)
+        if not existing_event:
+            raise ValueError(f"Event {event_id} not found")
+
+        # Schedule new event with updated parameters
+        await self.schedule_event(
+            event_id=event_id,
+            event_data=event_data,
+            trigger_time=trigger_time,
+            recurring_pattern=recurring_pattern,
+        )
 
     async def on_event(self, event_id: str, metadata: dict[str, Any]) -> None:
         """Handle scheduled events by creating a new thread and streaming response."""
