@@ -229,8 +229,8 @@ export function SpeechTab({ threadId }: SpeechTabProps) {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex-1 overflow-y-auto">
-        <div className="space-y-2">
+      <div className="flex-1 overflow-y-auto mb-2">
+        <div className="space-y-2 ">
           {audioItems.length === 0 ? (
             <div className="text-center text-muted-foreground py-4">
               No audio
