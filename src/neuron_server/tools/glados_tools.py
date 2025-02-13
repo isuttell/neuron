@@ -105,9 +105,9 @@ class GladosTTSToolArgs(BaseModel):
     lines: list[str] = Field(
         description=(
             "List of text lines to be spoken by GLaDOS. Each line must be less "
-            "than 500 characters. Spell out percentages, numbers, and other special "
-            "characters that should be pronounced out loud. 'AI' is hard to hear. "
-            "Try to spell it out as 'Artificial Intelligence'."
+            "than 500 characters. Spell out percentages, numbers, decimals, and other "
+            "special characters that should be pronounced out loud. 'AI' is hard to "
+            "hear spoken out loud. Try to spell it out as 'A I'."
         )
     )
 

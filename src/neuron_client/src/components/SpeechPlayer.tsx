@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Pause, Play, SkipBack, SkipForward } from "lucide-react";
+import { Download, Pause, Play, SkipBack, SkipForward } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -193,7 +193,7 @@ export function SpeechPlayer({
             </Tooltip>
           </div>
 
-          <div className="flex-1">
+          <div className="flex-1 flex items-center justify-between">
             <div className="text-sm font-medium">
               {currentItem ? (
                 <>
@@ -206,6 +206,31 @@ export function SpeechPlayer({
                 <div>No track selected</div>
               )}
             </div>
+            {currentItem && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    asChild
+                    onClick={(e) => {
+                      e.stopPropagation();
+                    }}
+                  >
+                    <a
+                      className="text-primary"
+                      href={currentItem.url}
+                      download
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Download className="h-4 w-4" />
+                    </a>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Download audio</TooltipContent>
+              </Tooltip>
+            )}
           </div>
         </div>
       </div>
