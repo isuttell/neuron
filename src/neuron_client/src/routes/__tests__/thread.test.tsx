@@ -85,11 +85,11 @@ jest.mock("../../messages/MessageItem", () => ({
   },
 }));
 
-jest.mock("../../messages/MediaItemList", () => ({
+jest.mock("../../components/MediaTimeline", () => ({
   __esModule: true,
-  default: ({ mediaItems }: { mediaItems: MediaItem[] }) => (
-    <div data-testid="media-list">
-      MediaItemList ({mediaItems.length} items)
+  default: ({ threadId }: { threadId: string }) => (
+    <div data-testid="media-timeline" className="flex flex-col h-full">
+      MediaTimeline for thread {threadId}
     </div>
   ),
 }));
@@ -567,19 +567,20 @@ describe("Thread", () => {
       const widthToggle = screen.getByTestId("media-panel-width");
 
       // Initially hidden
-      const mediaPanel = screen.getByRole("tablist").parentElement;
-      expect(mediaPanel).toHaveClass("hidden");
+      const initialPanel = screen.getByRole("complementary");
+      expect(initialPanel).toHaveClass("hidden");
+      expect(screen.queryByTestId("media-timeline")).not.toBeInTheDocument();
 
       // Toggle to narrow
       fireEvent.click(widthToggle);
+      const mediaPanel = screen.getByRole("complementary");
       expect(mediaPanel).toHaveClass("max-w-[512px]", "w-1/4");
-      expect(screen.getByTestId("media-list")).toBeInTheDocument();
-      expect(screen.getByText(/1 items/)).toBeInTheDocument();
+      expect(screen.getByTestId("media-timeline")).toBeInTheDocument();
 
       // Toggle back to hidden
       fireEvent.click(widthToggle);
       expect(mediaPanel).toHaveClass("hidden");
-      expect(screen.queryByTestId("media-list")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("media-timeline")).not.toBeInTheDocument();
     });
 
     it("should persist width mode in localStorage", async () => {
@@ -593,42 +594,6 @@ describe("Thread", () => {
         "narrow"
       );
       expect(store["widthMode"]).toBe("narrow");
-    });
-
-    it("should sort media items by creation date", () => {
-      const mediaItems = [
-        {
-          id: "media-2",
-          thread_id: "thread-1",
-          created_at: "2024-02-04T12:02:00Z",
-        },
-        {
-          id: "media-1",
-          thread_id: "thread-1",
-          created_at: "2024-02-04T12:01:00Z",
-        },
-      ];
-
-      const initialState: Partial<AppState> = {
-        messages: {
-          messageMap: {},
-          messageIds: [],
-          loading: false,
-          error: null,
-        },
-        media: { items: mediaItems },
-        threads: { threads: [mockThread], loading: false, error: null },
-        personalities: { personalities: [], activePersonalityId: null },
-      };
-
-      renderThread(initialState);
-
-      // Toggle media panel to show items
-      fireEvent.click(screen.getByTestId("media-panel-width"));
-
-      const mediaList = screen.getByTestId("media-list");
-      expect(mediaList).toBeInTheDocument();
-      expect(mediaList).toHaveTextContent("2 items");
     });
   });
 

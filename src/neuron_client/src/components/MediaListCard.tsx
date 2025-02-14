@@ -11,10 +11,9 @@ import { Button } from "@/components/ui/button";
 import { MediaList } from "@/slices/mediaListsSlice";
 import { Share2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import MediaItemList from "@/messages/MediaItemList";
+import MediaTimeline from "@/components/MediaTimeline";
 import { useAppSelector } from "@/hooks";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { MediaListAudioPlayer } from "./MediaListAudioPlayer";
 
 interface MediaListCardProps {
   list: MediaList;
@@ -40,7 +39,7 @@ function MediaListCard({ list, isSharedView = false }: MediaListCardProps) {
       </CardHeader>
       <CardContent>
         <ScrollArea className="max-h-full">
-          <MediaItemList mediaItems={mediaItems} showControls={true} />
+          <MediaTimeline threadId={list.id} />
         </ScrollArea>
       </CardContent>
       <CardFooter className="flex flex-wrap gap-2">
@@ -69,7 +68,6 @@ function MediaListCard({ list, isSharedView = false }: MediaListCardProps) {
           </Button>
         )}
       </CardFooter>
-      <MediaListAudioPlayer mediaItems={mediaItems} />
     </Card>
   );
 }

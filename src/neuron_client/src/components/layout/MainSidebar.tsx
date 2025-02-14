@@ -63,11 +63,12 @@ export function MainSidebar() {
       label: "Recent Media",
       Icon: LayoutGrid,
     },
-    {
-      to: "/media-lists",
-      label: "Media Lists",
-      Icon: List,
-    },
+    // Disabled since it's broken and not used
+    // {
+    //   to: "/media-lists",
+    //   label: "Media Lists",
+    //   Icon: List,
+    // },
   ];
 
   return (

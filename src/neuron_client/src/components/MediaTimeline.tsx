@@ -2,18 +2,18 @@ import { useAppSelector } from "@/hooks";
 import { selectAllMedia } from "@/slices/mediaSlice";
 import { useMemo, useRef, useState, useEffect } from "react";
 import { MediaItem } from "@/types/media";
-import { SpeechPlayer } from "./SpeechPlayer";
+import { TimelineControls } from "./TimelineControls";
 import ImageContent from "@/messages/ImageContent";
 import VideoContent from "@/messages/VideoContent";
 import { SubtitleContent } from "@/messages/SubtitleContent";
 import SpeechAudioContent from "@/messages/SpeechAudioContent";
 import { cn } from "@/lib/utils";
 
-interface SpeechTabProps {
+interface MediaTimelineProps {
   threadId: string;
 }
 
-export function SpeechTab({ threadId }: SpeechTabProps) {
+function MediaTimeline({ threadId }: MediaTimelineProps) {
   const mediaItems = useAppSelector(selectAllMedia);
   const [currentIndex, setCurrentIndex] = useState<number>(-1);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -272,107 +272,125 @@ export function SpeechTab({ threadId }: SpeechTabProps) {
   };
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex-1 overflow-y-auto mb-2">
-        <div className="space-y-2 ">
+    <div className="flex flex-col h-full min-h-0">
+      <div className="flex-1 overflow-y-auto min-h-0 h-full">
+        <div className="space-y-2">
           {allItems.length === 0 ? (
             <div className="text-center text-muted-foreground py-4">
               No media
             </div>
           ) : (
-            <div className="space-y-2 pb-2">
-              {allItems.map((item, index) => {
-                const audioIndex = audioIndices.get(item.id) ?? -1;
+            allItems.map((item, index) => {
+              const audioIndex = audioIndices.get(item.id) ?? -1;
 
-                if (item.media_type === "audio") {
-                  return (
-                    <div
-                      ref={(el) => (itemRefs.current[index] = el)}
-                      key={item.id}
-                    >
-                      <SpeechAudioContent
-                        url={item.url}
-                        title={item.name}
-                        description={item.description}
-                        mediaItem={item}
-                        isPlaying={isPlaying && currentIndex === audioIndex}
-                        progress={
-                          (currentIndex === audioIndex
-                            ? currentTime / duration
-                            : 0) * 100
-                        }
-                        onPlay={() => {
-                          setCurrentIndex(audioIndex);
-                          handlePlay(audioIndex);
-                        }}
-                        onPause={handlePause}
-                        className={cn(
-                          "rounded-md transition-colors border",
-                          currentIndex === audioIndex && "bg-muted/25"
-                        )}
-                      />
-                    </div>
-                  );
-                } else if (item.media_type === "tts") {
-                  return (
-                    <div
-                      ref={(el) => (itemRefs.current[index] = el)}
-                      key={item.id}
-                    >
-                      <SubtitleContent
-                        item={item}
-                        isPlaying={isPlaying && currentIndex === audioIndex}
-                        onClick={() => {
-                          setCurrentIndex(audioIndex);
-                        }}
-                        onPlayClick={() => {
-                          setCurrentIndex(audioIndex);
-                          handlePlay(audioIndex);
-                        }}
-                        onPauseClick={handlePause}
-                        className={cn(
-                          "rounded-md transition-colors border",
-                          currentIndex === audioIndex && "bg-muted/25"
-                        )}
-                      />
-                    </div>
-                  );
-                } else if (item.media_type === "image") {
-                  return (
-                    <ImageContent
-                      key={item.id}
+              if (item.media_type === "audio") {
+                return (
+                  <div
+                    ref={(el) => (itemRefs.current[index] = el)}
+                    key={item.id}
+                  >
+                    <SpeechAudioContent
                       url={item.url}
-                      alt={item.name}
+                      title={item.name}
                       description={item.description}
-                      width={1024}
-                      height={1024}
-                      thumbnail_size="t"
-                      showControls={false}
-                      objectFit="contain"
                       mediaItem={item}
+                      isPlaying={isPlaying && currentIndex === audioIndex}
+                      progress={
+                        (currentIndex === audioIndex
+                          ? currentTime / duration
+                          : 0) * 100
+                      }
+                      onPlay={() => {
+                        setCurrentIndex(audioIndex);
+                        handlePlay(audioIndex);
+                      }}
+                      onPause={handlePause}
+                      className={cn(
+                        "rounded-md transition-colors border",
+                        currentIndex === audioIndex && "bg-muted/25"
+                      )}
                     />
-                  );
-                } else if (item.media_type === "video") {
-                  return (
-                    <VideoContent
-                      key={item.id}
-                      url={item.url}
-                      autoPlay={true}
-                      controls={false}
-                      loop={true}
-                      showControls={false}
-                      mediaItem={item}
+                  </div>
+                );
+              } else if (item.media_type === "tts") {
+                return (
+                  <div
+                    ref={(el) => (itemRefs.current[index] = el)}
+                    key={item.id}
+                  >
+                    <SubtitleContent
+                      item={item}
+                      isPlaying={isPlaying && currentIndex === audioIndex}
+                      onClick={() => {
+                        setCurrentIndex(audioIndex);
+                      }}
+                      onPlayClick={() => {
+                        setCurrentIndex(audioIndex);
+                        handlePlay(audioIndex);
+                      }}
+                      onPauseClick={handlePause}
+                      className={cn(
+                        "rounded-md transition-colors border",
+                        currentIndex === audioIndex && "bg-muted/25"
+                      )}
                     />
-                  );
+                  </div>
+                );
+              } else if (
+                item.media_type === "link" ||
+                item.media_type === "data" ||
+                item.media_type === "code"
+              ) {
+                let url = item.url;
+                if (item.media_type === "data" || item.media_type === "code") {
+                  url = `/code-viewer?url=${item.url}`;
                 }
-                return null;
-              })}
-            </div>
+                return (
+                  <a
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    key={item.id}
+                  >
+                    {item.name}
+                  </a>
+                );
+              } else if (item.media_type === "image") {
+                return (
+                  <ImageContent
+                    key={item.id}
+                    url={item.url}
+                    alt={item.name}
+                    description={item.description}
+                    width={1024}
+                    height={1024}
+                    thumbnail_size="t"
+                    showControls={false}
+                    objectFit="contain"
+                    mediaItem={item}
+                  />
+                );
+              } else if (item.media_type === "video") {
+                return (
+                  <VideoContent
+                    key={item.id}
+                    url={item.url}
+                    autoPlay={true}
+                    controls={false}
+                    loop={true}
+                    showControls={false}
+                    mediaItem={item}
+                  />
+                );
+              }
+              return null;
+            })
           )}
         </div>
       </div>
       {audioItems.length > 0 && (
-        <SpeechPlayer
+        <TimelineControls
+          className="mt-2"
           onPlay={handlePlay}
           onPause={handlePause}
           onNext={handleNext}
@@ -392,3 +410,5 @@ export function SpeechTab({ threadId }: SpeechTabProps) {
     </div>
   );
 }
+
+export default MediaTimeline;

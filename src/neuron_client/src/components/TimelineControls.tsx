@@ -18,7 +18,8 @@ import { cn } from "@/lib/utils";
 
 import React, { useRef, useState } from "react";
 
-interface SpeechPlayerProps {
+interface TimelineControlsProps {
+  className?: string;
   onPlay: () => void;
   onPause: () => void;
   onNext: () => void;
@@ -45,7 +46,8 @@ const formatTime = (seconds: number): string => {
   return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
 };
 
-export function SpeechPlayer({
+export function TimelineControls({
+  className,
   onPlay,
   onPause,
   onNext,
@@ -60,7 +62,7 @@ export function SpeechPlayer({
   canGoPrevious,
   autoPlay,
   onAutoPlayChange,
-}: SpeechPlayerProps) {
+}: TimelineControlsProps) {
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
   const progressRef = useRef<HTMLDivElement>(null);
   const isDraggingRef = useRef(false);
@@ -97,7 +99,12 @@ export function SpeechPlayer({
   }, [duration, onSeek]);
 
   return (
-    <div className="shadow-md bg-background flex-shrink-0 scroll-smooth">
+    <div
+      className={cn(
+        "shadow-md bg-background flex-shrink-0 scroll-smooth",
+        className
+      )}
+    >
       <div
         className="h-[101px] relative border rounded-lg mb-4"
         style={{ backgroundColor: "#111111" }}
