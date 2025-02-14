@@ -250,7 +250,7 @@ Returns an audio tag to be shown to the user so they can play it.
                     async with session.post(
                         f"{neuron_config.glados_endpoint}/api/v1/tts",
                         json={
-                            "content": line,
+                            "content": line.replace("%", " percent"),
                             "style": "glados",
                             "format": "mp3",
                             "noise": noise,
