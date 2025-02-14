@@ -1,5 +1,12 @@
 import { Button } from "@/components/ui/button";
-import { Download, Pause, Play, SkipBack, SkipForward } from "lucide-react";
+import {
+  Pause,
+  Play,
+  SkipBack,
+  SkipForward,
+  ListVideo,
+  MonitorPause,
+} from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -28,6 +35,8 @@ interface SpeechPlayerProps {
   } | null;
   canGoNext: boolean;
   canGoPrevious: boolean;
+  autoPlay: boolean;
+  onAutoPlayChange: (enabled: boolean) => void;
 }
 
 const formatTime = (seconds: number): string => {
@@ -49,6 +58,8 @@ export function SpeechPlayer({
   currentItem,
   canGoNext,
   canGoPrevious,
+  autoPlay,
+  onAutoPlayChange,
 }: SpeechPlayerProps) {
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
   const progressRef = useRef<HTMLDivElement>(null);
@@ -211,24 +222,19 @@ export function SpeechPlayer({
                 <TooltipTrigger asChild>
                   <Button
                     size="sm"
-                    variant="ghost"
-                    asChild
-                    onClick={(e) => {
-                      e.stopPropagation();
-                    }}
+                    variant={"ghost"}
+                    onClick={() => onAutoPlayChange(!autoPlay)}
                   >
-                    <a
-                      className="text-primary"
-                      href={currentItem.url}
-                      download
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <Download className="h-4 w-4" />
-                    </a>
+                    {autoPlay ? (
+                      <MonitorPause className="h-4 w-4" />
+                    ) : (
+                      <ListVideo className="h-4 w-4" />
+                    )}
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Download audio</TooltipContent>
+                <TooltipContent>
+                  {autoPlay ? "Disable auto-play" : "Enable auto-play audio"}
+                </TooltipContent>
               </Tooltip>
             )}
           </div>

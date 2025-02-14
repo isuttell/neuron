@@ -18,6 +18,7 @@ export function SpeechTab({ threadId }: SpeechTabProps) {
   const [currentIndex, setCurrentIndex] = useState<number>(-1);
   const [isPlaying, setIsPlaying] = useState(false);
   const [shouldPlay, setShouldPlay] = useState(false);
+  const [autoPlay, setAutoPlay] = useState(true);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -158,8 +159,8 @@ export function SpeechTab({ threadId }: SpeechTabProps) {
       const audio = audioRef.current;
       if (!audio) return;
 
-      // If nothing is playing, start with latest item
-      if (!shouldPlay) {
+      // If auto-play is enabled and nothing is playing, start with latest item
+      if (autoPlay && !shouldPlay) {
         const newIndex = audioItems.length - 1;
         setCurrentIndex(newIndex);
         const item = audioItems[newIndex];
@@ -178,7 +179,7 @@ export function SpeechTab({ threadId }: SpeechTabProps) {
       }
     }
     previousItemsLengthRef.current = audioItems.length;
-  }, [audioItems, shouldPlay]);
+  }, [audioItems, shouldPlay, autoPlay, allItems.length]);
 
   // Handle source changes
   useEffect(() => {
@@ -381,6 +382,8 @@ export function SpeechTab({ threadId }: SpeechTabProps) {
           currentItem={currentIndex >= 0 ? audioItems[currentIndex] : null}
           canGoNext={currentIndex < audioItems.length - 1}
           canGoPrevious={currentIndex > 0}
+          autoPlay={autoPlay}
+          onAutoPlayChange={setAutoPlay}
         />
       )}
     </div>

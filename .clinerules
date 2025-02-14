@@ -73,6 +73,7 @@ Neuron is a realtime chat application built with LangChain and LangGraph to allo
 - Write unit tests for all new functions and classes.
 - Use mocking for database and network operations to ensure isolation of tests.
 - Run commands from the project root
+- Do not try to use computer vision as it is blocked by auth
 
 ### Model Notes
 

@@ -115,7 +115,7 @@ class GladosTTSToolArgs(BaseModel):
         description=(
             "A unique informative display title for the audio file to be generated. "
             "Must be less than 256 characters. Should not include GLaDOS in the name. "
-            "Show to the user preceeding the subtitles to be spoken."
+            "Show to the user preceeding the subtitles to be spoken. Keep in character "
         ),
     )
 
