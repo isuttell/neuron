@@ -6,6 +6,7 @@ import { SpeechPlayer } from "./SpeechPlayer";
 import ImageContent from "@/messages/ImageContent";
 import VideoContent from "@/messages/VideoContent";
 import { SubtitleContent } from "@/messages/SubtitleContent";
+import SpeechAudioContent from "@/messages/SpeechAudioContent";
 
 interface SpeechTabProps {
   threadId: string;
@@ -35,9 +36,26 @@ export function SpeechTab({ threadId }: SpeechTabProps) {
   );
 
   const audioItems = useMemo(
-    () => allItems.filter((item) => item.media_type === "audio"),
+    () =>
+      allItems.filter(
+        (item) => item.media_type === "audio" || item.media_type === "tts"
+      ),
     [allItems]
   );
+
+  // Create a mapping of item IDs to their audio indices
+  const audioIndices = useMemo(() => {
+    const indices = new Map<string, number>();
+    allItems.forEach((item) => {
+      if (item.media_type === "audio" || item.media_type === "tts") {
+        const index = audioItems.findIndex((a) => a.id === item.id);
+        if (index !== -1) {
+          indices.set(item.id, index);
+        }
+      }
+    });
+    return indices;
+  }, [allItems, audioItems]);
 
   // Initialize audio element
   useEffect(() => {
@@ -169,16 +187,16 @@ export function SpeechTab({ threadId }: SpeechTabProps) {
     }
   }, [audioItems.length, currentIndex]); // Include both deps
 
-  const handlePlay = () => {
+  const handlePlay = (index?: number) => {
     setShouldPlay(true);
     if (!audioRef.current) return;
 
-    if (currentIndex === -1 && audioItems.length > 0) {
-      setCurrentIndex(0);
-      const item = audioItems[0];
-      audioRef.current.src = item.url;
-      audioRef.current.play().catch(console.error);
-    } else {
+    const targetIndex = index ?? currentIndex;
+    if (targetIndex >= 0 && targetIndex < audioItems.length) {
+      const item = audioItems[targetIndex];
+      if (audioRef.current.src !== item.url) {
+        audioRef.current.src = item.url;
+      }
       audioRef.current.play().catch(console.error);
     }
   };
@@ -234,44 +252,80 @@ export function SpeechTab({ threadId }: SpeechTabProps) {
             </div>
           ) : (
             <div className="space-y-2 pb-2">
-              {allItems.map((item, index) =>
-                item.media_type === "audio" ? (
-                  <div
-                    ref={(el) => (itemRefs.current[index] = el)}
-                    key={item.id}
-                  >
-                    <SubtitleContent
-                      item={item}
-                      isCurrentItem={index === currentIndex}
-                      isPlaying={isPlaying}
-                      onClick={() => setCurrentIndex(index)}
+              {allItems.map((item, index) => {
+                const audioIndex = audioIndices.get(item.id) ?? -1;
+
+                if (item.media_type === "audio") {
+                  return (
+                    <div
+                      ref={(el) => (itemRefs.current[index] = el)}
+                      key={item.id}
+                    >
+                      <SpeechAudioContent
+                        url={item.url}
+                        title={item.name}
+                        description={item.description}
+                        mediaItem={item}
+                        isPlaying={isPlaying && currentIndex === audioIndex}
+                        progress={
+                          (currentIndex === audioIndex
+                            ? currentTime / duration
+                            : 0) * 100
+                        }
+                        onPlay={() => {
+                          setCurrentIndex(audioIndex);
+                          handlePlay(audioIndex);
+                        }}
+                      />
+                    </div>
+                  );
+                } else if (item.media_type === "tts") {
+                  return (
+                    <div
+                      ref={(el) => (itemRefs.current[index] = el)}
+                      key={item.id}
+                    >
+                      <SubtitleContent
+                        item={item}
+                        isCurrentItem={currentIndex === audioIndex}
+                        isPlaying={isPlaying && currentIndex === audioIndex}
+                        onClick={() => {
+                          setCurrentIndex(audioIndex);
+                          handlePlay(audioIndex);
+                        }}
+                      />
+                    </div>
+                  );
+                } else if (item.media_type === "image") {
+                  return (
+                    <ImageContent
+                      key={item.id}
+                      url={item.url}
+                      alt={item.name}
+                      description={item.description}
+                      width={1024}
+                      height={1024}
+                      thumbnail_size="t"
+                      showControls={false}
+                      objectFit="contain"
+                      mediaItem={item}
                     />
-                  </div>
-                ) : item.media_type === "image" ? (
-                  <ImageContent
-                    key={item.id}
-                    url={item.url}
-                    alt={item.name}
-                    description={item.description}
-                    width={1024}
-                    height={1024}
-                    thumbnail_size="t"
-                    showControls={false}
-                    objectFit="contain"
-                    mediaItem={item}
-                  />
-                ) : item.media_type === "video" ? (
-                  <VideoContent
-                    key={item.id}
-                    url={item.url}
-                    autoPlay={true}
-                    controls={false}
-                    loop={true}
-                    showControls={false}
-                    mediaItem={item}
-                  />
-                ) : null
-              )}
+                  );
+                } else if (item.media_type === "video") {
+                  return (
+                    <VideoContent
+                      key={item.id}
+                      url={item.url}
+                      autoPlay={true}
+                      controls={false}
+                      loop={true}
+                      showControls={false}
+                      mediaItem={item}
+                    />
+                  );
+                }
+                return null;
+              })}
             </div>
           )}
         </div>

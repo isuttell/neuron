@@ -321,7 +321,7 @@ Returns an audio tag to be shown to the user so they can play it.
             url = neuron_config.static_content_url + "/" + filename
             create_params = MediaItemModel.CreateParams(
                 url=url,
-                media_type="audio",
+                media_type="tts",
                 user_id=config["configurable"].get("user_id"),
                 thread_id=config["configurable"].get("thread_id"),
                 name=name,
