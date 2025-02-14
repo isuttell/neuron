@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+import random
 from typing import Any, Literal
 
 import aiofiles
@@ -148,6 +149,13 @@ class ReplicatePlayDialogTool(BaseTool):
             "text": text,
             **kwargs,
         }
+
+        # Ensure a seed is set for reproducible results at a later date
+        input_args["seed"] = (
+            kwargs.get("seed")
+            if kwargs.get("seed") is not None
+            else random.randint(0, 2147483647)
+        )
 
         try:
             output = await replicate.async_run(self.ref, input=input_args)

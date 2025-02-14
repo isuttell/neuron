@@ -114,12 +114,13 @@ class ReplicateAudioGenerationTool(BaseTool):
                 async with aiofiles.open(tmp_upload_file, "wb") as file:
                     await file.write(await response.content.read())
 
+            # Ensure a seed is set for reproducible results at a later date
             input_args = {
                 "prompt": prompt,
                 "duration": duration,
                 "num_steps": num_steps,
                 "cfg_strength": cfg_strength,
-                "seed": seed if seed else random.randint(0, 2147483647),
+                "seed": (seed if seed is not None else random.randint(0, 2147483647)),
                 "negative_prompt": negative_prompt,
             }
 

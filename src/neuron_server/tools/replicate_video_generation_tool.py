@@ -1,5 +1,6 @@
 import asyncio
 import os
+import random
 import time
 from typing import Any, Literal
 from uuid import uuid4
@@ -40,6 +41,13 @@ class ReplicateVideoGenerationToolArgs(BaseModel):
             "model. Use for prompt exapnsion if your prompt is not detailed enough."
         ),
         default=True,
+    )
+    seed: int | None = Field(
+        description=(
+            "Random seed. Set for reproducible generation. If None or -1 a random "
+            "seed will be used"
+        ),
+        default=-1,
     )
     name: str = Field(
         description=(
@@ -96,6 +104,7 @@ complete.
         config: RunnableConfig,
         prompt_optimizer: bool = True,
         image_url: str | None = None,
+        seed: int | None = None,
     ) -> str:
         start_time = time.perf_counter()
         source = f" from {image_url}" if image_url else ""
@@ -113,9 +122,15 @@ complete.
                     response.raise_for_status()
                     await file.write(await response.content.read())
 
+            # Ensure a seed is set for reproducible results at a later date
             input_args = {
                 "prompt": prompt,
                 "prompt_optimizer": prompt_optimizer,
+                "seed": (
+                    seed
+                    if seed is not None and seed != -1
+                    else random.randint(0, 2147483647)
+                ),
             }
 
             if os.path.exists(tmp_upload_file):

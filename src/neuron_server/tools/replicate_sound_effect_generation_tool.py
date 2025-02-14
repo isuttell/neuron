@@ -1,5 +1,6 @@
 import asyncio
 import os
+import random
 import re
 import subprocess
 from typing import Any
@@ -145,8 +146,13 @@ text prompts with the stackadoc/stable-audio-open-1.0 model. Ideal for:
                 response.raise_for_status()
                 await file.write(await response.content.read())
 
+            # Ensure a seed is set for reproducible results at a later date
             input_args = {
-                "seed": seed,
+                "seed": (
+                    seed
+                    if seed is not None and seed != -1
+                    else random.randint(0, 2147483647)
+                ),
                 "steps": steps,
                 "prompt": prompt,
                 "cfg_scale": cfg_scale,
