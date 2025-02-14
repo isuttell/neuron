@@ -136,21 +136,13 @@ export function SpeechTab({ threadId }: SpeechTabProps) {
     };
   }, [audioItems.length, currentIndex]);
 
-  // Handle new items
+  // Handle new items and initial load
   useEffect(() => {
     if (isInitialLoadRef.current) {
       isInitialLoadRef.current = false;
       previousItemsLengthRef.current = audioItems.length;
       if (audioItems.length > 0) {
         setCurrentIndex(audioItems.length - 1); // Set to last item on initial load
-
-        // Add explicit scroll for initial load
-        setTimeout(() => {
-          itemRefs.current[allItems.length - 1]?.scrollIntoView({
-            behavior: "smooth",
-            block: "center",
-          });
-        }, 100);
       }
       return;
     }
@@ -168,18 +160,10 @@ export function SpeechTab({ threadId }: SpeechTabProps) {
         audio.src = itemUrl;
         audio.play().catch(console.error);
         setShouldPlay(true);
-
-        // Scroll to the latest item
-        setTimeout(() => {
-          itemRefs.current[allItems.length - 1]?.scrollIntoView({
-            behavior: "smooth",
-            block: "center",
-          });
-        }, 100);
       }
     }
     previousItemsLengthRef.current = audioItems.length;
-  }, [audioItems, shouldPlay, autoPlay, allItems.length]);
+  }, [audioItems, shouldPlay, autoPlay]);
 
   // Handle source changes
   useEffect(() => {
@@ -198,18 +182,37 @@ export function SpeechTab({ threadId }: SpeechTabProps) {
     }
   }, [currentIndex, audioItems, shouldPlay]);
 
-  // Initial scroll on mount
+  // Unified scroll handling
   useEffect(() => {
-    // Wait for items to be available and current index to be set
-    if (audioItems.length > 0 && currentIndex >= 0) {
-      setTimeout(() => {
-        itemRefs.current[currentIndex]?.scrollIntoView({
-          behavior: "smooth",
-          block: "center", // Center the item in view
-        });
-      }, 300); // Longer delay to ensure render
+    // Skip if no items or invalid index
+    if (audioItems.length === 0 || currentIndex < 0) return;
+
+    // Ensure refs array matches current items length
+    if (itemRefs.current.length !== allItems.length) {
+      itemRefs.current = new Array(allItems.length).fill(null);
     }
-  }, [audioItems.length, currentIndex]); // Include both deps
+
+    // Find the actual index in allItems that corresponds to the current audio index
+    const currentAudioItem = audioItems[currentIndex];
+    const targetIndex = allItems.findIndex(
+      (item) => item.id === currentAudioItem?.id
+    );
+
+    if (targetIndex === -1) return;
+
+    // Use requestAnimationFrame for more reliable timing
+    const scrollTimeout = requestAnimationFrame(() => {
+      const targetRef = itemRefs.current[targetIndex];
+      if (targetRef) {
+        targetRef.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+      }
+    });
+
+    return () => cancelAnimationFrame(scrollTimeout);
+  }, [audioItems, allItems, currentIndex]); // Dependencies cover both initial load and updates
 
   const handlePlay = (index?: number) => {
     setShouldPlay(true);
