@@ -24,7 +24,7 @@ from neuron_server.tools.elevenlabs_soundeffects_tool import (
 )
 from neuron_server.tools.elevenlabs_tts_tool import ElevenLabsTTSTool
 from neuron_server.tools.ffmpeg_tool import FFmpegTool
-from neuron_server.tools.glados_tools import GladosToolset
+from neuron_server.tools.glados_tts_tool import GladosToolset
 from neuron_server.tools.graph_arxiv_import_tool import GraphArxivImportTool
 from neuron_server.tools.graph_import_tool import GraphImportTool
 from neuron_server.tools.graph_query_tool import GraphQueryTool
@@ -78,7 +78,7 @@ from neuron_server.tools.replicate_image_generation_tool import (
 from neuron_server.tools.replicate_music_generation_tool import (
     ReplicateMusicGenerationTool,
 )
-from neuron_server.tools.replicate_play_dialog_tool import ReplicatePlayDialogTool
+from neuron_server.tools.replicate_play_dialog_tts_tool import ReplicatePlayDialogTool
 from neuron_server.tools.replicate_video_generation_tool import (
     ReplicateVideoGenerationTool,
 )

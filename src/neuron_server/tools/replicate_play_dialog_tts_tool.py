@@ -123,7 +123,7 @@ class ReplicatePlayDialogToolArgs(BaseModel):
 
 
 class ReplicatePlayDialogTool(BaseTool):
-    name: str = "replicate_play_dialog"
+    name: str = "replicate_play_dialog_tts"
     description: str = """Use this tool to generate speech from text using the PlayHT
         Dialog model. It supports multiple voices and languages, and can generate
         dialog between two voices."""
@@ -168,7 +168,7 @@ class ReplicatePlayDialogTool(BaseTool):
                 thread_id=config["configurable"].get("thread_id"),
                 user_id=config["configurable"].get("user_id"),
                 url=url,
-                media_type="audio",
+                media_type="tts",
                 name=name,
                 description=text,
             )
