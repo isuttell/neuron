@@ -291,8 +291,12 @@ export function SpeechTab({ threadId }: SpeechTabProps) {
                         isPlaying={isPlaying && currentIndex === audioIndex}
                         onClick={() => {
                           setCurrentIndex(audioIndex);
+                        }}
+                        onPlayClick={() => {
+                          setCurrentIndex(audioIndex);
                           handlePlay(audioIndex);
                         }}
+                        onPauseClick={handlePause}
                       />
                     </div>
                   );
