@@ -225,3 +225,25 @@ export const deleteEmbedding = createAsyncThunk(
     }
   }
 );
+
+export const updatePersonalityLogo = createAsyncThunk(
+  "personalities/updateLogo",
+  async (personalityId: string, thunkAPI) => {
+    try {
+      const accessToken = await getAccessToken();
+      const response = await fetch(`/api/personalities/${personalityId}/logo`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      if (error instanceof Error) {
+        return thunkAPI.rejectWithValue(error.message);
+      }
+      return thunkAPI.rejectWithValue("An unknown error occurred");
+    }
+  }
+);

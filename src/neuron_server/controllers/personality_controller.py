@@ -13,11 +13,20 @@ from neuron_server.llms.llm import LLM
 from neuron_server.llms.prompts import (
     personality_description_prompt,
     personality_update_prompt,
+    personality_update_logo_prompt,
 )
-from neuron_server.llms.tools import default_tools, get_tools
+from neuron_server.llms.tools import (
+    default_tools,
+    get_tools,
+    ReplicateImageGenerationTool,
+    AppImageTool,
+)
 from neuron_server.models import PersonalityModel
 from neuron_server.models.embedding_model import EmbeddingModel
 from neuron_server.models.provider_model import ProviderModelModel
+from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
+from langgraph.prebuilt import create_react_agent
+from neuron_server.controllers.auth import TokenPayload
 
 router = EventRouter()
 
@@ -207,3 +216,63 @@ async def post_personality_context(personality_id: UUID) -> dict[str, str]:
         prompt=payload.prompt,
     )
     return {"context": context}
+
+
+def _extract_message_content(message: BaseMessage) -> str:
+    """Extract text content from a message, handling both string and structured content."""
+    if not isinstance(message.content, str) and isinstance(message.content, list):
+        first_content = message.content[0]
+        if (
+            isinstance(first_content, dict)
+            and "text" in first_content
+            and isinstance(first_content["text"], str)
+        ):
+            return first_content["text"].strip()
+    return str(message.content).strip()
+
+
+@blueprint.post("/<uuid:personality_id>/logo")
+@requires_auth
+async def update_personality_logo(personality_id: UUID) -> dict[str, dict]:
+    llm: LLM = await ProviderModelModel.get_active_llm()
+
+    personality = await PersonalityModel.get(personality_id=personality_id)
+    if personality is None:
+        raise BadRequest("Personality not found")
+    graph = create_react_agent(
+        model=llm.model,
+        prompt=personality_update_logo_prompt,
+        tools=[ReplicateImageGenerationTool(), AppImageTool()],
+    )
+    assert isinstance(request.token, TokenPayload)
+    response = await graph.ainvoke(
+        input={
+            "messages": [
+                HumanMessage(
+                    content="""Update the logo. Your text response will be shown as
+                    a description in a toast letting the user know the logo has been
+                    updated. Use the personality as custom instructions on how to
+                    write the message. Response from their perspective. Keep it
+                    short and concise.
+                    """.strip(),
+                ),
+            ],
+            "name": personality.name,
+            "personality": personality.description,
+        },
+        config={
+            "configurable": {
+                "personality_id": str(personality_id),
+                "user_id": request.token.user_id,
+            },
+        },
+    )
+    updated_personality = await PersonalityModel.get(personality.id)
+    if personality.logo == updated_personality.logo:
+        raise BadRequest("Logo not updated")
+
+    return {
+        "personalities": [updated_personality.model_dump()],
+        "logo": updated_personality.logo,
+        "response": _extract_message_content(response["messages"][-1]),
+    }

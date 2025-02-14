@@ -18,6 +18,7 @@ class PromptRequest(BaseModel):
     personality_id: UUID
 
 
+@blueprint.post("/prompt")
 @blueprint.post("/home_prompt")
 async def prompt() -> dict[str, str]:
     body = await request.get_json()
@@ -25,15 +26,16 @@ async def prompt() -> dict[str, str]:
         raise BadRequest("Request body is required")
 
     payload = PromptRequest(**body)
-    logger.info(f"home_prompt.prompt={payload.prompt}")
+    logger.info(f"prompt.prompt={payload.prompt}")
     content = await execute_agent(
-        prompt=payload.prompt + (
+        prompt=payload.prompt
+        + (
             "\n\nDo not ask for confirmation before responding or ask any "
             "follow questions. This is an automated request."
         ),
-        personality_id=payload.personality_id
+        personality_id=payload.personality_id,
     )
-    logger.info(f"home_prompt.response={content}")
+    logger.info(f"prompt.response={content}")
     return {"status": "success", "content": content}
 
 

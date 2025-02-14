@@ -119,14 +119,9 @@ export const personalitiesSlice = createSlice({
           );
         }
       )
-      .addCase(
-        threadActions.fetchRecentThreads.fulfilled,
-        (state, action: PayloadAction<IncomingPersonalitiesEvent>) => {
-          for (const personality of action.payload.personalities) {
-            upsert(state, personality);
-          }
-        }
-      )
+      .addCase(threadActions.fetchRecentThreads.fulfilled, () => {
+        // ThreadsResponse doesn't include personalities, so we don't need to handle it here
+      })
       .addCase(
         promptsSlice.fetchPrompts.fulfilled,
         (
@@ -156,6 +151,23 @@ export const personalitiesSlice = createSlice({
       .addCase(schedulerSlice.fetchEvents.fulfilled, (state, action) => {
         state.personalities = action.payload.personalities;
         state.loading = false;
+      })
+      .addCase(actions.updatePersonalityLogo.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(
+        actions.updatePersonalityLogo.fulfilled,
+        (state, action: PayloadAction<IncomingPersonalitiesEvent>) => {
+          state.loading = false;
+          for (const personality of action.payload.personalities) {
+            upsert(state, personality);
+          }
+        }
+      )
+      .addCase(actions.updatePersonalityLogo.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message || "Failed to update logo";
       });
   },
 });
