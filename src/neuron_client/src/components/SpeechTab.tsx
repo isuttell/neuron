@@ -139,6 +139,17 @@ export function SpeechTab({ threadId }: SpeechTabProps) {
     if (isInitialLoadRef.current) {
       isInitialLoadRef.current = false;
       previousItemsLengthRef.current = audioItems.length;
+      if (audioItems.length > 0) {
+        setCurrentIndex(audioItems.length - 1); // Set to last item on initial load
+
+        // Add explicit scroll for initial load
+        setTimeout(() => {
+          itemRefs.current[allItems.length - 1]?.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+          });
+        }, 100);
+      }
       return;
     }
 
@@ -151,9 +162,18 @@ export function SpeechTab({ threadId }: SpeechTabProps) {
         const newIndex = audioItems.length - 1;
         setCurrentIndex(newIndex);
         const item = audioItems[newIndex];
-        audio.src = item.url;
+        const itemUrl = new URL(item.url, window.location.origin).href;
+        audio.src = itemUrl;
         audio.play().catch(console.error);
         setShouldPlay(true);
+
+        // Scroll to the latest item
+        setTimeout(() => {
+          itemRefs.current[allItems.length - 1]?.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+          });
+        }, 100);
       }
     }
     previousItemsLengthRef.current = audioItems.length;
@@ -171,6 +191,8 @@ export function SpeechTab({ threadId }: SpeechTabProps) {
       if (shouldPlay) {
         audio.play().catch(console.error);
       }
+    } else if (shouldPlay && audio.paused) {
+      audio.play().catch(console.error);
     }
   }, [currentIndex, audioItems, shouldPlay]);
 
@@ -194,8 +216,9 @@ export function SpeechTab({ threadId }: SpeechTabProps) {
     const targetIndex = index ?? currentIndex;
     if (targetIndex >= 0 && targetIndex < audioItems.length) {
       const item = audioItems[targetIndex];
-      if (audioRef.current.src !== item.url) {
-        audioRef.current.src = item.url;
+      const itemUrl = new URL(item.url, window.location.origin).href;
+      if (audioRef.current.src !== itemUrl) {
+        audioRef.current.src = itemUrl;
       }
       audioRef.current.play().catch(console.error);
     }
@@ -232,7 +255,8 @@ export function SpeechTab({ threadId }: SpeechTabProps) {
     // Don't auto-play, just prepare for next item
     if (audioRef.current) {
       const item = audioItems[newIndex];
-      audioRef.current.src = item.url;
+      const itemUrl = new URL(item.url, window.location.origin).href;
+      audioRef.current.src = itemUrl;
     }
   };
 
