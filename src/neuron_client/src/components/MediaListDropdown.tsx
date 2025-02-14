@@ -5,11 +5,17 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
 import { ListPlus } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { useAppDispatch, useAppSelector } from "@/hooks";
 import { selectAllMediaLists, addMediaToList } from "@/slices/mediaListsSlice";
 import { useToast } from "@/hooks/use-toast";
+import { buttonVariants } from "@/components/ui/button";
 
 interface MediaListDropdownProps {
   mediaItemId: string;
@@ -30,15 +36,17 @@ export function MediaListDropdown({
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          size={size}
-          variant={variant}
-          disabled={disabled || mediaLists.length === 0}
-        >
-          <ListPlus className="size-4" />
-        </Button>
-      </DropdownMenuTrigger>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <DropdownMenuTrigger
+            className={cn(buttonVariants({ variant, size }))}
+            disabled={disabled || mediaLists.length === 0}
+          >
+            <ListPlus className="size-4" />
+          </DropdownMenuTrigger>
+        </TooltipTrigger>
+        <TooltipContent>Add to list</TooltipContent>
+      </Tooltip>
       <DropdownMenuContent>
         <DropdownMenuLabel className="text-xs border-b">
           Add to list

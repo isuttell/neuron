@@ -98,12 +98,7 @@ const SpeechAudioContent: React.FC<SpeechAudioContentProps> = memo(
             <TooltipContent>{isPlaying ? "Pause" : "Play"}</TooltipContent>
           </Tooltip>
           {mediaItem && (
-            <Tooltip>
-              <TooltipTrigger>
-                <MediaListDropdown size="sm" mediaItemId={mediaItem.id} />
-              </TooltipTrigger>
-              <TooltipContent>Add to list</TooltipContent>
-            </Tooltip>
+            <MediaListDropdown size="sm" mediaItemId={mediaItem.id} />
           )}
 
           <div className="flex-1" />
@@ -148,24 +143,18 @@ const SpeechAudioContent: React.FC<SpeechAudioContentProps> = memo(
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button
-                size="sm"
-                variant="ghost"
-                asChild
+              <a
+                className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-9 w-9"
+                href={url}
+                download
+                target="_blank"
+                rel="noopener noreferrer"
                 onClick={(e) => {
                   e.stopPropagation();
                 }}
               >
-                <a
-                  className="text-primary"
-                  href={url}
-                  download
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <Download className="size-4" />
-                </a>
-              </Button>
+                <Download className="size-4" />
+              </a>
             </TooltipTrigger>
             <TooltipContent>Download audio</TooltipContent>
           </Tooltip>
