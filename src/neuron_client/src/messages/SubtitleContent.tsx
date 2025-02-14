@@ -13,33 +13,26 @@ import FuzzyTimeAgo from "@/components/FuzzyTimeAgo";
 
 interface SubtitleContentProps {
   item: MediaItem;
-  isCurrentItem: boolean;
   isPlaying: boolean;
   onClick?: () => void;
   onPlayClick?: () => void;
   onPauseClick?: () => void;
+  className?: string;
 }
 
 export function SubtitleContent({
   item,
-  isCurrentItem,
   isPlaying,
   onClick,
   onPlayClick,
   onPauseClick,
+  className,
 }: SubtitleContentProps) {
   const { toast } = useToast();
   return (
-    <div
-      className={cn(
-        "rounded-md transition-colors cursor-pointer border",
-        isCurrentItem && !isPlaying && "border-primary",
-        isCurrentItem && isPlaying && "bg-muted"
-      )}
-      onClick={onClick}
-    >
+    <div className={cn("cursor-pointer", className)} onClick={onClick}>
       <div className="p-3">
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-4">
           <Tooltip delayDuration={0}>
             <TooltipTrigger asChild>
               <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center min-w-[24px]">
@@ -49,7 +42,7 @@ export function SubtitleContent({
             <TooltipContent side="right">AI</TooltipContent>
           </Tooltip>
           <div className="flex flex-1 items-center justify-between">
-            <div className="font-medium">{item.name}</div>
+            <div className="font-medium text-muted-foreground">{item.name}</div>
             {item.created_at && (
               <Tooltip delayDuration={0}>
                 <TooltipTrigger>
@@ -68,7 +61,7 @@ export function SubtitleContent({
           </div>
         </div>
         {item.description && (
-          <div className="mt-1">
+          <div className="mt-4">
             <Content
               content={item.description}
               className="text-sm text-muted-foreground"

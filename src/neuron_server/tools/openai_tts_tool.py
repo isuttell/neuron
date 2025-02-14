@@ -47,7 +47,8 @@ class OpenAITTSToolArgs(BaseModel):
     name: str = Field(
         description=(
             "A unique display title for the audio file to be generated. "
-            "Must be less than 256 characters"
+            "Must be less than 256 characters. "
+            "Show to the user preceeding the subtitles to be spoken."
         ),
     )
 

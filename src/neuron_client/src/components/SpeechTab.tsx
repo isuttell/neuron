@@ -7,6 +7,7 @@ import ImageContent from "@/messages/ImageContent";
 import VideoContent from "@/messages/VideoContent";
 import { SubtitleContent } from "@/messages/SubtitleContent";
 import SpeechAudioContent from "@/messages/SpeechAudioContent";
+import { cn } from "@/lib/utils";
 
 interface SpeechTabProps {
   threadId: string;
@@ -301,6 +302,10 @@ export function SpeechTab({ threadId }: SpeechTabProps) {
                           handlePlay(audioIndex);
                         }}
                         onPause={handlePause}
+                        className={cn(
+                          "rounded-md transition-colors border",
+                          currentIndex === audioIndex && "bg-muted/25"
+                        )}
                       />
                     </div>
                   );
@@ -312,7 +317,6 @@ export function SpeechTab({ threadId }: SpeechTabProps) {
                     >
                       <SubtitleContent
                         item={item}
-                        isCurrentItem={currentIndex === audioIndex}
                         isPlaying={isPlaying && currentIndex === audioIndex}
                         onClick={() => {
                           setCurrentIndex(audioIndex);
@@ -322,6 +326,10 @@ export function SpeechTab({ threadId }: SpeechTabProps) {
                           handlePlay(audioIndex);
                         }}
                         onPauseClick={handlePause}
+                        className={cn(
+                          "rounded-md transition-colors border",
+                          currentIndex === audioIndex && "bg-muted/25"
+                        )}
                       />
                     </div>
                   );
