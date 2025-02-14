@@ -44,7 +44,7 @@ devices = {
 
 device_descriptions = {
     CameraName.KITTY_CAM.value: "Kitty Cam (Master Bathroom)",
-    CameraName.KITTY_CAM_2.value: "Kitty Cam II (Office Window)",
+    CameraName.KITTY_CAM_2.value: "Kitty Cam II (Office)",
     CameraName.FRONT_DOOR.value: "Front Door & Yard (Outside)",
     CameraName.BACKYARD.value: "Backyard (Outside)",
     CameraName.GARAGE.value: "Garage (Indoors)",
@@ -81,8 +81,8 @@ async def inspect_images(config: ImageInspectionConfig) -> str:
             SystemMessage(
                 content=(
                     "You are a tool that inspects a sequential series of images and "
-                    "returns a general description of the images for context and then "
-                    "a detailed description based on a given prompt. Be descriptive "
+                    "returns a detailed description of the images for context and then "
+                    "answers a given user's prompt. Be descriptive "
                     "and detailed as possible. Include related descriptions to the "
                     "prompt and include novel or unexpected information. Just return "
                     "the description, no other text. Do not ask for clarification."
@@ -262,7 +262,7 @@ class SecurityCameraTool(BaseTool):
         "This tool captures a series of images from live security cameras and uses "
         "an AI to answer questions about them. The security cameras are located at: "
         "front yard and door, backyard, inside the garage, kitty cam in the "
-        "master bathroom, and kitty cam 2 in the office window. Use this tool to "
+        "master bathroom, and kitty cam 2 in the office. Use this tool to "
         "answer questions about what is happening outside or inside the house. "
         "For example, you can use this tool to answer questions like 'Is a "
         "package being delivered?' or 'Is anyone in the backyard?'. Show the most "

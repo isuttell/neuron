@@ -5,6 +5,8 @@ import { MediaItem } from "@/types/media";
 import { SpeechPlayer } from "./SpeechPlayer";
 import { cn } from "@/lib/utils";
 import Content from "@/messages/Content";
+import ImageContent from "@/messages/ImageContent";
+import VideoContent from "@/messages/VideoContent";
 import {
   Tooltip,
   TooltipContent,
@@ -28,18 +30,20 @@ export function SpeechTab({ threadId }: SpeechTabProps) {
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
   const isInitialLoadRef = useRef(true);
 
-  const audioItems = useMemo(
+  const allItems = useMemo(
     () =>
       mediaItems
-        .filter(
-          (item: MediaItem) =>
-            item.thread_id === threadId && item.media_type === "audio"
-        )
+        .filter((item: MediaItem) => item.thread_id === threadId)
         .sort(
           (a, b) =>
             new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
         ),
     [mediaItems, threadId]
+  );
+
+  const audioItems = useMemo(
+    () => allItems.filter((item) => item.media_type === "audio"),
+    [allItems]
   );
 
   // Initialize audio element
@@ -231,51 +235,76 @@ export function SpeechTab({ threadId }: SpeechTabProps) {
     <div className="flex flex-col h-full">
       <div className="flex-1 overflow-y-auto mb-2">
         <div className="space-y-2 ">
-          {audioItems.length === 0 ? (
+          {allItems.length === 0 ? (
             <div className="text-center text-muted-foreground py-4">
-              No audio
+              No media
             </div>
           ) : (
             <div className="space-y-2 pb-2">
-              {audioItems.map((item, index) => (
-                <div
-                  ref={(el) => (itemRefs.current[index] = el)}
-                  key={item.id}
-                  className={cn(
-                    "p-3 rounded-md hover:bg-muted/50 transition-colors cursor-pointer border",
-                    index === currentIndex && !isPlaying && "border-primary",
-                    index === currentIndex && isPlaying && "bg-muted"
-                  )}
-                  onClick={() => setCurrentIndex(index)}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="font-medium">{item.name}</div>
-                    {item.created_at && (
-                      <Tooltip delayDuration={0}>
-                        <TooltipTrigger>
-                          <FuzzyTimeAgo
-                            className="text-xs text-gray-500"
-                            timestamp={item.created_at}
-                          />
-                        </TooltipTrigger>
-                        <TooltipContent side="bottom">
-                          <span className="p-4">
-                            {new Date(item.created_at).toLocaleString()}
-                          </span>
-                        </TooltipContent>
-                      </Tooltip>
+              {allItems.map((item, index) =>
+                item.media_type === "audio" ? (
+                  <div
+                    ref={(el) => (itemRefs.current[index] = el)}
+                    key={item.id}
+                    className={cn(
+                      "p-3 rounded-md hover:bg-muted/50 transition-colors cursor-pointer border",
+                      index === currentIndex && !isPlaying && "border-primary",
+                      index === currentIndex && isPlaying && "bg-muted"
+                    )}
+                    onClick={() => setCurrentIndex(index)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="font-medium">{item.name}</div>
+                      {item.created_at && (
+                        <Tooltip delayDuration={0}>
+                          <TooltipTrigger>
+                            <FuzzyTimeAgo
+                              className="text-xs text-gray-500"
+                              timestamp={item.created_at}
+                            />
+                          </TooltipTrigger>
+                          <TooltipContent side="bottom">
+                            <span className="p-4">
+                              {new Date(item.created_at).toLocaleString()}
+                            </span>
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
+                    </div>
+                    {item.description && (
+                      <div className="mt-1">
+                        <Content
+                          content={item.description}
+                          className="text-sm text-muted-foreground"
+                        />
+                      </div>
                     )}
                   </div>
-                  {item.description && (
-                    <div className="mt-1">
-                      <Content
-                        content={item.description}
-                        className="text-sm text-muted-foreground"
-                      />
-                    </div>
-                  )}
-                </div>
-              ))}
+                ) : item.media_type === "image" ? (
+                  <ImageContent
+                    key={item.id}
+                    url={item.url}
+                    alt={item.name}
+                    description={item.description}
+                    width={1024}
+                    height={1024}
+                    thumbnail_size="t"
+                    showControls={false}
+                    objectFit="contain"
+                    mediaItem={item}
+                  />
+                ) : item.media_type === "video" ? (
+                  <VideoContent
+                    key={item.id}
+                    url={item.url}
+                    autoPlay={true}
+                    controls={false}
+                    loop={true}
+                    showControls={false}
+                    mediaItem={item}
+                  />
+                ) : null
+              )}
             </div>
           )}
         </div>
