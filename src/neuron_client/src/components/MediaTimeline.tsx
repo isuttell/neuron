@@ -18,7 +18,15 @@ function MediaTimeline({ threadId }: MediaTimelineProps) {
   const [currentIndex, setCurrentIndex] = useState<number>(-1);
   const [isPlaying, setIsPlaying] = useState(false);
   const [shouldPlay, setShouldPlay] = useState(false);
-  const [autoPlay, setAutoPlay] = useState(true);
+  const [autoPlay, setAutoPlay] = useState(() => {
+    const saved = localStorage.getItem("mediaTimeline.autoPlay");
+    return saved !== null ? JSON.parse(saved) : true;
+  });
+
+  // Save autoPlay state to localStorage
+  useEffect(() => {
+    localStorage.setItem("mediaTimeline.autoPlay", JSON.stringify(autoPlay));
+  }, [autoPlay]);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
