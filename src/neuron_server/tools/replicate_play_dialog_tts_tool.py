@@ -112,7 +112,13 @@ class ReplicatePlayDialogToolArgs(BaseModel):
         ge=0.1,
         le=1.5,
     )
-    seed: int | None = Field(description="Random seed. Set for reproducible generation")
+    seed: int | None = Field(
+        description=(
+            "Random seed. Set when trying to exactly reproduce a generation. "
+            "Set to -1 to use a random seed."
+        ),
+        default=-1,
+    )
     prompt: str | None = Field(
         description="A prompt to guide the style of the first voice.",
         default="",
@@ -153,8 +159,8 @@ class ReplicatePlayDialogTool(BaseTool):
         # Ensure a seed is set for reproducible results at a later date
         input_args["seed"] = (
             kwargs.get("seed")
-            if kwargs.get("seed") is not None
-            else random.randint(0, 2147483647)
+            if kwargs.get("seed") is not None and kwargs.get("seed") != -1
+            else random.randint(1_000_000_000, 2_147_483_647)
         )
 
         try:

@@ -215,8 +215,11 @@ Prompt Tips:
         default=False,
     )
     seed: int | None = Field(
-        description="Random seed. Set for reproducible generation",
-        default=None,
+        description=(
+            "Random seed. Set when trying to exactly reproduce a generation. "
+            "Set to -1 to use a random seed."
+        ),
+        default=-1,
     )
     describe: bool | None = Field(
         description=(
@@ -298,7 +301,7 @@ class ReplicateImageGenerationTool(BaseTool):
 
         input_args["seed"] = (
             image_options.get("seed")
-            if image_options.get("seed") is not None
+            if image_options.get("seed") is not None and image_options.get("seed") != -1
             else random.randint(0, 2147483647)
         )
 
