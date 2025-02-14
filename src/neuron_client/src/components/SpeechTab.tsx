@@ -3,16 +3,9 @@ import { selectAllMedia } from "@/slices/mediaSlice";
 import { useMemo, useRef, useState, useEffect } from "react";
 import { MediaItem } from "@/types/media";
 import { SpeechPlayer } from "./SpeechPlayer";
-import { cn } from "@/lib/utils";
-import Content from "@/messages/Content";
 import ImageContent from "@/messages/ImageContent";
 import VideoContent from "@/messages/VideoContent";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import FuzzyTimeAgo from "./FuzzyTimeAgo";
+import { SubtitleContent } from "@/messages/SubtitleContent";
 
 interface SpeechTabProps {
   threadId: string;
@@ -246,39 +239,13 @@ export function SpeechTab({ threadId }: SpeechTabProps) {
                   <div
                     ref={(el) => (itemRefs.current[index] = el)}
                     key={item.id}
-                    className={cn(
-                      "p-3 rounded-md hover:bg-muted/50 transition-colors cursor-pointer border",
-                      index === currentIndex && !isPlaying && "border-primary",
-                      index === currentIndex && isPlaying && "bg-muted"
-                    )}
-                    onClick={() => setCurrentIndex(index)}
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="font-medium">{item.name}</div>
-                      {item.created_at && (
-                        <Tooltip delayDuration={0}>
-                          <TooltipTrigger>
-                            <FuzzyTimeAgo
-                              className="text-xs text-gray-500"
-                              timestamp={item.created_at}
-                            />
-                          </TooltipTrigger>
-                          <TooltipContent side="bottom">
-                            <span className="p-4">
-                              {new Date(item.created_at).toLocaleString()}
-                            </span>
-                          </TooltipContent>
-                        </Tooltip>
-                      )}
-                    </div>
-                    {item.description && (
-                      <div className="mt-1">
-                        <Content
-                          content={item.description}
-                          className="text-sm text-muted-foreground"
-                        />
-                      </div>
-                    )}
+                    <SubtitleContent
+                      item={item}
+                      isCurrentItem={index === currentIndex}
+                      isPlaying={isPlaying}
+                      onClick={() => setCurrentIndex(index)}
+                    />
                   </div>
                 ) : item.media_type === "image" ? (
                   <ImageContent
