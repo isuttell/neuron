@@ -276,6 +276,7 @@ export function SpeechTab({ threadId }: SpeechTabProps) {
                           setCurrentIndex(audioIndex);
                           handlePlay(audioIndex);
                         }}
+                        onPause={handlePause}
                       />
                     </div>
                   );

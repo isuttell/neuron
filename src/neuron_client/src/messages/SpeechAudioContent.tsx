@@ -26,6 +26,7 @@ interface SpeechAudioContentProps {
   isPlaying: boolean;
   progress: number;
   onPlay: () => void;
+  onPause: () => void;
   mediaItem?: MediaItem;
 }
 
@@ -38,6 +39,7 @@ const SpeechAudioContent: React.FC<SpeechAudioContentProps> = memo(
     isPlaying,
     progress,
     onPlay,
+    onPause,
     mediaItem,
   }) => {
     const { toast } = useToast();
@@ -81,7 +83,11 @@ const SpeechAudioContent: React.FC<SpeechAudioContentProps> = memo(
         <div className="flex flex-row gap-2 w-full border-t p-1 overflow-hidden">
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button size="sm" variant="ghost" onClick={onPlay}>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={isPlaying ? onPause : onPlay}
+              >
                 {isPlaying ? (
                   <Pause className="size-4" />
                 ) : (
