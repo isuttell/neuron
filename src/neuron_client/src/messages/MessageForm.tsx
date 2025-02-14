@@ -115,10 +115,17 @@ export default function MessageForm({
         )}
       </div>
       <div className="flex items-center gap-2 pt-2">
-        <StatusMessage
-          status={thread.status}
-          tagClassName="text-sm text-muted-foreground capitalize inline-flex items-center rounded-md bg-muted px-2 py-1 font-medium ring-1 ring-inset ring-gray-100/10"
-        />
+        {thread.status !== "idle" && (
+          <StatusMessage
+            status={thread.status}
+            tagClassName={cn(
+              "text-sm capitalize inline-flex items-center rounded-md  px-2 py-1 font-medium ring-1 ring-inset ring-gray-100/10",
+              thread.status === "idle"
+                ? "bg-muted text-muted-foreground"
+                : "bg-accent text-accent-foreground"
+            )}
+          />
+        )}
         <div className="flex-1" />
         <div className="flex gap-2">
           <Button
