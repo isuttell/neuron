@@ -36,19 +36,46 @@ class Neo4jConnection:
         self._graph: Optional[Neo4jGraph] = None
         self._index_queries = [
             # Document indexes
-            "CREATE INDEX document_name_idx IF NOT EXISTS FOR (d:Document) ON (d.name)",
-            "CREATE INDEX document_source_idx IF NOT EXISTS FOR (d:Document) ON (d.source)",
-            "CREATE INDEX document_personality_idx IF NOT EXISTS FOR (d:Document) ON (d.personality_id)",
-            "CREATE INDEX document_user_idx IF NOT EXISTS FOR (d:Document) ON (d.user_id)",
+            (
+                "CREATE INDEX document_name_idx IF NOT EXISTS "
+                "FOR (d:Document) ON (d.name)"
+            ),
+            (
+                "CREATE INDEX document_source_idx IF NOT EXISTS "
+                "FOR (d:Document) ON (d.source)"
+            ),
+            (
+                "CREATE INDEX document_personality_idx IF NOT EXISTS "
+                "FOR (d:Document) ON (d.personality_id)"
+            ),
+            (
+                "CREATE INDEX document_user_idx IF NOT EXISTS "
+                "FOR (d:Document) ON (d.user_id)"
+            ),
             # Chunk indexes
-            "CREATE INDEX chunk_personality_idx IF NOT EXISTS FOR (c:Chunk) ON (c.personality_id)",
-            "CREATE INDEX chunk_document_idx IF NOT EXISTS FOR (c:Chunk) ON (c.document_id)",
-            "CREATE INDEX chunk_user_idx IF NOT EXISTS FOR (c:Chunk) ON (c.user_id)",
+            (
+                "CREATE INDEX chunk_personality_idx IF NOT EXISTS "
+                "FOR (c:Chunk) ON (c.personality_id)"
+            ),
+            (
+                "CREATE INDEX chunk_document_idx IF NOT EXISTS "
+                "FOR (c:Chunk) ON (c.document_id)"
+            ),
+            ("CREATE INDEX chunk_user_idx IF NOT EXISTS FOR (c:Chunk) ON (c.user_id)"),
             # AtomicFact indexes
-            "CREATE INDEX atomic_fact_id_idx IF NOT EXISTS FOR (a:AtomicFact) ON (a.id)",
-            "CREATE INDEX atomic_fact_text_idx IF NOT EXISTS FOR (a:AtomicFact) ON (a.text)",
+            (
+                "CREATE INDEX atomic_fact_id_idx IF NOT EXISTS "
+                "FOR (a:AtomicFact) ON (a.id)"
+            ),
+            (
+                "CREATE INDEX atomic_fact_text_idx IF NOT EXISTS "
+                "FOR (a:AtomicFact) ON (a.text)"
+            ),
             # KeyElement index
-            "CREATE INDEX key_element_id_idx IF NOT EXISTS FOR (k:KeyElement) ON (k.id)",
+            (
+                "CREATE INDEX key_element_id_idx IF NOT EXISTS "
+                "FOR (k:KeyElement) ON (k.id)"
+            ),
         ]
 
     @property
@@ -89,7 +116,9 @@ class Neo4jConnection:
             logger.debug(f"Connected to Neo4j at {self._config.url}")
         except Exception as e:
             self._graph = None
-            raise ConnectionError(f"Could not connect to Neo4j database: {str(e)}")
+            raise ConnectionError(
+                f"Could not connect to Neo4j database: {str(e)}"
+            ) from e
 
     def disconnect(self) -> None:
         """Close the Neo4j connection.
@@ -120,4 +149,4 @@ class Neo4jConnection:
             try:
                 self.graph.query(query)
             except Exception as e:
-                raise ConnectionError(f"Failed to create index: {str(e)}")
+                raise ConnectionError(f"Failed to create index: {str(e)}") from e

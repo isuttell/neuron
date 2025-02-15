@@ -218,7 +218,8 @@ async def post_personality_context(personality_id: UUID) -> dict[str, str]:
 
 
 def _extract_message_content(message: BaseMessage) -> str:
-    """Extract text content from a message, handling both string and structured content."""
+    """Extract text content from a message handling both string and
+    structured content."""
     if not isinstance(message.content, str) and isinstance(message.content, list):
         first_content = message.content[0]
         if (

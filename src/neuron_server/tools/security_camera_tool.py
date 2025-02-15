@@ -166,31 +166,35 @@ async def convert_frame_to_image_url(
     return f"data:image/jpeg;base64,{image_base64}"
 
 
-async def save_images(
-    image_urls: list[str],
-    description: str,
-    camera: str,
-    start_time: datetime,
-    fps: float,
-    config: RunnableConfig,
-) -> list[str]:
+@dataclass
+class SaveImagesConfig:
+    """Configuration for saving camera images."""
+
+    image_urls: list[str]
+    description: str
+    camera: str
+    start_time: datetime
+    fps: float
+    config: RunnableConfig
+
+
+async def save_images(config: SaveImagesConfig) -> list[str]:
     """Save captured images to disk and return markdown URLs."""
     results: list[str] = []
-    for i, data_url in enumerate(image_urls):
-        capture_time = start_time + timedelta(seconds=i / fps)
+    for i, data_url in enumerate(config.image_urls):
+        capture_time = config.start_time + timedelta(seconds=i / config.fps)
         image_data = base64.b64decode(data_url.split(",")[1])
         image = Image.open(BytesIO(image_data))
         pnginfo = PngImagePlugin.PngInfo()
-        pnginfo.add_text("Description", description)
-        pnginfo.add_text("Parameters", f"camera={camera}")
+        pnginfo.add_text("Description", config.description)
+        pnginfo.add_text("Parameters", f"camera={config.camera}")
         pnginfo.add_text(
             "DateTimeOriginal",
             capture_time.astimezone().isoformat(timespec="seconds"),
         )
 
-        filename = (
-            f"{camera}_capture_{capture_time.strftime('%Y-%m-%d_%H-%M-%S-%f')}.png"
-        )
+        timestamp = capture_time.strftime("%Y-%m-%d_%H-%M-%S-%f")
+        filename = f"{config.camera}_capture_{timestamp}.png"
         file_path = os.path.abspath(os.path.join(neuron_config.static_folder, filename))
         image.save(file_path, format="png", pnginfo=pnginfo)
         url = f"{neuron_config.static_content_url}/{filename}"
@@ -198,15 +202,15 @@ async def save_images(
 
         # Create media item
         create_params = MediaItemModel.CreateParams(
-            thread_id=config["configurable"].get("thread_id"),
-            user_id=config["configurable"].get("user_id"),
+            thread_id=config.config["configurable"].get("thread_id"),
+            user_id=config.config["configurable"].get("user_id"),
             url=url,
             media_type="image",
-            name=(f"{device_descriptions[camera]} #{i + 1}"),
+            name=(f"{device_descriptions[config.camera]} #{i + 1}"),
             description=(
-                f"Security camera capture from {camera} at "
+                f"Security camera capture from {config.camera} at "
                 f"{capture_time.astimezone().isoformat(timespec='seconds')}"
-                f"\n\nDescription:\n{description}"
+                f"\n\nDescription:\n{config.description}"
             ),
         )
         media_item = await MediaItemModel.create(params=create_params)
@@ -214,7 +218,7 @@ async def save_images(
         timestamp = capture_time.astimezone().isoformat(timespec="seconds")
         results.append(
             f"""<image id="{media_item.id}">
-    <display>![{camera} at {timestamp}]({url})</display>
+    <display>![{config.camera} at {timestamp}]({url})</display>
 </image>"""
         )
 
@@ -316,12 +320,14 @@ class SecurityCameraTool(BaseTool):
             )
 
             markdown_urls = await save_images(
-                image_urls=image_urls,
-                description=content,
-                camera=camera,
-                start_time=start_time,
-                fps=fps,
-                config=config,
+                SaveImagesConfig(
+                    image_urls=image_urls,
+                    description=content,
+                    camera=camera,
+                    start_time=start_time,
+                    fps=fps,
+                    config=config,
+                )
             )
             markdown_urls_str = "\n".join(markdown_urls)
             return f"""

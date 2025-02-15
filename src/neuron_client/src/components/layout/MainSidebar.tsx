@@ -1,40 +1,39 @@
-import {
-  Home,
-  CircleUser,
-  LayoutGrid,
-  FileText,
-  List,
-  Calendar,
-  LogOut,
-} from "lucide-react";
-import { Link, NavLink, useLocation } from "react-router-dom";
-import {
-  Sidebar,
-  SidebarHeader,
-  SidebarContent,
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarMenuButton,
-  SidebarFooter,
-} from "@/components/ui/sidebar";
+import logo from "@/assets/logo.svg";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import NavThreads from "@/threads/NavThreads";
-import logo from "@/assets/logo.svg";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+} from "@/components/ui/sidebar";
 import ImageContent from "@/messages/ImageContent";
-import { ChevronUp } from "lucide-react";
+import NavThreads from "@/threads/NavThreads";
+import {
+  Calendar,
+  ChevronUp,
+  CircleUser,
+  FileText,
+  Home,
+  LayoutGrid,
+  LogOut,
+} from "lucide-react";
+import { Link, NavLink, useLocation } from "react-router-dom";
 
-import { useAuth0 } from "@auth0/auth0-react";
-import { getSidebarImage } from "@/slices/appSlice";
-import { useAppSelector } from "@/hooks";
-import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { ThreadsUpdating } from "@/components/ThreadsUpdating";
-import { ProvidersMenuItem } from "./ProvidersMenuItem";
+import { AspectRatio } from "@/components/ui/aspect-ratio";
+import { useAppSelector } from "@/hooks";
+import { getSidebarImage } from "@/slices/appSlice";
+import { useAuth0 } from "@auth0/auth0-react";
 import { LucideIcon } from "lucide-react";
+import { ProvidersMenuItem } from "./ProvidersMenuItem";
 
 interface SidebarLink {
   to: string;
