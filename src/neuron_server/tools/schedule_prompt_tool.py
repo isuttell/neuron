@@ -27,9 +27,12 @@ class RecurringPattern(BaseModel):
 
 class SchedulePromptToolArgs(BaseModel):
     event_id: str | None = Field(
+        default=None,
         description=(
-            "If provided this event will be updated instead of creating a new one."
-        )
+            "Set this to none unless you are trying to verify an existing event. Ids "
+            "are formatted using uuid4. Trying to update an event with an id that is "
+            "not a valid uuid4 will fail."
+        ),
     )
     prompt: str | None = Field(
         description=(
