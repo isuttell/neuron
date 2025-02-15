@@ -1,6 +1,6 @@
-import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Waveform } from "@/components/ui/waveform";
+import { X } from "lucide-react";
 
 interface AttachmentIndicatorProps {
   type: "file" | "audio";
@@ -31,7 +31,7 @@ export function AttachmentIndicator({
         className="h-4 w-4 p-0 hover:bg-transparent"
         onClick={onRemove}
       >
-        <X className="size-3" />
+        <X className="size-3" aria-label="Remove attachment" />
       </Button>
     </div>
   );

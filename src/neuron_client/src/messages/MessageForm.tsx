@@ -1,19 +1,19 @@
-import { Textarea } from "@/components/ui/textarea";
+import { AttachmentIndicator } from "@/components/AttachmentIndicator";
+import { AudioRecorder } from "@/components/AudioRecorder";
+import { PromptDropdown } from "@/components/PromptDropdown";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { useParams } from "react-router-dom";
-import { useState } from "react";
-import { useAppDispatch } from "../hooks";
-import { CornerDownLeft, Upload } from "lucide-react";
-import { AudioRecorder } from "@/components/AudioRecorder";
 import { Spinner } from "@/components/ui/spinner";
-import { postMessageByThread } from "../actions/messageActions";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { CornerDownLeft, Upload } from "lucide-react";
+import { useState } from "react";
+import { useParams } from "react-router-dom";
+import { postMessageByThread } from "../actions/messageActions";
+import { useAppDispatch } from "../hooks";
 import { useToast } from "../hooks/use-toast";
+import { Thread } from "../types/thread";
 import { StatusMessage } from "./StatusMessage";
-import { PromptDropdown } from "@/components/PromptDropdown";
-import { Thread } from "../slices/threadsSlice";
-import { AttachmentIndicator } from "@/components/AttachmentIndicator";
 
 interface MessageFormProps {
   disabled?: boolean;
@@ -197,6 +197,7 @@ export default function MessageForm({
         />
         <Button
           onClick={handleSubmit}
+          data-testid="submit-button"
           type="submit"
           size="sm"
           className={cn(
