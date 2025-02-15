@@ -1,4 +1,8 @@
-"""Neo4j connection management."""
+"""Neo4j connection management.
+
+This module provides classes for managing Neo4j database connections and index creation.
+It handles connection lifecycle, error handling, and index management.
+"""
 
 from typing import Optional
 
@@ -9,13 +13,24 @@ from neuron_server.logger import logger
 
 
 class Neo4jConnection:
-    """Manages Neo4j database connection and index creation."""
+    """Manages Neo4j database connection and index creation.
+
+    This class handles the lifecycle of a Neo4j database connection, including
+    initialization, index creation, and cleanup. It provides a centralized way
+    to manage database connections and ensure proper resource management.
+
+    Attributes:
+        _config: Neo4j connection configuration
+        _graph: Active Neo4j graph connection
+        _index_queries: List of index creation queries
+    """
 
     def __init__(self, config: Neo4jConfig) -> None:
         """Initialize connection with config.
 
         Args:
-            config: Neo4j connection configuration
+            config: Neo4j connection configuration containing URL, username,
+                and password.
         """
         self._config = config
         self._graph: Optional[Neo4jGraph] = None
@@ -41,10 +56,10 @@ class Neo4jConnection:
         """Get the Neo4j graph connection.
 
         Returns:
-            Active Neo4j graph connection
+            Active Neo4j graph connection.
 
         Raises:
-            ConnectionError: If connection not initialized
+            ConnectionError: If connection not initialized.
         """
         if not self._graph:
             raise ConnectionError("Neo4j connection not initialized")
@@ -53,8 +68,12 @@ class Neo4jConnection:
     def connect(self) -> None:
         """Initialize the Neo4j connection and create indexes.
 
+        This method establishes a connection to the Neo4j database and creates
+        any required indexes. It handles connection errors and ensures proper
+        cleanup on failure.
+
         Raises:
-            ConnectionError: If connection or index creation fails
+            ConnectionError: If connection or index creation fails.
         """
         if self._graph:
             return
@@ -73,7 +92,12 @@ class Neo4jConnection:
             raise ConnectionError(f"Could not connect to Neo4j database: {str(e)}")
 
     def disconnect(self) -> None:
-        """Close the Neo4j connection."""
+        """Close the Neo4j connection.
+
+        This method safely closes the Neo4j connection and cleans up resources.
+        It handles any errors that occur during disconnection and ensures the
+        connection is marked as closed.
+        """
         if self._graph:
             try:
                 self._graph.close()
@@ -86,8 +110,11 @@ class Neo4jConnection:
     def _create_indexes(self) -> None:
         """Create database indexes if they don't exist.
 
+        This method creates any required indexes in the Neo4j database. It executes
+        each index creation query and handles any errors that occur during the process.
+
         Raises:
-            ConnectionError: If index creation fails
+            ConnectionError: If index creation fails.
         """
         for query in self._index_queries:
             try:

@@ -39,12 +39,14 @@ async def post_upload_pdf() -> dict[str, str]:
         raise BadRequest("File must be a PDF")
 
     tool = GraphImportTool()
-    results = await tool.ainvoke({
-        "file": file,
-        "filename": file.filename,
-        "title": form.get("title", file.filename),
-        "description": form.get("description", ""),
-    })
+    results = await tool.ainvoke(
+        {
+            "file": file,
+            "filename": file.filename,
+            "title": form.get("title", file.filename),
+            "description": form.get("description", ""),
+        }
+    )
 
     return {"message": results}
 
@@ -66,12 +68,14 @@ async def post_upload_doc() -> dict[str, str]:
         raise BadRequest("File must be a DOC or DOCX")
 
     tool = GraphImportTool()
-    results = await tool.ainvoke({
-        "file": file,
-        "filename": file.filename,
-        "title": form.get("title", file.filename),
-        "description": form.get("description", ""),
-    })
+    results = await tool.ainvoke(
+        {
+            "file": file,
+            "filename": file.filename,
+            "title": form.get("title", file.filename),
+            "description": form.get("description", ""),
+        }
+    )
 
     return {"message": results}
 

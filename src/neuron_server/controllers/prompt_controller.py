@@ -50,9 +50,7 @@ async def create_prompt() -> dict[str, list[dict]]:
     body = await request.get_json()
     payload = CreatePrompt(**body)
     create_params = PromptModel.CreateParams(
-        name=payload.name,
-        text=payload.text,
-        personality_id=payload.personality_id
+        name=payload.name, text=payload.text, personality_id=payload.personality_id
     )
     prompt = await PromptModel.create(params=create_params)
     return {"prompts": [prompt.model_dump()]}

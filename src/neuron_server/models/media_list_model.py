@@ -21,12 +21,8 @@ class MediaListModel(BaseModel):
     shared_with: list[str] = Field(
         default_factory=list, description="List of users this is shared with"
     )
-    created_at: datetime = Field(
-        default_factory=lambda: datetime.now(UTC).astimezone()
-    )
-    updated_at: datetime = Field(
-        default_factory=lambda: datetime.now(UTC).astimezone()
-    )
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC).astimezone())
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC).astimezone())
 
     @dataclass
     class CreateParams:

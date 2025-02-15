@@ -1,4 +1,3 @@
-
 from pydantic import BaseModel
 from quart import Blueprint, Response, request
 from werkzeug.exceptions import BadRequest, NotFound

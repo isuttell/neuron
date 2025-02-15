@@ -11,9 +11,7 @@ class CommandRunner:
             asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
     async def run_command(
-        self,
-        command: str | list[str],
-        shell: bool = False
+        self, command: str | list[str], shell: bool = False
     ) -> tuple[int, str, str]:
         """
         Run a command and return its output
@@ -42,10 +40,7 @@ class CommandRunner:
             return -1, "", str(e)
 
     async def run_with_timeout(
-        self,
-        command: str | list[str],
-        timeout: int = 60,
-        shell: bool = False
+        self, command: str | list[str], timeout: int = 60, shell: bool = False
     ) -> tuple[int, str, str]:
         """
         Run a command with a timeout

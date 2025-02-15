@@ -38,12 +38,8 @@ class MessageModel(BaseModel):
     usage_metadata: dict[str, Any] = Field(
         default={}, description="The usage metadata of the message"
     )
-    created_at: datetime = Field(
-        default_factory=lambda: datetime.now(UTC).astimezone()
-    )
-    updated_at: datetime = Field(
-        default_factory=lambda: datetime.now(UTC).astimezone()
-    )
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC).astimezone())
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC).astimezone())
 
     @classmethod
     @field_validator("tool_calls", mode="before")
@@ -70,7 +66,7 @@ class MessageModel(BaseModel):
         cls,
         message_id: UUID,
         key: str,
-        value: str | int | float | bool | dict | list | None
+        value: str | int | float | bool | dict | list | None,
     ) -> Self:
         async with get_session() as session:
             message = await session.get(Message, message_id)
@@ -186,9 +182,7 @@ class MessageModel(BaseModel):
     @staticmethod
     async def count(thread_id: UUID) -> int:
         async with get_session() as session, session.begin():
-            stmt = select(func.count(Message.id)).where(
-                Message.thread_id == thread_id
-            )
+            stmt = select(func.count(Message.id)).where(Message.thread_id == thread_id)
             result = await session.execute(stmt)
             return result.scalar()
 

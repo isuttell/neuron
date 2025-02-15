@@ -34,12 +34,8 @@ class ThreadModel(BaseModel):
         description="The number of messages in the thread",
         default=0,
     )
-    created_at: datetime = Field(
-        default_factory=lambda: datetime.now(UTC).astimezone()
-    )
-    updated_at: datetime = Field(
-        default_factory=lambda: datetime.now(UTC).astimezone()
-    )
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC).astimezone())
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC).astimezone())
 
     @field_serializer("created_at", "updated_at")
     def parse_date(self, v: datetime) -> str:
@@ -109,9 +105,7 @@ class ThreadModel(BaseModel):
             return None
 
     @classmethod
-    async def list(
-        cls, personality_id: UUID, user_id: str | None = None
-    ) -> list[Self]:
+    async def list(cls, personality_id: UUID, user_id: str | None = None) -> list[Self]:
         async with get_session() as session:
             query = select(Thread).where(Thread.personality_id == personality_id)
             if user_id:
@@ -138,7 +132,7 @@ class ThreadModel(BaseModel):
         cls,
         thread_id: UUID,
         key: str,
-        value: str | int | float | bool | dict | Sequence | None
+        value: str | int | float | bool | dict | Sequence | None,
     ) -> Self:
         async with get_session() as session:
             thread = await session.get(Thread, thread_id)

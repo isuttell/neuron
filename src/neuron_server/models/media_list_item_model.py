@@ -15,12 +15,8 @@ class MediaListItemModel(BaseModel):
     media_list_id: UUID = Field(description="ID of the parent media list")
     media_item_id: UUID = Field(description="ID of the associated media item")
     index: int = Field(description="Index of the media item in the list")
-    created_at: datetime = Field(
-        default_factory=lambda: datetime.now(UTC).astimezone()
-    )
-    updated_at: datetime = Field(
-        default_factory=lambda: datetime.now(UTC).astimezone()
-    )
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC).astimezone())
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC).astimezone())
 
     @dataclass
     class CreateParams:

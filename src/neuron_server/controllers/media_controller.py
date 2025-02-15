@@ -50,7 +50,7 @@ async def create_media_list() -> dict:
         user_id=request.token.user_id,
         tags=data.get("tags", []),
         visibility=data.get("visibility", "private"),
-        shared_with=data.get("shared_with", [])
+        shared_with=data.get("shared_with", []),
     )
     media_list = await MediaListModel.create(params=create_params)
 
@@ -125,7 +125,7 @@ async def update_media_list(list_id: UUID) -> dict:
         description=data["description"],
         tags=data.get("tags", []),
         visibility=data.get("visibility", "private"),
-        shared_with=data.get("shared_with", [])
+        shared_with=data.get("shared_with", []),
     )
     updated_list = await MediaListModel.update(params=update_params)
 

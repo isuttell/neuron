@@ -54,7 +54,7 @@ def apply_exif_rotation(image: Image.Image) -> Image.Image:
                 rotate_values = {
                     ORIENTATION_ROTATE_180: 180,
                     ORIENTATION_ROTATE_270: 270,
-                    ORIENTATION_ROTATE_90: 90
+                    ORIENTATION_ROTATE_90: 90,
                 }
                 if orientation in rotate_values:
                     return image.rotate(rotate_values[orientation], expand=True)

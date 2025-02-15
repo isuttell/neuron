@@ -45,8 +45,7 @@ async def get_thread_messages(thread_id: UUID) -> dict[str, list[dict]]:
 
     # Get media items for this thread
     media_items = await MediaItemModel.get_thread_media(
-        thread_id=thread.id,
-        user_id=request.token.user_id
+        thread_id=thread.id, user_id=request.token.user_id
     )
 
     return {
@@ -121,13 +120,15 @@ async def post_thread_message(thread_id: UUID) -> tuple[dict[str, str], int]:
 
     prompt = await process_message_request(files, form)
 
-    await agent.astream({
-        "thread_id": thread.id,
-        "personality_id": UUID(personality_id),  # Convert string to UUID
-        "user_id": request.token.user_id,
-        "username": request.token.nickname,
-        "prompt": prompt,
-    })
+    await agent.astream(
+        {
+            "thread_id": thread.id,
+            "personality_id": UUID(personality_id),  # Convert string to UUID
+            "user_id": request.token.user_id,
+            "username": request.token.nickname,
+            "prompt": prompt,
+        }
+    )
 
     return {
         "status": "success",
@@ -136,12 +137,14 @@ async def post_thread_message(thread_id: UUID) -> tuple[dict[str, str], int]:
 
 @router.on(PostMessage)
 async def apost_message(event: PostMessage) -> None:
-    await agent.astream({
-        "thread_id": event.thread_id,
-        "personality_id": UUID(event.personality_id),  # Convert string to UUID
-        "user_id": None,
-        "prompt": event.prompt,
-    })
+    await agent.astream(
+        {
+            "thread_id": event.thread_id,
+            "personality_id": UUID(event.personality_id),  # Convert string to UUID
+            "user_id": None,
+            "prompt": event.prompt,
+        }
+    )
 
 
 @router.on(CancelMessage)

@@ -11,22 +11,20 @@ from neuron_server.database import Prompt, get_session
 
 class PromptModel(BaseModel):
     id: UUID = Field(
-        default_factory=lambda: uuid4(),
-        description="Unique identifier for the prompt"
+        default_factory=lambda: uuid4(), description="Unique identifier for the prompt"
     )
     name: str = Field(description="Name of the prompt")
     text: str = Field(description="The prompt text content")
     personality_id: UUID | None = Field(
-        default=None,
-        description="Associated personality ID"
+        default=None, description="Associated personality ID"
     )
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(UTC).astimezone(),
-        description="Creation timestamp"
+        description="Creation timestamp",
     )
     updated_at: datetime = Field(
         default_factory=lambda: datetime.now(UTC).astimezone(),
-        description="Last update timestamp"
+        description="Last update timestamp",
     )
 
     @field_serializer("created_at", "updated_at")
@@ -43,9 +41,7 @@ class PromptModel(BaseModel):
     async def create(cls, params: CreateParams) -> Self:
         async with get_session() as session:
             prompt = Prompt(
-                name=params.name,
-                text=params.text,
-                personality_id=params.personality_id
+                name=params.name, text=params.text, personality_id=params.personality_id
             )
             session.add(prompt)
             await session.commit()

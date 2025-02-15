@@ -128,7 +128,7 @@ class EmbeddingModel(BaseModel):
         cls,
         embedding_id: str,
         key: str,
-        value: str | int | float | bool | dict | Sequence | None
+        value: str | int | float | bool | dict | Sequence | None,
     ) -> Self:
         async with get_session() as session:
             embedding_instance = await session.get(LangchainPGEmbedding, embedding_id)

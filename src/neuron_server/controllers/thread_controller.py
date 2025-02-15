@@ -36,8 +36,7 @@ async def get_thread(thread_id: UUID) -> dict[str, list[dict]]:
 @requires_auth
 async def get_threads(personality_id: UUID) -> dict[str, list[dict]]:
     threads = await ThreadModel.list(
-        personality_id=personality_id,
-        user_id=request.token.user_id
+        personality_id=personality_id, user_id=request.token.user_id
     )
     return {"threads": [thread.model_dump() for thread in threads]}
 
@@ -46,8 +45,7 @@ async def get_threads(personality_id: UUID) -> dict[str, list[dict]]:
 @requires_auth
 async def get_recent_threads() -> dict[str, list[dict]]:
     threads = await ThreadModel.get_recent_threads(
-        hours=24,
-        user_id=request.token.user_id
+        hours=24, user_id=request.token.user_id
     )
     personality_ids = {thread.personality_id for thread in threads}
     personalities = await PersonalityModel.get_many(personality_ids)
@@ -95,13 +93,15 @@ async def post_create_thread() -> dict[str, dict]:
     if prompt and len(prompt.strip()) > 0:
         # Start the conversation and stream the response in the background
         asyncio.create_task(
-            agent.astream({
-                "thread_id": thread.id,
-                "personality_id": personality.id,
-                "user_id": request.token.user_id,
-                "username": request.token.nickname,
-                "prompt": prompt,
-            })
+            agent.astream(
+                {
+                    "thread_id": thread.id,
+                    "personality_id": personality.id,
+                    "user_id": request.token.user_id,
+                    "username": request.token.nickname,
+                    "prompt": prompt,
+                }
+            )
         )
         thread.message_count = 1
         await thread.save()
@@ -134,7 +134,7 @@ async def update_thread(thread_id: UUID) -> dict[str, list[dict]]:
         context=payload.context,
         memory=payload.memory,
         status=payload.status,
-        message_count=thread.message_count
+        message_count=thread.message_count,
     )
     thread = await ThreadModel.update(params=update_params)
     return {"threads": [thread.model_dump()]}

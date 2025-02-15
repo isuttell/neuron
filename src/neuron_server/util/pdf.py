@@ -74,7 +74,7 @@ async def summarize_pages(
         results.append(summary)
         last_page = summary
         logger.debug(
-            f"Summarized page {i+1} of {len(pages)} in {os.path.basename(pdf_path)}"
+            f"Summarized page {i + 1} of {len(pages)} in {os.path.basename(pdf_path)}"
         )
     if not results:
         raise ValueError("Failed to summarize document")
@@ -89,7 +89,7 @@ async def summarize_document(
         {
             "pages": "\n\n".join(
                 [
-                    f'Page {i+1} Summary\n"""\n{summary}\n"""'
+                    f'Page {i + 1} Summary\n"""\n{summary}\n"""'
                     for i, summary in enumerate(summaries)
                 ]
             ),

@@ -1,4 +1,8 @@
-"""Unit tests for Neo4j connection management."""
+"""Unit tests for Neo4j connection management.
+
+This module contains test suites for the Neo4j connection management classes.
+It verifies connection lifecycle, error handling, and resource management.
+"""
 
 from unittest.mock import MagicMock, patch
 
@@ -11,7 +15,11 @@ from neuron_server.graph.neo4j_connection import Neo4jConnection
 
 @pytest.fixture
 def mock_config() -> Neo4jConfig:
-    """Create a mock Neo4j config."""
+    """Create a mock Neo4j config.
+
+    Returns:
+        Mock Neo4j configuration for testing.
+    """
     return Neo4jConfig(
         url="bolt://localhost:7687", username="neo4j", password="password"
     )
@@ -19,27 +27,47 @@ def mock_config() -> Neo4jConfig:
 
 @pytest.fixture
 def mock_graph() -> MagicMock:
-    """Create a mock Neo4j graph."""
+    """Create a mock Neo4j graph.
+
+    Returns:
+        Mock Neo4j graph instance.
+    """
     return MagicMock()
 
 
 class TestNeo4jConnection:
-    """Test suite for Neo4jConnection class."""
+    """Test suite for Neo4jConnection class.
+
+    This test suite verifies the functionality of the Neo4jConnection class,
+    including initialization, connection management, and error handling.
+    """
 
     def test_init(self, mock_config: Neo4jConfig) -> None:
-        """Test connection initialization."""
+        """Test connection initialization.
+
+        Args:
+            mock_config: Mock Neo4j configuration.
+        """
         connection = Neo4jConnection(mock_config)
         assert connection._config == mock_config
         assert connection._graph is None
 
     def test_graph_property_not_initialized(self, mock_config: Neo4jConfig) -> None:
-        """Test graph property raises error when not initialized."""
+        """Test graph property raises error when not initialized.
+
+        Args:
+            mock_config: Mock Neo4j configuration.
+        """
         connection = Neo4jConnection(mock_config)
         with pytest.raises(ConnectionError, match="Neo4j connection not initialized"):
             _ = connection.graph
 
     def test_connect(self, mock_config: Neo4jConfig) -> None:
-        """Test successful connection."""
+        """Test successful connection.
+
+        Args:
+            mock_config: Mock Neo4j configuration.
+        """
         with patch("neuron_server.graph.neo4j_connection.Neo4jGraph") as mock_neo4j:
             mock_graph = MagicMock()
             mock_neo4j.return_value = mock_graph
@@ -56,7 +84,11 @@ class TestNeo4jConnection:
             assert connection._graph == mock_graph
 
     def test_connect_index_error(self, mock_config: Neo4jConfig) -> None:
-        """Test connection with index creation error."""
+        """Test connection with index creation error.
+
+        Args:
+            mock_config: Mock Neo4j configuration.
+        """
         with patch("neuron_server.graph.neo4j_connection.Neo4jGraph") as mock_neo4j:
             mock_graph = MagicMock()
             mock_graph.query.side_effect = Exception("Index error")
@@ -67,7 +99,12 @@ class TestNeo4jConnection:
                 connection.connect()
 
     def test_disconnect(self, mock_config: Neo4jConfig, mock_graph: MagicMock) -> None:
-        """Test disconnection."""
+        """Test disconnection.
+
+        Args:
+            mock_config: Mock Neo4j configuration.
+            mock_graph: Mock Neo4j graph instance.
+        """
         mock_graph.close = MagicMock()
 
         connection = Neo4jConnection(mock_config)
@@ -79,7 +116,11 @@ class TestNeo4jConnection:
 
 
 class TestNeo4jConnectionManager:
-    """Test suite for Neo4jConnectionManager class."""
+    """Test suite for Neo4jConnectionManager class.
+
+    This test suite verifies the functionality of the Neo4jConnectionManager class,
+    including connection lifecycle management and error handling.
+    """
 
     def test_connection_property(self) -> None:
         """Test connection property creates connection if needed."""

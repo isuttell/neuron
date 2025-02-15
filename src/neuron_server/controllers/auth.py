@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 # Constants
 BEARER_PARTS_LENGTH = 2
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 # Error handler
@@ -59,7 +59,7 @@ class TokenPayload(BaseModel):
 async def get_jwks() -> dict[str, dict]:
     async with (
         aiohttp.ClientSession() as session,
-        session.get(f"https://{config.auth0_domain}/.well-known/jwks.json") as response
+        session.get(f"https://{config.auth0_domain}/.well-known/jwks.json") as response,
     ):
         return await response.json()
 

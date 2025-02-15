@@ -20,12 +20,8 @@ class MediaItemModel(BaseModel):
     media_type: str = Field(description="Type of media (image, video, audio, etc)")
     thread_id: UUID | None = Field(description="Associated thread ID", default=None)
     user_id: str = Field(description="ID of the user who owns this media")
-    created_at: datetime = Field(
-        default_factory=lambda: datetime.now(UTC).astimezone()
-    )
-    updated_at: datetime = Field(
-        default_factory=lambda: datetime.now(UTC).astimezone()
-    )
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC).astimezone())
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC).astimezone())
 
     @dataclass
     class CreateParams:
@@ -99,9 +95,7 @@ class MediaItemModel(BaseModel):
 
     @classmethod
     async def get_thread_media(
-        cls,
-        thread_id: UUID,
-        user_id: str
+        cls, thread_id: UUID, user_id: str
     ) -> builtins.list[Self]:
         """
         Get media items for a specific thread and user.

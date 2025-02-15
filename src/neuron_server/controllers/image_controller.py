@@ -23,7 +23,6 @@ async def get_images() -> list[dict]:
     return [
         image.model_dump(exclude={"path"})
         for image in await MediaItemModel.get_user_media(
-            user_id=request.token.user_id,
-            media_type="image"
+            user_id=request.token.user_id, media_type="image"
         )
     ]

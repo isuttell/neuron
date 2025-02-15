@@ -20,12 +20,8 @@ class ProviderModelModel(BaseModel):
     provider: Provider = Field(description="The provider of the model")
     model_id: str = Field(description="The model id of the provider")
     enabled: bool = Field(description="Whether the model is enabled")
-    created_at: datetime = Field(
-        default_factory=lambda: datetime.now(UTC).astimezone()
-    )
-    updated_at: datetime = Field(
-        default_factory=lambda: datetime.now(UTC).astimezone()
-    )
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC).astimezone())
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC).astimezone())
 
     model_config = {"protected_namespaces": ()}
 
