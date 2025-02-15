@@ -73,7 +73,8 @@ Other:
 class HomeAssistantSensorTool(BaseTool):
     name: str = "homeassistant_sensor"
     description: str = """
-Tool to return the latest sensor states from Home Assistant.
+Tool to return the latest sensor states from Home Assistant including the backyard
+weather station.
         """.strip()
     args_schema: type[HomeAssistantSensorToolArgs] = HomeAssistantSensorToolArgs
 
