@@ -1,32 +1,31 @@
 import re
 from uuid import UUID
 
+from langchain_core.messages import BaseMessage, HumanMessage
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import Runnable
+from langgraph.prebuilt import create_react_agent
 from pydantic import BaseModel
 from quart import Blueprint, Response, request
 from werkzeug.exceptions import BadRequest, NotFound
 
-from neuron_server.controllers.auth import requires_auth
+from neuron_server.controllers.auth import TokenPayload, requires_auth
 from neuron_server.event_router import EventRouter
 from neuron_server.llms.llm import LLM
 from neuron_server.llms.prompts import (
     personality_description_prompt,
-    personality_update_prompt,
     personality_update_logo_prompt,
+    personality_update_prompt,
 )
 from neuron_server.llms.tools import (
+    AppImageTool,
+    ReplicateImageGenerationTool,
     default_tools,
     get_tools,
-    ReplicateImageGenerationTool,
-    AppImageTool,
 )
 from neuron_server.models import PersonalityModel
 from neuron_server.models.embedding_model import EmbeddingModel
 from neuron_server.models.provider_model import ProviderModelModel
-from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
-from langgraph.prebuilt import create_react_agent
-from neuron_server.controllers.auth import TokenPayload
 
 router = EventRouter()
 

@@ -169,6 +169,8 @@ class MemoryRecallTool(BaseTool):
             return NO_MEMORIES_FOUND
         results: list[Document] = []
         for doc, score in doc_scores:
+            assert isinstance(doc, Document)
+            assert isinstance(score, float)
             doc.metadata["score"] = calculate_score(doc, score)
             results.append(doc)
 
