@@ -1,6 +1,6 @@
 """Re-exports from the graph module."""
 
-from .graph.connection import graph
+from .graph.connection import graph, initialize_graph
 from .graph.construction import model
 from .graph.document import get_document, process_document
 from .graph.models import OutputState
@@ -15,4 +15,5 @@ __all__ = [
     "OutputState",
     "question_graph",
     "encode_md5",
+    "initialize_graph",
 ]

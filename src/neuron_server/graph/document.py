@@ -27,7 +27,7 @@ from langchain_text_splitters import TokenTextSplitter
 from neuron_server.logger import logger
 
 from .chains import summary_chain
-from .connection import graph
+from .connection import get_graph
 from .construction import construction_chain, import_query, match_query
 from .models import DocumentResult, Extraction, SummaryResponse
 from .utils import encode_md5
@@ -78,7 +78,7 @@ def import_chunks(
         for af in doc["atomic_facts"]:
             af["id"] = encode_md5(af["atomic_fact"])
 
-    graph.query(
+    get_graph().query(
         import_query,
         params={
             "data": docs,
@@ -91,8 +91,8 @@ def import_chunks(
         },
     )
 
-    graph.query(match_query, params={"document_id": metadata.document_id})
-    graph.refresh_schema()
+    get_graph().query(match_query, params={"document_id": metadata.document_id})
+    get_graph().refresh_schema()
 
 
 async def process_chunk(
@@ -228,7 +228,7 @@ def get_document(document_id: str, personality_id: str) -> dict[str, str] | None
     Returns:
         Dictionary containing document information or None if not found.
     """
-    data = graph.query(
+    data = get_graph().query(
         """
 MATCH (c:Chunk)<-[:HAS_CHUNK]-(doc:Document)
 WHERE doc.id = $id AND c.personality_id = $personality_id

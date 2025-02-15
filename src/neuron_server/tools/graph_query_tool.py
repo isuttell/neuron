@@ -11,7 +11,7 @@ from typing import Any, Optional
 from langchain.tools import BaseTool
 from pydantic import BaseModel, Field
 
-from neuron_server.graph.connection import graph
+from neuron_server.graph.connection import get_graph
 from neuron_server.logger import logger
 
 
@@ -132,7 +132,7 @@ You can execute any valid Cypher query. Results are returned in a structured XML
                 logger.debug(f"Query parameters: {clean_params}")
 
             # Execute the query
-            results = graph.query(query, params=clean_params)
+            results = get_graph().query(query, params=clean_params)
 
             # Format the results
             if not results:

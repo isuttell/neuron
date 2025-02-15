@@ -59,6 +59,8 @@ from neuron_server.controllers.webhook_controller import blueprint as webhook_bl
 from neuron_server.database import pool
 from neuron_server.decorators.http_decorators import cache_control, cors
 from neuron_server.event_router import EventRouter
+from neuron_server.graph import initialize_graph
+from neuron_server.graph.connection import connection_manager
 from neuron_server.pubsub import client
 from neuron_server.task_scheduler import TaskScheduler
 from neuron_server.util.image_utilities import create_thumbnails
@@ -220,4 +222,13 @@ scheduler = TaskScheduler(host=config.redis.host, port=config.redis.port, db=2)
 @app.before_serving
 async def startup() -> None:
     await scheduler.start()
-    logger.info("Task scheduler started")
+    logger.debug("Task scheduler started")
+    connection_manager.initialize()
+    initialize_graph()
+    logger.debug("Neo4j initialized")
+
+
+@app.after_serving
+async def shutdown() -> None:
+    connection_manager.cleanup()
+    logger.info("Neo4j connection closed")

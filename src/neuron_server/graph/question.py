@@ -22,7 +22,7 @@ from .chains import (
     neighbor_select_chain,
     rational_chain,
 )
-from .connection import graph
+from .connection import get_graph
 from .models import (
     AtomicFactOutput,
     Chunk,
@@ -126,7 +126,7 @@ def get_atomic_facts(
     key_elements: list[str], personality_id: str
 ) -> list[dict[str, Any]]:
     """Get the atomic facts for the given key elements and personality."""
-    return graph.query(
+    return get_graph().query(
         """
 MATCH (k:KeyElement)<-[:HAS_KEY_ELEMENT]-(fact)<-[:HAS_ATOMIC_FACT]-(c:Chunk)
   <-[:HAS_CHUNK]-(doc:Document)
@@ -148,7 +148,7 @@ def get_neighbors_by_key_element(
 ) -> list[dict[str, list[str]]]:
     """Get neighboring nodes for the given key elements."""
     logger.debug(f"Key elements: {key_elements}")
-    return graph.query(
+    return get_graph().query(
         """
     MATCH (k:KeyElement)<-[:HAS_KEY_ELEMENT]-(c:Chunk)-[:HAS_KEY_ELEMENT]->(neighbor)
     WHERE k.id IN $key_elements AND NOT neighbor.id IN $key_elements
@@ -172,7 +172,7 @@ def get_read_chunk_ids(previous_actions: list[str]) -> list[str]:
 
 def get_subsequent_chunk_id(chunk_id: str, personality_id: str) -> str | None:
     """Get the ID of the subsequent chunk."""
-    data = graph.query(
+    data = get_graph().query(
         """
 MATCH (c:Chunk)-[:NEXT]->(next)
 WHERE c.id = $id AND c.personality_id = $personality_id
@@ -185,7 +185,7 @@ RETURN next.id AS next
 
 def get_previous_chunk_id(chunk_id: str, personality_id: str) -> str | None:
     """Get the ID of the previous chunk."""
-    data = graph.query(
+    data = get_graph().query(
         """
 MATCH (c:Chunk)<-[:NEXT]-(previous)
 WHERE c.id = $id AND c.personality_id = $personality_id
@@ -198,7 +198,7 @@ RETURN previous.id AS previous
 
 def get_chunk(chunk_id: str, personality_id: str) -> Chunk | None:
     """Get chunk information from Neo4j."""
-    data = graph.query(
+    data = get_graph().query(
         """
 MATCH (c:Chunk)
 WHERE c.id = $chunk_id AND c.personality_id = $personality_id
