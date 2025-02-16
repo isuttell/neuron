@@ -77,9 +77,7 @@ const websocketMiddleware =
         });
 
         socket.on("personality", (event: PersonalityEvent) => {
-          dispatch(
-            upsertPersonality({ personality: event.personality as any })
-          );
+          dispatch(upsertPersonality({ personality: event.personality }));
         });
 
         socket.on("image", (event: ImageEvent) => {
