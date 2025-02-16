@@ -29,8 +29,6 @@ jobs:
           context: .
           file: Dockerfile
           push: true
-          cache-from: type=registry,ref=gitea.zaks.io/isuttell/neuron:buildcache
-          cache-to: type=registry,ref=gitea.zaks.io/isuttell/neuron:buildcache,mode=max
           tags: |
             gitea.zaks.io/isuttell/neuron:latest
             ${{ startsWith(github.ref, 'refs/tags/') && format('gitea.zaks.io/isuttell/neuron:{0}', github.ref_name) || '' }}

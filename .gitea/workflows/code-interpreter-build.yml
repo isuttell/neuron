@@ -30,6 +30,4 @@ jobs:
           context: .
           file: Dockerfile.code
           push: true
-          cache-from: type=registry,ref=gitea.zaks.io/isuttell/code-interpreter:buildcache
-          cache-to: type=registry,ref=gitea.zaks.io/isuttell/code-interpreter:buildcache,mode=max
           tags: gitea.zaks.io/isuttell/code-interpreter:latest
