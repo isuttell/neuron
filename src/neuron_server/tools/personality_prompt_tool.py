@@ -38,9 +38,11 @@ user has explicitly asked for it."""
             if not personality_id:
                 raise ValueError("Personality ID is required")
             model = await PromptModel.create(
-                name=name,
-                text=prompt,
-                personality_id=personality_id,
+                PromptModel.CreateParams(
+                    name=name,
+                    text=prompt,
+                    personality_id=personality_id,
+                )
             )
             await pubsub.publish("app", GetPromptResponse(prompt=model))
             logger.debug(f"Prompt saved: {model.name}")

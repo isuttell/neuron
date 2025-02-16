@@ -237,7 +237,7 @@ memory_tools: list[BaseTool] = [
     MemoryStoreTool(),
 ]
 personality_tools: list[BaseTool] = [
-    PersonalityPromptTool(),
+    # PersonalityPromptTool(),  # Temporarily disabled
 ]
 
 
