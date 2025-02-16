@@ -12,22 +12,20 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - name: Install poetry
+        run: pipx install poetry
+
       - name: Set up Python 3.11
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
-
-      - name: Install Poetry
-        run: |
-          curl -sSL https://install.python-poetry.org | python3 -
-          export PATH="/root/.local/bin:$PATH"
-          poetry config virtualenvs.in-project true
+          cache: 'poetry'
 
       - name: Install dependencies
-        run: /root/.local/bin/poetry install
+        run: poetry install
 
       - name: Lint with Ruff
-        run: /root/.local/bin/poetry run ruff check src/neuron_server/
+        run: poetry run ruff check src/neuron_server/
 
       - name: Run tests
-        run: /root/.local/bin/poetry run pytest src/neuron_server/ --cov
+        run: poetry run pytest src/neuron_server/ --cov

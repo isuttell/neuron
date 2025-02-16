@@ -11,8 +11,6 @@ jobs:
   build-code-interpreter:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-
       - name: Login to Gitea Container Registry
         uses: docker/login-action@v3
         with:
