@@ -9,8 +9,6 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    env:
-      PATH: /usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/root/.local/bin
     steps:
       - uses: actions/checkout@v3
 
@@ -23,6 +21,7 @@ jobs:
         run: |
           curl -sSL https://install.python-poetry.org | python3 -
           poetry config virtualenvs.in-project true
+          export PATH="${PATH}:/root/.local/bin"
 
       - name: Install dependencies
         run: poetry install
