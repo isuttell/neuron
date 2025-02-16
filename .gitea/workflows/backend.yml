@@ -24,10 +24,10 @@ jobs:
           poetry config virtualenvs.in-project true
 
       - name: Install dependencies
-        run: poetry install
+        run: /root/.local/bin/poetry install
 
       - name: Lint with Ruff
-        run: poetry run ruff check src/neuron_server/
+        run: /root/.local/bin/poetry run ruff check src/neuron_server/
 
       - name: Run tests
-        run: poetry run pytest src/neuron_server/ --cov
+        run: /root/.local/bin/poetry run pytest src/neuron_server/ --cov
