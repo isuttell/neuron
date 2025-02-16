@@ -9,7 +9,8 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-
+    env:
+      PATH: ${{ env.PATH }}:/root/.local/bin
     steps:
       - uses: actions/checkout@v3
 
