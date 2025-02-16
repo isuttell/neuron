@@ -10,7 +10,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     env:
-      PATH: ${{ env.PATH }}:/root/.local/bin
+      PATH: /usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/root/.local/bin
     steps:
       - uses: actions/checkout@v3
 
