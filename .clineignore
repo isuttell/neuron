@@ -41,3 +41,6 @@ logs/
 **/secrets/
 auth_config.json
 config.json
+
+.env*
+!.env.example
