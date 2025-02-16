@@ -1,23 +1,23 @@
+import { MediaListDropdown } from "@/components/MediaListDropdown";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
-  DialogTrigger,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
+  DialogTrigger,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Download, Copy } from "lucide-react";
 import {
   Tooltip,
-  TooltipTrigger,
   TooltipContent,
+  TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
-import { MediaItem } from "@/types/media";
-import { MediaListDropdown } from "@/components/MediaListDropdown";
 import { useMediaPlayer } from "@/hooks/useMediaPlayer";
-import { useId, useRef, useEffect, memo } from "react";
+import { MediaItem } from "@/types/media";
+import { Copy, Download } from "lucide-react";
+import { memo, useEffect, useId, useRef } from "react";
 interface VideoContentProps {
   url: string;
   autoPlay?: boolean;
@@ -45,16 +45,23 @@ const VideoContent: React.FC<VideoContentProps> = ({
     const dialogVideo = dialogVideoRef.current;
 
     if (dialogVideo) {
-      registerPlayer(dialogId, dialogVideo);
+      registerPlayer(dialogId, url, dialogVideo);
       dialogVideo.addEventListener("play", () => playPlayer(dialogId));
     }
 
     return () => {
       if (dialogVideo) {
-        unregisterPlayer(dialogId);
+        unregisterPlayer(dialogId, url);
       }
     };
-  }, [thumbnailId, dialogId, registerPlayer, unregisterPlayer, playPlayer]);
+  }, [
+    thumbnailId,
+    dialogId,
+    registerPlayer,
+    unregisterPlayer,
+    playPlayer,
+    url,
+  ]);
 
   return (
     <Dialog>

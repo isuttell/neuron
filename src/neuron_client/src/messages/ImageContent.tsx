@@ -1,24 +1,24 @@
-import { useEffect, useState, useRef } from "react";
-import { Download, Copy } from "lucide-react";
-import {
-  Dialog,
-  DialogTrigger,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
-import { Spinner } from "@/components/ui/spinner";
+import { MediaListDropdown } from "@/components/MediaListDropdown";
 import { Button } from "@/components/ui/button";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Spinner } from "@/components/ui/spinner";
+import {
   Tooltip,
-  TooltipTrigger,
   TooltipContent,
+  TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { MediaListDropdown } from "@/components/MediaListDropdown";
-import { MediaItem } from "@/slices/mediaSlice";
+import { MediaItem } from "@/types/media";
+import { Copy, Download } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
 interface ImageContentProps {
   className?: string;

@@ -1,20 +1,7 @@
 import { EventEmitter } from "events";
+import { Action } from "redux";
 import { getAccessToken } from "./actions/getToken";
-
-interface WebSocketMessage {
-  type: string;
-  [key: string]: unknown;
-}
-
-interface PostMessage extends WebSocketMessage {
-  type: "PostMessage";
-  thread_id: string;
-  prompt?: string;
-  greeting?: string;
-  personality_id: string;
-}
-
-type WebSocketPayload = PostMessage;
+import type { WebSocketEvent, WebSocketPayload } from "./types/websocket";
 
 export default class WebSocketManager {
   private socket?: WebSocket;
@@ -45,7 +32,7 @@ export default class WebSocketManager {
 
     this.socket.addEventListener("message", (event) => {
       try {
-        const payload = JSON.parse(event.data) as WebSocketMessage;
+        const payload = JSON.parse(event.data) as WebSocketEvent;
         if (payload.type) {
           this.events.emit(payload.type, payload);
         } else {
@@ -82,23 +69,33 @@ export default class WebSocketManager {
     this.socket.send(JSON.stringify({ type: payload.type, payload }));
   }
 
-  on(event: string, listener: (payload: WebSocketPayload) => void) {
+  on<T extends WebSocketEvent>(
+    event: T["type"],
+    listener: (payload: T) => void
+  ) {
     this.events.on(event, listener);
     return {
       remove: () => this.events.off(event, listener),
     };
   }
 
-  once(event: string, listener: (payload: WebSocketPayload) => void) {
-    const wrappedListener = (payload: WebSocketPayload) => {
+  once<T extends WebSocketEvent>(
+    event: T["type"],
+    listener: (payload: T) => void
+  ) {
+    const wrappedListener = (payload: T) => {
       listener(payload);
       this.events.off(event, wrappedListener);
     };
     this.events.on(event, wrappedListener);
   }
 
-  sendMessage(message: WebSocketPayload) {
+  sendMessage(action: Action) {
     if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+      const message = {
+        ...action,
+        type: action.type.replace("socket/", ""),
+      } as WebSocketPayload;
       this.socket.send(JSON.stringify(message));
     } else {
       console.error(

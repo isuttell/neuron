@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { useRef, useEffect, useCallback } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 interface AudioBarVisualizationProps {
   src: string; // src is required for the component to function
@@ -28,6 +28,7 @@ export function AudioBarVisualization({
   gap = 1,
   onLoadingChange,
 }: AudioBarVisualizationProps) {
+  const bgColor: string = backgroundColor ?? "#111111";
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const waveformDataRef = useRef<number[]>([]);
   const rawChannelDataRef = useRef<Float32Array | null>(null);
@@ -88,7 +89,7 @@ export function AudioBarVisualization({
       progress: number,
       waveformData: number[]
     ) => {
-      ctx.fillStyle = backgroundColor;
+      ctx.fillStyle = bgColor;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       const centerY = Math.round(canvas.height / 2);
@@ -113,7 +114,7 @@ export function AudioBarVisualization({
         x += barWidth + gap;
       }
     },
-    [backgroundColor, barWidth, gap]
+    [barWidth, gap, bgColor]
   );
 
   const processAudioData = useCallback(
@@ -243,7 +244,9 @@ export function AudioBarVisualization({
     if (waveformCache.size > 50) {
       // Limit cache size
       const firstKey = waveformCache.keys().next().value;
-      waveformCache.delete(firstKey);
+      if (firstKey) {
+        waveformCache.delete(firstKey);
+      }
     }
   }, [src]);
 
@@ -318,7 +321,7 @@ export function AudioBarVisualization({
       className={cn("w-full h-full", className)}
       onMouseDown={onSeek ? handleMouseDown : undefined}
       style={{
-        backgroundColor,
+        backgroundColor: backgroundColor || "#111111",
         cursor: onSeek ? "pointer" : "default",
       }}
     />

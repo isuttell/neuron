@@ -1,10 +1,11 @@
-import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { CornerDownLeft } from "lucide-react";
 import { useState } from "react";
 import { useAppSelector } from "../hooks";
 import { getSocket } from "../slices/socketSlice";
-import { CornerDownLeft } from "lucide-react";
+import { WebSocketPayload } from "../types/websocket";
 
 interface ImageFormProps {
   isLoading?: boolean;
@@ -35,7 +36,7 @@ export default function ImageForm({
     socket.sendMessage({
       type: "CreateImage",
       prompt: value,
-    });
+    } as WebSocketPayload);
     onSubmit(value);
     setTimeout(() => {
       setIsSubmitting(false);

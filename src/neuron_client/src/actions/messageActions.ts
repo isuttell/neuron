@@ -1,8 +1,9 @@
+import { api } from "@/lib/api";
+import { MessageResponse } from "@/types/message";
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import { getSocket } from "../slices/socketSlice";
 import { RootState } from "../store";
-import { api } from "@/lib/api";
-import { MessageResponse } from "@/types/message";
+import { WebSocketPayload } from "../types/websocket";
 
 export const fetchMessagesByThread = createAsyncThunk(
   "messages/fetchMessagesByThread",
@@ -91,7 +92,7 @@ export const sendMessage = createAsyncThunk(
         prompt,
         greeting,
         personality_id: personalityId,
-      });
+      } as WebSocketPayload);
       return null;
     } catch (error) {
       if (error instanceof Error) {

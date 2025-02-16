@@ -1,17 +1,17 @@
 import { configureStore, EnhancedStore } from "@reduxjs/toolkit";
+import { fetchMessagesByThread } from "../../actions/messageActions";
 import type { RootState } from "../../store";
 import messagesReducer, {
+  getMessage,
+  getMessages,
+  getMessagesError,
+  getMessagesLoading,
+  getTextContent,
+  partialMessage,
+  selectThreadMessages,
   upsertMessage,
   upsertMessages,
-  partialMessage,
-  getMessages,
-  getMessage,
-  selectThreadMessages,
-  getMessagesLoading,
-  getMessagesError,
-  getTextContent,
 } from "../messagesSlice";
-import { fetchMessagesByThread } from "../../actions/messageActions";
 
 describe("messageSlice", () => {
   let store: EnhancedStore<{
@@ -55,6 +55,14 @@ describe("messageSlice", () => {
       content: "Hello, world",
       thread_id: "thread-1",
       created_at: "2024-02-04T12:00:00Z",
+      name: undefined,
+      status: undefined,
+      tool_calls: undefined,
+      tool_call_id: undefined,
+      additional_kwargs: undefined,
+      response_metadata: undefined,
+      usage_metadata: undefined,
+      node: undefined,
     };
 
     describe("upsertMessage", () => {
@@ -198,11 +206,23 @@ describe("messageSlice", () => {
             content: "Hello",
             thread_id: "thread-1",
             created_at: "2024-02-04T12:00:00Z",
+            name: undefined,
+            status: undefined,
+            tool_calls: undefined,
+            tool_call_id: undefined,
+            additional_kwargs: undefined,
+            response_metadata: undefined,
+            usage_metadata: undefined,
+            node: undefined,
           },
         ];
 
         store.dispatch(
-          fetchMessagesByThread.fulfilled({ messages }, "", "thread-1")
+          fetchMessagesByThread.fulfilled(
+            { messages, media: [] },
+            "",
+            "thread-1"
+          )
         );
 
         const state = store.getState().messages;
@@ -221,6 +241,14 @@ describe("messageSlice", () => {
         content: "Message 1",
         thread_id: "thread-1",
         created_at: "2024-02-04T12:00:00Z",
+        name: undefined,
+        status: undefined,
+        tool_calls: undefined,
+        tool_call_id: undefined,
+        additional_kwargs: undefined,
+        response_metadata: undefined,
+        usage_metadata: undefined,
+        node: undefined,
       },
       {
         id: "run-456",
@@ -228,6 +256,14 @@ describe("messageSlice", () => {
         content: "Message 2",
         thread_id: "thread-2",
         created_at: "2024-02-04T12:01:00Z",
+        name: undefined,
+        status: undefined,
+        tool_calls: undefined,
+        tool_call_id: undefined,
+        additional_kwargs: undefined,
+        response_metadata: undefined,
+        usage_metadata: undefined,
+        node: undefined,
       },
     ];
 

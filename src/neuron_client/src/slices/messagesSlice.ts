@@ -1,7 +1,8 @@
-import { createSlice } from "@reduxjs/toolkit";
 import type { PayloadAction } from "@reduxjs/toolkit";
-import type { RootState } from "../store";
+import { createSlice } from "@reduxjs/toolkit";
 import { fetchMessagesByThread } from "../actions/messageActions";
+import type { RootState } from "../store";
+import { MessageResponse } from "../types/message";
 
 interface Content {
   text: string;
@@ -37,7 +38,7 @@ interface UsageMetadata {
   [key: string]: number | undefined;
 }
 
-export interface Message {
+export interface IncomingMessage {
   id: string;
   name?: string;
   type: MessageRole;
@@ -49,15 +50,15 @@ export interface Message {
   additional_kwargs?: AdditionalKwargs;
   response_metadata?: ResponseMetadata;
   usage_metadata?: UsageMetadata;
-  created_at?: number;
+  created_at: string;
   node?: string;
 }
 
-interface IncomingMessage extends Omit<Message, "created_at"> {
-  created_at: string;
+export interface Message extends Omit<IncomingMessage, "created_at"> {
+  created_at?: number;
 }
 
-interface IncomingPartialMessage extends IncomingMessage {
+interface IncomingPartialMessage extends Omit<IncomingMessage, "status"> {
   index: number;
   status: string;
 }
@@ -173,10 +174,15 @@ export const messagesSlice = createSlice({
       })
       .addCase(
         fetchMessagesByThread.fulfilled,
-        (state, action: PayloadAction<IncomingMessagesEvent>) => {
+        (state, action: PayloadAction<MessageResponse>) => {
           state.loading = false;
           for (const message of action.payload.messages) {
-            upsert(state, message);
+            if (message.created_at) {
+              upsert(state, {
+                ...message,
+                created_at: message.created_at,
+              } as IncomingMessage);
+            }
           }
         }
       );

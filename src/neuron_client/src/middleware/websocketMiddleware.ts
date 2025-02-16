@@ -1,64 +1,62 @@
-import WebSocketManager from "../WebSocketManager";
-import { MiddlewareAPI, Dispatch, Action } from "redux";
-import { connect, disconnect } from "../slices/socketSlice";
-import { upsertMessage, partialMessage } from "../slices/messagesSlice";
-import { upsertThread } from "../slices/threadsSlice";
-import { upsertPersonality } from "../slices/personalitiesSlice";
-import { upsertImage } from "../slices/imagesSlice";
-import { setSidebarImage } from "../slices/appSlice";
-import { upsertPrompt } from "../slices/promptsSlice";
-import { upsertMedia } from "../slices/mediaSlice";
+import { Action, Dispatch, MiddlewareAPI } from "redux";
 import { toast } from "../hooks/use-toast";
-interface DeleteThreadAction extends Action {
-  type: "DeleteThread";
-  thread_id: string;
-}
-
-interface DeletePersonalityAction extends Action {
-  type: "DeletePersonality";
-  personality_id: string;
-}
-
-interface DeleteImageAction extends Action {
-  type: "DeleteImage";
-  image_id: string;
-}
+import { setSidebarImage } from "../slices/appSlice";
+import { upsertImage } from "../slices/imagesSlice";
+import { upsertMedia } from "../slices/mediaSlice";
+import { partialMessage, upsertMessage } from "../slices/messagesSlice";
+import { upsertPersonality } from "../slices/personalitiesSlice";
+import { upsertPrompt } from "../slices/promptsSlice";
+import { connect, disconnect } from "../slices/socketSlice";
+import { upsertThread } from "../slices/threadsSlice";
+import type {
+  ErrorEvent,
+  ImageEvent,
+  MediaEvent,
+  MessageEvent,
+  PartialMessageEvent,
+  PersonalityEvent,
+  PromptEvent,
+  SidebarImageEvent,
+  ThreadEvent,
+} from "../types/websocket";
+import WebSocketManager from "../WebSocketManager";
 
 const websocketMiddleware =
   (socket: WebSocketManager) =>
   ({ dispatch }: MiddlewareAPI) =>
   (next: Dispatch<Action>) =>
-  (
-    action:
-      | Action
-      | DeleteThreadAction
-      | DeletePersonalityAction
-      | DeleteImageAction
-  ) => {
+  (action: Action) => {
     if (action.type === "socket/connect") {
       if (socket.connect()) {
-        socket.on("message", (event) => {
-          dispatch(upsertMessage(event));
+        socket.on("message", (event: MessageEvent) => {
+          dispatch(upsertMessage({ message: event.message }));
         });
 
-        socket.on("media", (event) => {
-          dispatch(upsertMedia(event));
+        socket.on("media", (event: MediaEvent) => {
+          dispatch(upsertMedia({ media: event.media }));
         });
 
-        socket.on("partial_message", (event) => {
-          dispatch(partialMessage(event));
+        socket.on("partial_message", (event: PartialMessageEvent) => {
+          dispatch(
+            partialMessage({
+              message: {
+                ...event.message,
+                status: event.message.status || "partial",
+              },
+            })
+          );
         });
 
-        socket.on("thread", (event) => {
-          dispatch(upsertThread(event));
+        socket.on("thread", (event: ThreadEvent) => {
+          dispatch(upsertThread({ thread: event.thread }));
         });
 
-        socket.on("sidebar_image", (event) => {
+        socket.on("sidebar_image", (event: SidebarImageEvent) => {
           dispatch(setSidebarImage(event.url));
         });
 
-        socket.on("prompt", (event) => {
-          dispatch(upsertPrompt(event));
+        socket.on("prompt", (event: PromptEvent) => {
+          dispatch(upsertPrompt({ type: "prompt", prompt: event.prompt }));
         });
 
         socket.on("open", () => {
@@ -78,14 +76,24 @@ const websocketMiddleware =
           });
         });
 
-        socket.on("personality", (event) => {
-          dispatch(upsertPersonality(event));
+        socket.on("personality", (event: PersonalityEvent) => {
+          dispatch(
+            upsertPersonality({ personality: event.personality as any })
+          );
         });
 
-        socket.on("image", (event) => {
-          dispatch(upsertImage(event));
+        socket.on("image", (event: ImageEvent) => {
+          const image = {
+            ...event.image,
+            path: event.image.url,
+            prompt: "",
+            size: 0,
+            mime_type: "image/*",
+          };
+          dispatch(upsertImage({ image }));
         });
-        socket.on("error", (event) => {
+
+        socket.on("error", (event: ErrorEvent) => {
           console.error(`ServerError: ${event.message}`);
           toast({
             title: "Server error",
