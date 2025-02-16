@@ -10,7 +10,6 @@ on:
 jobs:
   build-code-interpreter:
     runs-on: ubuntu-latest
-    if: false  # Skip this job
     steps:
       - uses: actions/checkout@v3
 
