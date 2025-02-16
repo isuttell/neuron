@@ -201,7 +201,7 @@ async def process_artifacts(
 async def run_code_interpreter(
     python_code: str,
     timeout: int = 120,
-    code_interpreter_image: str = "192.168.1.160:5000/code-interpreter:latest",
+    code_interpreter_image: str = gitea.zaks.io/isuttell/code-interpreter:latest",
     config: RunnableConfig = None,
 ) -> tuple[str, list[str]]:
     """Execute Python code in a sandboxed environment and process the results."""
