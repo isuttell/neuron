@@ -78,3 +78,18 @@ Neuron is a realtime chat application built with LangChain and LangGraph to allo
 ### Model Notes
 
 - gpt-4o and o3-mini are the latest OpenAI models.
+
+## CI/CD Workflows
+
+Available workflows:
+
+- neuron-server-build.yml - Main container build
+- frontend.yml - Frontend CI
+- backend.yml - Backend CI
+- code-interpreter-build.yml - Code interpreter build
+
+Run workflows using act:
+
+```
+act -W .gitea/workflows/[workflow-file] --secret-file ./secrets/gitea
+```

@@ -23,3 +23,6 @@ venv.bak/
 node_modules/
 coverage/
 .coverage
+
+# Secrets
+secrets/
