@@ -1,14 +1,14 @@
-import os
 from unittest.mock import patch
 
 import pytest
 from langchain_core.messages import AIMessage
+from pytest import MonkeyPatch
 
 from neuron_server.config import Config
 
 
 @pytest.fixture(autouse=True)
-def mock_env_vars(monkeypatch):
+def mock_env_vars(monkeypatch: MonkeyPatch) -> None:
     """Mock environment variables for testing."""
     monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
     monkeypatch.setenv("NEO4J_PASSWORD", "test-password")
@@ -20,14 +20,14 @@ def mock_env_vars(monkeypatch):
 
 
 @pytest.fixture
-def mock_config():
+def mock_config() -> None:
     """Mock configuration for testing."""
     with patch("neuron_server.config.config", Config()):
         yield
 
 
 @pytest.fixture
-def mock_ai_message():
+def mock_ai_message() -> AIMessage:
     """Create a mock AI message for testing."""
     return AIMessage(
         content="Test response",
@@ -37,7 +37,7 @@ def mock_ai_message():
 
 
 @pytest.fixture
-def mock_openai():
+def mock_openai() -> None:
     """Mock OpenAI client for testing."""
     with patch("openai.OpenAI") as mock:
         mock.return_value.chat.completions.create.return_value = {
