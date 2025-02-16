@@ -68,7 +68,6 @@ from neuron_server.tools.openweathermap_forecast_tool import (
 from neuron_server.tools.openweathermap_overview_tool import (
     OpenWeatherMapOverviewTool,
 )
-from neuron_server.tools.personality_prompt_tool import PersonalityPromptTool
 from neuron_server.tools.replicate_audio_generation_tool import (
     ReplicateAudioGenerationTool,
 )
@@ -236,9 +235,7 @@ memory_tools: list[BaseTool] = [
     MemoryRecallTool(),
     MemoryStoreTool(),
 ]
-personality_tools: list[BaseTool] = [
-    # PersonalityPromptTool(),  # Temporarily disabled
-]
+personality_tools: list[BaseTool] = []
 
 
 def get_tools(query: str) -> list[BaseTool]:

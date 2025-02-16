@@ -67,7 +67,7 @@ within 300 seconds.
     args_schema: type[CodeInterpreterToolArgs] = CodeInterpreterToolArgs
 
     timeout: int = 300
-    code_interpreter_image: str = gitea.zaks.io/isuttell/code-interpreter:latest"
+    code_interpreter_image: str = "gitea.zaks.io/isuttell/code-interpreter:latest"
 
     def _run(self, *args: Any, **kwargs: Any) -> str:
         return asyncio.run(self._arun(*args, **kwargs))
