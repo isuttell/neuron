@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -6,14 +7,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
-import { ScrollText } from "lucide-react";
-import { useAppSelector } from "@/hooks";
-import { selectPromptsByPersonality } from "@/slices/promptsSlice";
+import { useAppDispatch, useAppSelector } from "@/hooks";
 import { getActivePersonalityId } from "@/slices/personalitiesSlice";
+import {
+  fetchPrompts,
+  selectPromptsByPersonality,
+} from "@/slices/promptsSlice";
+import { ScrollText } from "lucide-react";
 import { useEffect } from "react";
-import { useAppDispatch } from "@/hooks";
-import { fetchPrompts } from "@/slices/promptsSlice";
 
 interface PromptDropdownProps {
   onSelectPrompt: (promptText: string) => void;
@@ -57,14 +58,16 @@ export function PromptDropdown({
         {prompts.length === 0 ? (
           <DropdownMenuItem disabled>No prompts available</DropdownMenuItem>
         ) : (
-          prompts.map((prompt) => (
-            <DropdownMenuItem
-              key={prompt.id}
-              onClick={() => onSelectPrompt(prompt.text)}
-            >
-              {prompt.name}
-            </DropdownMenuItem>
-          ))
+          [...prompts]
+            .sort((a, b) => a.name.localeCompare(b.name))
+            .map((prompt) => (
+              <DropdownMenuItem
+                key={prompt.id}
+                onClick={() => onSelectPrompt(prompt.text)}
+              >
+                {prompt.name}
+              </DropdownMenuItem>
+            ))
         )}
       </DropdownMenuContent>
     </DropdownMenu>

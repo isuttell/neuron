@@ -1,6 +1,6 @@
-import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
-import { RootState } from "../store";
+import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { getAccessToken } from "../actions/getToken";
+import { RootState } from "../store";
 export interface Prompt {
   id: string;
   name: string;
@@ -167,7 +167,8 @@ export const selectPromptsByPersonality = (
   personalityId: string
 ) =>
   Object.values(state.prompts.prompts).filter(
-    (prompt) => prompt.personality_id === personalityId
+    (prompt) =>
+      !prompt.personality_id || prompt.personality_id === personalityId
   );
 export const selectPromptById = (state: RootState, id: string) =>
   state.prompts.prompts[id];
