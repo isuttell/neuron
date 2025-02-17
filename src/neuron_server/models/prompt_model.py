@@ -4,7 +4,7 @@ from typing import Self
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field, field_serializer
-from sqlalchemy import select
+from sqlalchemy import or_, select
 
 from neuron_server.database import Prompt, get_session
 
@@ -59,7 +59,12 @@ class PromptModel(BaseModel):
         async with get_session() as session:
             query = select(Prompt)
             if personality_id:
-                query = query.where(Prompt.personality_id == personality_id)
+                query = query.where(
+                    or_(
+                        Prompt.personality_id == personality_id,
+                        Prompt.personality_id.is_(None),
+                    )
+                )
             result = await session.execute(query)
             prompts = result.scalars().all()
             return [cls(**prompt.__dict__) for prompt in prompts]
