@@ -34,7 +34,18 @@
 
 .content th,
 .content td {
+  vertical-align: top;
+  transition: background-color 250ms ease-in-out;
+}
+
+.content td:hover {
+  background-color: rgba(255, 255, 255, 0.02);
+}
+
+.content th,
+.content td {
   border-right: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   padding: 0.5em 1em;
 }
 
@@ -42,6 +53,12 @@
 .content td:last-child {
   border-right: none;
 }
+
+.content tr:last-child td {
+  border-bottom: none;
+}
+
+
 
 .content h1,
 .content h2,
