@@ -1,7 +1,7 @@
 services:
   server:
     restart: unless-stopped
-    image: gitea.zaks.io/isuttell/neuron-server:latest
+    image: gitea.zaks.io/isuttell/neuron:latest
     build: .
 
   db:

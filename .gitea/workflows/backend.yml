@@ -21,10 +21,10 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: poetry install
+        run: /opt/pipx_bin/poetry install
 
       - name: Lint with Ruff
-        run: poetry run ruff check src/neuron_server/
+        run: /opt/pipx_bin/poetry run ruff check src/neuron_server/
 
       - name: Run tests
-        run: poetry run pytest src/neuron_server/ --cov
+        run: /opt/pipx_bin/poetry run pytest src/neuron_server/ --cov
