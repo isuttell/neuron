@@ -15,10 +15,10 @@ from neuron_server.vectorstores import memories_store
 class MemoryStoreToolArgs(BaseModel):
     memory: str = Field(
         description=(
-            "A detailed memory to save. Be specific. It will be used for in a "
-            "semantic text search and RAG. Do not use pronouns. Include all relevant "
-            "details and references. The memory must be self contained. Provide quotes "
-            "for any specific information."
+            "A detailed memory to save. Be specific. It will be used in a "
+            "semantic text search and RAG. Do not use pronouns. Use proper nouns. "
+            "Include all relevant details and references. The memory must be self "
+            "contained. Provide quotes for any specific information."
         )
     )
 
