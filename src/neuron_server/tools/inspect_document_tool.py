@@ -1,14 +1,10 @@
 import asyncio
 import json
 import time
-from datetime import datetime
 from typing import Any, Literal
 
 from langchain.tools import BaseTool
-from langchain_core.output_parsers import StrOutputParser
-from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables import RunnableConfig
-from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field
 
 from neuron_server.logger import logger
@@ -41,62 +37,6 @@ class InspectDocumentToolArgs(BaseModel):
             "Only used when importing websites."
         ),
     )
-    custom_instructions: str | None = Field(
-        None,
-        description=(
-            "If provided, the custom instructions will be used to inspect the document "
-            "returning the raw text. Use this to extract specific information from the "
-            "document. Use this unless you need the raw text. It should be in "
-            "second person and be a detailed step by step guide to follow. It should "
-            "include how detailed of an analysis to perform. Include relevant context. "
-            "It may include multiple questions or complicated plans to analyze the "
-            "document."
-        ),
-    )
-
-
-custom_instructions_prompt = PromptTemplate(
-    template="""
-You will be given a document, metadata, and custom instructions. Your
-job is to follow the custom instructions as closely as possible whether that is
-summarizing, answering questions, extracting information, etc. Be as long and detailed
-as needed. Accuracy is important. Include related context and metadata like authors,
-speakers, writers, etc. so that another agent can use this information to answer
-questions. Include quotes from the document, links to sources using the sourceURL from
-from the metadata, links to specific timestamps in youtube videos, etc.. Use markdown
-to format the output.
-
-Now: {now}
-
-Document Metadata:
-\"\"\"
-{metadata}
-\"\"\"
-
-Document ({index}):
-\"\"\"
-{document}
-\"\"\"
-
-Custom Instructions:
-\"\"\"
-{custom_instructions}
-\"\"\"
-""".strip(),
-    input_variables=[
-        "custom_instructions",
-        "document",
-        "index",
-        "now",
-        "metadata",
-    ],
-)
-
-custom_instructions_chain = (
-    custom_instructions_prompt
-    | ChatOpenAI(model="o3-mini-2025-01-31")
-    | StrOutputParser()
-)
 
 
 class InspectDocumentTool(BaseTool):
@@ -126,12 +66,11 @@ youtube
         url: str,
         config: RunnableConfig,
         mode: str | None = None,
-        custom_instructions: str | None = None,
     ) -> str:
         try:
             # Record the start time for performance measurement
             start_time = time.perf_counter()
-            logger.debug(f"Processing '{url}' with instructions: {custom_instructions}")
+            logger.debug(f"Processing '{url}'")
 
             docs = await load_document_from_url(
                 url,
@@ -151,51 +90,22 @@ youtube
                 raise InspectDocumentToolError("No documents found")
 
             results = []
-            tasks = []
             for index, doc in enumerate(docs):
-                if custom_instructions:
-                    tasks.append(
-                        custom_instructions_chain.ainvoke(
-                            {
-                                "custom_instructions": custom_instructions,
-                                "document": doc.page_content,
-                                "index": f"{index}/{len(docs)}",
-                                "now": datetime.now()
-                                .astimezone()
-                                .isoformat(timespec="seconds"),
-                                "metadata": json.dumps(doc.metadata or {}, indent=2),
-                            }
-                        )
-                    )
-                else:
-                    metadata_str = json.dumps(doc.metadata or {}, indent=2)
-                    results.append(
-                        f"""\
-        <document index="{index}">
-            <source>{doc.metadata.get("source", url)}</source>
-            <document_content>{doc.page_content.strip()}</document_content>
-            <document_metadata>{metadata_str}</document_metadata>
-        </document>
-    """
-                    )
-
-            summaries: list[str] = await asyncio.gather(*tasks)
-            for index, summary in enumerate(summaries):
                 metadata_str = json.dumps(doc.metadata or {}, indent=2)
                 results.append(
                     f"""\
     <document index="{index}">
         <source>{doc.metadata.get("source", url)}</source>
-        <document_summary>{summary.strip()}</document_summary>
+        <document_content>{doc.page_content.strip()}</document_content>
         <document_metadata>{metadata_str}</document_metadata>
     </document>
 """
                 )
+
             duration = time.perf_counter() - start_time
             logger.debug(f"Processed '{url}' - {duration:.2f}s")
             docs = "\n\n".join(results)
             return f"<documents>\n{docs}\n</documents>"
-
         except Exception as e:
             logger.error(e, exc_info=True)
             raise e
