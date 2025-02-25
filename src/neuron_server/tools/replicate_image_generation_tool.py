@@ -13,9 +13,9 @@ import replicate
 import replicate.helpers
 from langchain.schema import HumanMessage
 from langchain.tools import BaseTool
+from langchain_anthropic import ChatAnthropic
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.runnables import RunnableConfig
-from langchain_openai import ChatOpenAI
 from PIL import Image, PngImagePlugin
 from pydantic import BaseModel, Field
 
@@ -51,10 +51,8 @@ class ImageDescription(BaseModel):
     )
 
 
-model = ChatOpenAI(
-    model="gpt-4o",
-    temperature=0,
-)
+# Initialize the model
+model = ChatAnthropic(model="claude-3-7-sonnet-20250219", temperature=0.2)
 
 chain = ChatPromptTemplate.from_messages(
     [

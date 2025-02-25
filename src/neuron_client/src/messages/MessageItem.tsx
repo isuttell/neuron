@@ -1,21 +1,30 @@
-import React, { memo } from "react";
-import { Bot, User, Hammer } from "lucide-react";
+import FuzzyTimeAgo from "@/components/FuzzyTimeAgo";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { getMessage, getTextContent } from "@/slices/messagesSlice";
-import Content from "./Content";
-import FuzzyTimeAgo from "@/components/FuzzyTimeAgo";
-import { formatNumber } from "../utils/numberFormat";
-import TokenMetadataTable from "./TokenMetadataTable";
-import { useAuth0 } from "@auth0/auth0-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { RootState } from "@/store";
 import { useAppSelector } from "@/hooks";
+import {
+  getMessage,
+  getTextContent,
+  getThinkingContent,
+} from "@/slices/messagesSlice";
+import { RootState } from "@/store";
+import { useAuth0 } from "@auth0/auth0-react";
+import { Bot, ChevronDown, ChevronUp, Hammer, User } from "lucide-react";
+import React, { memo, useState } from "react";
+import { formatNumber } from "../utils/numberFormat";
+import Content from "./Content";
+import TokenMetadataTable from "./TokenMetadataTable";
 
 interface MessageItemProps {
   messageId: string;
@@ -42,6 +51,7 @@ const MessageItem: React.FC<MessageItemProps> = ({
   showTools = false,
   toolOutput = ["deepseek_reasoning"],
 }) => {
+  const [isThinkingOpen, setIsThinkingOpen] = useState(true);
   const message = useAppSelector((state: RootState) =>
     getMessage(state, messageId)
   );
@@ -53,12 +63,17 @@ const MessageItem: React.FC<MessageItemProps> = ({
     isTool && toolOutput && toolOutput.includes(message.name ?? "");
 
   let body = getTextContent(content);
+  const thinking = getThinkingContent(content);
+  const hasThinking = thinking.trim().length > 0;
 
   if (!showTools) {
     body = body.replace(/<\|AI\|>[\s\S]*?<\|AI\|>/g, "").trim();
   }
 
-  if (!showTools && ((isTool && !showToolOutput) || body.length === 0)) {
+  if (
+    !showTools &&
+    ((isTool && !showToolOutput) || (body.length === 0 && !hasThinking))
+  ) {
     // If there are no media items or content, don't show anything
     return <div />;
   }
@@ -97,6 +112,33 @@ const MessageItem: React.FC<MessageItemProps> = ({
           </TooltipContent>
         </Tooltip>
         <div className="flex flex-col flex-1 ">
+          {hasThinking && (
+            <Collapsible
+              open={isThinkingOpen}
+              onOpenChange={setIsThinkingOpen}
+              className="mb-4 border bg-zinc-900 px-4 py-2 rounded-md"
+            >
+              <CollapsibleTrigger asChild>
+                <div className="flex items-center justify-between cursor-pointer">
+                  <div className="text-sm font-medium italic">Thinking</div>
+
+                  <button className="rounded-full p-1 hover:bg-muted">
+                    {isThinkingOpen ? (
+                      <ChevronUp className="h-4 w-4" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="mt-4 mb-2 text-sm text-muted-foreground whitespace-pre-wrap">
+                  {thinking}
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          )}
+
           {body.trim().length > 0 ? (
             !showTools ? (
               <Content

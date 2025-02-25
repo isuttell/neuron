@@ -31,20 +31,20 @@ class DummyMessage:
 
 def test_get_message_content_with_string() -> None:
     msg = DummyMessage("hello world")
-    result = get_message_content(msg)
+    result = get_message_content(msg, format_as_string=True)
     assert result == "hello world"
 
 
 def test_get_message_content_with_list() -> None:
     msg = DummyMessage(["line1", {"type": "text", "text": "line2"}])
-    result = get_message_content(msg)
+    result = get_message_content(msg, format_as_string=True)
     expected = "line1\nline2"
     assert result == expected
 
 
 def test_get_message_content_empty() -> None:
     msg = DummyMessage("")
-    result = get_message_content(msg)
+    result = get_message_content(msg, format_as_string=True)
     assert result is None
 
 

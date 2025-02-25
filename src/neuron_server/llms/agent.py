@@ -31,31 +31,71 @@ connection_kwargs = {
 }
 
 
-def get_message_content(message: BaseMessage) -> str | None:
+def get_message_content(
+    message: BaseMessage, format_as_string: bool = False
+) -> list[dict[str, Any]] | str | None:
     """Extract the content from a message and format it for display.
 
     Args:
         message: The message to extract content from
+        format_as_string: If True, return content as a string (for backward compatibility)
 
     Returns:
-        The formatted message content or None if no content
+        A list of content objects, a string, or None if no content
     """
     if not message.content:
         return None
 
-    if isinstance(message.content, str):
-        return message.content
+    # For backward compatibility with tests and existing code
+    if format_as_string:
+        if isinstance(message.content, str):
+            return message.content
 
+        if isinstance(message.content, list):
+            text_parts = []
+            for part in message.content:
+                if isinstance(part, str):
+                    text_parts.append(part)
+                elif isinstance(part, dict) and part.get("type") == "text":
+                    text_parts.append(part["text"])
+            return "\n".join(text_parts)
+
+        return str(message.content)
+
+    # Handle string content
+    if isinstance(message.content, str):
+        return [{"type": "text", "text": message.content, "index": 0}]
+
+    # Handle list content
     if isinstance(message.content, list):
-        text_parts = []
+        contents = []
+        index = 0
+
         for part in message.content:
             if isinstance(part, str):
-                text_parts.append(part)
-            elif isinstance(part, dict) and part.get("type") == "text":
-                text_parts.append(part["text"])
-        return "\n".join(text_parts)
+                contents.append({"type": "text", "text": part, "index": index})
+                index += 1
+            elif isinstance(part, dict):
+                if part.get("type") == "text":
+                    contents.append(
+                        {"type": "text", "text": part["text"], "index": index}
+                    )
+                    index += 1
+                elif part.get("type") == "thinking":
+                    contents.append(
+                        {
+                            "type": "thinking",
+                            "thinking": part.get("thinking", ""),
+                            "index": index,
+                        }
+                    )
+                    index += 1
+                # Add other content types as needed
 
-    return str(message.content)
+        return contents if contents else None
+
+    # Fallback for other content types
+    return [{"type": "text", "text": str(message.content), "index": 0}]
 
 
 class ThreadConfig(TypedDict):
@@ -255,7 +295,13 @@ async def execute_agent(
     )
     result: AIMessage = result["messages"][-1]
     assert isinstance(result, AIMessage)
-    return (get_message_content(result) or "").strip()
+
+    # Use format_as_string=True to get a string result for backward compatibility
+    content = get_message_content(result, format_as_string=True)
+    if not content:
+        return ""
+
+    return content.strip() if isinstance(content, str) else ""
 
 
 async def aget_state(thread_id: UUID) -> dict[str, Any]:
@@ -583,7 +629,7 @@ async def _process_stream_events(ctx: StreamEventContext) -> str | None:
         data: dict = body["data"]
         run_id: str = body["run_id"]
         node: str | None = body["metadata"].get("langgraph_node")
-
+        logger.debug(f"Processing event: {kind} {name} {data} {run_id} {node}")
         if kind in ["on_chain_start", "on_chain_end"] and name in [
             "update_title",
             "update_memory",
@@ -617,9 +663,16 @@ async def _process_stream_events(ctx: StreamEventContext) -> str | None:
         elif kind == "on_chat_model_stream" and isinstance(data["chunk"], AIMessage):
             chunk = data["chunk"]
             content = get_message_content(chunk)
-            if isinstance(content, str) and len(content) > 0:
+
+            # Handle content which can now be a list of Content objects or a string
+            if content:
                 await update_thread_status(ctx["thread"], "streaming")
                 index += 1
+
+                # If content is still a string (for backward compatibility), convert it to a Content object
+                if isinstance(content, str):
+                    content = [{"type": "text", "text": content, "index": 0}]
+
                 await pubsub.publish(
                     "app",
                     PartialMessageEvent(
@@ -660,7 +713,8 @@ async def _process_stream_events(ctx: StreamEventContext) -> str | None:
         else None
     )
     if last_message:
-        state_result = get_message_content(last_message)
+        # Use format_as_string=True for backward compatibility with existing code
+        state_result = get_message_content(last_message, format_as_string=True)
 
     return state_result
 

@@ -258,5 +258,5 @@ def get_tools(query: str) -> list[BaseTool]:
         ts.extend(memory_tools)
     ts.extend(personality_tools)
     ts.extend(schedule_tools)
-    ts.extend(media_tools)
+
     return list({tool.name: tool for tool in ts}.values())

@@ -83,6 +83,10 @@ class Config(BaseModel):
         default=os.environ.get("DEBUG", "False").lower() == "true",
         description="Debug mode",
     )
+    llm_debug: bool = Field(
+        default=os.environ.get("LLM_DEBUG", "False").lower() == "true",
+        description="LLM debug mode",
+    )
     hf_token: str = Field(
         default=os.environ.get("HF_TOKEN"), description="Hugging Face token"
     )

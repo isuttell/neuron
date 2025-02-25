@@ -4,11 +4,26 @@ import { fetchMessagesByThread } from "../actions/messageActions";
 import type { RootState } from "../store";
 import { MessageResponse } from "../types/message";
 
-interface Content {
-  text: string;
+// Base content interface with common properties
+interface BaseContent {
   type: string;
   index: number;
 }
+
+// Text content
+interface TextContent extends BaseContent {
+  type: "text";
+  text: string;
+}
+
+// Thinking content
+interface ThinkingContent extends BaseContent {
+  type: "thinking";
+  thinking: string;
+}
+
+// Union type for all content types
+type Content = TextContent | ThinkingContent | BaseContent;
 
 type MessageRole = "ai" | "human" | "tool" | "system";
 
@@ -96,8 +111,25 @@ export function getTextContent(content: Content[] | string): string {
     return content;
   }
   return content
-    .filter((item) => item.type === "text" && typeof item.text === "string")
+    .filter(
+      (item): item is TextContent =>
+        item.type === "text" && typeof (item as TextContent).text === "string"
+    )
     .map((item) => item.text)
+    .join("\n");
+}
+
+export function getThinkingContent(content: Content[] | string): string {
+  if (typeof content === "string") {
+    return ""; // String content doesn't contain thinking
+  }
+  return content
+    .filter(
+      (item): item is ThinkingContent =>
+        item.type === "thinking" &&
+        typeof (item as ThinkingContent).thinking === "string"
+    )
+    .map((item) => item.thinking)
     .join("\n");
 }
 
@@ -147,13 +179,70 @@ export const messagesSlice = createSlice({
 
       if (existingMessage) {
         const message = action.payload.message;
+
+        // Handle content based on type
+        let updatedContent: Content[] | string;
+
+        if (
+          typeof message.content === "string" &&
+          typeof existingMessage.content === "string"
+        ) {
+          // If both are strings, concatenate as before
+          updatedContent = existingMessage.content + message.content;
+        } else if (
+          Array.isArray(existingMessage.content) &&
+          Array.isArray(message.content)
+        ) {
+          // Create a map of existing content by type
+          const contentByType: Record<string, Content> = {};
+
+          // Initialize with existing content
+          (existingMessage.content as Content[]).forEach((item: Content) => {
+            contentByType[item.type] = { ...item };
+          });
+
+          // Merge with new content
+          (message.content as Content[]).forEach((newItem: Content) => {
+            if (contentByType[newItem.type]) {
+              // If this type already exists, concatenate the content
+              const existingItem = contentByType[newItem.type];
+
+              if (
+                newItem.type === "text" &&
+                "text" in newItem &&
+                "text" in existingItem
+              ) {
+                contentByType[newItem.type] = {
+                  ...existingItem,
+                  text: existingItem.text + newItem.text,
+                };
+              } else if (
+                newItem.type === "thinking" &&
+                "thinking" in newItem &&
+                "thinking" in existingItem
+              ) {
+                contentByType[newItem.type] = {
+                  ...existingItem,
+                  thinking: existingItem.thinking + newItem.thinking,
+                };
+              }
+            } else {
+              // If this type doesn't exist yet, add it
+              contentByType[newItem.type] = { ...newItem };
+            }
+          });
+
+          // Convert back to array
+          updatedContent = Object.values(contentByType);
+        } else {
+          // If types don't match or other cases, use the new content
+          updatedContent = message.content;
+        }
+
         state.messageMap[messageId] = {
           ...existingMessage,
           status: message.status,
-          content:
-            typeof message.content === "string"
-              ? existingMessage.content + message.content
-              : message.content,
+          content: updatedContent,
         };
       } else {
         const message = parseIncomingMessage(action.payload.message);

@@ -194,6 +194,7 @@ async def process_artifacts(
             artifacts.append(f'<audio src="{url}" controls />')
         else:
             artifacts.append(f"<link>[{file}]({url})</link>")
+        logger.debug(f"Artifact created <{url}>")
 
     return process_output.strip() if process_output else "", artifacts
 

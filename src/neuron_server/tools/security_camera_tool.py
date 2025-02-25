@@ -284,7 +284,7 @@ class SecurityCameraTool(BaseTool):
         config: RunnableConfig,
         frame_count: int | None = 1,
         fps: float | None = 1,
-        provider: Literal["openai", "anthropic"] | None = "openai",
+        provider: Literal["openai", "anthropic"] | None = "anthropic",
     ) -> str:
         try:
             camera: str = camera_name.value
@@ -297,13 +297,13 @@ class SecurityCameraTool(BaseTool):
             )
             model = (
                 ChatAnthropic(
-                    model="claude-3-5-sonnet-20241022",
-                    temperature=0,
+                    model="claude-3-7-sonnet-20250219",
+                    temperature=0.2,
                 )
                 if provider == "anthropic"
                 else ChatOpenAI(
                     model="gpt-4o",
-                    temperature=0,
+                    temperature=0.2,
                 )
             )
             # Ask the AI to analyze the images and save the results while we wait

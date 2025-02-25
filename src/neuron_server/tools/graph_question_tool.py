@@ -1,7 +1,7 @@
 import asyncio
 
 from langchain.tools import BaseTool
-from langchain_core.messages import BaseMessage, trim_messages
+from langchain_core.messages import trim_messages
 from langchain_core.messages.utils import get_buffer_string
 from langchain_core.runnables import Runnable, RunnableConfig
 from pydantic import BaseModel, Field
@@ -67,17 +67,8 @@ documents into the context window.
             from neuron_server.llms.agent import aget_state
 
             state = await aget_state(thread_id=config["configurable"]["thread_id"])
-            try:
-                messages: list[BaseMessage] = await message_trimmer.ainvoke(
-                    state.values.get("messages", []),
-                    config,
-                )
-            except NotImplementedError:
-                logger.warning(
-                    "Message trimmer not implemented on model, using all messages"
-                )
-                messages = state.values.get("messages", [])
-            history = get_buffer_string(messages)
+            messages = state.values.get("messages", [])
+            history = get_buffer_string(messages)[-10000:]
             response: OutputState = await question_graph.ainvoke(
                 {
                     "document_ids": document_ids,

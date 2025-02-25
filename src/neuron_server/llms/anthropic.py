@@ -1,8 +1,11 @@
+import logging
 from typing import Literal
 
 from langchain_anthropic import ChatAnthropic
 
 from neuron_server.llms.llm import LLM
+
+logger = logging.getLogger(__name__)
 
 
 class AnthropicLLM(LLM):
@@ -17,6 +20,9 @@ class AnthropicLLM(LLM):
             model=model_id,
             temperature=1,
             streaming=True,
+            max_tokens=64_000,
+            thinking={"type": "enabled", "budget_tokens": 10_000},
+            verbose=True,
         )
         title_model = ChatAnthropic(
             model="claude-3-5-haiku-20241022",
