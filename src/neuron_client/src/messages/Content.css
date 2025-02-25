@@ -73,6 +73,15 @@
   font-weight: 700;
 }
 
+.content > h1:first-child,
+.content > h2:first-child,
+.content > h3:first-child,
+.content > h4:first-child,
+.content > h5:first-child,
+.content > h6:first-child {
+  margin-top: 0;
+}
+
 .content h1 {
   font-size: 1.5em;
 }

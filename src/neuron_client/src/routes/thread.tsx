@@ -1,25 +1,26 @@
-import { useEffect, useRef, useState } from "react";
+import DeleteThreadButton from "@/components/DeleteThreadButton";
+import MediaPanelWidth, { WidthMode } from "@/components/MediaPanelWidth";
 import MediaTimeline from "@/components/MediaTimeline";
+import ToggleSystemMessages from "@/components/ToggleSystemMessages";
+import { SidebarTrigger } from "@/components/ui/sidebar";
+import Loading from "@/lib/loading";
+import { cn, debounce } from "@/lib/utils";
+import EditPersonalityDialog from "@/personalities/EditPersonalityDialog";
+import { useEffect, useRef, useState } from "react";
+import { shallowEqual } from "react-redux";
 import { useParams } from "react-router-dom";
+import {
+  fetchMessagesByThread,
+  postMessageByThread,
+} from "../actions/messageActions";
+import { useAppDispatch, useAppSelector } from "../hooks";
 import MessageForm from "../messages/MessageForm";
 import MessageItem from "../messages/MessageItem";
-import { useAppSelector, useAppDispatch } from "../hooks";
-import { shallowEqual } from "react-redux";
-import Loading from "@/lib/loading";
-import { getActivePersonality } from "../slices/personalitiesSlice";
-import { fetchMessagesByThread } from "../actions/messageActions";
-import { cn } from "@/lib/utils";
-import { postMessageByThread } from "../actions/messageActions";
-import { debounce } from "@/lib/utils";
-import DeleteThreadButton from "@/components/DeleteThreadButton";
-import ToggleSystemMessages from "@/components/ToggleSystemMessages";
-import MediaPanelWidth, { WidthMode } from "@/components/MediaPanelWidth";
-import { SidebarTrigger } from "@/components/ui/sidebar";
-import EditPersonalityDialog from "@/personalities/EditPersonalityDialog";
 import {
-  selectThreadMessages,
   getMessagesLoading,
+  selectThreadMessages,
 } from "../slices/messagesSlice";
+import { getActivePersonality } from "../slices/personalitiesSlice";
 import { selectThread } from "../slices/threadsSlice";
 
 export default function Thread() {
@@ -48,22 +49,10 @@ export default function Thread() {
 
   const filteredMessages = messages
     .slice()
-    .map((message) => {
-      const content = Array.isArray(message.content)
-        ? message.content
-            .filter((item) => item.type === "text")
-            .map((item) => item.text)
-            .join("\n")
-        : message.content;
-
-      return {
-        ...message,
-        content,
-      };
-    })
     .filter((message) =>
       [
-        message.content && message.content.length > 0,
+        (message.textContent && message.textContent.length > 0) ||
+          (message.thinkingContent && message.thinkingContent.length > 0),
         !showTools && typeof message.node === "string"
           ? ["agent", "tools"].includes(message.node)
           : true,

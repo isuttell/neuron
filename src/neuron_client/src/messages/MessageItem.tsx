@@ -13,11 +13,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useAppSelector } from "@/hooks";
-import {
-  getMessage,
-  getTextContent,
-  getThinkingContent,
-} from "@/slices/messagesSlice";
+import { getMessage } from "@/slices/messagesSlice";
 import { RootState } from "@/store";
 import { useAuth0 } from "@auth0/auth0-react";
 import { Bot, ChevronDown, ChevronUp, Hammer, User } from "lucide-react";
@@ -51,20 +47,27 @@ const MessageItem: React.FC<MessageItemProps> = ({
   showTools = false,
   toolOutput = ["deepseek_reasoning"],
 }) => {
-  const [isThinkingOpen, setIsThinkingOpen] = useState(true);
+  const [isThinkingOpen, setIsThinkingOpen] = useState(false);
   const message = useAppSelector((state: RootState) =>
     getMessage(state, messageId)
   );
 
   const { user } = useAuth0();
-  const { type: role, content, node, status = undefined } = message;
+  const {
+    type: role,
+    node,
+    status = undefined,
+    name,
+    textContent,
+    thinkingContent,
+  } = message;
   const isTool = role === "tool" || node === "tools";
   const showToolOutput =
-    isTool && toolOutput && toolOutput.includes(message.name ?? "");
+    isTool && toolOutput && toolOutput.includes(name ?? "");
 
-  let body = getTextContent(content);
-  const thinking = getThinkingContent(content);
-  const hasThinking = thinking.trim().length > 0;
+  let body = textContent;
+
+  const hasThinking = thinkingContent && thinkingContent.trim().length > 0;
 
   if (!showTools) {
     body = body.replace(/<\|AI\|>[\s\S]*?<\|AI\|>/g, "").trim();
@@ -120,7 +123,11 @@ const MessageItem: React.FC<MessageItemProps> = ({
             >
               <CollapsibleTrigger asChild>
                 <div className="flex items-center justify-between cursor-pointer">
-                  <div className="text-sm font-medium italic">Thinking</div>
+                  <div className="text-sm font-medium italic flex items-center">
+                    {body && body.trim().length > 0
+                      ? "Thoughts"
+                      : "Thinking..."}
+                  </div>
 
                   <button className="rounded-full p-1 hover:bg-muted">
                     {isThinkingOpen ? (
@@ -133,13 +140,13 @@ const MessageItem: React.FC<MessageItemProps> = ({
               </CollapsibleTrigger>
               <CollapsibleContent>
                 <div className="mt-4 mb-2 text-sm text-muted-foreground whitespace-pre-wrap">
-                  {thinking}
+                  {thinkingContent}
                 </div>
               </CollapsibleContent>
             </Collapsible>
           )}
 
-          {body.trim().length > 0 ? (
+          {body && body.trim().length > 0 ? (
             !showTools ? (
               <Content
                 content={body}
@@ -161,10 +168,10 @@ const MessageItem: React.FC<MessageItemProps> = ({
             </div>
           )}
           <div className="flex justify-end flex-shrink-0 space-x-2">
-            {typeof message.node === "string" && message.node !== "agent" && (
+            {typeof node === "string" && node !== "agent" && (
               <Tooltip delayDuration={0}>
                 <TooltipTrigger>
-                  <span className="text-xs text-gray-500">{message.node}</span>
+                  <span className="text-xs text-gray-500">{node}</span>
                 </TooltipTrigger>
                 <TooltipContent side="bottom">Node</TooltipContent>
               </Tooltip>

@@ -1,11 +1,11 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import "@testing-library/jest-dom";
-import { Provider } from "react-redux";
-import { MemoryRouter, Routes, Route } from "react-router-dom";
-import { configureStore } from "@reduxjs/toolkit";
-import Thread from "../thread";
 import { MediaPlayerProvider } from "@/contexts/MediaPlayerContext";
+import { configureStore } from "@reduxjs/toolkit";
+import "@testing-library/jest-dom";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { Provider } from "react-redux";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 import * as hooks from "../../hooks";
+import Thread from "../thread";
 
 // Mock action creators
 jest.mock("../../actions/messageActions", () => ({
@@ -74,6 +74,7 @@ jest.mock("../../messages/MessageItem", () => ({
       return null;
     }
 
+    // Create a div with the message ID as a data-testid
     return (
       <div
         data-testid={`message-${messageId}`}
@@ -400,6 +401,9 @@ describe("Thread", () => {
           type: "ai",
           thread_id: "thread-1",
           created_at: "2024-02-04T12:00:00Z",
+          // Add textContent property to match what the component expects
+          textContent: "First part\nSecond part",
+          thinkingContent: "",
         },
       ];
 
@@ -419,17 +423,26 @@ describe("Thread", () => {
       };
 
       renderThread(initialState);
+
+      // Wait for the component to render
       expect(screen.getByTestId("message-msg-1")).toBeInTheDocument();
     });
 
     it("should filter system messages when showTools is false", async () => {
+      // Add textContent property to messages to match what the component expects
+      const messagesWithTextContent = mockMessages.map((msg) => ({
+        ...msg,
+        textContent: typeof msg.content === "string" ? msg.content : "",
+        thinkingContent: "",
+      }));
+
       const initialState: Partial<AppState> = {
         messages: {
-          messageMap: mockMessages.reduce(
+          messageMap: messagesWithTextContent.reduce(
             (acc, msg) => ({ ...acc, [msg.id]: msg }),
             {}
           ),
-          messageIds: mockMessages.map((msg) => msg.id),
+          messageIds: messagesWithTextContent.map((msg) => msg.id),
           loading: false,
           error: null,
         },
@@ -453,13 +466,20 @@ describe("Thread", () => {
     });
 
     it("should handle message submission", async () => {
+      // Add textContent property to messages to match what the component expects
+      const messagesWithTextContent = mockMessages.map((msg) => ({
+        ...msg,
+        textContent: typeof msg.content === "string" ? msg.content : "",
+        thinkingContent: "",
+      }));
+
       const initialState: Partial<AppState> = {
         messages: {
-          messageMap: mockMessages.reduce(
+          messageMap: messagesWithTextContent.reduce(
             (acc, msg) => ({ ...acc, [msg.id]: msg }),
             {}
           ),
-          messageIds: mockMessages.map((msg) => msg.id),
+          messageIds: messagesWithTextContent.map((msg) => msg.id),
           loading: false,
           error: null,
         },
@@ -494,6 +514,7 @@ describe("Thread", () => {
     });
 
     it("should scroll to last user message", async () => {
+      // Add textContent property to messages to match what the component expects
       const messagesWithMultipleUsers = [
         {
           id: "msg-1",
@@ -501,6 +522,8 @@ describe("Thread", () => {
           type: "human",
           thread_id: "thread-1",
           created_at: "2024-02-04T12:00:00Z",
+          textContent: "First message",
+          thinkingContent: "",
         },
         {
           id: "msg-2",
@@ -508,6 +531,8 @@ describe("Thread", () => {
           type: "ai",
           thread_id: "thread-1",
           created_at: "2024-02-04T12:01:00Z",
+          textContent: "AI response",
+          thinkingContent: "",
         },
         {
           id: "msg-3",
@@ -515,6 +540,8 @@ describe("Thread", () => {
           type: "human",
           thread_id: "thread-1",
           created_at: "2024-02-04T12:02:00Z",
+          textContent: "Last user message",
+          thinkingContent: "",
         },
       ];
 
@@ -536,7 +563,9 @@ describe("Thread", () => {
       renderThread(initialState);
 
       // Wait for the setTimeout in useEffect
-      await new Promise((resolve) => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // Verify scrollIntoView was called
       expect(mockScrollIntoView).toHaveBeenCalledWith({
         behavior: "instant",
         block: "start",

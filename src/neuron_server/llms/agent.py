@@ -31,6 +31,51 @@ connection_kwargs = {
 }
 
 
+def _process_string_content(
+    content: str, format_as_string: bool
+) -> str | list[dict[str, Any]]:
+    """Process string content based on format preference."""
+    if format_as_string:
+        return content
+    return [{"type": "text", "text": content, "index": 0}]
+
+
+def _process_list_content_as_string(content: list) -> str:
+    """Process list content and return as a string."""
+    text_parts = []
+    for part in content:
+        if isinstance(part, str):
+            text_parts.append(part)
+        elif isinstance(part, dict) and part.get("type") == "text":
+            text_parts.append(part["text"])
+    return "\n".join(text_parts)
+
+
+def _process_list_content_as_structured(content: list) -> list[dict[str, Any]] | None:
+    """Process list content and return as structured content."""
+    contents = []
+    index = 0
+    for part in content:
+        if isinstance(part, str):
+            contents.append({"type": "text", "text": part, "index": index})
+            index += 1
+        elif isinstance(part, dict):
+            content_type = part.get("type")
+            if content_type == "text":
+                contents.append({"type": "text", "text": part["text"], "index": index})
+                index += 1
+            elif content_type == "thinking":
+                contents.append(
+                    {
+                        "type": "thinking",
+                        "thinking": part.get("thinking", ""),
+                        "index": index,
+                    }
+                )
+                index += 1
+    return contents if contents else None
+
+
 def get_message_content(
     message: BaseMessage, format_as_string: bool = False
 ) -> list[dict[str, Any]] | str | None:
@@ -38,7 +83,8 @@ def get_message_content(
 
     Args:
         message: The message to extract content from
-        format_as_string: If True, return content as a string (for backward compatibility)
+        format_as_string: If True, return content as a string
+            (for backward compatibility)
 
     Returns:
         A list of content objects, a string, or None if no content
@@ -46,56 +92,22 @@ def get_message_content(
     if not message.content:
         return None
 
-    # For backward compatibility with tests and existing code
-    if format_as_string:
-        if isinstance(message.content, str):
-            return message.content
+    content = message.content
 
-        if isinstance(message.content, list):
-            text_parts = []
-            for part in message.content:
-                if isinstance(part, str):
-                    text_parts.append(part)
-                elif isinstance(part, dict) and part.get("type") == "text":
-                    text_parts.append(part["text"])
-            return "\n".join(text_parts)
+    # Process string content
+    if isinstance(content, str):
+        return _process_string_content(content, format_as_string)
 
-        return str(message.content)
-
-    # Handle string content
-    if isinstance(message.content, str):
-        return [{"type": "text", "text": message.content, "index": 0}]
-
-    # Handle list content
-    if isinstance(message.content, list):
-        contents = []
-        index = 0
-
-        for part in message.content:
-            if isinstance(part, str):
-                contents.append({"type": "text", "text": part, "index": index})
-                index += 1
-            elif isinstance(part, dict):
-                if part.get("type") == "text":
-                    contents.append(
-                        {"type": "text", "text": part["text"], "index": index}
-                    )
-                    index += 1
-                elif part.get("type") == "thinking":
-                    contents.append(
-                        {
-                            "type": "thinking",
-                            "thinking": part.get("thinking", ""),
-                            "index": index,
-                        }
-                    )
-                    index += 1
-                # Add other content types as needed
-
-        return contents if contents else None
+    # Process list content
+    if isinstance(content, list):
+        if format_as_string:
+            return _process_list_content_as_string(content)
+        return _process_list_content_as_structured(content)
 
     # Fallback for other content types
-    return [{"type": "text", "text": str(message.content), "index": 0}]
+    if format_as_string:
+        return str(content)
+    return [{"type": "text", "text": str(content), "index": 0}]
 
 
 class ThreadConfig(TypedDict):
@@ -629,7 +641,6 @@ async def _process_stream_events(ctx: StreamEventContext) -> str | None:
         data: dict = body["data"]
         run_id: str = body["run_id"]
         node: str | None = body["metadata"].get("langgraph_node")
-        logger.debug(f"Processing event: {kind} {name} {data} {run_id} {node}")
         if kind in ["on_chain_start", "on_chain_end"] and name in [
             "update_title",
             "update_memory",
@@ -669,10 +680,11 @@ async def _process_stream_events(ctx: StreamEventContext) -> str | None:
                 await update_thread_status(ctx["thread"], "streaming")
                 index += 1
 
-                # If content is still a string (for backward compatibility), convert it to a Content object
+                # If content is still a string (for backward compatibility),
+                # convert it to a Content object
                 if isinstance(content, str):
                     content = [{"type": "text", "text": content, "index": 0}]
-
+                logger.debug(f"Streaming content: {content}")
                 await pubsub.publish(
                     "app",
                     PartialMessageEvent(

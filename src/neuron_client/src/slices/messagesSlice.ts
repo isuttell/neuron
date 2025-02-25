@@ -71,6 +71,9 @@ export interface IncomingMessage {
 
 export interface Message extends Omit<IncomingMessage, "created_at"> {
   created_at?: number;
+  updated_at?: number;
+  textContent: string;
+  thinkingContent?: string;
 }
 
 interface IncomingPartialMessage extends Omit<IncomingMessage, "status"> {
@@ -119,18 +122,18 @@ export function getTextContent(content: Content[] | string): string {
     .join("\n");
 }
 
-export function getThinkingContent(content: Content[] | string): string {
+export function getThinkingContent(
+  content: Content[] | string
+): string | undefined {
   if (typeof content === "string") {
     return ""; // String content doesn't contain thinking
   }
-  return content
-    .filter(
-      (item): item is ThinkingContent =>
-        item.type === "thinking" &&
-        typeof (item as ThinkingContent).thinking === "string"
-    )
-    .map((item) => item.thinking)
-    .join("\n");
+  const thinking = content.find(
+    (item): item is ThinkingContent =>
+      item.type === "thinking" &&
+      typeof (item as ThinkingContent).thinking === "string"
+  );
+  return thinking?.thinking;
 }
 
 /**
@@ -142,6 +145,8 @@ function parseIncomingMessage(message: IncomingMessage): Message {
   return {
     ...message,
     id: message.id.replace("run-", ""),
+    textContent: getTextContent(message.content),
+    thinkingContent: getThinkingContent(message.content),
     created_at: message.created_at
       ? new Date(message.created_at).getTime()
       : undefined,
@@ -176,76 +181,31 @@ export const messagesSlice = createSlice({
     ) => {
       const messageId = action.payload.message.id.replace("run-", "");
       const existingMessage = state.messageMap[messageId];
+      const incomingMessage = action.payload.message;
 
       if (existingMessage) {
-        const message = action.payload.message;
-
-        // Handle content based on type
-        let updatedContent: Content[] | string;
-
-        if (
-          typeof message.content === "string" &&
-          typeof existingMessage.content === "string"
-        ) {
-          // If both are strings, concatenate as before
-          updatedContent = existingMessage.content + message.content;
-        } else if (
-          Array.isArray(existingMessage.content) &&
-          Array.isArray(message.content)
-        ) {
-          // Create a map of existing content by type
-          const contentByType: Record<string, Content> = {};
-
-          // Initialize with existing content
-          (existingMessage.content as Content[]).forEach((item: Content) => {
-            contentByType[item.type] = { ...item };
-          });
-
-          // Merge with new content
-          (message.content as Content[]).forEach((newItem: Content) => {
-            if (contentByType[newItem.type]) {
-              // If this type already exists, concatenate the content
-              const existingItem = contentByType[newItem.type];
-
-              if (
-                newItem.type === "text" &&
-                "text" in newItem &&
-                "text" in existingItem
-              ) {
-                contentByType[newItem.type] = {
-                  ...existingItem,
-                  text: existingItem.text + newItem.text,
-                };
-              } else if (
-                newItem.type === "thinking" &&
-                "thinking" in newItem &&
-                "thinking" in existingItem
-              ) {
-                contentByType[newItem.type] = {
-                  ...existingItem,
-                  thinking: existingItem.thinking + newItem.thinking,
-                };
-              }
-            } else {
-              // If this type doesn't exist yet, add it
-              contentByType[newItem.type] = { ...newItem };
-            }
-          });
-
-          // Convert back to array
-          updatedContent = Object.values(contentByType);
-        } else {
-          // If types don't match or other cases, use the new content
-          updatedContent = message.content;
-        }
-
+        // Extract text and thinking from the incoming message
+        const incomingTextContent = getTextContent(incomingMessage.content);
+        const incomingThinkingContent = getThinkingContent(
+          incomingMessage.content
+        );
+        // Update the message with concatenated text and thinking content
         state.messageMap[messageId] = {
           ...existingMessage,
-          status: message.status,
-          content: updatedContent,
+          status: incomingMessage.status,
+          updated_at: Date.now(),
+          // Concatenate the text and thinking content with proper newline handling
+          textContent: existingMessage.textContent
+            ? existingMessage.textContent +
+              (incomingTextContent ? "\n" + incomingTextContent : "")
+            : incomingTextContent,
+          thinkingContent: existingMessage.thinkingContent
+            ? existingMessage.thinkingContent + (incomingThinkingContent || "")
+            : incomingThinkingContent,
         };
       } else {
-        const message = parseIncomingMessage(action.payload.message);
+        // For new messages, use parseIncomingMessage to set all fields correctly
+        const message = parseIncomingMessage(incomingMessage);
         state.messageMap[messageId] = message;
         state.messageIds.push(messageId);
       }
