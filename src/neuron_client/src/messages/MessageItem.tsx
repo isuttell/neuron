@@ -29,18 +29,6 @@ interface MessageItemProps {
   toolOutput?: string[];
 }
 
-const getStatusMessage = (status: string) => {
-  if (status === "thinking") {
-    return "Thinking...";
-  } else if (status === "tools") {
-    return "Looking up more information...";
-  } else if (status === "streaming") {
-    return "Streaming...";
-  } else {
-    return status;
-  }
-};
-
 const MessageItem: React.FC<MessageItemProps> = ({
   messageId,
   onPromptClick,
@@ -81,7 +69,6 @@ const MessageItem: React.FC<MessageItemProps> = ({
     // If there are no media items or content, don't show anything
     return <div />;
   }
-
   const elements = [
     <Card
       key={message.id}
