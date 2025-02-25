@@ -67,6 +67,7 @@ const MessageItem: React.FC<MessageItemProps> = ({
 
   let body = textContent;
 
+  const isThinking = status === "streaming" && body.trim().length === 0;
   const hasThinking = thinkingContent && thinkingContent.trim().length > 0;
 
   if (!showTools) {
@@ -124,9 +125,7 @@ const MessageItem: React.FC<MessageItemProps> = ({
               <CollapsibleTrigger asChild>
                 <div className="flex items-center justify-between cursor-pointer">
                   <div className="text-sm font-medium italic flex items-center">
-                    {body && body.trim().length > 0
-                      ? "Thoughts"
-                      : "Thinking..."}
+                    {isThinking ? "Thinking..." : "Thoughts"}
                   </div>
 
                   <button className="rounded-full p-1 hover:bg-muted">
@@ -156,17 +155,12 @@ const MessageItem: React.FC<MessageItemProps> = ({
             ) : (
               <div className="whitespace-pre-wrap">{body}</div>
             )
-          ) : (
+          ) : isThinking ? (
             <div className="space-y-2 flex-1">
               <Skeleton className="h-4 w-[250px]" />
               <Skeleton className="h-4 w-[200px]" />
-              {status && status !== "streaming" && (
-                <p className="text-sm text-gray-500">
-                  {getStatusMessage(status)}
-                </p>
-              )}
             </div>
-          )}
+          ) : null}
           <div className="flex justify-end flex-shrink-0 space-x-2">
             {typeof node === "string" && node !== "agent" && (
               <Tooltip delayDuration={0}>
