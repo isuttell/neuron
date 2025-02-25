@@ -684,7 +684,7 @@ async def _process_stream_events(ctx: StreamEventContext) -> str | None:
                 # convert it to a Content object
                 if isinstance(content, str):
                     content = [{"type": "text", "text": content, "index": 0}]
-                logger.debug(f"Streaming content: {content}")
+
                 await pubsub.publish(
                     "app",
                     PartialMessageEvent(

@@ -196,8 +196,7 @@ export const messagesSlice = createSlice({
           updated_at: Date.now(),
           // Concatenate the text and thinking content with proper newline handling
           textContent: existingMessage.textContent
-            ? existingMessage.textContent +
-              (incomingTextContent ? "\n" + incomingTextContent : "")
+            ? existingMessage.textContent + (incomingTextContent || "")
             : incomingTextContent,
           thinkingContent: existingMessage.thinkingContent
             ? existingMessage.thinkingContent + (incomingThinkingContent || "")
