@@ -6,7 +6,6 @@ from langchain.tools import BaseTool
 
 from neuron_server.llms.tools import (
     get_tools,
-    media_tools,
     memory_tools,
     personality_tools,
     schedule_tools,
@@ -54,7 +53,7 @@ class TestTools:
             assert any(isinstance(tool, BaseTool) for tool in tools)
             assert len(tools) == len(tool_sets["reasoning"]) + len(
                 personality_tools
-            ) + len(schedule_tools) + len(media_tools)
+            ) + len(schedule_tools)
 
     def test_get_tools_multiple_categories(self) -> None:
         """Test get_tools with multiple categories."""
@@ -66,7 +65,6 @@ class TestTools:
                 + len(tool_sets["inspect"])
                 + len(personality_tools)
                 + len(schedule_tools)
-                + len(media_tools)
             )
             assert len(tools) == expected_count
 
@@ -103,13 +101,11 @@ class TestTools:
             # Check for required tools
             personality_tool_names = {tool.name for tool in personality_tools}
             schedule_tool_names = {tool.name for tool in schedule_tools}
-            media_tool_names = {tool.name for tool in media_tools}
 
             tool_names = {tool.name for tool in tools}
 
             assert all(name in tool_names for name in personality_tool_names)
             assert all(name in tool_names for name in schedule_tool_names)
-            assert all(name in tool_names for name in media_tool_names)
 
     def test_get_tools_empty_query(self) -> None:
         """Test get_tools with empty query."""
@@ -117,9 +113,7 @@ class TestTools:
             mock_config.memory_enabled = False
             tools = get_tools("")
             # Should only include required tools
-            expected_count = (
-                len(personality_tools) + len(schedule_tools) + len(media_tools)
-            )
+            expected_count = len(personality_tools) + len(schedule_tools)
             assert len(tools) == expected_count
 
     def test_get_tools_invalid_category(self) -> None:
@@ -129,7 +123,5 @@ class TestTools:
             # Should not raise exception, just ignore invalid category
             tools = get_tools("invalid_category")
             # Should only include required tools
-            expected_count = (
-                len(personality_tools) + len(schedule_tools) + len(media_tools)
-            )
+            expected_count = len(personality_tools) + len(schedule_tools)
             assert len(tools) == expected_count
