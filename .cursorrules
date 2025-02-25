@@ -1,4 +1,6 @@
-# Project Overview
+# Neuron Project Coding Standards
+
+## Project Overview
 
 Neuron is a realtime chat application built with LangChain and LangGraph to allow for testing various models and tool capabilities. It supports threaded conversations, persistent memory, and a variety of custom tools integrated into onsite services. It serves as a playground for experimenting with new ideas and features.
 
@@ -23,8 +25,9 @@ Neuron is a realtime chat application built with LangChain and LangGraph to allo
 ### General Principles
 
 - Favor iteration and modularization over code duplication.
-- Use descriptive variable names with auxiliary verbs for clarity
-- Write concise, technical code
+- Use descriptive variable names with auxiliary verbs for clarity.
+- Write concise, technical code.
+- Include comments explaining the "why" behind the code.
 
 ### Frontend Code Style and Structure
 
@@ -36,11 +39,14 @@ Neuron is a realtime chat application built with LangChain and LangGraph to allo
 - Use Redux for state management; favor slice reducers and avoid storing derived state.
 - Use fetch for API requests.
 - Use `camelCase` for variable names.
+- Do not modify shadcn/ui components in src\neuron_client\src\components\ui; prefer to extend them with additional components.
 
 #### Frontend Testing
 
 - Write unit tests for all components using Jest and React Testing Library.
 - Run linting with `cd src/neuron_client && npm run lint` after each client task and fix any errors.
+- Run tests with `cd src/neuron_client && npm test` or `npm run test:coverage`.
+- Mock network requests.
 - Focus on testing business logic and DOM interactions.
 
 ### Backend Code Style and Structure
@@ -53,8 +59,10 @@ Neuron is a realtime chat application built with LangChain and LangGraph to allo
 - Use Quart for the web server and WebSocket handling; prioritize async operations.
 - Use `snake_case` for variable names.
 - Use ruff for formatting and linting.
-- **Types:** Include type hints in all functions and class methods.
+- **Types:** Include type hints in all functions and class methods, including return types.
 - **Commenting Style:** Use docstrings for all exported functions and classes to explain their purpose and parameters.
+- Use format specifiers instead of percent format strings.
+- Max line length is 88 characters and tabs count for 4 spaces.
 
 #### Backend Testing
 
@@ -63,6 +71,21 @@ Neuron is a realtime chat application built with LangChain and LangGraph to allo
 - Include tests for controllers, tools, and database models.
 - Use mocking for database and network operations to ensure isolation of tests.
 
-## Environment
+## Model Notes
 
-- Windows 11 PowerShell
+- gpt-4o and o3-mini are the latest OpenAI models.
+
+## CI/CD Workflows
+
+Available workflows:
+
+- neuron-server-build.yml - Main container build
+- frontend.yml - Frontend CI
+- backend.yml - Backend CI
+- code-interpreter-build.yml - Code interpreter build
+
+Run workflows using act:
+
+```
+act -W .gitea/workflows/[workflow-file] --secret-file ./secrets/gitea
+```
