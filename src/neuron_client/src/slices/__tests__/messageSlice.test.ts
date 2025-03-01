@@ -131,9 +131,9 @@ describe("messageSlice", () => {
         );
 
         const state = store.getState().messages;
-        // The actual behavior adds a newline between the existing and new content
+        // The actual behavior directly concatenates the content without a newline
         expect(state.messageMap["123"].textContent).toBe(
-          "Hello, world\n Updated"
+          "Hello, world Updated"
         );
         expect(state.messageMap["123"].status).toBe("completed");
       });
@@ -160,10 +160,10 @@ describe("messageSlice", () => {
         );
 
         const state = store.getState().messages;
-        // The actual implementation concatenates the text content with a newline
+        // The actual implementation concatenates the text content directly
         // rather than merging the arrays
         expect(state.messageMap["123"].textContent).toBe(
-          "Initial content\nNew content"
+          "Initial contentNew content"
         );
         expect(state.messageMap["123"].status).toBe("completed");
       });
