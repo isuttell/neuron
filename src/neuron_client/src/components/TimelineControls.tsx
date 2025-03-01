@@ -1,20 +1,20 @@
 import { Button } from "@/components/ui/button";
 import {
-  Pause,
-  Play,
-  SkipBack,
-  SkipForward,
-  ListVideo,
-  MonitorPause,
-} from "lucide-react";
-import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
+import {
+  ListVideo,
+  MonitorPause,
+  Pause,
+  Play,
+  SkipBack,
+  SkipForward,
+} from "lucide-react";
 import { AudioBarVisualization } from "./AudioBarVisualization";
 import { Spinner } from "./ui/spinner";
-import { cn } from "@/lib/utils";
 
 import React, { useRef, useState } from "react";
 
@@ -106,7 +106,7 @@ export function TimelineControls({
       )}
     >
       <div
-        className="h-[101px] relative border rounded-lg mb-4"
+        className="h-[101px] relative border rounded-lg my-2"
         style={{ backgroundColor: "#111111" }}
       >
         {currentItem && (
@@ -131,7 +131,20 @@ export function TimelineControls({
         )}
       </div>
       <div className="flex flex-col gap-4 px-4 py-2">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <div className="flex items-center mb-2">
+          <div className="text-sm font-medium">
+            {currentItem ? (
+              <>
+                <div>Now Playing</div>
+                <div className="text-muted-foreground">{currentItem.name}</div>
+              </>
+            ) : (
+              <div>No track selected</div>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
           <span>{formatTime(currentTime)}</span>
           <div
             ref={progressRef}
@@ -151,7 +164,7 @@ export function TimelineControls({
           <span>{formatTime(duration)}</span>
         </div>
 
-        <div className="flex items-center gap-6">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Tooltip>
               <TooltipTrigger asChild>
@@ -211,40 +224,26 @@ export function TimelineControls({
             </Tooltip>
           </div>
 
-          <div className="flex-1 flex items-center justify-between">
-            <div className="text-sm font-medium">
-              {currentItem ? (
-                <>
-                  <div>Now Playing</div>
-                  <div className="text-muted-foreground">
-                    {currentItem.name}
-                  </div>
-                </>
-              ) : (
-                <div>No track selected</div>
-              )}
-            </div>
-            {currentItem && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    size="sm"
-                    variant={"ghost"}
-                    onClick={() => onAutoPlayChange(!autoPlay)}
-                  >
-                    {autoPlay ? (
-                      <MonitorPause className="h-4 w-4" />
-                    ) : (
-                      <ListVideo className="h-4 w-4" />
-                    )}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {autoPlay ? "Disable auto-play" : "Enable auto-play audio"}
-                </TooltipContent>
-              </Tooltip>
-            )}
-          </div>
+          {currentItem && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="sm"
+                  variant={"ghost"}
+                  onClick={() => onAutoPlayChange(!autoPlay)}
+                >
+                  {autoPlay ? (
+                    <MonitorPause className="h-4 w-4" />
+                  ) : (
+                    <ListVideo className="h-4 w-4" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {autoPlay ? "Disable auto-play" : "Enable auto-play audio"}
+              </TooltipContent>
+            </Tooltip>
+          )}
         </div>
       </div>
     </div>
