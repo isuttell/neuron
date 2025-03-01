@@ -1,6 +1,5 @@
 import FuzzyTimeAgo from "@/components/FuzzyTimeAgo";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Card, CardContent } from "@/components/ui/card";
 import {
   Collapsible,
   CollapsibleContent,
@@ -13,6 +12,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useAppSelector } from "@/hooks";
+import { cn } from "@/lib/utils";
 import { getMessage } from "@/slices/messagesSlice";
 import { RootState } from "@/store";
 import { useAuth0 } from "@auth0/auth0-react";
@@ -21,7 +21,6 @@ import React, { memo, useState } from "react";
 import { formatNumber } from "../utils/numberFormat";
 import Content from "./Content";
 import TokenMetadataTable from "./TokenMetadataTable";
-
 interface MessageItemProps {
   messageId: string;
   onPromptClick?: (prompt: string) => void;
@@ -70,11 +69,15 @@ const MessageItem: React.FC<MessageItemProps> = ({
     return <div />;
   }
   const elements = [
-    <Card
+    <div
       key={message.id}
-      className={`w-full my-2 ${role === "system" ? "bg-zinc-900" : ""}`}
+      className={cn(
+        "w-full my-2 rounded-md",
+        role === "system" ? "bg-zinc-900" : "",
+        role === "human" ? "border" : ""
+      )}
     >
-      <CardContent className="px-6 py-4 text-small text-default-400 flex items-start space-x-2">
+      <div className="px-6 py-4 text-small text-default-400 flex items-start space-x-2">
         <Tooltip delayDuration={0}>
           <TooltipTrigger asChild>
             <div
@@ -191,8 +194,8 @@ const MessageItem: React.FC<MessageItemProps> = ({
             )}
           </div>
         </div>
-      </CardContent>
-    </Card>,
+      </div>
+    </div>,
   ];
   return elements;
 };
