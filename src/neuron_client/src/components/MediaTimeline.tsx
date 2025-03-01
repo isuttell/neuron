@@ -1,13 +1,13 @@
 import { useAppSelector } from "@/hooks";
-import { selectAllMedia } from "@/slices/mediaSlice";
-import { useMemo, useRef, useState, useEffect } from "react";
-import { MediaItem } from "@/types/media";
-import { TimelineControls } from "./TimelineControls";
-import ImageContent from "@/messages/ImageContent";
-import VideoContent from "@/messages/VideoContent";
-import { SubtitleContent } from "@/messages/SubtitleContent";
-import SpeechAudioContent from "@/messages/SpeechAudioContent";
 import { cn } from "@/lib/utils";
+import ImageContent from "@/messages/ImageContent";
+import SpeechAudioContent from "@/messages/SpeechAudioContent";
+import { SubtitleContent } from "@/messages/SubtitleContent";
+import VideoContent from "@/messages/VideoContent";
+import { selectAllMedia } from "@/slices/mediaSlice";
+import { MediaItem } from "@/types/media";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { TimelineControls } from "./TimelineControls";
 
 interface MediaTimelineProps {
   threadId: string;
@@ -345,6 +345,7 @@ function MediaTimeline({ threadId }: MediaTimelineProps) {
                   </div>
                 );
               } else if (
+                item.media_type === "html" ||
                 item.media_type === "link" ||
                 item.media_type === "data" ||
                 item.media_type === "code"
@@ -355,6 +356,7 @@ function MediaTimeline({ threadId }: MediaTimelineProps) {
                 }
                 return (
                   <a
+                    className="inline-block px-2"
                     href={url}
                     target="_blank"
                     rel="noopener noreferrer"
