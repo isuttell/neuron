@@ -1,0 +1,37 @@
+# Neuron Project Guidelines
+
+- Write concise, technical code with comments explaining the "why" behind the code
+- Favor iteration and modularization over code duplication
+- Use descriptive variable names with auxiliary verbs for clarity
+
+## Frontend Guidelines
+- Use TypeScript with functional and declarative programming patterns; avoid classes
+- Use Tailwind CSS for styling; avoid inline styles
+- Use Shadcn UI components for consistency; prefer reusable components
+- Use Redux for state management; favor slice reducers and avoid storing derived state
+- Use `camelCase` for variable names
+- Do not modify shadcn/ui components in src\neuron_client\src\components\ui; extend them instead
+
+## Backend Guidelines
+- Write Python code with type hints in all functions and class methods, including return types
+- Use Pydantic for data validation; ensure all models are strongly typed
+- Use SQLAlchemy ORM for database interactions; avoid raw SQL unless necessary
+- Use Quart for the web server and WebSocket handling; prioritize async operations
+- Use `snake_case` for variable names
+- Use docstrings for all exported functions and classes
+- Use format specifiers instead of percent format strings
+- Max line length is 88 characters and tabs count for 4 spaces
+- Use ruff for formatting and linting
+
+## Testing Guidelines
+- Write unit tests for all new functions, classes, and components
+- For frontend: Use Jest and React Testing Library
+- For backend: Use pytest and mock database/network operations
+- Run `ruff check --fix src/neuron_server/` and `pytest src/neuron_server/` after backend changes
+
+## Database and Storage
+- Use Postgres and PGVector for database and vector storage
+- Use Neo4j for knowledge graph
+
+## Models
+- gpt-4o and o3-mini are the latest OpenAI models

@@ -1,0 +1,46 @@
+# Environment and configuration files
+.env
+.env-docker
+.env.*
+*.pem
+*.key
+*.crt
+docker-compose.override.yml
+
+# Runtime and temporary directories
+tmp/
+static/
+coverage/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+node_modules/
+dist/
+build/
+.venv/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+*.dump
+*.sql
+
+# Log files
+*.log
+logs/
+
+# IDE and system files
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Secrets and credentials
+**/credentials/
+**/secrets/
+auth_config.json
+config.json
+
+.env*
+!.env.example
