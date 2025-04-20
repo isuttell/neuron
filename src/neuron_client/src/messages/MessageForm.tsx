@@ -46,14 +46,14 @@ export default function MessageForm({
     if ((!value.trim().length && !file) || !threadId) {
       return;
     }
-    onSubmit?.(value);
+    onSubmit?.(value.trim());
     setValue("");
     setFile(undefined);
     setIsAudioRecording(false);
     dispatch(
       postMessageByThread({
         threadId,
-        prompt: value,
+        prompt: value.trim(),
         personalityId: thread.personality_id,
         file,
       })

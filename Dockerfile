@@ -13,7 +13,7 @@ COPY ["src/neuron_client/src/", "./src/neuron_client/src/"]
 
 RUN NODE_ENV=development npx vite build --mode development
 
-FROM python:3.11.10-slim-bookworm AS server-builder
+FROM python:3.12-slim-bookworm AS server-builder
 
 ENV LANG=C.UTF-8
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -43,7 +43,7 @@ COPY ["pyproject.toml", "poetry.lock", "./"]
 # Install dependencies
 RUN poetry install --no-root --no-interaction --no-ansi
 
-FROM python:3.11.10-slim-bookworm
+FROM python:3.12-slim-bookworm
 
 ENV PATH="/app/.venv/bin:$PATH"
 ENV PORT=5000

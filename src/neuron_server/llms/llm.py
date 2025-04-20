@@ -128,8 +128,9 @@ class LLM:
             Compiled state graph for message processing
         """
         workflow = StateGraph(AgentState)
-        model = self.model.bind_tools(tools or default_tools)
-        workflow.add_node("tools", ToolNode(tools or default_tools))
+        active_tools = tools or default_tools
+        model = self.model.bind_tools(active_tools)
+        workflow.add_node("tools", ToolNode(active_tools))
 
         async def agent_node(state: AgentState, config: RunnableConfig) -> AgentState:
             # pass the model ith the tools into the call_model function
@@ -283,7 +284,6 @@ class LLM:
                 "last_title": state.get("title", ""),
                 "now": datetime.now().astimezone().isoformat(),
             },
-            config,
         )
         # Strip quotes from the title
         title = re.sub(r'^([\'"])(.*)\1$', r"\2", title)
@@ -323,6 +323,9 @@ class LLM:
             },
             config,
         )
+
+        if isinstance(response, dict):
+            response = MemoryResponse(**response)
 
         if len(response.memory_recall_rankings) > 0:
             for ranking in response.memory_recall_rankings:

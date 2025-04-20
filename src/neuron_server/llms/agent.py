@@ -492,8 +492,9 @@ async def update_title(
             },
         )
         thread.name = title_response["title"]
-        await ThreadModel.set(thread.id, "name", thread.name)
-        await _debounced_publish("app", GetThreadResponse(thread=thread))
+        if thread.name:
+            await ThreadModel.set(thread.id, "name", thread.name)
+            await _debounced_publish("app", GetThreadResponse(thread=thread))
     except Exception as e:
         logger.error(e, exc_info=True)
 
