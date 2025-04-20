@@ -18,7 +18,6 @@ mock_neo4j = Mock()
 mock_driver = Mock()
 mock_driver.verify_connectivity = Mock()
 mock_neo4j.GraphDatabase.driver.return_value = mock_driver
-sys.modules["neo4j"] = mock_neo4j
 
 # Mock Tavily
 mock_tavily = Mock()

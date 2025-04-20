@@ -2,6 +2,7 @@
 
 import os
 from collections.abc import AsyncGenerator
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, patch
@@ -28,12 +29,20 @@ from neuron_server.tools.document_utils import (
 )
 
 
+# Helper class for mocking transcript lines
+@dataclass
+class MockTranscriptLine:
+    text: str
+    start: float
+    duration: float
+
+
 @pytest.fixture
-def mock_youtube_transcript() -> list[dict[str, Any]]:
-    """Fixture for mock YouTube transcript data."""
+def mock_youtube_transcript() -> list[MockTranscriptLine]:
+    """Mock YouTube transcript data with objects."""
     return [
-        {"text": "First line", "start": 0.0, "duration": 2.0},
-        {"text": "Second line", "start": 2.0, "duration": 2.0},
+        MockTranscriptLine(text="First line", start=0.0, duration=2.0),
+        MockTranscriptLine(text="Second line", start=2.0, duration=2.0),
     ]
 
 
@@ -134,7 +143,7 @@ class TestYouTubeTranscriptLoading:
 
     @pytest.mark.asyncio
     async def test_successful_transcript_loading(
-        self, mock_youtube_transcript: list[dict[str, Any]]
+        self, mock_youtube_transcript: list[MockTranscriptLine]
     ) -> None:
         """Test successful loading of YouTube transcript."""
         url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
@@ -167,7 +176,7 @@ class TestYouTubeTranscriptLoading:
 
     @pytest.mark.asyncio
     async def test_transcript_metadata_merging(
-        self, mock_youtube_transcript: list[dict[str, Any]]
+        self, mock_youtube_transcript: list[MockTranscriptLine]
     ) -> None:
         """Test metadata merging in transcript loading."""
         url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
@@ -338,7 +347,7 @@ class TestDocumentLoading:
 
     @pytest.mark.asyncio
     async def test_youtube_url_loading(
-        self, mock_youtube_transcript: list[dict[str, Any]]
+        self, mock_youtube_transcript: list[MockTranscriptLine]
     ) -> None:
         """Test loading YouTube URL."""
         url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
