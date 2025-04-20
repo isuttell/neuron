@@ -21,7 +21,7 @@ export function getMediaItems(messages: Message[]): MediaItem[] {
       const body = Array.isArray(message.content)
         ? message.content
             .filter((item) => item.type === "text")
-            .map((item) => item.text)
+            .map((item) => (item as { type: "text"; text: string }).text)
             .join("\n")
         : message.content;
 
