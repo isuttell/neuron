@@ -4,7 +4,6 @@ import os
 from collections.abc import AsyncGenerator
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 from unittest.mock import AsyncMock, patch
 
 import aiohttp
