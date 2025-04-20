@@ -187,7 +187,6 @@ class InspectImageTool(BaseTool):
         image_url: str,
         prompt: str,
         config: RunnableConfig,
-        max_tokens: int = 8000,
     ) -> str:
         """
         Inspect an image using multi-modal vision capabilities.
@@ -196,7 +195,6 @@ class InspectImageTool(BaseTool):
             image_url: The URL of the image to be inspected.
             prompt: A question or prompt that guides the inspection of the image.
             config: The runnable configuration.
-            max_tokens: The maximum number of tokens to generate. Defaults to 8000.
 
         Returns:
             A description of the image based on the provided prompt.
@@ -260,7 +258,6 @@ class InspectImageTool(BaseTool):
                         "image_url": image_url,
                     },
                 },
-                max_tokens=max_tokens,
             )
             duration = time.perf_counter() - start_time
             logger.debug(f"Response: {content} - {duration:.2f}s")
@@ -294,17 +291,11 @@ async def main() -> None:
         help="The URL of the image to inspect.",
         default="http://192.168.1.211:5002/static/replicate_image_236f48a1b9e74382bb2013af8c45d850_xl.png",
     )
-    parser.add_argument(
-        "--max_tokens",
-        type=int,
-        default=300,
-        help="The maximum number of tokens to generate.",
-    )
     args = parser.parse_args()
 
     # Call the model to get the description
     tool = InspectImageTool()
-    results = await tool._arun(args.image_url, args.prompt, None, args.max_tokens)
+    results = await tool._arun(args.image_url, args.prompt, None)
     # Print the response
     print(results)
 

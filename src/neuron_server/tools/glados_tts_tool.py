@@ -1,13 +1,11 @@
 import asyncio
 import os
-import shutil
-from typing import Any
-from uuid import uuid4
 
 import aiohttp
+from aiohttp import ClientConnectorError
 from langchain.tools import BaseTool
 from langchain_core.runnables import RunnableConfig
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field
 
 from neuron_server.config import config as neuron_config
 from neuron_server.logger import logger
@@ -22,92 +20,13 @@ class GladosToolset:
         self.tools = [GladosTTSTool()]
 
 
-class TTSRequest(BaseModel):
-    content: str = Field(description="Text content to convert to speech")
-    style: str | None = Field(
-        default="glados", description="Voice style to use for synthesis"
-    )
-    format: str | None = Field(
-        default="mp3", description="Audio format for the output file"
-    )
-    noise: float | None = Field(
-        default=0.4,
-        description=(
-            "Voice consistency (0.0-1.0). Default: 0.4 - "
-            "More mechanical for deadpan delivery"
-        ),
-        ge=0.0,
-        le=1.0,
-    )
-    noise_w: float | None = Field(
-        default=0.8,
-        description=(
-            "Pronunciation clarity (0.0-1.0). Default: 0.8 - Keep clear pronunciation"
-        ),
-        ge=0.0,
-        le=1.0,
-    )
-    length: float | None = Field(
-        default=0.85,
-        description=(
-            "Speech pace (0.1-3.0). Default: 0.85 - "
-            "Faster for snappy sarcastic delivery"
-        ),
-        ge=0.1,
-        le=3.0,
-    )
-    sdp_ratio: float | None = Field(
-        default=0.4,
-        description=(
-            "Tempo variation (0.0-1.0). Default: 0.4 - Higher for dramatic pauses"
-        ),
-        ge=0.0,
-        le=1.0,
-    )
-    pitch_scale: float | None = Field(
-        default=1.0,
-        description=("Voice pitch (0.5-2.0). Default: 1.0 - Standard GLaDOS pitch"),
-        ge=0.5,
-        le=2.0,
-    )
-    intonation_scale: float | None = Field(
-        default=1.2,
-        description=(
-            "Expression range (0.5-2.0). Default: 1.2 - Enhanced for sarcastic emphasis"
-        ),
-        ge=0.5,
-        le=2.0,
-    )
-    style_weight: float | None = Field(
-        default=1.0,
-        description=(
-            "Style intensity (0.0-1.0). Default: 1.0 - Full GLaDOS voice style"
-        ),
-        ge=0.0,
-        le=1.0,
-    )
-    split_interval: float | None = Field(
-        default=0.6,
-        description=(
-            "Pause length between lines (0.0-2.0 seconds). Default: 0.6 - "
-            "Longer pauses for dramatic effect"
-        ),
-        ge=0.0,
-        le=2.0,
-    )
-
-
-# Maximum line length constant
-MAX_LINE_LENGTH = 500
-
-
 class GladosTTSToolArgs(BaseModel):
-    lines: list[str] = Field(
+    content: str = Field(
         description=(
-            "List of text lines to be spoken by GLaDOS. Each line must be less "
-            "than 500 characters. Spell out percentages, numbers, decimals, and other "
-            "special characters that should be pronounced out loud. 'AI' is hard to "
-            "hear spoken out loud. Try to spell it out as 'A I'."
+            "Text content to convert to speech. Spell out percentages, numbers, "
+            "decimals, and other special characters that should be pronounced out loud "
+            "for clarity. For example, 'AI' is hard to hear spoken out loud with this "
+            "tool. Try to spell it out as 'A I' or use the full words."
         )
     )
 
@@ -173,39 +92,18 @@ class GladosTTSToolArgs(BaseModel):
     split_interval: float | None = Field(
         default=0.6,
         description=(
-            "Pause length between lines (0.0-2.0 seconds). Default: 0.6 - "
-            "Longer pauses for dramatic effect"
+            "Pause length between lines separated by line breaks' (0.0-2.0 seconds). "
+            "Default: 0.6"
         ),
         ge=0.0,
         le=2.0,
     )
 
-    @validator("lines")
-    @classmethod
-    def validate_lines(cls, lines: list[str]) -> list[str]:
-        if not lines:
-            raise ValueError("At least one line must be provided")
-        for line in lines:
-            if len(line) > MAX_LINE_LENGTH:
-                raise ValueError(
-                    f"Line exceeds {MAX_LINE_LENGTH} characters: {line[:50]}..."
-                )
-        return lines
-
 
 class GladosTTSTool(BaseTool):
     name: str = "glados_tts"
     description: str = """
-This tool generates audio using GLaDOS's voice from Portal with customizable voice
-parameters:
-
-- noise: Voice consistency (0.0-1.0, default 0.4) - More mechanical for deadpan
-- noise_w: Pronunciation clarity (0.0-1.0, default 0.8) - Keep clear pronunciation
-- length: Speech pace (0.1-3.0, default 0.85) - Faster for snappy sarcastic
-- sdp_ratio: Tempo variation (0.0-1.0, default 0.4) - Higher for dramatic pauses
-- pitch_scale: Voice pitch (0.5-2.0, default 1.0) - Standard GLaDOS pitch
-- intonation_scale: Expression range (0.5-2.0, default 1.2) - Enhanced sarcasm
-- split_interval: Pause length (0.0-2.0s, default 0.6) - Longer dramatic pauses
+This tool converts text to speech in the style of GLaDOS from Portal.
 
 Returns an audio tag to be shown to the user so they can play it.
 """.strip()
@@ -213,15 +111,17 @@ Returns an audio tag to be shown to the user so they can play it.
 
     def _run(
         self,
-        *args: tuple[Any, ...],
-        **kwargs: dict[str, Any],
+        *args: tuple,  # Removed Any
+        **kwargs: dict[str, any],  # Changed Any to any
     ) -> str:
+        # Note: Might need `dict[str, Any]` if `any` isn't recognized by type checker
+        # Keeping `any` for now as `Any` import was removed.
         return asyncio.run(self._arun(*args, **kwargs))
 
     # ruff: noqa: PLR0913
-    async def _arun(
+    async def _arun(  # noqa: C901 Too complex
         self,
-        lines: list[str],
+        content: str,
         name: str,
         config: RunnableConfig,
         noise: float | None = 0.4,
@@ -230,35 +130,38 @@ Returns an audio tag to be shown to the user so they can play it.
         sdp_ratio: float | None = 0.4,
         pitch_scale: float | None = 1.0,
         intonation_scale: float | None = 1.2,
+        split_interval: float | None = 0.6,
+        output_format: str = "wav",
     ) -> str:
+        output_path = None
         try:
             logger.debug("Generating GLaDOS TTS audio...")
-            working_dir = os.path.abspath(
-                os.path.join(neuron_config.temp_folder, uuid4().hex)
+
+            # Prepare the final destination path
+            filename = safe_filename("glados_tts", name, output_format)
+            output_path = os.path.abspath(
+                os.path.join(neuron_config.static_folder, filename)
             )
-            os.makedirs(working_dir)
-            audio_files: list[str] = []
 
+            # Make the request and download directly to the final location
             async with aiohttp.ClientSession() as session:
-                # HTTP status codes
                 http_ok = 200
-
-                for index, line in enumerate(lines):
-                    logger.debug(f"Generating GLaDOS audio for line: {line[:50]}...")
-
-                    # Make request to GLaDOS API with voice parameters
+                logger.debug(f"Generating GLaDOS audio for content: {content[:100]}...")
+                try:
+                    # Make single request to GLaDOS API with voice parameters
                     async with session.post(
                         f"{neuron_config.glados_endpoint}/api/v1/tts",
                         json={
-                            "content": line.replace("%", " percent"),
+                            "content": content.replace("%", " percent"),
                             "style": "glados",
-                            "format": "mp3",
+                            "format": output_format,
                             "noise": noise,
                             "noise_w": noise_w,
                             "length": length,
                             "sdp_ratio": sdp_ratio,
                             "pitch_scale": pitch_scale,
                             "intonation_scale": intonation_scale,
+                            "split_interval": split_interval,
                         },
                     ) as response:
                         if response.status != http_ok:
@@ -268,76 +171,65 @@ Returns an audio tag to be shown to the user so they can play it.
                                 f"{response.status}: {error_text}"
                             )
                         data = await response.json()
-                        audio_url = data["url"]
 
-                    # Download the audio file
-                    temp_audio_path = os.path.join(working_dir, f"line-{index}.mp3")
-                    audio_files.append(temp_audio_path)
+                        # Download the audio file directly to the final destination
+                        # ONLY if audio_url is valid
+                        if data["url"]:
+                            async with session.get(data["url"]) as response_download:
+                                if response_download.status != http_ok:
+                                    raise ValueError(
+                                        "Failed to download audio file: "
+                                        f"{response_download.status}"
+                                    )
+                                with open(output_path, "wb") as f:
+                                    while True:
+                                        chunk = await response_download.content.read(
+                                            8192
+                                        )
+                                        if not chunk:
+                                            break
+                                        f.write(chunk)
 
-                    async with session.get(audio_url) as response:
-                        if response.status != http_ok:
-                            raise ValueError(
-                                f"Failed to download audio file: {response.status}"
-                            )
-                        with open(temp_audio_path, "wb") as f:
-                            while True:
-                                chunk = await response.content.read(8192)
-                                if not chunk:
-                                    break
-                                f.write(chunk)
+                except ClientConnectorError as e:
+                    logger.error("GLaDOS TTS server is unavailable.")
+                    # Raise the specific exception
+                    raise Exception(
+                        "The GLaDOS TTS server is currently unavailable. "
+                        "Please ensure it is running."
+                    ) from e
 
-            # Concatenate audio files if needed
-            filename = safe_filename("glados_tts", name, "mp3")
-            output = os.path.abspath(
-                os.path.join(neuron_config.static_folder, filename)
-            )
-
-            if len(audio_files) > 1:
-                import subprocess
-
-                from neuron_server.util.subprocess_runner import run_subprocess
-
-                ffmpeg_command = [
-                    "ffmpeg",
-                    "-hide_banner",
-                    "-nostats",
-                    "-loglevel",
-                    "error",
-                    "-i",
-                    "concat:" + "|".join(audio_files),
-                    "-c",
-                    "copy",
-                    output,
-                ]
-                await run_subprocess(
-                    ffmpeg_command,
-                    check=True,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                )
-            else:
-                shutil.copy(audio_files[0], output)
-
-            # Create media item
             url = neuron_config.static_content_url + "/" + filename
-            create_params = MediaItemModel.CreateParams(
-                url=url,
-                media_type="tts",
-                user_id=config["configurable"].get("user_id"),
-                thread_id=config["configurable"].get("thread_id"),
-                name=name,
-                description="\n\n".join(lines),
-            )
-            media_item = await MediaItemModel.create(params=create_params)
-            logger.info(f"Generated GLaDOS audio file saved to {output} <{url}>")
+            if os.path.exists(output_path):
+                create_params = MediaItemModel.CreateParams(
+                    url=url,
+                    media_type="tts",
+                    user_id=config["configurable"].get("user_id"),
+                    thread_id=config["configurable"].get("thread_id"),
+                    name=name,
+                    description=content,
+                )
+                media_item = await MediaItemModel.create(params=create_params)
+                logger.info(
+                    f"Generated GLaDOS audio file saved to {output_path} <{url}>"
+                )
 
-            return f"""\
+                return f"""\
 <audio id="{media_item.id}">
     <display><audio src="{url}"></audio></display>
 </audio>"""
+            # Handle case where audio URL was not present or download failed silently
+            # before file creation but after API call succeeded
+            raise Exception("Failed to generate or download GLaDOS audio file.")
 
         except Exception as e:
-            logger.error(e, exc_info=True)
-            raise
-        finally:
-            shutil.rmtree(working_dir)
+            # Handle other general exceptions
+            logger.error(f"Error during GLaDOS TTS generation: {e}", exc_info=True)
+            # Remove the output file if it exists to avoid leaving partial files
+            if output_path and os.path.exists(output_path):
+                try:
+                    os.remove(output_path)
+                except OSError as remove_error:
+                    logger.error(
+                        f"Error removing partial file {output_path}: {remove_error}"
+                    )
+            raise  # Re-raise other exceptions

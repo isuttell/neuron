@@ -65,7 +65,6 @@ class ImageInspectionConfig:
     image_urls: list[str]
     start_time: datetime
     fps: float
-    max_tokens: int = 4000
     config: RunnableConfig | None = None
 
 
@@ -114,7 +113,6 @@ Parameters:
             **(config.config or {}),
             "run_name": "inspect_camera_feed",
         },
-        max_tokens=config.max_tokens,
     )
 
 
@@ -257,7 +255,6 @@ class CameraConfig:
     config: RunnableConfig
     frame_count: int = 1
     fps: float = 1
-    provider: Literal["openai", "anthropic"] = "openai"
 
 
 class SecurityCameraTool(BaseTool):
@@ -284,7 +281,6 @@ class SecurityCameraTool(BaseTool):
         config: RunnableConfig,
         frame_count: int | None = 1,
         fps: float | None = 1,
-        provider: Literal["openai", "anthropic"] | None = "anthropic",
     ) -> str:
         try:
             camera: str = camera_name.value
@@ -295,23 +291,16 @@ class SecurityCameraTool(BaseTool):
             image_urls = await get_frames_from_camera(
                 camera, frame_count=frame_count, fps=fps
             )
-            model = (
-                ChatAnthropic(
-                    model="claude-3-7-sonnet-20250219",
-                    temperature=0.2,
-                )
-                if provider == "anthropic"
-                else ChatOpenAI(
-                    model="gpt-4o",
-                    temperature=0.2,
-                )
-            )
+            from neuron_server.models.provider_model import ProviderModelModel
+
+            llm = await ProviderModelModel.get_active_llm()
+
             # Ask the AI to analyze the images and save the results while we wait
 
             content = await inspect_images(
                 ImageInspectionConfig(
                     prompt=prompt,
-                    model=model,
+                    model=llm.model,
                     image_urls=image_urls,
                     start_time=start_time,
                     fps=fps,
