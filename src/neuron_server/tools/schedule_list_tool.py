@@ -5,8 +5,13 @@ from typing import Any, NoReturn
 
 from langchain.tools import BaseTool
 from langchain_core.runnables import RunnableConfig
+from pydantic import BaseModel
 
 from neuron_server.logger import logger
+
+
+class ScheduleListToolArgs(BaseModel):
+    pass
 
 
 class ScheduleListTool(BaseTool):
@@ -16,6 +21,7 @@ class ScheduleListTool(BaseTool):
         "recurring pattern, and time remaining. Time remaining must be greater "
         "than 0 for the event to be triggered."
     )
+    args_schema: type[BaseModel] = ScheduleListToolArgs
 
     def _run(
         self,
