@@ -255,6 +255,14 @@ class LLM:
             config,
         )
         response.created_at = datetime.now().astimezone().isoformat()
+
+        # Log non-standard finish reasons
+        finish_reason = response.response_metadata.get("finish_reason")
+        # Common reasons are 'stop', 'tool_calls', 'length'
+        # Log if it's something potentially problematic like 'length'
+        if finish_reason and finish_reason not in ["stop", "tool_calls"]:
+            logger.warning(f"Model finished with reason: {finish_reason}. ")
+
         # We return a list, because this will get added to the existing list
         return {"messages": [response]}
 
