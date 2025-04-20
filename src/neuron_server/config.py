@@ -25,10 +25,12 @@ class DatabaseConfig(BaseModel):
         description="Database host",
     )
     port: int = Field(
-        default=int(os.environ.get("POSTGRES_PORT", 5432)), description="Database port"
+        default=int(os.environ.get("POSTGRES_PORT", "5432")),
+        description="Database port",
     )
     user: str = Field(
-        default=os.environ.get("POSTGRES_USER", "neuron"), description="Database user"
+        default=os.environ.get("POSTGRES_USER", "neuron"),
+        description="Database user",
     )
     password: str = Field(
         default=os.environ.get("POSTGRES_PASSWORD"),
@@ -46,10 +48,13 @@ class RedisConfig(BaseModel):
         description="Redis host",
     )
     port: int = Field(
-        default=int(os.environ.get("REDIS_PORT", 6379)), description="Redis port"
+        default=int(os.environ.get("REDIS_PORT", "6379")), description="Redis port"
     )
     db: int = Field(
-        default=int(os.environ.get("REDIS_DB", 0)), description="Redis database"
+        default=int(os.environ.get("REDIS_DB", "0")), description="Redis database"
+    )
+    password: str | None = Field(
+        default=os.environ.get("REDIS_PASSWORD"), description="Redis password"
     )
 
 
@@ -114,10 +119,10 @@ class Config(BaseModel):
         default=os.environ.get("LOG_LEVEL", "DEBUG"), description="Log level"
     )
     host: str = Field(default=os.environ.get("HOST", "0.0.0.0"), description="Host")
-    port: int = Field(default=int(os.environ.get("PORT", 5000)), description="Port")
+    port: int = Field(default=int(os.environ.get("PORT", "5000")), description="Port")
     client_assets_folder: str = Field(
         default=os.path.abspath(
-            os.environ.get("STATIC_FOLDER", "./src/neuron_client/dist")
+            os.path.join(os.path.dirname(__file__), "..", "neuron_client", "dist")
         ),
         description="Static folder",
     )
