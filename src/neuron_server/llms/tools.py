@@ -16,7 +16,6 @@ from neuron_server.tools.astrospheric_forecast_tool import (
 )
 from neuron_server.tools.automatic1111_tool import Automatic1111API, Automatic1111Tool
 from neuron_server.tools.code_interpreter_tool import CodeInterpreterTool
-from neuron_server.tools.dalle_tool import DalleTool
 from neuron_server.tools.deepseek_reasoning_tool import DeepSeekReasoningTool
 from neuron_server.tools.dice_tool import DiceTool
 from neuron_server.tools.elevenlabs_soundeffects_tool import (
@@ -123,7 +122,6 @@ tool_sets: dict[str, list[BaseTool]] = {
     ],
     "document_query": [],
     "image": [
-        DalleTool(),
         ReplicateImageGenerationTool(),
         InspectImageTool(),
         AppImageTool(),
