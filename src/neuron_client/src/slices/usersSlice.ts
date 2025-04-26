@@ -1,6 +1,7 @@
 import type { PayloadAction } from "@reduxjs/toolkit";
 import { createSlice } from "@reduxjs/toolkit";
 import { fetchMessagesByThread } from "../actions/messageActions";
+import { addUserByEmail } from "../actions/threadActions";
 import type { RootState } from "../store";
 import { MessageResponse } from "../types/message";
 import { User } from "../types/user";
@@ -32,21 +33,32 @@ export const usersSlice = createSlice({
     },
   },
   extraReducers: (builder) => {
-    builder.addCase(
-      fetchMessagesByThread.fulfilled,
-      (state, action: PayloadAction<MessageResponse>) => {
-        if (action.payload.users) {
-          for (const user of action.payload.users) {
-            upsertUser(state, user);
+    builder
+      .addCase(
+        fetchMessagesByThread.fulfilled,
+        (state, action: PayloadAction<MessageResponse>) => {
+          if (action.payload.users) {
+            for (const user of action.payload.users) {
+              upsertUser(state, user);
+            }
           }
         }
-      }
-    );
+      )
+      .addCase(
+        addUserByEmail.fulfilled,
+        (state, action) => {
+          // Check if the action payload has a user property
+          if (action.payload?.user) {
+            upsertUser(state, action.payload.user);
+          }
+        }
+      );
   },
 });
 
 export const { reset } = usersSlice.actions;
-export const getUsers = (state: RootState) => state.users.users;
-export const getUser = (state: RootState, id: string) => state.users.users[id];
+export const getUsers = (state: RootState) => state.users?.users || {};
+export const getUser = (state: RootState, id: string) =>
+  state.users?.users?.[id];
 
 export default usersSlice.reducer;

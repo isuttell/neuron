@@ -17,6 +17,7 @@ from neuron_server.llms import agent
 from neuron_server.llms.agent import aget_state
 from neuron_server.models import ThreadModel
 from neuron_server.models.media_item_model import MediaItemModel
+from neuron_server.models.thread_user_model import ThreadUserModel
 from neuron_server.models.user_model import UserModel
 from neuron_server.pubsub import pubsub
 from neuron_server.util.file_utilities import process_uploaded_file
@@ -49,16 +50,42 @@ async def get_thread_messages(thread_id: UUID) -> dict[str, list[dict]]:
         thread_id=thread.id, user_id=request.token.user_id
     )
 
-    # Get users data
-    users = await UserModel.get_by_ids(
-        list({message.user_id for message in messages if message.user_id})
-    )
+    # Get thread users (users who have access to the thread)
+    thread_users = await ThreadUserModel.get_thread_users(thread_id=thread.id)
+
+    # Get users data - include both message senders and thread users
+    user_ids = set()
+    # Add message senders
+    user_ids.update({message.user_id for message in messages if message.user_id})
+    # Add thread users
+    user_ids.update({tu.user_id for tu in thread_users})
+    # Add thread owner
+    user_ids.add(thread.user_id)
+
+    users = await UserModel.get_by_ids(list(user_ids))
+
+    # Check if thread owner is included in thread_users
+    owner_in_thread_users = any(tu.user_id == thread.user_id for tu in thread_users)
+    if not owner_in_thread_users:
+        # Create a special entry for the thread owner with admin role
+        owner_thread_user = {
+            "user_id": thread.user_id,
+            "thread_id": str(thread.id),
+            "role": "admin",  # Thread owner is always admin
+        }
+    else:
+        owner_thread_user = None
 
     return {
         "threads": [thread.model_dump()],
         "messages": [message.model_dump() for message in messages],
         "media": [item.model_dump() for item in media_items],
         "users": [user.model_dump() for user in users],
+        "thread_users": [
+            {"user_id": tu.user_id, "thread_id": str(tu.thread_id), "role": tu.role}
+            for tu in thread_users
+        ]
+        + ([owner_thread_user] if owner_thread_user else []),
     }
 
 

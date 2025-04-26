@@ -35,8 +35,10 @@ def mock_decode_token() -> AsyncMock:
 def mock_thread() -> MagicMock:
     thread = MagicMock(spec=ThreadModel)
     thread.id = uuid4()
+    thread.user_id = str(uuid4())  # Add user_id attribute
     thread.model_dump.return_value = {
         "id": thread.id,
+        "user_id": thread.user_id,
         "title": "Test Thread",
         "created_at": "2024-01-01T00:00:00Z",
     }
@@ -103,6 +105,10 @@ async def test_get_thread_messages_success(
             "neuron_server.controllers.message_controller.MediaItemModel"
         ) as mock_media:
             mock_media.get_thread_media = AsyncMock(return_value=[])
+            with patch(
+                "neuron_server.controllers.message_controller.ThreadUserModel"
+            ) as mock_thread_user:
+                mock_thread_user.get_thread_users = AsyncMock(return_value=[])
 
             async with app.test_request_context(
                 "/thread/123",

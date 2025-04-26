@@ -69,3 +69,23 @@ class UserModel(BaseModel):
             users = result.scalars().all()
 
             return [cls.model_validate(user.__dict__) for user in users]
+
+    @classmethod
+    async def get_by_email(cls, email: str) -> "UserModel | None":
+        """
+        Retrieve a user by their email.
+
+        Args:
+            email: Email address to search for
+
+        Returns:
+            UserModel instance if found, None otherwise
+        """
+        async with get_session() as session:
+            stmt = select(DBUser).where(DBUser.email == email)
+            result = await session.execute(stmt)
+            user = result.scalars().first()
+
+            if user:
+                return cls.model_validate(user.__dict__)
+            return None

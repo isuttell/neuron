@@ -44,4 +44,9 @@ export interface MessageResponse {
   media: MediaItem[];
   threads?: Thread[];
   users?: User[];
+  thread_users?: Array<{
+    user_id: string;
+    thread_id: string;
+    role: string;
+  }>;
 }

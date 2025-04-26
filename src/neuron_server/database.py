@@ -14,6 +14,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    UniqueConstraint,
     func,
 )
 from sqlalchemy.dialects.postgresql import JSONB
@@ -97,6 +98,9 @@ class Thread(Base):
     )
     personality: Mapped["Personality"] = relationship(back_populates="threads")
     media_items: Mapped[list["MediaItem"]] = relationship(
+        back_populates="thread", cascade="all, delete-orphan"
+    )
+    thread_users: Mapped[list["ThreadUser"]] = relationship(
         back_populates="thread", cascade="all, delete-orphan"
     )
 
@@ -245,6 +249,41 @@ class User(Base):
     updated_at = Column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
+    thread_users: Mapped[list["ThreadUser"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+
+
+class ThreadUser(Base):
+    __tablename__ = "thread_users"
+
+    id = Column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    thread_id = Column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("threads.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    user_id = Column(
+        String,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    role = Column(String, nullable=False, default="user")  # 'admin' or 'user'
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    # Ensure each user is only associated with a thread once
+    __table_args__ = (
+        UniqueConstraint("thread_id", "user_id", name="unique_thread_user"),
+    )
+
+    # Relationships
+    thread: Mapped["Thread"] = relationship("Thread", back_populates="thread_users")
+    user: Mapped["User"] = relationship("User", back_populates="thread_users")
 
 
 # Create async session maker
