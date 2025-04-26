@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 
 from pydantic import BaseModel, Field, field_serializer
-from sqlalchemy import func
+from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
 
 # Import the SQLAlchemy model and session factory
@@ -48,3 +48,24 @@ class UserModel(BaseModel):
             )
             await session.execute(upsert_stmt)
             await session.commit()
+
+    @classmethod
+    async def get_by_ids(cls, user_ids: list[str]) -> list["UserModel"]:
+        """
+        Retrieve users by their IDs.
+
+        Args:
+            user_ids: List of user IDs to fetch
+
+        Returns:
+            List of UserModel instances
+        """
+        if not user_ids:
+            return []
+
+        async with get_session() as session:
+            stmt = select(DBUser).where(DBUser.id.in_(user_ids))
+            result = await session.execute(stmt)
+            users = result.scalars().all()
+
+            return [cls.model_validate(user.__dict__) for user in users]

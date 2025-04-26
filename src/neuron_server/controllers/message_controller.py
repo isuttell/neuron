@@ -17,6 +17,7 @@ from neuron_server.llms import agent
 from neuron_server.llms.agent import aget_state
 from neuron_server.models import ThreadModel
 from neuron_server.models.media_item_model import MediaItemModel
+from neuron_server.models.user_model import UserModel
 from neuron_server.pubsub import pubsub
 from neuron_server.util.file_utilities import process_uploaded_file
 
@@ -48,10 +49,16 @@ async def get_thread_messages(thread_id: UUID) -> dict[str, list[dict]]:
         thread_id=thread.id, user_id=request.token.user_id
     )
 
+    # Get users data
+    users = await UserModel.get_by_ids(
+        list({message.user_id for message in messages if message.user_id})
+    )
+
     return {
         "threads": [thread.model_dump()],
         "messages": [message.model_dump() for message in messages],
         "media": [item.model_dump() for item in media_items],
+        "users": [user.model_dump() for user in users],
     }
 
 
