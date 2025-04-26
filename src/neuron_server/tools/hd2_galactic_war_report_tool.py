@@ -1,6 +1,6 @@
 import asyncio
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any  # Removed Type
 
 import aiohttp
 from langchain.tools import BaseTool
@@ -10,6 +10,11 @@ from pydantic import BaseModel, Field
 from neuron_server.cache import cache_response
 from neuron_server.graph.document import DocumentMetadata, process_document
 from neuron_server.logger import logger
+
+
+# Define an empty input schema for tools that don't take arguments
+class HD2GalacticWarReportToolArgs(BaseModel):
+    pass
 
 
 class Biome(BaseModel):
@@ -348,6 +353,9 @@ def format_global_events(events: list[GlobalEvent]) -> str:
 
 class HD2GalacticWarReportTool(BaseTool):
     name: str = "hd2_galactic_war_report"
+    args_schema: type[HD2GalacticWarReportToolArgs] = (
+        HD2GalacticWarReportToolArgs  # Changed Type to type
+    )
     description: str = """
 Get's the latest report on the in universe Hell Divers 2 Galactic War. Includes
 information on global events, latest major order, in-game news, and the current status
@@ -356,8 +364,10 @@ and percentage of the mission completed. This should be considered the source of
 for the current state of the war. Updates every 5 minutes.
 """.strip()
 
-    def _run(self, *args: Any, **kwargs: Any) -> str:
-        return asyncio.run(self._arun(*args, **kwargs))
+    # Removed *args, **kwargs as they caused schema issues and aren't needed
+    def _run(self) -> str:
+        # This tool is async only, raise error or implement sync logic if needed
+        raise NotImplementedError("Use async invoke for this tool")
 
     async def _arun(
         self,

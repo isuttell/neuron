@@ -6,17 +6,15 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
 from io import BytesIO
-from typing import Any, Literal
+from typing import Any
 
 import cv2
 import numpy as np
 from cv2.typing import MatLike
-from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import Runnable, RunnableConfig
 from langchain_core.tools import BaseTool
-from langchain_openai import ChatOpenAI
 from PIL import Image, PngImagePlugin
 from pydantic import BaseModel, Field
 
