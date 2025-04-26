@@ -1,5 +1,5 @@
-import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import type { PayloadAction } from "@reduxjs/toolkit";
+import { User } from "@auth0/auth0-react"; // Import User type
+import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
 import type { RootState } from "../store";
 
 // Constants for localStorage keys
@@ -22,6 +22,7 @@ interface AppState {
   };
   isLoading: boolean;
   error: string | null;
+  currentUser: User | null; // Add currentUser state
 }
 
 // Load initial state from localStorage
@@ -39,6 +40,7 @@ const loadInitialState = (): AppState => {
     api: undefined,
     isLoading: false,
     error: null,
+    currentUser: null, // Initialize currentUser
   };
 };
 
@@ -67,6 +69,10 @@ export const appSlice = createSlice({
       state.sidebar_image = action.payload;
       saveState(state);
     },
+    setCurrentUser: (state, action: PayloadAction<User | null>) => {
+      state.currentUser = action.payload;
+      // No need to save user to localStorage, Auth0 handles session
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -88,11 +94,12 @@ export const appSlice = createSlice({
   },
 });
 
-export const { setSidebarImage } = appSlice.actions;
+export const { setSidebarImage, setCurrentUser } = appSlice.actions; // Export new action
 
 export const getSidebarImage = (state: RootState) => state.app.sidebar_image;
 export const getApiConfig = (state: RootState) => state.app.api;
 export const getConfigLoadingState = (state: RootState) => state.app.isLoading;
 export const getConfigError = (state: RootState) => state.app.error;
+export const getCurrentUser = (state: RootState) => state.app.currentUser; // Export new selector
 
 export default appSlice.reducer;

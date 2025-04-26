@@ -52,6 +52,7 @@ class TokenPayload(BaseModel):
     user_id: str
     email: str
     nickname: str
+    picture: str | None
     permissions: list[str]
 
 
@@ -94,6 +95,7 @@ async def decode_token(token: str) -> TokenPayload:
             user_id=payload.get("neuron/user_id"),
             email=payload.get("neuron/email"),
             nickname=payload.get("neuron/nickname"),
+            picture=payload.get("neuron/picture"),
             permissions=payload.get("permissions"),
         )
     except jwt.ExpiredSignatureError:

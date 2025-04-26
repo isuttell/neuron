@@ -234,6 +234,19 @@ class Prompt(Base):
     personality: Mapped["Personality"] = relationship(back_populates="prompts")
 
 
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(String, primary_key=True)  # Auth0 user_id
+    email = Column(String, nullable=False, unique=True)
+    nickname = Column(String, nullable=False)
+    picture = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
 # Create async session maker
 get_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 

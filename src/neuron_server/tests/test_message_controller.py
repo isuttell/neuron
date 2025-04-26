@@ -24,6 +24,7 @@ def mock_decode_token() -> AsyncMock:
             user_id=str(uuid4()),
             nickname="test_user",
             email="test@example.com",
+            picture=None,  # Add missing picture field
             roles=["user"],
             permissions=["read", "write"],
         )

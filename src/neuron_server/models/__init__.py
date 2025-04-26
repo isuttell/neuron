@@ -4,3 +4,4 @@ from neuron_server.models.media_list_model import MediaListModel
 from neuron_server.models.message_model import MessageModel
 from neuron_server.models.personality_model import PersonalityModel
 from neuron_server.models.thread_model import ThreadModel
+from neuron_server.models.user_model import UserModel

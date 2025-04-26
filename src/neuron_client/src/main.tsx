@@ -1,27 +1,28 @@
-import { StrictMode } from "react";
-import { createRoot } from "react-dom/client";
-import { Provider } from "react-redux";
+import ScheduledEvents from "@/components/pages/ScheduledEvents";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { MediaPlayerProvider } from "@/contexts/MediaPlayerContext";
-import { store } from "./store";
+import { Auth0Provider, User } from "@auth0/auth0-react";
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import { Provider } from "react-redux";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
-import { Auth0Provider } from "@auth0/auth0-react";
-import Root from "./routes/root.tsx";
-import Chat from "./routes/thread.tsx";
-import Personalities from "./routes/personalities.tsx";
+import { EmbeddingsView } from "./components/EmbeddingsView";
 import ErrorPage from "./error-page.tsx";
 import NotFoundPage from "./not-found-page.tsx";
 import RecentMedia from "./routes/RecentMedia.tsx";
-import Personality from "./routes/personality.tsx";
-import Index from "./routes/index.tsx";
 import CodeViewer from "./routes/code-viewer.tsx";
-import Prompts from "./routes/prompts.tsx";
-import { EmbeddingsView } from "./components/EmbeddingsView";
+import Index from "./routes/index.tsx";
 import MediaLists from "./routes/media-lists.tsx";
-import ScheduledEvents from "@/components/pages/ScheduledEvents";
+import Personalities from "./routes/personalities.tsx";
+import Personality from "./routes/personality.tsx";
+import Prompts from "./routes/prompts.tsx";
 import ProvidersPage from "./routes/providers";
+import Root from "./routes/root.tsx";
 import SharedMediaList from "./routes/shared-media-list";
+import Chat from "./routes/thread.tsx";
+import { setCurrentUser } from "./slices/appSlice"; // Import action
+import { store } from "./store"; // Import store
 
 import "./index.css";
 
@@ -97,7 +98,21 @@ const Auth0ProviderWithNavigate = ({
 }: {
   children: React.ReactNode;
 }) => {
-  const onRedirectCallback = (appState: { returnTo?: string } | undefined) => {
+  // Make the callback async
+  const onRedirectCallback = async (
+    appState: { returnTo?: string } | undefined,
+    user: User | undefined
+  ) => {
+    if (user) {
+      // Dispatch user info to Redux immediately
+      store.dispatch(setCurrentUser(user));
+
+      // Backend API call moved to root.tsx useEffect
+    } else {
+      // Handle case where user is undefined after redirect
+      store.dispatch(setCurrentUser(null));
+    }
+    // Navigate after API call and dispatch
     router.navigate(appState?.returnTo || window.location.pathname);
   };
 

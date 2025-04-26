@@ -55,6 +55,9 @@ from neuron_server.controllers.thread_controller import (
 from neuron_server.controllers.thread_controller import (
     router as thread_router,
 )
+from neuron_server.controllers.user_controller import (
+    user_bp,
+)
 from neuron_server.controllers.webhook_controller import blueprint as webhook_blueprint
 from neuron_server.database import pool
 from neuron_server.decorators.http_decorators import cache_control, cors
@@ -193,6 +196,7 @@ app.register_blueprint(embedding_blueprint, url_prefix="/api/embeddings")
 app.register_blueprint(media_blueprint, url_prefix="/api/media")
 app.register_blueprint(scheduler_blueprint, url_prefix="/api/scheduler")
 app.register_blueprint(provider_blueprint, url_prefix="/api/providers")
+app.register_blueprint(user_bp, url_prefix="/api/users")
 
 
 @app.errorhandler(openai.APIError)
