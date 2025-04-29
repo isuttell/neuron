@@ -128,3 +128,23 @@ def requires_cookie(func: Callable[..., T]) -> Callable[..., T]:
         return await func(*args, **kwargs)
 
     return decorated
+
+
+def requires_api_key(func: Callable[..., T]) -> Callable[..., T]:
+    """Determines if the API key is valid"""
+
+    @wraps(func)
+    async def decorated(*args: object, **kwargs: object) -> T:
+        api_key = request.headers.get("X-API-Key")
+        if not api_key:
+            raise Unauthorized("API key is required")
+
+        if not config.api_key:
+            raise Unauthorized("API key is not configured on the server")
+
+        if api_key != config.api_key:
+            raise Unauthorized("Invalid API key")
+
+        return await func(*args, **kwargs)
+
+    return decorated

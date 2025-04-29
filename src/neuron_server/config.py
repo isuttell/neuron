@@ -84,6 +84,10 @@ class Neo4jConfig(BaseModel):
 
 
 class Config(BaseModel):
+    api_key: str = Field(
+        default=os.environ.get("API_KEY", ""),
+        description="API key for webhook authentication",
+    )
     debug: bool = Field(
         default=os.environ.get("DEBUG", "False").lower() == "true",
         description="Debug mode",
