@@ -115,3 +115,16 @@ def requires_auth(func: Callable[..., T]) -> Callable[..., T]:
         return await func(*args, **kwargs)
 
     return decorated
+
+
+def requires_cookie(func: Callable[..., T]) -> Callable[..., T]:
+    """Determines if the session cookie is present"""
+
+    @wraps(func)
+    async def decorated(*args: object, **kwargs: object) -> T:
+        cookie = request.cookies.get("neuron_session")
+        if not cookie:
+            raise Unauthorized("Authentication required")
+        return await func(*args, **kwargs)
+
+    return decorated

@@ -13,7 +13,7 @@ from neuron_server.config import config
 from neuron_server.controllers.app_controller import (
     blueprint as app_blueprint,
 )
-from neuron_server.controllers.auth import decode_token
+from neuron_server.controllers.auth import decode_token, requires_cookie
 from neuron_server.controllers.embedding_controller import (
     blueprint as embedding_blueprint,
 )
@@ -114,6 +114,7 @@ async def index(**kwargs: Any) -> Response:
 @blueprint.get("/neuron/static/<path:path>")
 @cors(allowed_methods=["GET", "OPTIONS"], allowed_headers=["Authorization"])
 @cache_control(max_age=31536000)
+@requires_cookie
 async def get_static(path: str) -> Response:
     match = re.match(r".*_(t|l|xl|xxl|o)\.(jpe?g|png|webp)$", path)
     if match and not os.path.exists(os.path.join(config.static_folder, path)):

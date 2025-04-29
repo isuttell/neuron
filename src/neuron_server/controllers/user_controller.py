@@ -18,5 +18,16 @@ async def login_user() -> Response:  # Add return type hint
     # Call the upsert method on the UserModel
     await UserModel.upsert_from_payload(payload)
 
-    # Return basic success status
-    return jsonify({"status": "success", "user_id": payload.user_id}), 200
+    # Create response
+    response = jsonify({"status": "success", "user_id": payload.user_id})
+
+    # Set cookie with user ID that expires in 24 hours
+    response.set_cookie(
+        "neuron_session",
+        value=payload.user_id,
+        max_age=86400,  # 24 hours in seconds
+        httponly=True,
+        samesite="Lax"
+    )
+
+    return response, 200
