@@ -138,6 +138,10 @@ class Config(BaseModel):
         default=os.environ.get("STATIC_CONTENT_URL", "http://localhost:5000/static"),
         description="Static content URL",
     )
+    static_require_auth: bool = Field(
+        default=os.environ.get("STATIC_REQUIRE_AUTH", "True").lower() == "true",
+        description="Require authentication for static content",
+    )
     homeassistant: HomeAssistantConfig = HomeAssistantConfig()
     temp_folder: str = Field(
         default=os.path.abspath(os.environ.get("TEMP_FOLDER", "./tmp")),

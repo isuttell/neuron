@@ -86,7 +86,9 @@ class ElevenLabsTTSToolArgs(BaseModel):
         description=(
             "The script to generate audio from. The script should be formatted as a "
             "list of spoken lines, with each line containing a voice identifier and "
-            "the text to be spoken."
+            "the text to be spoken. Specify pronunciation using SSML phoneme tags "
+            "(CMU Arpabet). Use <break time=\"x.xs\" /> for natural pauses up to 3 "
+            "seconds. Convey emotions through narrative context"
         )
     )
 

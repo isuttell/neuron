@@ -123,7 +123,7 @@ def requires_cookie(func: Callable[..., T]) -> Callable[..., T]:
     @wraps(func)
     async def decorated(*args: object, **kwargs: object) -> T:
         cookie = request.cookies.get("neuron_session")
-        if not cookie:
+        if not cookie and config.static_require_auth:
             raise Unauthorized("Authentication required")
         return await func(*args, **kwargs)
 
