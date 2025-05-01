@@ -101,12 +101,20 @@ async def test_static_file_not_found(app: Quart) -> None:
 @pytest.mark.asyncio
 async def test_static_file_unauthorized(app: Quart) -> None:
     """Test that accessing static files without a cookie returns 401 Unauthorized."""
-    async with app.test_client() as client:
-        # Request without a session cookie
-        response = await client.get("/static/some-image.jpg")
-        assert response.status_code == HTTPStatus.UNAUTHORIZED
-        data = await response.get_data()
-        assert b"Authentication required" in data
+    # Save original value and temporarily set to True for this test
+    original_value = config.static_require_auth
+    config.static_require_auth = True
+
+    try:
+        async with app.test_client() as client:
+            # Request without a session cookie
+            response = await client.get("/static/some-image.jpg")
+            assert response.status_code == HTTPStatus.UNAUTHORIZED
+            data = await response.get_data()
+            assert b"Authentication required" in data
+    finally:
+        # Restore original value
+        config.static_require_auth = original_value
 
 
 @pytest.mark.asyncio
