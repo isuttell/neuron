@@ -74,6 +74,9 @@ class Personality(Base):
     prompts: Mapped[list["Prompt"]] = relationship(
         back_populates="personality", cascade="all, delete-orphan"
     )
+    personality_users: Mapped[list["PersonalityUser"]] = relationship(
+        back_populates="personality", cascade="all, delete-orphan"
+    )
 
 
 class Thread(Base):
@@ -252,6 +255,9 @@ class User(Base):
     thread_users: Mapped[list["ThreadUser"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
+    personality_users: Mapped[list["PersonalityUser"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
 
 
 class ThreadUser(Base):
@@ -284,6 +290,40 @@ class ThreadUser(Base):
     # Relationships
     thread: Mapped["Thread"] = relationship("Thread", back_populates="thread_users")
     user: Mapped["User"] = relationship("User", back_populates="thread_users")
+
+
+class PersonalityUser(Base):
+    __tablename__ = "personality_users"
+
+    id = Column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    personality_id = Column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("personalities.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    user_id = Column(
+        String,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    role = Column(String, nullable=False, default="user")  # 'admin' or 'user'
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    # Ensure each user is only associated with a personality once
+    __table_args__ = (
+        UniqueConstraint("personality_id", "user_id", name="unique_personality_user"),
+    )
+
+    # Relationships
+    personality: Mapped["Personality"] = relationship(
+        "Personality", back_populates="personality_users"
+    )
+    user: Mapped["User"] = relationship("User", back_populates="personality_users")
 
 
 # Create async session maker
