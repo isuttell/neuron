@@ -1,5 +1,6 @@
 import { MediaItem } from "./media";
 import { Thread } from "./thread";
+import { User } from "./user";
 
 export interface Message {
   id: string;
@@ -42,4 +43,10 @@ export interface MessageResponse {
   messages: Message[];
   media: MediaItem[];
   threads?: Thread[];
+  users?: User[];
+  thread_users?: Array<{
+    user_id: string;
+    thread_id: string;
+    role: string;
+  }>;
 }

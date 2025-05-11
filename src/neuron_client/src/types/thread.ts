@@ -1,3 +1,9 @@
+export interface ThreadUser {
+  user_id: string;
+  thread_id: string;
+  role: string;
+}
+
 export interface Thread {
   id: string;
   name: string;
@@ -8,6 +14,7 @@ export interface Thread {
   message_count: number;
   created_at: string;
   updated_at: string;
+  thread_users?: ThreadUser[];
 }
 
 export interface ThreadResponse {

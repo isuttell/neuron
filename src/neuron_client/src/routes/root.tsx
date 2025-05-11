@@ -1,17 +1,17 @@
-import { useEffect } from "react";
-import { Outlet } from "react-router-dom";
-import { useAppSelector } from "../hooks";
-import { getConnectionStatus } from "../slices/socketSlice";
-import { Spinner } from "@/components/ui/spinner";
-import { useAppDispatch } from "../hooks";
-import { SidebarProvider } from "@/components/ui/sidebar";
 import { MainSidebar } from "@/components/layout/MainSidebar";
-import { useAuth0, withAuthenticationRequired } from "@auth0/auth0-react";
-import { Button } from "@/components/ui/button";
-import { setGetAccessTokenSilently } from "../actions/getToken";
-import { fetchConfig } from "@/slices/appSlice";
 import { ThreadTitleUpdater } from "@/components/ThreadTitleUpdater";
+import { Button } from "@/components/ui/button";
+import { SidebarProvider } from "@/components/ui/sidebar";
+import { Spinner } from "@/components/ui/spinner";
+import { fetchConfig } from "@/slices/appSlice";
 import { fetchMediaLists } from "@/slices/mediaListsSlice";
+import { useAuth0, withAuthenticationRequired } from "@auth0/auth0-react";
+import { useEffect, useState } from "react"; // Import useState
+import { Outlet } from "react-router-dom";
+import { setGetAccessTokenSilently } from "../actions/getToken";
+import { useAppDispatch, useAppSelector } from "../hooks";
+import { api } from "../lib/api"; // Re-add api client import
+import { getConnectionStatus } from "../slices/socketSlice";
 
 export function RootComponent() {
   const {
@@ -25,16 +25,48 @@ export function RootComponent() {
 
   const isConnected = useAppSelector(getConnectionStatus);
   const dispatch = useAppDispatch();
+  const [userSynced, setUserSynced] = useState(false); // Add state variable
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated && !error) {
       loginWithRedirect();
     } else if (!isLoading && isAuthenticated) {
+      // Set the token function first
+      if (getAccessTokenSilently) {
+        setGetAccessTokenSilently(getAccessTokenSilently);
+      }
+
+      // Connect socket and fetch initial data
       dispatch({ type: "socket/connect" });
       dispatch(fetchConfig());
       dispatch(fetchMediaLists());
+
+      // --- Add the user sync logic here ---
+      // Only sync if authenticated and not already synced
+      if (isAuthenticated && !userSynced) {
+        const syncUser = async () => {
+          try {
+            await api.post("/users/login", {}); // Call the endpoint
+            setUserSynced(true); // Mark as synced
+          } catch (error) {
+            console.error(
+              "Error calling backend /users/login endpoint:",
+              error
+            );
+          }
+        };
+        syncUser();
+      }
     }
-  }, [isAuthenticated, isLoading, dispatch, error, loginWithRedirect]);
+  }, [
+    isAuthenticated,
+    isLoading,
+    dispatch,
+    error,
+    loginWithRedirect,
+    getAccessTokenSilently,
+    userSynced,
+  ]);
 
   useEffect(() => {
     if (getAccessTokenSilently) {

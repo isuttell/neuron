@@ -13,7 +13,7 @@ from neuron_server.config import config
 from neuron_server.controllers.app_controller import (
     blueprint as app_blueprint,
 )
-from neuron_server.controllers.auth import decode_token
+from neuron_server.controllers.auth import decode_token, requires_cookie
 from neuron_server.controllers.embedding_controller import (
     blueprint as embedding_blueprint,
 )
@@ -54,6 +54,9 @@ from neuron_server.controllers.thread_controller import (
 )
 from neuron_server.controllers.thread_controller import (
     router as thread_router,
+)
+from neuron_server.controllers.user_controller import (
+    user_bp,
 )
 from neuron_server.controllers.webhook_controller import blueprint as webhook_blueprint
 from neuron_server.database import pool
@@ -111,6 +114,7 @@ async def index(**kwargs: Any) -> Response:
 @blueprint.get("/neuron/static/<path:path>")
 @cors(allowed_methods=["GET", "OPTIONS"], allowed_headers=["Authorization"])
 @cache_control(max_age=31536000)
+@requires_cookie
 async def get_static(path: str) -> Response:
     match = re.match(r".*_(t|l|xl|xxl|o)\.(jpe?g|png|webp)$", path)
     if match and not os.path.exists(os.path.join(config.static_folder, path)):
@@ -193,6 +197,7 @@ app.register_blueprint(embedding_blueprint, url_prefix="/api/embeddings")
 app.register_blueprint(media_blueprint, url_prefix="/api/media")
 app.register_blueprint(scheduler_blueprint, url_prefix="/api/scheduler")
 app.register_blueprint(provider_blueprint, url_prefix="/api/providers")
+app.register_blueprint(user_bp, url_prefix="/api/users")
 
 
 @app.errorhandler(openai.APIError)

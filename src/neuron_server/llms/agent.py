@@ -623,7 +623,6 @@ async def _process_stream_events(ctx: StreamEventContext) -> str | None:
             "personality": ctx["personality"].context,
             "title": ctx["thread"].name,
             "location": ctx["config"]["location"],
-            "username": ctx["config"]["username"],
             "now": ctx["start_time"].astimezone().isoformat(timespec="seconds"),
         },
         config={
@@ -778,18 +777,29 @@ async def astream(args: StreamArgs) -> str | None:
         if personality is None:
             raise Exception("Personality not found")
 
+        # Create the human message first so we can return it quickly
+        human_message = HumanMessage(
+            id=str(uuid4()),
+            user_id=config["user_id"],
+            content=f"<|AI|>User: {config['username']}<|AI|>\n{config['prompt']}",
+            created_at=datetime.now().astimezone().isoformat(),
+        )
+
+        await pubsub.publish(
+            "app",
+            MessageEvent(
+                message=ThreadMessage(
+                    **human_message.model_dump(),
+                    thread_id=thread.id,
+                )
+            ),
+        )
+
         llm: LLM = await ProviderModelModel.get_active_llm()
         logger.debug(f"provider_model_id={llm.provider_model_id}")
         tools = get_tools(personality.tool_set) if personality.tool_set else None
         graph = llm.create_workflow(tools)
         graph.checkpointer = AsyncPostgresSaver(pool)
-
-        # Create the human message
-        human_message = HumanMessage(
-            id=str(uuid4()),
-            content=config["prompt"],
-            created_at=datetime.now().astimezone().isoformat(),
-        )
 
         # Update the thread name if it's not already set
         if not thread.name:
@@ -802,16 +812,6 @@ async def astream(args: StreamArgs) -> str | None:
                     config["user_id"],
                 )
             )
-
-        await pubsub.publish(
-            "app",
-            MessageEvent(
-                message=ThreadMessage(
-                    **human_message.model_dump(),
-                    thread_id=thread.id,
-                )
-            ),
-        )
 
         result = await _process_stream_events(
             StreamEventContext(

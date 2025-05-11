@@ -67,6 +67,7 @@ export interface IncomingMessage {
   usage_metadata?: UsageMetadata;
   created_at: string;
   node?: string;
+  user_id?: string;
 }
 
 export interface Message extends Omit<IncomingMessage, "created_at"> {

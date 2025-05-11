@@ -6,6 +6,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import Loading from "@/lib/loading";
 import { cn, debounce } from "@/lib/utils";
 import EditPersonalityDialog from "@/personalities/EditPersonalityDialog";
+import ThreadUsersDialog from "@/threads/ThreadUsersDialog";
 import { useEffect, useRef, useState } from "react";
 import { shallowEqual } from "react-redux";
 import { useParams } from "react-router-dom";
@@ -118,6 +119,7 @@ export default function Thread() {
         {activePersonality && (
           <EditPersonalityDialog personality={activePersonality} />
         )}
+        {threadId && <ThreadUsersDialog threadId={threadId} />}
         <DeleteThreadButton threadId={thread.id} />
       </div>
       <div className="flex flex-row flex-1">

@@ -84,6 +84,10 @@ class Neo4jConfig(BaseModel):
 
 
 class Config(BaseModel):
+    api_key: str = Field(
+        default=os.environ.get("API_KEY", ""),
+        description="API key for webhook authentication",
+    )
     debug: bool = Field(
         default=os.environ.get("DEBUG", "False").lower() == "true",
         description="Debug mode",
@@ -133,6 +137,10 @@ class Config(BaseModel):
     static_content_url: str = Field(
         default=os.environ.get("STATIC_CONTENT_URL", "http://localhost:5000/static"),
         description="Static content URL",
+    )
+    static_require_auth: bool = Field(
+        default=os.environ.get("STATIC_REQUIRE_AUTH", "True").lower() == "true",
+        description="Require authentication for static content",
     )
     homeassistant: HomeAssistantConfig = HomeAssistantConfig()
     temp_folder: str = Field(

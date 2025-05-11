@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from quart import Blueprint, request
 from werkzeug.exceptions import BadRequest
 
-from neuron_server.controllers.auth import requires_auth
+from neuron_server.controllers.auth import requires_api_key, requires_auth
 from neuron_server.llms.agent import execute_agent
 from neuron_server.logger import logger
 from neuron_server.tools.code_interpreter_api import run_code_interpreter
@@ -20,6 +20,7 @@ class PromptRequest(BaseModel):
 
 @blueprint.post("/prompt")
 @blueprint.post("/home_prompt")
+@requires_api_key
 async def prompt() -> dict[str, str]:
     body = await request.get_json()
     if not body:

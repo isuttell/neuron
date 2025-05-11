@@ -19,6 +19,21 @@ jest.mock("../../actions/messageActions", () => ({
   })),
 }));
 
+// Mock TooltipProvider
+jest.mock("@/components/ui/tooltip", () => ({
+  __esModule: true,
+  TooltipProvider: ({ children }: { children: React.ReactNode }) => (
+    <>{children}</>
+  ),
+  Tooltip: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  TooltipTrigger: ({ children }: { children: React.ReactNode }) => (
+    <>{children}</>
+  ),
+  TooltipContent: ({ children }: { children: React.ReactNode }) => (
+    <>{children}</>
+  ),
+}));
+
 // Mock all the imported components
 jest.mock("@/lib/loading", () => ({
   __esModule: true,
