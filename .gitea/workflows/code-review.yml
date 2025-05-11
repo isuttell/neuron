@@ -1,0 +1,39 @@
+name: Claude PR Review
+
+on:
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Install Claude CLI
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Download and setup gitea-mcp
+        run: |
+          wget https://gitea.com/gitea/gitea-mcp/releases/download/v0.1.9/gitea-mcp_Linux_x86_64.tar.gz
+          # Extract to /usr/local/bin which is in the default PATH
+          sudo tar -xzf gitea-mcp_Linux_x86_64.tar.gz -C /usr/local/bin
+          sudo chmod +x /usr/local/bin/gitea-mcp
+          # Verify it's accessible
+          which gitea-mcp || { echo "ERROR: gitea-mcp not found in PATH"; exit 1; }
+
+      - name: Run Claude review
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          echo "Running Claude review..."
+          claude -p "/review"
