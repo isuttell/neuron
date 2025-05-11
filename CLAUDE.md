@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+**CRITICAL: Before any commit or pull request, you MUST run lint and test commands to ensure all checks pass. See the "Pre-Commit Requirements" section for specific commands.**
+
 ## Project Overview
 
 Neuron is a realtime chat application built with LangChain and LangGraph that provides an extensible platform for testing and experimenting with various LLM models and tool capabilities. It features:
@@ -118,9 +120,32 @@ docker-compose up -d
 
 ### Backend Testing
 
-- Always run linting and tests after making changes: `ruff check --fix src/neuron_server/` and `pytest src/neuron_server/`
 - Include tests for controllers, tools, and database models
 - Use mocking for database and network operations to ensure isolation of tests
+
+## Pre-Commit Requirements
+
+**IMPORTANT: Always run the following checks before every commit:**
+
+### Frontend Checks
+```bash
+# Lint frontend code - must pass with no errors
+npm run lint
+
+# Run frontend tests - must pass with no failures
+npm test
+```
+
+### Backend Checks
+```bash
+# Lint and fix Python code - must have no remaining errors
+ruff check --fix src/neuron_server/
+
+# Run Python tests - must pass with no failures
+pytest src/neuron_server/
+```
+
+GitHub Actions will automatically run these checks when you push changes, and pull requests will fail if these checks don't pass. Always ensure all lint and test commands pass locally before committing and pushing changes.
 
 ## Important Notes
 
