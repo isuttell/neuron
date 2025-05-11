@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "gitea": {
+      "command": "gitea-mcp",
+      "args": [
+        "-t", "stdio",
+        "--host", "https://gitea.zaks.io:222"
+      ],
+      "env": {
+        "GITEA_ACCESS_TOKEN": "${env:GITEA_ACCESS_TOKEN}"
+      }
+    }
+  }
+}
