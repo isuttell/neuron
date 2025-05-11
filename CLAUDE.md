@@ -145,7 +145,19 @@ ruff check --fix src/neuron_server/
 pytest src/neuron_server/
 ```
 
-GitHub Actions will automatically run these checks when you push changes, and pull requests will fail if these checks don't pass. Always ensure all lint and test commands pass locally before committing and pushing changes.
+Gitea Actions on our self-hosted Gitea instance (https://gitea.zaks.io) will automatically run these checks when you push changes, and pull requests will fail if these checks don't pass. Always ensure all lint and test commands pass locally before committing and pushing changes.
+
+When interacting with the repository, always use the Gitea MCP tools provided for this project instead of standard git commands. This includes operations like creating pull requests, viewing issues, and commenting on code.
+
+## Gitea Integration
+
+This project uses a self-hosted Gitea instance at https://gitea.zaks.io for version control and CI/CD. When working with this repository:
+
+- Always use the Gitea MCP tools installed for this project to interact with the repository
+- The `.mcp.json` file configures the Gitea MCP integration
+- Pull requests are managed through Gitea, not GitHub
+- CI/CD is handled by Gitea Actions, which run the lint and test commands automatically
+- Always check the Gitea Actions status on pull requests before merging
 
 ## Important Notes
 
