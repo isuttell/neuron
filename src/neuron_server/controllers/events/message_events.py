@@ -9,6 +9,7 @@ from neuron_server.event_router import IncomingEvent, OutgoingEvent
 
 class ThreadMessage(BaseMessage):
     thread_id: UUID
+    user_id: str | None = None
     node: str | None = None
     created_at: str | None = None
     model_config = ConfigDict(

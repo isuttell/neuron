@@ -93,3 +93,8 @@ Run workflows using act:
 ```
 act -W .gitea/workflows/[workflow-file] --secret-file ./secrets/gitea
 ```
+
+
+## Git Commits
+
+When preparing for a git commit all tests must be passing and lint rules fixed. Peform a git diff using the mcp and review the code evaluating it's impact on the code base.

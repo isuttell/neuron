@@ -100,6 +100,7 @@ def mock_env_vars(monkeypatch: MonkeyPatch) -> None:
     # Feature Flags
     monkeypatch.setenv("DEBUG", "False")
     monkeypatch.setenv("MEMORY_ENABLED", "True")
+    monkeypatch.setenv("STATIC_REQUIRE_AUTH", "True")
 
     # Paths and URLs
     monkeypatch.setenv("STATIC_FOLDER", "./test/static")

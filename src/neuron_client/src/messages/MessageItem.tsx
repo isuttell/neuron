@@ -14,8 +14,8 @@ import {
 import { useAppSelector } from "@/hooks";
 import { cn } from "@/lib/utils";
 import { getMessage } from "@/slices/messagesSlice";
+import { getUser } from "@/slices/usersSlice";
 import { RootState } from "@/store";
-import { useAuth0 } from "@auth0/auth0-react";
 import { Bot, ChevronDown, ChevronUp, Hammer, User } from "lucide-react";
 import React, { memo, useState } from "react";
 import { formatNumber } from "../utils/numberFormat";
@@ -39,7 +39,6 @@ const MessageItem: React.FC<MessageItemProps> = ({
     getMessage(state, messageId)
   );
 
-  const { user } = useAuth0();
   const {
     type: role,
     node,
@@ -47,7 +46,14 @@ const MessageItem: React.FC<MessageItemProps> = ({
     name,
     textContent,
     thinkingContent,
+    user_id,
   } = message;
+
+  // Get the message user from the users slice if available
+  const messageUser = useAppSelector((state) =>
+    user_id ? getUser(state, user_id) : null
+  );
+
   const isTool = role === "tool" || node === "tools";
   const showToolOutput =
     isTool && toolOutput && toolOutput.includes(name ?? "");
@@ -87,7 +93,7 @@ const MessageItem: React.FC<MessageItemProps> = ({
             >
               {role === "human" ? (
                 <Avatar>
-                  <AvatarImage src={user?.picture} />
+                  <AvatarImage src={messageUser?.picture || ""} />
                   <AvatarFallback>
                     <User className="text-muted-foreground" size={20} />
                   </AvatarFallback>
@@ -102,7 +108,7 @@ const MessageItem: React.FC<MessageItemProps> = ({
             </div>
           </TooltipTrigger>
           <TooltipContent side="right">
-            {role === "human" ? "You" : "AI"}
+            {role === "human" ? messageUser?.nickname || "Human" : "AI"}
           </TooltipContent>
         </Tooltip>
         <div className="flex flex-col flex-1 ">

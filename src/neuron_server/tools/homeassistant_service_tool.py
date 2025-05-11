@@ -1,9 +1,16 @@
+# Removed Type import
 from langchain.tools import BaseTool
 from pydantic import BaseModel, Field
 
-from neuron_server.config import config
 from neuron_server.logger import logger
 from neuron_server.tools.homeassistant_api import HomeAssistantAPI, parse_sensor_state
+
+
+# Define the input schema for the tool
+class HomeAssistantServiceToolArgs(BaseModel):
+    entity_id: str = Field(description="The entity ID to call the service on")
+    domain: str = Field(description="The domain of the service to call")
+    service: str = Field(description="The service to call")
 
 
 class ServiceCallParameters(BaseModel):
@@ -69,6 +76,9 @@ available_calls = "\n".join([str(call) for call in calls])
 
 class HomeAssistantServiceTool(BaseTool):
     name: str = "homeassistant_service"
+    args_schema: type[HomeAssistantServiceToolArgs] = (
+        HomeAssistantServiceToolArgs  # Changed Type to type
+    )
     description: str = f"""\
 Tool to call services on Home Assistant to control lights and other
 devices. Only call this if the user explicitly asks you to control
@@ -82,6 +92,7 @@ Available calls:
     api: HomeAssistantAPI
 
     def _run(self, entity_id: str, domain: str, service: str) -> str:
+        """Execute the service call."""
         try:
             states = self.api.call_service(domain, service, entity_id)
             return "\n".join([parse_sensor_state(state) for state in states])
@@ -90,18 +101,4 @@ Available calls:
             return f"Error calling service: {str(e)}"
 
 
-async def main() -> None:
-    parser = argparse.ArgumentParser(description="Get temperature for a specific room")
-    parser.add_argument("room", type=str, help="The room to get the temperature for")
-    tool = HomeAssistantServiceTool(
-        api=HomeAssistantAPI(token=config.homeassistant.token)
-    )
-    message = tool._run("light.office", "light", "turn_on")
-    print(message)
-
-
-if __name__ == "__main__":
-    import argparse
-    import asyncio
-
-    asyncio.run(main())
+# Removed the main block as it was for testing and imported config unnecessarily

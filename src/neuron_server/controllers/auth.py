@@ -52,6 +52,7 @@ class TokenPayload(BaseModel):
     user_id: str
     email: str
     nickname: str
+    picture: str | None
     permissions: list[str]
 
 
@@ -94,6 +95,7 @@ async def decode_token(token: str) -> TokenPayload:
             user_id=payload.get("neuron/user_id"),
             email=payload.get("neuron/email"),
             nickname=payload.get("neuron/nickname"),
+            picture=payload.get("neuron/picture"),
             permissions=payload.get("permissions"),
         )
     except jwt.ExpiredSignatureError:
@@ -110,6 +112,39 @@ def requires_auth(func: Callable[..., T]) -> Callable[..., T]:
     async def decorated(*args: object, **kwargs: object) -> T:
         token = get_token_auth_header()
         request.token = await decode_token(token)
+        return await func(*args, **kwargs)
+
+    return decorated
+
+
+def requires_cookie(func: Callable[..., T]) -> Callable[..., T]:
+    """Determines if the session cookie is present"""
+
+    @wraps(func)
+    async def decorated(*args: object, **kwargs: object) -> T:
+        cookie = request.cookies.get("neuron_session")
+        if not cookie and config.static_require_auth:
+            raise Unauthorized("Authentication required")
+        return await func(*args, **kwargs)
+
+    return decorated
+
+
+def requires_api_key(func: Callable[..., T]) -> Callable[..., T]:
+    """Determines if the API key is valid"""
+
+    @wraps(func)
+    async def decorated(*args: object, **kwargs: object) -> T:
+        api_key = request.headers.get("X-API-Key")
+        if not api_key:
+            raise Unauthorized("API key is required")
+
+        if not config.api_key:
+            raise Unauthorized("API key is not configured on the server")
+
+        if api_key != config.api_key:
+            raise Unauthorized("Invalid API key")
+
         return await func(*args, **kwargs)
 
     return decorated

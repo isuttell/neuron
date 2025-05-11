@@ -1,18 +1,20 @@
 import { configureStore } from "@reduxjs/toolkit";
-import messages from "./slices/messagesSlice";
-import threads from "./slices/threadsSlice";
 import websocketMiddleware from "./middleware/websocketMiddleware";
-import { socketManager } from "./WebSocketManager";
-import socket from "./slices/socketSlice";
-import personalities from "./slices/personalitiesSlice";
-import images from "./slices/imagesSlice";
 import app from "./slices/appSlice";
-import promptsReducer from "./slices/promptsSlice";
 import embeddingsReducer from "./slices/embeddingsSlice";
-import mediaReducer from "./slices/mediaSlice";
+import images from "./slices/imagesSlice";
 import mediaListsReducer from "./slices/mediaListsSlice";
-import schedulerReducer from "./slices/schedulerSlice";
+import mediaReducer from "./slices/mediaSlice";
+import messages from "./slices/messagesSlice";
+import personalities from "./slices/personalitiesSlice";
+import promptsReducer from "./slices/promptsSlice";
 import providersReducer from "./slices/providerSlice";
+import schedulerReducer from "./slices/schedulerSlice";
+import socket from "./slices/socketSlice";
+import threads from "./slices/threadsSlice";
+import { socketManager } from "./WebSocketManager";
+
+import usersReducer from "./slices/usersSlice";
 
 export const store = configureStore({
   reducer: {
@@ -28,6 +30,7 @@ export const store = configureStore({
     mediaLists: mediaListsReducer,
     scheduler: schedulerReducer,
     providers: providersReducer,
+    users: usersReducer,
   },
   // @ts-expect-error - Redux middleware type incompatibility
   middleware: (getDefaultMiddleware) =>
