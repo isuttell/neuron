@@ -36,4 +36,4 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           echo "Running Claude review..."
-          claude -p "/review"
+          claude --allowedTools "Bash(git grep:*),Read,Bash(npm run lint),Bash(ruff check:*),Bash(ls:*),Bash(grep:*),mcp__gitea__get_file_content,mcp__gitea__list_repo_commits,mcp__gitea__create_issue_comment" -p "/review and use the Gitea MCP to leave comments as necessary"
