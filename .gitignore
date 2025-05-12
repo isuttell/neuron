@@ -28,3 +28,4 @@ coverage/
 secrets/
 
 **/.claude/settings.local.json
+tsconfig.app.tsbuildinfo
