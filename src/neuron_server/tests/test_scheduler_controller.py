@@ -1,12 +1,17 @@
-import json
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
-from quart import Quart, request
+from quart import Quart
 from werkzeug.exceptions import BadRequest, HTTPException, NotFound
 
-from neuron_server.controllers.auth import TokenPayload, requires_auth
+from neuron_server.controllers.auth import TokenPayload
 from neuron_server.controllers.scheduler_controller import blueprint
+
+# HTTP status codes
+HTTP_OK = 200
+HTTP_NO_CONTENT = 204
+HTTP_BAD_REQUEST = 400
+HTTP_NOT_FOUND = 404
 
 
 @pytest.fixture
@@ -64,17 +69,25 @@ def mock_personality_model() -> AsyncMock:
 
 
 @pytest.mark.asyncio
-async def test_create_event(app: Quart, mock_scheduler: AsyncMock, mock_token: TokenPayload) -> None:
+async def test_create_event(
+    app: Quart, mock_scheduler: AsyncMock, mock_token: TokenPayload
+) -> None:
     """Test creating a new scheduled event."""
     
     # Mock the token decode
-    async def mock_decode_token(*args, **kwargs):
+    async def mock_decode_token(*_: object, **__: object) -> TokenPayload:
         return mock_token
     
     with (
         patch("neuron_server.api.scheduler", mock_scheduler),
-        patch("neuron_server.controllers.auth.decode_token", side_effect=mock_decode_token),
-        patch("neuron_server.controllers.auth.get_token_auth_header", return_value="test-token"),
+        patch(
+            "neuron_server.controllers.auth.decode_token",
+            side_effect=mock_decode_token,
+        ),
+        patch(
+            "neuron_server.controllers.auth.get_token_auth_header",
+            return_value="test-token",
+        ),
     ):
         test_client = app.test_client()
         payload = {
@@ -89,7 +102,7 @@ async def test_create_event(app: Quart, mock_scheduler: AsyncMock, mock_token: T
         )
         
         response_data = await response.get_json()
-        assert response.status_code == 200
+        assert response.status_code == HTTP_OK
         assert response_data == {"event_id": "test-event-id"}
         
         mock_scheduler.create_event.assert_awaited_once_with(
@@ -100,21 +113,32 @@ async def test_create_event(app: Quart, mock_scheduler: AsyncMock, mock_token: T
 
 
 @pytest.mark.asyncio
-async def test_create_event_missing_body(app: Quart, mock_token: TokenPayload) -> None:
+async def test_create_event_missing_body(
+    app: Quart, mock_token: TokenPayload
+) -> None:
     """Test creating a new scheduled event with missing request body."""
     
     # Mock the token decode
-    async def mock_decode_token(*args, **kwargs):
+    async def mock_decode_token(*_: object, **__: object) -> TokenPayload:
         return mock_token
     
     with (
-        patch("neuron_server.controllers.auth.decode_token", side_effect=mock_decode_token),
-        patch("neuron_server.controllers.auth.get_token_auth_header", return_value="test-token"),
+        patch(
+            "neuron_server.controllers.auth.decode_token",
+            side_effect=mock_decode_token,
+        ),
+        patch(
+            "neuron_server.controllers.auth.get_token_auth_header",
+            return_value="test-token",
+        ),
     ):
         # Add handler for BadRequest exceptions
         @app.errorhandler(BadRequest)
-        async def handle_bad_request(error):
-            return {"error": "Bad Request", "message": error.description}, 400
+        async def handle_bad_request(error: BadRequest) -> tuple[dict[str, str], int]:
+            return (
+                {"error": "Bad Request", "message": error.description},
+                HTTP_BAD_REQUEST,
+            )
             
         test_client = app.test_client()
         
@@ -124,13 +148,15 @@ async def test_create_event_missing_body(app: Quart, mock_token: TokenPayload) -
             headers={"Authorization": "Bearer test-token"},
         )
         
-        assert response.status_code == 400
+        assert response.status_code == HTTP_BAD_REQUEST
         response_data = await response.get_json()
         assert response_data["message"] == "Request body is required"
 
 
 @pytest.mark.asyncio
-async def test_update_event(app: Quart, mock_scheduler: AsyncMock, mock_token: TokenPayload) -> None:
+async def test_update_event(
+    app: Quart, mock_scheduler: AsyncMock, mock_token: TokenPayload
+) -> None:
     """Test updating an existing scheduled event."""
     event_id = "test-event-id"
     mock_event = {
@@ -141,13 +167,19 @@ async def test_update_event(app: Quart, mock_scheduler: AsyncMock, mock_token: T
     }
     
     # Mock the token decode
-    async def mock_decode_token(*args, **kwargs):
+    async def mock_decode_token(*_: object, **__: object) -> TokenPayload:
         return mock_token
     
     with (
         patch("neuron_server.api.scheduler", mock_scheduler),
-        patch("neuron_server.controllers.auth.decode_token", side_effect=mock_decode_token),
-        patch("neuron_server.controllers.auth.get_token_auth_header", return_value="test-token"),
+        patch(
+            "neuron_server.controllers.auth.decode_token",
+            side_effect=mock_decode_token,
+        ),
+        patch(
+            "neuron_server.controllers.auth.get_token_auth_header",
+            return_value="test-token",
+        ),
     ):
         mock_scheduler.get_event.return_value = mock_event
         
@@ -163,7 +195,7 @@ async def test_update_event(app: Quart, mock_scheduler: AsyncMock, mock_token: T
             headers={"Authorization": "Bearer test-token"},
         )
         
-        assert response.status_code == 200
+        assert response.status_code == HTTP_OK
         response_data = await response.get_json()
         assert response_data == {"event_id": event_id}
         
@@ -176,25 +208,33 @@ async def test_update_event(app: Quart, mock_scheduler: AsyncMock, mock_token: T
 
 
 @pytest.mark.asyncio
-async def test_update_event_not_found(app: Quart, mock_scheduler: AsyncMock, mock_token: TokenPayload) -> None:
+async def test_update_event_not_found(
+    app: Quart, mock_scheduler: AsyncMock, mock_token: TokenPayload
+) -> None:
     """Test updating a non-existent scheduled event."""
     event_id = "non-existent-event-id"
     
     # Mock the token decode
-    async def mock_decode_token(*args, **kwargs):
+    async def mock_decode_token(*_: object, **__: object) -> TokenPayload:
         return mock_token
     
     with (
         patch("neuron_server.api.scheduler", mock_scheduler),
-        patch("neuron_server.controllers.auth.decode_token", side_effect=mock_decode_token),
-        patch("neuron_server.controllers.auth.get_token_auth_header", return_value="test-token"),
+        patch(
+            "neuron_server.controllers.auth.decode_token",
+            side_effect=mock_decode_token,
+        ),
+        patch(
+            "neuron_server.controllers.auth.get_token_auth_header",
+            return_value="test-token",
+        ),
     ):
         mock_scheduler.get_event.return_value = None
         
         # Add handler for NotFound exceptions
         @app.errorhandler(NotFound)
-        async def handle_not_found(error):
-            return {"error": "Not Found", "message": error.description}, 404
+        async def handle_not_found(error: NotFound) -> tuple[dict[str, str], int]:
+            return {"error": "Not Found", "message": error.description}, HTTP_NOT_FOUND
             
         test_client = app.test_client()
         payload = {
@@ -208,13 +248,15 @@ async def test_update_event_not_found(app: Quart, mock_scheduler: AsyncMock, moc
             headers={"Authorization": "Bearer test-token"},
         )
         
-        assert response.status_code == 404
+        assert response.status_code == HTTP_NOT_FOUND
         response_data = await response.get_json()
         assert response_data["message"] == "Event not found"
 
 
 @pytest.mark.asyncio
-async def test_update_event_different_user(app: Quart, mock_scheduler: AsyncMock, mock_token: TokenPayload) -> None:
+async def test_update_event_different_user(
+    app: Quart, mock_scheduler: AsyncMock, mock_token: TokenPayload
+) -> None:
     """Test updating an event belonging to a different user."""
     event_id = "test-event-id"
     mock_event = {
@@ -225,20 +267,26 @@ async def test_update_event_different_user(app: Quart, mock_scheduler: AsyncMock
     }
     
     # Mock the token decode
-    async def mock_decode_token(*args, **kwargs):
+    async def mock_decode_token(*_: object, **__: object) -> TokenPayload:
         return mock_token
     
     with (
         patch("neuron_server.api.scheduler", mock_scheduler),
-        patch("neuron_server.controllers.auth.decode_token", side_effect=mock_decode_token),
-        patch("neuron_server.controllers.auth.get_token_auth_header", return_value="test-token"),
+        patch(
+            "neuron_server.controllers.auth.decode_token",
+            side_effect=mock_decode_token,
+        ),
+        patch(
+            "neuron_server.controllers.auth.get_token_auth_header",
+            return_value="test-token",
+        ),
     ):
         mock_scheduler.get_event.return_value = mock_event
         
         # Add handler for NotFound exceptions
         @app.errorhandler(NotFound)
-        async def handle_not_found(error):
-            return {"error": "Not Found", "message": error.description}, 404
+        async def handle_not_found(error: NotFound) -> tuple[dict[str, str], int]:
+            return {"error": "Not Found", "message": error.description}, HTTP_NOT_FOUND
             
         test_client = app.test_client()
         payload = {
@@ -252,13 +300,15 @@ async def test_update_event_different_user(app: Quart, mock_scheduler: AsyncMock
             headers={"Authorization": "Bearer test-token"},
         )
         
-        assert response.status_code == 404
+        assert response.status_code == HTTP_NOT_FOUND
         response_data = await response.get_json()
         assert response_data["message"] == "Event not found"
 
 
 @pytest.mark.asyncio
-async def test_get_event(app: Quart, mock_scheduler: AsyncMock, mock_token: TokenPayload) -> None:
+async def test_get_event(
+    app: Quart, mock_scheduler: AsyncMock, mock_token: TokenPayload
+) -> None:
     """Test getting details of a specific scheduled event."""
     event_id = "test-event-id"
     mock_event = {
@@ -269,13 +319,19 @@ async def test_get_event(app: Quart, mock_scheduler: AsyncMock, mock_token: Toke
     }
     
     # Mock the token decode
-    async def mock_decode_token(*args, **kwargs):
+    async def mock_decode_token(*_: object, **__: object) -> TokenPayload:
         return mock_token
     
     with (
         patch("neuron_server.api.scheduler", mock_scheduler),
-        patch("neuron_server.controllers.auth.decode_token", side_effect=mock_decode_token),
-        patch("neuron_server.controllers.auth.get_token_auth_header", return_value="test-token"),
+        patch(
+            "neuron_server.controllers.auth.decode_token",
+            side_effect=mock_decode_token,
+        ),
+        patch(
+            "neuron_server.controllers.auth.get_token_auth_header",
+            return_value="test-token",
+        ),
     ):
         mock_scheduler.get_event.return_value = mock_event
         
@@ -285,7 +341,7 @@ async def test_get_event(app: Quart, mock_scheduler: AsyncMock, mock_token: Toke
             headers={"Authorization": "Bearer test-token"},
         )
         
-        assert response.status_code == 200
+        assert response.status_code == HTTP_OK
         response_data = await response.get_json()
         assert response_data == {"event": mock_event}
         
@@ -293,25 +349,33 @@ async def test_get_event(app: Quart, mock_scheduler: AsyncMock, mock_token: Toke
 
 
 @pytest.mark.asyncio
-async def test_get_event_not_found(app: Quart, mock_scheduler: AsyncMock, mock_token: TokenPayload) -> None:
+async def test_get_event_not_found(
+    app: Quart, mock_scheduler: AsyncMock, mock_token: TokenPayload
+) -> None:
     """Test getting details of a non-existent scheduled event."""
     event_id = "non-existent-event-id"
     
     # Mock the token decode
-    async def mock_decode_token(*args, **kwargs):
+    async def mock_decode_token(*_: object, **__: object) -> TokenPayload:
         return mock_token
     
     with (
         patch("neuron_server.api.scheduler", mock_scheduler),
-        patch("neuron_server.controllers.auth.decode_token", side_effect=mock_decode_token),
-        patch("neuron_server.controllers.auth.get_token_auth_header", return_value="test-token"),
+        patch(
+            "neuron_server.controllers.auth.decode_token",
+            side_effect=mock_decode_token,
+        ),
+        patch(
+            "neuron_server.controllers.auth.get_token_auth_header",
+            return_value="test-token",
+        ),
     ):
         mock_scheduler.get_event.return_value = None
         
         # Add handler for NotFound exceptions
         @app.errorhandler(NotFound)
-        async def handle_not_found(error):
-            return {"error": "Not Found", "message": error.description}, 404
+        async def handle_not_found(error: NotFound) -> tuple[dict[str, str], int]:
+            return {"error": "Not Found", "message": error.description}, HTTP_NOT_FOUND
             
         test_client = app.test_client()
         response = await test_client.get(
@@ -319,13 +383,15 @@ async def test_get_event_not_found(app: Quart, mock_scheduler: AsyncMock, mock_t
             headers={"Authorization": "Bearer test-token"},
         )
         
-        assert response.status_code == 404
+        assert response.status_code == HTTP_NOT_FOUND
         response_data = await response.get_json()
         assert response_data["message"] == "Event not found"
 
 
 @pytest.mark.asyncio
-async def test_get_event_different_user(app: Quart, mock_scheduler: AsyncMock, mock_token: TokenPayload) -> None:
+async def test_get_event_different_user(
+    app: Quart, mock_scheduler: AsyncMock, mock_token: TokenPayload
+) -> None:
     """Test getting details of an event belonging to a different user."""
     event_id = "test-event-id"
     mock_event = {
@@ -336,20 +402,26 @@ async def test_get_event_different_user(app: Quart, mock_scheduler: AsyncMock, m
     }
     
     # Mock the token decode
-    async def mock_decode_token(*args, **kwargs):
+    async def mock_decode_token(*_: object, **__: object) -> TokenPayload:
         return mock_token
     
     with (
         patch("neuron_server.api.scheduler", mock_scheduler),
-        patch("neuron_server.controllers.auth.decode_token", side_effect=mock_decode_token),
-        patch("neuron_server.controllers.auth.get_token_auth_header", return_value="test-token"),
+        patch(
+            "neuron_server.controllers.auth.decode_token",
+            side_effect=mock_decode_token,
+        ),
+        patch(
+            "neuron_server.controllers.auth.get_token_auth_header",
+            return_value="test-token",
+        ),
     ):
         mock_scheduler.get_event.return_value = mock_event
         
         # Add handler for NotFound exceptions
         @app.errorhandler(NotFound)
-        async def handle_not_found(error):
-            return {"error": "Not Found", "message": error.description}, 404
+        async def handle_not_found(error: NotFound) -> tuple[dict[str, str], int]:
+            return {"error": "Not Found", "message": error.description}, HTTP_NOT_FOUND
             
         test_client = app.test_client()
         response = await test_client.get(
@@ -357,17 +429,21 @@ async def test_get_event_different_user(app: Quart, mock_scheduler: AsyncMock, m
             headers={"Authorization": "Bearer test-token"},
         )
         
-        assert response.status_code == 404
+        assert response.status_code == HTTP_NOT_FOUND
         response_data = await response.get_json()
         assert response_data["message"] == "Event not found"
 
 
 class MockPersonality:
+    """Mock personality for testing."""
+    
     def __init__(self, personality_id: str, name: str) -> None:
+        """Initialize mock personality."""
         self.id = personality_id
         self.name = name
         
     def model_dump(self) -> dict:
+        """Return the model as a dictionary."""
         return {
             "id": self.id,
             "name": self.name,
@@ -381,36 +457,48 @@ async def test_list_events(
     mock_token: TokenPayload,
 ) -> None:
     """Test listing all scheduled events for the authenticated user."""
+    event_data = {"message": "test", "personality_id": "test-personality-id"}
+    event_data2 = {"message": "another test", "personality_id": "test-personality-id"}
+    
     mock_events = [
         {
             "id": "event-1",
             "user_id": "test-user-id",
             "cron": "0 0 * * *",
-            "event_data": {"message": "test", "personality_id": "test-personality-id"},
+            "event_data": event_data,
         },
         {
             "id": "event-2",
             "user_id": "test-user-id",
             "cron": "0 12 * * *",
-            "event_data": {"message": "another test", "personality_id": "test-personality-id"},
+            "event_data": event_data2,
         },
     ]
     
     mock_personality = MockPersonality("test-personality-id", "Test Personality")
     
     # Mock the token decode
-    async def mock_decode_token(*args, **kwargs):
+    async def mock_decode_token(*_: object, **__: object) -> TokenPayload:
         return mock_token
     
     # Mock PersonalityModel.get_many to return a list of mock personalities
-    async def mock_get_many(personality_ids):
+    async def mock_get_many(personality_ids: set) -> list[MockPersonality]:
         return [mock_personality]
     
     with (
         patch("neuron_server.api.scheduler", mock_scheduler),
-        patch("neuron_server.controllers.auth.decode_token", side_effect=mock_decode_token),
-        patch("neuron_server.controllers.auth.get_token_auth_header", return_value="test-token"),
-        patch("neuron_server.controllers.scheduler_controller.PersonalityModel.get_many", side_effect=mock_get_many),
+        patch(
+            "neuron_server.controllers.auth.decode_token",
+            side_effect=mock_decode_token,
+        ),
+        patch(
+            "neuron_server.controllers.auth.get_token_auth_header",
+            return_value="test-token",
+        ),
+        patch(
+            "neuron_server.controllers.scheduler_controller.PersonalityModel.get_many",
+            side_effect=mock_get_many,
+        ),
     ):
         mock_scheduler.list_events.return_value = mock_events
         
@@ -420,16 +508,22 @@ async def test_list_events(
             headers={"Authorization": "Bearer test-token"},
         )
         
-        assert response.status_code == 200
+        assert response.status_code == HTTP_OK
         response_data = await response.get_json()
-        assert response_data == {
+        
+        expected_data = {
             "events": mock_events,
-            "personalities": [{"id": "test-personality-id", "name": "Test Personality"}],
+            "personalities": [
+                {"id": "test-personality-id", "name": "Test Personality"}
+            ],
         }
+        assert response_data == expected_data
 
 
 @pytest.mark.asyncio
-async def test_delete_event(app: Quart, mock_scheduler: AsyncMock, mock_token: TokenPayload) -> None:
+async def test_delete_event(
+    app: Quart, mock_scheduler: AsyncMock, mock_token: TokenPayload
+) -> None:
     """Test deleting a scheduled event."""
     event_id = "test-event-id"
     mock_event = {
@@ -440,13 +534,19 @@ async def test_delete_event(app: Quart, mock_scheduler: AsyncMock, mock_token: T
     }
     
     # Mock the token decode
-    async def mock_decode_token(*args, **kwargs):
+    async def mock_decode_token(*_: object, **__: object) -> TokenPayload:
         return mock_token
     
     with (
         patch("neuron_server.api.scheduler", mock_scheduler),
-        patch("neuron_server.controllers.auth.decode_token", side_effect=mock_decode_token),
-        patch("neuron_server.controllers.auth.get_token_auth_header", return_value="test-token"),
+        patch(
+            "neuron_server.controllers.auth.decode_token",
+            side_effect=mock_decode_token,
+        ),
+        patch(
+            "neuron_server.controllers.auth.get_token_auth_header",
+            return_value="test-token",
+        ),
     ):
         mock_scheduler.get_event.return_value = mock_event
         
@@ -456,32 +556,40 @@ async def test_delete_event(app: Quart, mock_scheduler: AsyncMock, mock_token: T
             headers={"Authorization": "Bearer test-token"},
         )
         
-        assert response.status_code == 204
+        assert response.status_code == HTTP_NO_CONTENT
         
         mock_scheduler.get_event.assert_awaited_once_with(event_id)
         mock_scheduler.delete_event.assert_awaited_once_with(event_id)
 
 
 @pytest.mark.asyncio
-async def test_delete_event_not_found(app: Quart, mock_scheduler: AsyncMock, mock_token: TokenPayload) -> None:
+async def test_delete_event_not_found(
+    app: Quart, mock_scheduler: AsyncMock, mock_token: TokenPayload
+) -> None:
     """Test deleting a non-existent scheduled event."""
     event_id = "non-existent-event-id"
     
     # Mock the token decode
-    async def mock_decode_token(*args, **kwargs):
+    async def mock_decode_token(*_: object, **__: object) -> TokenPayload:
         return mock_token
     
     with (
         patch("neuron_server.api.scheduler", mock_scheduler),
-        patch("neuron_server.controllers.auth.decode_token", side_effect=mock_decode_token),
-        patch("neuron_server.controllers.auth.get_token_auth_header", return_value="test-token"),
+        patch(
+            "neuron_server.controllers.auth.decode_token",
+            side_effect=mock_decode_token,
+        ),
+        patch(
+            "neuron_server.controllers.auth.get_token_auth_header",
+            return_value="test-token",
+        ),
     ):
         mock_scheduler.get_event.return_value = None
         
         # Add handler for NotFound exceptions
         @app.errorhandler(NotFound)
-        async def handle_not_found(error):
-            return {"error": "Not Found", "message": error.description}, 404
+        async def handle_not_found(error: NotFound) -> tuple[dict[str, str], int]:
+            return {"error": "Not Found", "message": error.description}, HTTP_NOT_FOUND
             
         test_client = app.test_client()
         response = await test_client.delete(
@@ -489,13 +597,15 @@ async def test_delete_event_not_found(app: Quart, mock_scheduler: AsyncMock, moc
             headers={"Authorization": "Bearer test-token"},
         )
         
-        assert response.status_code == 404
+        assert response.status_code == HTTP_NOT_FOUND
         response_data = await response.get_json()
         assert response_data["message"] == "Event not found"
 
 
 @pytest.mark.asyncio
-async def test_delete_event_different_user(app: Quart, mock_scheduler: AsyncMock, mock_token: TokenPayload) -> None:
+async def test_delete_event_different_user(
+    app: Quart, mock_scheduler: AsyncMock, mock_token: TokenPayload
+) -> None:
     """Test deleting an event belonging to a different user."""
     event_id = "test-event-id"
     mock_event = {
@@ -506,20 +616,26 @@ async def test_delete_event_different_user(app: Quart, mock_scheduler: AsyncMock
     }
     
     # Mock the token decode
-    async def mock_decode_token(*args, **kwargs):
+    async def mock_decode_token(*_: object, **__: object) -> TokenPayload:
         return mock_token
     
     with (
         patch("neuron_server.api.scheduler", mock_scheduler),
-        patch("neuron_server.controllers.auth.decode_token", side_effect=mock_decode_token),
-        patch("neuron_server.controllers.auth.get_token_auth_header", return_value="test-token"),
+        patch(
+            "neuron_server.controllers.auth.decode_token",
+            side_effect=mock_decode_token,
+        ),
+        patch(
+            "neuron_server.controllers.auth.get_token_auth_header",
+            return_value="test-token",
+        ),
     ):
         mock_scheduler.get_event.return_value = mock_event
         
         # Add handler for NotFound exceptions
         @app.errorhandler(NotFound)
-        async def handle_not_found(error):
-            return {"error": "Not Found", "message": error.description}, 404
+        async def handle_not_found(error: NotFound) -> tuple[dict[str, str], int]:
+            return {"error": "Not Found", "message": error.description}, HTTP_NOT_FOUND
             
         test_client = app.test_client()
         response = await test_client.delete(
@@ -527,6 +643,6 @@ async def test_delete_event_different_user(app: Quart, mock_scheduler: AsyncMock
             headers={"Authorization": "Bearer test-token"},
         )
         
-        assert response.status_code == 404
+        assert response.status_code == HTTP_NOT_FOUND
         response_data = await response.get_json()
         assert response_data["message"] == "Event not found"
