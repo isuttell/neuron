@@ -39,7 +39,7 @@ jobs:
           # Configure the Gitea MCP server using the CLI
           claude mcp add gitea \
             -e GITEA_ACCESS_TOKEN=$GITEA_ACCESS_TOKEN \
-            gitea-mcp -t stdio \
+            -- gitea-mcp -t stdio \
             -host $GITEA_BASE \
             -token $GITEA_ACCESS_TOKEN
           claude mcp list
