@@ -172,13 +172,26 @@ pipx install poetry
 poetry install
 ```
 
-3. Install frontend dependencies:
+3. Run tests and check code coverage:
+
+```bash
+# Run backend tests
+poetry run pytest src/neuron_server/
+
+# Run backend tests with coverage report
+poetry run pytest src/neuron_server/ --cov=src/neuron_server/ --cov-report=term
+
+# Lint backend code
+poetry run ruff check --fix src/neuron_server/
+```
+
+4. Install frontend dependencies:
 
 ```bash
 npm install
 ```
 
-4. Start the development servers:
+5. Start the development servers:
 
 ```bash
 # Terminal 1: Start the backend
@@ -188,7 +201,7 @@ poetry run python -m neuron_server
 npm run dev
 ```
 
-5. Access the application at http://localhost:5174
+6. Access the application at http://localhost:5174
 
 ### Docker Deployment
 
