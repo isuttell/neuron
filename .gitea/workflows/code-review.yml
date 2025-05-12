@@ -51,6 +51,5 @@ jobs:
           GITEA_ACCESS_TOKEN: ${{ secrets.GT_TOKEN }}
         run: |
           echo "Running Claude review..."
-          claude -p --allowedTools "Bash(git grep:*),Read,Bash(ls:*),Bash(grep:*),mcp__gitea__get_file_content,mcp__gitea__list_repo_commits,mcp__gitea__create_issue_comment" \
-            /review
-          claude -c -p "Use the Gitea MCP to leave comments as necessary based on your review of PR #${{ github.event.pull_request.number }}"
+          claude -p --allowedTools "Read,Bash(git),Bash(ls:*),Bash(grep:*)" "/review"
+          claude -c -p --allowedTools "Read,mcp__gitea__list_repo_commits,mcp__gitea__create_issue_comment" "Use the Gitea MCP to leave comments as necessary based on your review of PR #${{ github.event.pull_request.number }}"
