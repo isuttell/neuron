@@ -34,6 +34,7 @@ describe("threadsSlice", () => {
         sidebar_image: "",
         isLoading: false,
         error: null,
+        currentUser: null,
       }),
       messages: () => ({
         messageMap: {},
@@ -87,6 +88,11 @@ describe("threadsSlice", () => {
         error: null,
         providers: {},
         activeProviderId: null,
+      }),
+      users: () => ({
+        loading: false,
+        error: null,
+        users: {},
       }),
     },
   });
