@@ -1,0 +1,84 @@
+name: Claude PR Review
+
+on:
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Download and setup gitea-mcp
+        run: |
+          wget https://gitea.com/gitea/gitea-mcp/releases/download/v0.1.9/gitea-mcp_Linux_x86_64.tar.gz
+          # Extract to /usr/local/bin which is in the default PATH
+          sudo tar -xzf gitea-mcp_Linux_x86_64.tar.gz -C /usr/local/bin
+          sudo chmod +x /usr/local/bin/gitea-mcp
+          # Verify it's accessible
+          which gitea-mcp || { echo "ERROR: gitea-mcp not found in PATH"; exit 1; }
+
+      - name: Install Claude CLI
+        run: |
+          npm install -g @anthropic-ai/claude-code
+          # Log Claude version for debugging
+          claude --version || echo "Claude version command not available"
+
+
+      - name: Configure Claude
+        env:
+          GITEA_ACCESS_TOKEN: ${{ secrets.GT_TOKEN }}
+          GITEA_BASE:  ${{ gitea.server_url }}
+        run: |
+          # Configure the Gitea MCP server using the CLI with SSE transport
+          claude mcp add gitea \
+            -e GITEA_ACCESS_TOKEN=$GITEA_ACCESS_TOKEN \
+            -- gitea-mcp -t sse -port 8080 \
+            -host $GITEA_BASE \
+            -token $GITEA_ACCESS_TOKEN
+          claude mcp list
+          echo "Configured MCP server for Gitea with SSE transport"
+
+          # Configure allowed tools for Claude - simplifying to just essentials
+          claude config set allowedTools "Read,mcp__gitea__create_issue_comment"
+          echo "Configured Claude allowed tools with simplified set"
+
+      - name: Run Claude review
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GITEA_ACCESS_TOKEN: ${{ secrets.GT_TOKEN }}
+        run: |
+          echo "Fetching PR diff..."
+          # Fetch the PR diff from Gitea API
+          curl -sSL -H "Authorization: token $GITEA_ACCESS_TOKEN" \
+            "${{ gitea.server_url }}/api/v1/repos/${{ gitea.repository_owner }}/${{ gitea.repository_name }}/pulls/${{ gitea.event.number }}.diff" \
+            -o pr.diff
+
+          echo "Running code review..."
+          # Create a custom prompt with the diff included
+          PROMPT=$(cat <<EOF
+Please review the code changes in this PR based on the diff:
+
+<git_diff>
+$(cat pr.diff)
+</git_diff>
+
+1. Check for existing comments on the PR #${{ gitea.event.number }}
+2. Based on the diff above, analyze code quality, potential bugs, and improvements
+3. Use the Gitea MCP tools to leave new/updated comments directly on PR #${{ gitea.event.number }}
+4. Be specific in your comments and reference files and line numbers when possible
+5. Focus on the problems and potential improvements
+EOF
+)
+          # Run a single Claude command for the entire process
+          echo "$PROMPT" | claude -p
