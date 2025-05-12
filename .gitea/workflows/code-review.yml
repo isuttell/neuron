@@ -2,6 +2,7 @@ name: Claude PR Review
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened]
     branches: [ master ]
 
 jobs:
@@ -66,12 +67,15 @@ jobs:
           PROMPT=$(cat <<EOF
 Please review the code changes in this PR based on the diff:
 
+<git_diff>
 $(cat pr.diff)
+</git_diff>
 
-1. Based on the diff above, analyze code quality, potential bugs, and improvements
-2. Use the Gitea MCP tools to leave comments directly on PR #${{ gitea.event.number }}
-3. Be specific in your comments and reference files and line numbers when possible
-4. Focus on the problems and potential improvements
+1. Check for existing comments on the PR #${{ gitea.event.number }}
+2. Based on the diff above, analyze code quality, potential bugs, and improvements
+3. Use the Gitea MCP tools to leave new/updated comments directly on PR #${{ gitea.event.number }}
+4. Be specific in your comments and reference files and line numbers when possible
+5. Focus on the problems and potential improvements
 EOF
 )
           # Run a single Claude command for the entire process
