@@ -1,5 +1,5 @@
 import type { PayloadAction } from "@reduxjs/toolkit";
-import { createSelector, createSlice } from "@reduxjs/toolkit";
+import { createSlice, createSelector } from "@reduxjs/toolkit";
 import { fetchMessagesByThread } from "../actions/messageActions";
 import { addUserByEmail } from "../actions/threadActions";
 import type { RootState } from "../store";
@@ -58,18 +58,18 @@ export const usersSlice = createSlice({
 
 export const { reset } = usersSlice.actions;
 
-export const getUsersState = (state: RootState) => state.users?.users || {};
+// Base selectors
+const selectUsersState = (state: RootState) => state.users;
 
-// Modified selector to transform the input in some way to avoid identity function warning
+// Memoized selectors
 export const getUsers = createSelector(
-  [getUsersState],
-  (users) => {
-    // Return a transformed copy of the users object to avoid just returning the input
-    return { ...users };
-  }
+  [selectUsersState],
+  (usersState) => usersState?.users || {}
 );
 
-export const getUser = (state: RootState, id: string) =>
-  state.users?.users?.[id];
+export const getUser = createSelector(
+  [getUsers, (_, id: string) => id],
+  (users, id) => users[id]
+);
 
 export default usersSlice.reducer;

@@ -1,4 +1,4 @@
-import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
+import { createSlice, createAsyncThunk, createSelector, PayloadAction } from "@reduxjs/toolkit";
 import { RootState } from "../store";
 import { getAccessToken } from "../actions/getToken";
 
@@ -103,16 +103,34 @@ const providersSlice = createSlice({
 
 export const { clearProviders, upsertProvider } = providersSlice.actions;
 
-export const selectActiveProviderId = (state: RootState) =>
-  state.providers.activeProviderId;
+// Base selectors
+const selectProvidersState = (state: RootState) => state.providers;
+const selectProvidersMap = (state: RootState) => state.providers.providers;
 
-// Selectors
-export const selectProviders = (state: RootState) =>
-  Object.values(state.providers.providers);
-export const selectProviderById = (state: RootState, id: string) =>
-  state.providers.providers[id];
-export const selectProvidersLoading = (state: RootState) =>
-  state.providers.loading;
-export const selectProvidersError = (state: RootState) => state.providers.error;
+// Memoized selectors
+export const selectActiveProviderId = createSelector(
+  [selectProvidersState],
+  (state) => state.activeProviderId
+);
+
+export const selectProviders = createSelector(
+  [selectProvidersMap],
+  (providers) => Object.values(providers)
+);
+
+export const selectProviderById = createSelector(
+  [selectProvidersMap, (_, id: string) => id],
+  (providers, id) => providers[id]
+);
+
+export const selectProvidersLoading = createSelector(
+  [selectProvidersState],
+  (state) => state.loading
+);
+
+export const selectProvidersError = createSelector(
+  [selectProvidersState],
+  (state) => state.error
+);
 
 export default providersSlice.reducer;
