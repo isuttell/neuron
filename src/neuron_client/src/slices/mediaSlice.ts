@@ -1,4 +1,4 @@
-import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
+import { createSlice, createAsyncThunk, createSelector, PayloadAction } from "@reduxjs/toolkit";
 import type { RootState } from "../store";
 import { api } from "@/lib/api";
 import { fetchMessagesByThread } from "@/actions/messageActions";
@@ -100,13 +100,37 @@ const mediaSlice = createSlice({
   },
 });
 
-// Selectors
-export const selectAllMedia = (state: RootState) => state.media.items;
-export const selectMediaLoading = (state: RootState) => state.media.loading;
-export const selectMediaError = (state: RootState) => state.media.error;
-export const selectMediaItemById = (state: RootState, id: string) =>
-  state.media.items.find((item) => item.id === id);
-export const filterByIds = (state: RootState, ids: string[]) =>
-  state.media.items.filter((item) => ids.includes(item.id));
+// Base selectors
+const selectMediaState = (state: RootState) => state.media;
+const selectMediaItems = (state: RootState) => state.media.items;
+
+// Memoized selectors
+export const selectAllMedia = createSelector(
+  [selectMediaItems],
+  (items) => [...items].sort((a, b) =>
+    new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  )
+);
+
+export const selectMediaLoading = createSelector(
+  [selectMediaState],
+  (mediaState) => mediaState.loading
+);
+
+export const selectMediaError = createSelector(
+  [selectMediaState],
+  (mediaState) => mediaState.error
+);
+
+export const selectMediaItemById = createSelector(
+  [selectMediaItems, (_, id: string) => id],
+  (items, id) => items.find((item) => item.id === id)
+);
+
+export const filterByIds = createSelector(
+  [selectMediaItems, (_, ids: string[]) => ids],
+  (items, ids) => items.filter((item) => ids.includes(item.id))
+);
+
 export const { clearMedia, upsertMedia } = mediaSlice.actions;
 export default mediaSlice.reducer;

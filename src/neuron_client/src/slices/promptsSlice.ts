@@ -1,4 +1,4 @@
-import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { createAsyncThunk, createSlice, createSelector, PayloadAction } from "@reduxjs/toolkit";
 import { getAccessToken } from "../actions/getToken";
 import { RootState } from "../store";
 export interface Prompt {
@@ -159,20 +159,37 @@ const promptsSlice = createSlice({
 
 export const { clearPrompts, upsertPrompt } = promptsSlice.actions;
 
-// Selectors
-export const selectPrompts = (state: RootState) =>
-  Object.values(state.prompts.prompts);
-export const selectPromptsByPersonality = (
-  state: RootState,
-  personalityId: string
-) =>
-  Object.values(state.prompts.prompts).filter(
-    (prompt) =>
-      !prompt.personality_id || prompt.personality_id === personalityId
-  );
-export const selectPromptById = (state: RootState, id: string) =>
-  state.prompts.prompts[id];
-export const selectPromptsLoading = (state: RootState) => state.prompts.loading;
-export const selectPromptsError = (state: RootState) => state.prompts.error;
+// Base selectors
+const selectPromptsState = (state: RootState) => state.prompts;
+const selectPromptsMap = (state: RootState) => state.prompts.prompts;
+
+// Memoized selectors
+export const selectPrompts = createSelector(
+  [selectPromptsMap],
+  (prompts) => Object.values(prompts)
+);
+
+export const selectPromptsByPersonality = createSelector(
+  [selectPrompts, (_, personalityId: string) => personalityId],
+  (prompts, personalityId) =>
+    prompts.filter(
+      (prompt) => !prompt.personality_id || prompt.personality_id === personalityId
+    )
+);
+
+export const selectPromptById = createSelector(
+  [selectPromptsMap, (_, id: string) => id],
+  (prompts, id) => prompts[id]
+);
+
+export const selectPromptsLoading = createSelector(
+  [selectPromptsState],
+  (state) => state.loading
+);
+
+export const selectPromptsError = createSelector(
+  [selectPromptsState],
+  (state) => state.error
+);
 
 export default promptsSlice.reducer;

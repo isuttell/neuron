@@ -1,4 +1,4 @@
-import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import { createSlice, createAsyncThunk, createSelector } from "@reduxjs/toolkit";
 import type { RootState } from "../store";
 import { api } from "@/lib/api";
 import { MediaItem } from "@/types/media";
@@ -256,22 +256,39 @@ const mediaListsSlice = createSlice({
   },
 });
 
-// Selectors
-export const selectAllMediaLists = (state: RootState) => state.mediaLists.lists;
-export const selectMediaListsLoading = (state: RootState) =>
-  state.mediaLists.loading;
-export const selectMediaListsError = (state: RootState) =>
-  state.mediaLists.error;
+// Base selectors
+const selectMediaListsState = (state: RootState) => state.mediaLists;
+const selectLists = (state: RootState) => state.mediaLists.lists;
+const selectMediaListItems = (state: RootState) => state.mediaLists.mediaListItems;
+const selectMediaItems = (state: RootState) => state.media.items;
 
-export const selectMediaItemsForList = (
-  state: RootState,
-  listId: string
-): MediaItem[] =>
-  state.mediaLists.mediaListItems
-    .filter((item) => item.media_list_id === listId)
-    .sort((a, b) => a.index - b.index)
-    .map((item) => {
-      const m = state.media.items.find(
+// Memoized selectors
+export const selectAllMediaLists = createSelector(
+  [selectLists],
+  (lists) => [...lists].sort((a, b) =>
+    new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+  )
+);
+
+export const selectMediaListsLoading = createSelector(
+  [selectMediaListsState],
+  (state) => state.loading
+);
+
+export const selectMediaListsError = createSelector(
+  [selectMediaListsState],
+  (state) => state.error
+);
+
+export const selectMediaItemsForList = createSelector(
+  [selectMediaListItems, selectMediaItems, (_, listId: string) => listId],
+  (mediaListItems, mediaItems, listId): MediaItem[] => {
+    const filteredItems = mediaListItems
+      .filter((item) => item.media_list_id === listId)
+      .sort((a, b) => a.index - b.index);
+
+    return filteredItems.map((item) => {
+      const m = mediaItems.find(
         (media) => media.id === item.media_item_id
       );
       if (m) {
@@ -279,5 +296,7 @@ export const selectMediaItemsForList = (
       }
       throw new Error("Media item not found");
     });
+  }
+);
 
 export default mediaListsSlice.reducer;

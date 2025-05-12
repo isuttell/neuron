@@ -1,6 +1,6 @@
 import { Thread, ThreadUser } from "@/types/thread";
 import type { PayloadAction } from "@reduxjs/toolkit";
-import { createSlice } from "@reduxjs/toolkit";
+import { createSlice, createSelector } from "@reduxjs/toolkit";
 import * as messageActions from "../actions/messageActions";
 import * as actions from "../actions/threadActions";
 import type { RootState } from "../store";
@@ -191,14 +191,39 @@ export const threadsSlice = createSlice({
 
 export const { upsertThread, upsertThreads, deleteThread, reset } =
   threadsSlice.actions;
-export const selectThread = (state: RootState, threadId?: string) =>
-  state.threads.threads.find((thread) => thread.id === threadId);
-export const getThreads = (state: RootState) => state.threads.threads;
-export const getThreadsLoading = (state: RootState) => state.threads.loading;
-export const getThreadsError = (state: RootState) => state.threads.error;
-export const getThreadUsers = (state: RootState, threadId: string) => {
-  const thread = state.threads.threads.find((t) => t.id === threadId);
-  return thread?.thread_users || [];
-};
+// Basic state selectors
+const selectThreadsState = (state: RootState) => state.threads;
+const selectThreadsArray = (state: RootState) => state.threads.threads;
+
+// Memoized selectors
+export const getThreads = createSelector(
+  [selectThreadsArray],
+  (threads) => [...threads].sort((a, b) =>
+    new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+  )
+);
+
+export const getThreadsLoading = createSelector(
+  [selectThreadsState],
+  (threadsState) => threadsState.loading
+);
+
+export const getThreadsError = createSelector(
+  [selectThreadsState],
+  (threadsState) => threadsState.error
+);
+
+export const selectThread = createSelector(
+  [selectThreadsArray, (_, threadId?: string) => threadId],
+  (threads, threadId) => threads.find((thread) => thread.id === threadId)
+);
+
+export const getThreadUsers = createSelector(
+  [selectThreadsArray, (_, threadId: string) => threadId],
+  (threads, threadId) => {
+    const thread = threads.find((t) => t.id === threadId);
+    return thread?.thread_users || [];
+  }
+);
 
 export default threadsSlice.reducer;

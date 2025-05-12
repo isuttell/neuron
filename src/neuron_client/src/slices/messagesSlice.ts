@@ -1,5 +1,5 @@
 import type { PayloadAction } from "@reduxjs/toolkit";
-import { createSlice } from "@reduxjs/toolkit";
+import { createSlice, createSelector } from "@reduxjs/toolkit";
 import { fetchMessagesByThread } from "../actions/messageActions";
 import type { RootState } from "../store";
 import { MessageResponse } from "../types/message";
@@ -241,19 +241,36 @@ export const messagesSlice = createSlice({
 export const { upsertMessage, upsertMessages, partialMessage } =
   messagesSlice.actions;
 
-export const getMessagesLoading = (state: RootState) => state.messages.loading;
-export const getMessagesError = (state: RootState) => state.messages.error;
+// Base selectors
+const selectMessagesState = (state: RootState) => state.messages;
+const selectMessageIds = (state: RootState) => state.messages.messageIds;
+const selectMessageMap = (state: RootState) => state.messages.messageMap;
 
-// Update selector to return messages in order
-export const getMessages = (state: RootState) =>
-  state.messages.messageIds.map((id) => state.messages.messageMap[id]);
+// Memoized selectors
+export const getMessagesLoading = createSelector(
+  [selectMessagesState],
+  (state) => state.loading
+);
 
-export const getMessage = (state: RootState, id: string) =>
-  state.messages.messageMap[id];
+export const getMessagesError = createSelector(
+  [selectMessagesState],
+  (state) => state.error
+);
 
-export const selectThreadMessages = (state: RootState, threadId?: string) =>
-  state.messages.messageIds
-    .map((id) => state.messages.messageMap[id])
-    .filter((message) => message.thread_id === threadId);
+// Update selector to return messages in order with memoization
+export const getMessages = createSelector(
+  [selectMessageIds, selectMessageMap],
+  (messageIds, messageMap) => messageIds.map((id) => messageMap[id])
+);
+
+export const getMessage = createSelector(
+  [selectMessageMap, (_, id: string) => id],
+  (messageMap, id) => messageMap[id]
+);
+
+export const selectThreadMessages = createSelector(
+  [getMessages, (_, threadId?: string) => threadId],
+  (messages, threadId) => messages.filter((message) => message.thread_id === threadId)
+);
 
 export default messagesSlice.reducer;

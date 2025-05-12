@@ -1,5 +1,5 @@
 import type { PayloadAction } from "@reduxjs/toolkit";
-import { createSlice } from "@reduxjs/toolkit";
+import { createSlice, createSelector } from "@reduxjs/toolkit";
 import { fetchMessagesByThread } from "../actions/messageActions";
 import { addUserByEmail } from "../actions/threadActions";
 import type { RootState } from "../store";
@@ -57,8 +57,19 @@ export const usersSlice = createSlice({
 });
 
 export const { reset } = usersSlice.actions;
-export const getUsers = (state: RootState) => state.users?.users || {};
-export const getUser = (state: RootState, id: string) =>
-  state.users?.users?.[id];
+
+// Base selectors
+const selectUsersState = (state: RootState) => state.users;
+
+// Memoized selectors
+export const getUsers = createSelector(
+  [selectUsersState],
+  (usersState) => usersState?.users || {}
+);
+
+export const getUser = createSelector(
+  [getUsers, (_, id: string) => id],
+  (users, id) => users[id]
+);
 
 export default usersSlice.reducer;
