@@ -73,10 +73,13 @@ poetry install
 poetry run python -m neuron_server
 
 # Run backend tests
-pytest src/neuron_server/
+poetry run pytest src/neuron_server/
+
+# Run backend tests with coverage report
+poetry run pytest src/neuron_server/ --cov=src/neuron_server/ --cov-report=term
 
 # Lint and fix backend code
-ruff check --fix src/neuron_server/
+poetry run ruff check --fix src/neuron_server/
 ```
 
 ### Docker Deployment
@@ -138,15 +141,21 @@ npm run lint
 
 # Run frontend tests - must pass with no failures
 npm test
+
+# Build frontend - must compile successfully
+npm run build
 ```
 
 ### Backend Checks
 ```bash
 # Lint and fix Python code - must have no remaining errors
-ruff check --fix src/neuron_server/
+poetry run ruff check --fix src/neuron_server/
 
 # Run Python tests - must pass with no failures
-pytest src/neuron_server/
+poetry run pytest src/neuron_server/
+
+# Optional: Run Python tests with coverage to ensure good test coverage
+poetry run pytest src/neuron_server/ --cov=src/neuron_server/ --cov-report=term
 ```
 
 Gitea Actions on our self-hosted Gitea instance (https://gitea.zaks.io) will automatically run these checks when you push changes, and pull requests will fail if these checks don't pass. Always ensure all lint and test commands pass locally before committing and pushing changes.
