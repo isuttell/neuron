@@ -47,7 +47,7 @@ jobs:
           echo "Configured MCP server for Gitea"
 
           # Configure allowed tools for Claude
-          claude config add allowedTools Read "Bash(git)" "Bash(ls:*)" "Bash(grep:*)" mcp__gitea__list_repo_commits mcp__gitea__create_issue_comment
+          claude config add allowedTools Read "Bash(git)" "Bash(ls:*)" "Bash(grep:*)" "mcp__gitea__*"
           echo "Configured Claude allowed tools"
 
       - name: Run Claude review
