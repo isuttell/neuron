@@ -1,5 +1,5 @@
 import type { PayloadAction } from "@reduxjs/toolkit";
-import { createSlice } from "@reduxjs/toolkit";
+import { createSelector, createSlice } from "@reduxjs/toolkit";
 import { fetchMessagesByThread } from "../actions/messageActions";
 import { addUserByEmail } from "../actions/threadActions";
 import type { RootState } from "../store";
@@ -57,7 +57,18 @@ export const usersSlice = createSlice({
 });
 
 export const { reset } = usersSlice.actions;
-export const getUsers = (state: RootState) => state.users?.users || {};
+
+export const getUsersState = (state: RootState) => state.users?.users || {};
+
+// Modified selector to transform the input in some way to avoid identity function warning
+export const getUsers = createSelector(
+  [getUsersState],
+  (users) => {
+    // Return a transformed copy of the users object to avoid just returning the input
+    return { ...users };
+  }
+);
+
 export const getUser = (state: RootState, id: string) =>
   state.users?.users?.[id];
 

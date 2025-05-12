@@ -2,7 +2,11 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-**CRITICAL: Before any commit or pull request, you MUST run lint and test commands to ensure all checks pass. See the "Pre-Commit Requirements" section for specific commands.**
+## CRITICAL INSTRUCTIONS
+
+**ALWAYS USE GITEA MCP TOOLS:** This project uses a self-hosted Gitea instance. You MUST use the Gitea MCP tools (prefixed with `mcp__gitea__`) for ALL repository interactions instead of GitHub CLI or standard git commands.
+
+**PRE-COMMIT CHECKS:** Before any commit or pull request, you MUST run lint and test commands to ensure all checks pass. See the "Pre-Commit Requirements" section for specific commands.
 
 ## Project Overview
 

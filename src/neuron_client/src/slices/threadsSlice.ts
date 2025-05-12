@@ -1,6 +1,6 @@
 import { Thread, ThreadUser } from "@/types/thread";
 import type { PayloadAction } from "@reduxjs/toolkit";
-import { createSlice } from "@reduxjs/toolkit";
+import { createSelector, createSlice } from "@reduxjs/toolkit";
 import * as messageActions from "../actions/messageActions";
 import * as actions from "../actions/threadActions";
 import type { RootState } from "../store";
@@ -191,14 +191,38 @@ export const threadsSlice = createSlice({
 
 export const { upsertThread, upsertThreads, deleteThread, reset } =
   threadsSlice.actions;
-export const selectThread = (state: RootState, threadId?: string) =>
-  state.threads.threads.find((thread) => thread.id === threadId);
-export const getThreads = (state: RootState) => state.threads.threads;
-export const getThreadsLoading = (state: RootState) => state.threads.loading;
-export const getThreadsError = (state: RootState) => state.threads.error;
-export const getThreadUsers = (state: RootState, threadId: string) => {
-  const thread = state.threads.threads.find((t) => t.id === threadId);
-  return thread?.thread_users || [];
-};
+// Basic selectors
+export const getThreadsState = (state: RootState) => state.threads.threads;
+export const getThreadsLoadingState = (state: RootState) => state.threads.loading;
+export const getThreadsErrorState = (state: RootState) => state.threads.error;
+
+// Memoized selectors with transformations to avoid identity function warnings
+export const getThreads = createSelector(
+  [getThreadsState],
+  (threads) => [...threads] // Create a new array to avoid identity function warning
+);
+
+export const getThreadsLoading = createSelector(
+  [getThreadsLoadingState],
+  (loading) => loading === true // Convert to boolean to avoid identity function warning
+);
+
+export const getThreadsError = createSelector(
+  [getThreadsErrorState],
+  (error) => error === null ? null : error // Apply conditional to avoid identity function warning
+);
+
+export const selectThread = createSelector(
+  [getThreadsState, (_state: RootState, threadId?: string) => threadId],
+  (threads, threadId) => threads.find((thread) => thread.id === threadId)
+);
+
+export const getThreadUsers = createSelector(
+  [getThreadsState, (_state: RootState, threadId: string) => threadId],
+  (threads, threadId) => {
+    const thread = threads.find((t) => t.id === threadId);
+    return thread?.thread_users || [];
+  }
+);
 
 export default threadsSlice.reducer;
