@@ -3,8 +3,24 @@ name: Frontend CI
 on:
   push:
     branches: [ master ]
+    paths:
+      - 'src/neuron_client/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tsconfig*.json'
+      - 'tailwind.config.js'
+      - 'vite.config.ts'
+      - '.gitea/workflows/frontend.yml'
   pull_request:
     branches: [ master ]
+    paths:
+      - 'src/neuron_client/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tsconfig*.json'
+      - 'tailwind.config.js'
+      - 'vite.config.ts'
+      - '.gitea/workflows/frontend.yml'
 
 jobs:
   build:

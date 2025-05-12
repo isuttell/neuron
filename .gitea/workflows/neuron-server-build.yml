@@ -4,8 +4,24 @@ on:
   push:
     branches: [ master ]
     tags: [ 'v*' ]
+    paths:
+      - 'src/**'
+      - 'Dockerfile'
+      - 'pyproject.toml'
+      - 'poetry.lock'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.gitea/workflows/neuron-server-build.yml'
   pull_request:
     branches: [ master ]
+    paths:
+      - 'src/**'
+      - 'Dockerfile'
+      - 'pyproject.toml'
+      - 'poetry.lock'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.gitea/workflows/neuron-server-build.yml'
 
 jobs:
   build-neuron:

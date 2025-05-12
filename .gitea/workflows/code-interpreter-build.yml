@@ -4,8 +4,14 @@ on:
   push:
     branches: [ master ]
     tags: [ 'v*' ]
+    paths:
+      - 'Dockerfile.code'
+      - '.gitea/workflows/code-interpreter-build.yml'
   pull_request:
     branches: [ master ]
+    paths:
+      - 'Dockerfile.code'
+      - '.gitea/workflows/code-interpreter-build.yml'
 
 jobs:
   build-code-interpreter:
