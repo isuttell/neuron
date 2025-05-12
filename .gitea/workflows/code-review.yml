@@ -40,14 +40,14 @@ jobs:
           GITEA_ACCESS_TOKEN: ${{ secrets.GT_TOKEN }}
           GITEA_BASE:  ${{ gitea.server_url }}
         run: |
-          # Configure the Gitea MCP server using the CLI
+          # Configure the Gitea MCP server using the CLI with SSE transport
           claude mcp add gitea \
             -e GITEA_ACCESS_TOKEN=$GITEA_ACCESS_TOKEN \
-            -- gitea-mcp -t stdio \
+            -- gitea-mcp -t sse -port 8080 \
             -host $GITEA_BASE \
             -token $GITEA_ACCESS_TOKEN
           claude mcp list
-          echo "Configured MCP server for Gitea"
+          echo "Configured MCP server for Gitea with SSE transport"
 
           # Configure allowed tools for Claude - simplifying to just essentials
           claude config set allowedTools "Read,mcp__gitea__create_issue_comment"
