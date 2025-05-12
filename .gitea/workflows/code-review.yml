@@ -29,7 +29,10 @@ jobs:
           which gitea-mcp || { echo "ERROR: gitea-mcp not found in PATH"; exit 1; }
 
       - name: Install Claude CLI
-        run: npm install -g @anthropic-ai/claude-code
+        run: |
+          npm install -g @anthropic-ai/claude-code
+          # Log Claude version for debugging
+          claude --version || echo "Claude version command not available"
 
 
       - name: Configure Claude
@@ -46,9 +49,9 @@ jobs:
           claude mcp list
           echo "Configured MCP server for Gitea"
 
-          # Configure allowed tools for Claude
-          claude config add allowedTools Read "Bash(git)" "Bash(ls:*)" "Bash(grep:*)" "mcp__gitea__*"
-          echo "Configured Claude allowed tools"
+          # Configure allowed tools for Claude - simplifying to just essentials
+          claude config set allowedTools "Read,mcp__gitea__create_issue_comment"
+          echo "Configured Claude allowed tools with simplified set"
 
       - name: Run Claude review
         env:
