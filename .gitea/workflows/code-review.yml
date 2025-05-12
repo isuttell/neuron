@@ -55,10 +55,24 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GITEA_ACCESS_TOKEN: ${{ secrets.GT_TOKEN }}
         run: |
-          # Run the code review
-          echo "Running code review..."
-          claude -p "/review"
+          echo "Fetching PR diff..."
+          # Fetch the PR diff from Gitea API
+          curl -sSL -H "Authorization: token $GITEA_ACCESS_TOKEN" \
+            "${{ gitea.server_url }}/api/v1/repos/${{ gitea.repository_owner }}/${{ gitea.repository_name }}/pulls/${{ gitea.event.number }}.diff" \
+            -o pr.diff
 
-          # Leave comments on the PR
-          echo "Adding PR comments..."
-          claude -c -p "Use the Gitea MCP to leave comments as necessary based on your review of PR #${{ github.event.pull_request.number }}"
+          echo "Running code review..."
+          # Create a custom prompt with the diff included
+          PROMPT=$(cat <<EOF
+Please review the code changes in this PR based on the diff:
+
+$(cat pr.diff)
+
+1. Based on the diff above, analyze code quality, potential bugs, and improvements
+2. Use the Gitea MCP tools to leave comments directly on PR #${{ gitea.event.number }}
+3. Be specific in your comments and reference files and line numbers when possible
+4. Focus on the problems and potential improvements
+EOF
+)
+          # Run a single Claude command for the entire process
+          echo "$PROMPT" | claude -p
