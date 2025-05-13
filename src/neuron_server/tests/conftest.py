@@ -8,6 +8,15 @@ from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from pytest import MonkeyPatch
 from sqlalchemy.ext.asyncio import AsyncSession
 
+# Mock Redis
+sys.modules["redis"] = Mock()
+sys.modules["redis.asyncio"] = Mock()
+sys.modules["redis.exceptions"] = Mock()
+
+# Mock LangGraph
+sys.modules["langgraph"] = Mock()
+sys.modules["langgraph.graph"] = Mock()
+
 from neuron_server.controllers.auth import TokenPayload
 
 # Mock Neo4j
@@ -52,26 +61,33 @@ mock_tavily.TavilySearchAPIWrapper = Mock
 sys.modules["langchain_community.tools.tavily_search"] = mock_tavily
 
 # Mock OpenAI API
-mock_openai = MagicMock()
-mock_async_openai = MagicMock()
-
 # Mock embeddings response
 mock_embeddings = MagicMock()
 mock_embeddings.create.return_value = {"data": [{"embedding": [0.1] * 1536}]}
-mock_openai.embeddings = mock_embeddings
-mock_async_openai.embeddings = mock_embeddings
 
 # Mock chat completions response
 mock_chat = MagicMock()
 mock_chat.create.return_value = {
     "choices": [{"message": {"content": "Test response", "tool_calls": []}}]
 }
-mock_openai.chat.completions = mock_chat
-mock_async_openai.chat.completions = mock_chat
+
+# Define a custom client class that doesn't check for API key
+class MockOpenAI:
+    def __init__(self, api_key=None, **kwargs):
+        self.embeddings = mock_embeddings
+        self.chat = MagicMock()
+        self.chat.completions = mock_chat
+
+class MockAsyncOpenAI:
+    def __init__(self, api_key=None, **kwargs):
+        self.embeddings = mock_embeddings
+        self.chat = MagicMock()
+        self.chat.completions = mock_chat
 
 # Patch OpenAI
-openai.OpenAI = MagicMock(return_value=mock_openai)
-openai.AsyncOpenAI = MagicMock(return_value=mock_async_openai)
+openai.OpenAI = MockOpenAI
+openai.AsyncOpenAI = MockAsyncOpenAI
+openai.OpenAIError = type('OpenAIError', (Exception,), {})
 
 # Mock langchain OpenAI classes
 OpenAIEmbeddings.validate_environment = MagicMock()
@@ -201,11 +217,19 @@ def mock_ai_message() -> AIMessage:
     )
 
 
-@pytest.fixture
-def mock_openai_patch() -> None:
-    """Mock OpenAI client for testing."""
-    with patch("openai.OpenAI") as mock:
-        mock.return_value.chat.completions.create.return_value = {
-            "choices": [{"message": {"content": "Test response", "tool_calls": []}}]
-        }
-        yield mock
+@pytest.fixture(autouse=True)
+def mock_openai_modules() -> None:
+    """Mock OpenAI modules in various places they might be imported."""
+    with (
+        patch("neuron_server.llms.openai.openai.OpenAI", MockOpenAI),
+        patch("neuron_server.llms.openai.openai.AsyncOpenAI", MockAsyncOpenAI),
+        patch("neuron_server.llms.openai.OpenAI", MockOpenAI),
+        patch("neuron_server.llms.openai.AsyncOpenAI", MockAsyncOpenAI),
+        patch("neuron_server.tools.inspect_image_tool.openai.OpenAI", MockOpenAI),
+        patch("neuron_server.tools.openai_tts_tool.openai.OpenAI", MockOpenAI),
+        patch("neuron_server.tools.whisper_stt_tool.openai.OpenAI", MockOpenAI),
+        patch("neuron_server.llms.agent.openai.OpenAI", MockOpenAI),
+        patch("neuron_server.llms.embeddings.openai.OpenAI", MockOpenAI),
+        patch("neuron_server.llms.embeddings.openai.AsyncOpenAI", MockAsyncOpenAI),
+    ):
+        yield
