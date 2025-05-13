@@ -14,13 +14,37 @@ from neuron_server.controllers.auth import TokenPayload
 mock_neo4j = Mock()
 mock_driver = Mock()
 mock_driver.verify_connectivity = Mock()
-mock_neo4j.GraphDatabase.driver.return_value = mock_driver
+mock_neo4j.GraphDatabase = Mock()
+mock_neo4j.GraphDatabase.driver = Mock(return_value=mock_driver)
+
+# Mock Neo4j exceptions
+mock_neo4j.exceptions = Mock()
+mock_neo4j.exceptions.CypherSyntaxError = type('CypherSyntaxError', (Exception,), {})
+mock_neo4j.exceptions.DriverError = type('DriverError', (Exception,), {})
+mock_neo4j.exceptions.Neo4jError = type('Neo4jError', (Exception,), {})
+
+# Mock neo4j Record
+mock_neo4j.Record = Mock()
+mock_neo4j.Driver = Mock()
+
 sys.modules["neo4j"] = mock_neo4j
 
-# Mock Neo4jGraph
-mock_neo4j_graph = Mock()
-mock_neo4j_graph.Neo4jGraph = Mock()
-sys.modules["langchain_neo4j.graphs.neo4j_graph"] = mock_neo4j_graph
+# Mock langchain-neo4j modules
+sys.modules["langchain_neo4j"] = Mock()
+sys.modules["langchain_neo4j.graphs"] = Mock()
+sys.modules["langchain_neo4j.graphs.neo4j_graph"] = Mock()
+sys.modules["langchain_neo4j.graphs.neo4j_graph"].Neo4jGraph = Mock()
+sys.modules["langchain_neo4j.chains"] = Mock()
+sys.modules["langchain_neo4j.chains.graph_qa"] = Mock()
+sys.modules["langchain_neo4j.chains.graph_qa.cypher"] = Mock()
+sys.modules["langchain_neo4j.chains.graph_qa.cypher"].GraphCypherQAChain = Mock()
+
+# Mock neo4j-graphrag
+sys.modules["neo4j_graphrag"] = Mock()
+sys.modules["neo4j_graphrag.retrievers"] = Mock()
+sys.modules["neo4j_graphrag.retrievers.text2cypher"] = Mock()
+sys.modules["neo4j_graphrag.retrievers.text2cypher"].extract_cypher = Mock()
+sys.modules["neo4j_graphrag.retrievers.text2cypher"].Text2CypherRetriever = Mock()
 
 # Mock Tavily
 mock_tavily = Mock()
