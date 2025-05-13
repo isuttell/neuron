@@ -1,7 +1,8 @@
 import sys
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
+from pytest import MonkeyPatch
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from neuron_server.controllers.auth import TokenPayload
@@ -40,15 +41,17 @@ mock_engine.dispose = AsyncMock()
 def mock_database() -> None:
     """Mock database connections for all tests."""
     # Apply patches
-    with patch("sqlalchemy.ext.asyncio.create_async_engine", return_value=mock_engine):
-        with patch("neuron_server.database.get_session", return_value=mock_session):
-            with patch("neuron_server.database.engine", mock_engine):
-                with patch("neuron_server.database.start", AsyncMock()):
-                    yield
+    with (
+        patch("sqlalchemy.ext.asyncio.create_async_engine", return_value=mock_engine),
+        patch("neuron_server.database.get_session", return_value=mock_session),
+        patch("neuron_server.database.engine", mock_engine),
+        patch("neuron_server.database.start", AsyncMock()),
+    ):
+        yield
 
 
 @pytest.fixture(autouse=True)
-def mock_env_vars(monkeypatch) -> None:
+def mock_env_vars(monkeypatch: MonkeyPatch) -> None:
     """Mock environment variables for testing."""
     # API Keys
     monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
