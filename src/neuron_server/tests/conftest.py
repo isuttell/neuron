@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 # Mock the cache module
 mock_cache = Mock()
-mock_cache.cache_response = lambda func: func  # Just returns the function unchanged
+mock_cache.cache_response = lambda func=None, ttl=None: lambda f: f  # Handle ttl parameter
 mock_cache.ClientCache = Mock()
 sys.modules["neuron_server.cache"] = mock_cache
 
