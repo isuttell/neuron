@@ -31,9 +31,18 @@ redis_mock.exceptions = Mock()
 redis_mock.exceptions.ConnectionError = type('ConnectionError', (Exception,), {})
 sys.modules["redis"] = redis_mock
 
-# Mock LangGraph
-sys.modules["langgraph"] = Mock()
+# Mock LangGraph and its modules
+langgraph_mock = Mock()
+langgraph_checkpoint = Mock()
+langgraph_checkpoint_postgres = Mock()
+langgraph_checkpoint_postgres_aio = Mock()
+langgraph_checkpoint_postgres_aio.AsyncPostgresSaver = Mock()
+
+sys.modules["langgraph"] = langgraph_mock
 sys.modules["langgraph.graph"] = Mock()
+sys.modules["langgraph.checkpoint"] = langgraph_checkpoint
+sys.modules["langgraph.checkpoint.postgres"] = langgraph_checkpoint_postgres
+sys.modules["langgraph.checkpoint.postgres.aio"] = langgraph_checkpoint_postgres_aio
 
 from neuron_server.controllers.auth import TokenPayload
 
