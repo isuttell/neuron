@@ -45,11 +45,12 @@ def mock_scheduler() -> AsyncMock:
 def mock_token() -> TokenPayload:
     """Create a mock auth token for testing."""
     return TokenPayload(
-        roles=["user"],
+        sub="test_user",
         user_id="test-user-id",
         email="test@example.com",
         nickname="Test User",
         picture=None,
+        roles=["user"],
         permissions=["read:events", "write:events"],
     )
 
