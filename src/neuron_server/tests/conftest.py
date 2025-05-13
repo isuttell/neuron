@@ -9,9 +9,13 @@ from pytest import MonkeyPatch
 from sqlalchemy.ext.asyncio import AsyncSession
 
 # Mock Redis
-sys.modules["redis"] = Mock()
-sys.modules["redis.asyncio"] = Mock()
-sys.modules["redis.exceptions"] = Mock()
+redis_mock = Mock()
+redis_mock.asyncio = Mock()
+redis_mock.exceptions = Mock()
+redis_mock.typing = Mock()
+redis_mock.typing.ExpiryT = object
+redis_mock.typing.ResponseT = object
+sys.modules["redis"] = redis_mock
 
 # Mock LangGraph
 sys.modules["langgraph"] = Mock()
