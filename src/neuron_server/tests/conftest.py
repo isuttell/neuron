@@ -8,52 +8,28 @@ from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from pytest import MonkeyPatch
 from sqlalchemy.ext.asyncio import AsyncSession
 
-# Create mock classes for Redis
-class MockRedisAsyncio:
-    def __init__(self, *args, **kwargs):
-        pass
+# Mock the cache module
+mock_cache = Mock()
+mock_cache.cache_response = lambda func: func  # Just returns the function unchanged
+mock_cache.ClientCache = Mock()
+sys.modules["neuron_server.cache"] = mock_cache
 
-    def from_url(self, *args, **kwargs):
-        return self
+# Mock the pubsub module
+mock_pubsub = Mock()
+mock_pubsub.publish = AsyncMock()
+mock_pubsub.subscribe = AsyncMock()
+sys.modules["neuron_server.pubsub"] = mock_pubsub
 
-    async def get(self, key):
-        return None
-
-    async def set(self, key, value, ex=None):
-        return True
-
-    async def delete(self, key):
-        return True
-
-    async def publish(self, channel, message):
-        return 0
-
-    async def subscribe(self, channel):
-        return None
-
-    def pubsub(self):
-        return Mock()
-
-# Create mock Redis modules
-redis_asyncio = MockRedisAsyncio()
+# Mock Redis
 redis_mock = Mock()
-redis_mock.asyncio = redis_asyncio
-
-# Create Redis typing module
-class RedisTyping:
-    ExpiryT = object
-    ResponseT = object
-
-redis_mock.typing = RedisTyping
-
-# Create Redis exceptions
+redis_mock.asyncio = Mock()
+redis_mock.asyncio.from_url = Mock(return_value=Mock())
+redis_mock.typing = Mock()
+redis_mock.typing.ExpiryT = object
+redis_mock.typing.ResponseT = object
 redis_mock.exceptions = Mock()
 redis_mock.exceptions.ConnectionError = type('ConnectionError', (Exception,), {})
-redis_mock.exceptions.TimeoutError = type('TimeoutError', (Exception,), {})
-
-# Mock Redis modules in sys.modules
 sys.modules["redis"] = redis_mock
-sys.modules["redis.asyncio"] = redis_asyncio
 
 # Mock LangGraph
 sys.modules["langgraph"] = Mock()
