@@ -8,14 +8,52 @@ from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from pytest import MonkeyPatch
 from sqlalchemy.ext.asyncio import AsyncSession
 
-# Mock Redis
+# Create mock classes for Redis
+class MockRedisAsyncio:
+    def __init__(self, *args, **kwargs):
+        pass
+
+    def from_url(self, *args, **kwargs):
+        return self
+
+    async def get(self, key):
+        return None
+
+    async def set(self, key, value, ex=None):
+        return True
+
+    async def delete(self, key):
+        return True
+
+    async def publish(self, channel, message):
+        return 0
+
+    async def subscribe(self, channel):
+        return None
+
+    def pubsub(self):
+        return Mock()
+
+# Create mock Redis modules
+redis_asyncio = MockRedisAsyncio()
 redis_mock = Mock()
-redis_mock.asyncio = Mock()
+redis_mock.asyncio = redis_asyncio
+
+# Create Redis typing module
+class RedisTyping:
+    ExpiryT = object
+    ResponseT = object
+
+redis_mock.typing = RedisTyping
+
+# Create Redis exceptions
 redis_mock.exceptions = Mock()
-redis_mock.typing = Mock()
-redis_mock.typing.ExpiryT = object
-redis_mock.typing.ResponseT = object
+redis_mock.exceptions.ConnectionError = type('ConnectionError', (Exception,), {})
+redis_mock.exceptions.TimeoutError = type('TimeoutError', (Exception,), {})
+
+# Mock Redis modules in sys.modules
 sys.modules["redis"] = redis_mock
+sys.modules["redis.asyncio"] = redis_asyncio
 
 # Mock LangGraph
 sys.modules["langgraph"] = Mock()
