@@ -1,9 +1,10 @@
-from typing import Any
+from typing import Any, AsyncGenerator
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import UUID, uuid4
 
 import pytest
 from quart import Quart
+from sqlalchemy.ext.asyncio import AsyncSession
 from werkzeug.exceptions import BadRequest, NotFound
 
 from neuron_server.controllers import message_controller
@@ -11,6 +12,7 @@ from neuron_server.controllers.auth import TokenPayload
 from neuron_server.controllers.events.message_events import CancelMessage, PostMessage
 from neuron_server.models import ThreadModel
 from neuron_server.models.message_model import MessageModel
+from neuron_server.database import get_session
 
 # HTTP Status Codes
 HTTP_CREATED = 201
@@ -71,6 +73,25 @@ def app() -> Quart:
     return app
 
 
+@pytest.fixture(autouse=True)
+async def mock_db_session() -> AsyncGenerator[None, None]:
+    """Mock the database session to prevent actual database connections."""
+    session_mock = AsyncMock(spec=AsyncSession)
+    
+    # Create a context manager mock that returns the session mock
+    cm_mock = AsyncMock()
+    cm_mock.__aenter__.return_value = session_mock
+    cm_mock.__aexit__.return_value = None
+    
+    # Patch the get_session function to return our mock
+    with patch("neuron_server.models.thread_model.get_session", return_value=cm_mock), \
+         patch("neuron_server.models.message_model.get_session", return_value=cm_mock), \
+         patch("neuron_server.models.media_item_model.get_session", return_value=cm_mock), \
+         patch("neuron_server.models.thread_user_model.get_session", return_value=cm_mock), \
+         patch("neuron_server.models.user_model.get_session", return_value=cm_mock):
+        yield None
+
+
 @pytest.mark.asyncio
 async def test_get_thread_messages_success(
     app: Quart,
@@ -109,26 +130,30 @@ async def test_get_thread_messages_success(
                 "neuron_server.controllers.message_controller.ThreadUserModel"
             ) as mock_thread_user:
                 mock_thread_user.get_thread_users = AsyncMock(return_value=[])
+                with patch(
+                    "neuron_server.controllers.message_controller.UserModel"
+                ) as mock_user_model:
+                    mock_user_model.get_by_ids = AsyncMock(return_value=[])
 
-            async with app.test_request_context(
-                "/thread/123",
-                headers={
-                    "Authorization": (
-                        "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9"
-                        ".eyJzdWIiOiJ0ZXN0In0.abc"
-                    )
-                },
-            ):
-                # Mock auth token
-                app.request_class.token = mock_token
+                    async with app.test_request_context(
+                        "/thread/123",
+                        headers={
+                            "Authorization": (
+                                "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9"
+                                ".eyJzdWIiOiJ0ZXN0In0.abc"
+                            )
+                        },
+                    ):
+                        # Mock auth token
+                        app.request_class.token = mock_token
 
-                result = await message_controller.get_thread_messages(mock_thread.id)
+                        result = await message_controller.get_thread_messages(mock_thread.id)
 
-                assert "threads" in result
-                assert "messages" in result
-                assert "media" in result
-                assert len(result["messages"]) == 1
-                assert result["messages"][0]["content"] == "Hello"
+                        assert "threads" in result
+                        assert "messages" in result
+                        assert "media" in result
+                        assert len(result["messages"]) == 1
+                        assert result["messages"][0]["content"] == "Hello"
 
 
 @pytest.mark.asyncio
