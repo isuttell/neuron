@@ -26,10 +26,15 @@ sys.modules["neuron_server.pubsub"] = mock_pubsub
 # Mock Redis
 class AsyncContextManagerMock(AsyncMock):
     """Mock that supports async context manager protocol."""
-    async def __aenter__(self):
+    async def __aenter__(self) -> "AsyncContextManagerMock":
         return self
         
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: object | None,
+    ) -> None:
         return None
 
 redis_mock = Mock()
@@ -317,14 +322,18 @@ def mock_quart_app() -> None:
     original_test_client = Quart.test_client
     original_test_request_context = Quart.test_request_context
     
-    def patched_test_client(self):
+    def patched_test_client(self: Quart) -> object:
         client = original_test_client(self)
         if not hasattr(client, "__aenter__"):
             client.__aenter__ = AsyncMock(return_value=client)
             client.__aexit__ = AsyncMock(return_value=None)
         return client
     
-    def patched_test_request_context(self, *args, **kwargs):
+    def patched_test_request_context(
+        self: Quart, 
+        *args: object, 
+        **kwargs: object
+    ) -> object:
         ctx = original_test_request_context(self, *args, **kwargs)
         if not hasattr(ctx, "__aenter__"):
             ctx.__aenter__ = AsyncMock(return_value=ctx)
