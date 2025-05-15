@@ -1,4 +1,5 @@
-from typing import Any, AsyncGenerator
+from collections.abc import AsyncGenerator
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import UUID, uuid4
 
@@ -12,7 +13,6 @@ from neuron_server.controllers.auth import TokenPayload
 from neuron_server.controllers.events.message_events import CancelMessage, PostMessage
 from neuron_server.models import ThreadModel
 from neuron_server.models.message_model import MessageModel
-from neuron_server.database import get_session
 
 # HTTP Status Codes
 HTTP_CREATED = 201
@@ -83,12 +83,21 @@ async def mock_db_session() -> AsyncGenerator[None, None]:
     cm_mock.__aenter__.return_value = session_mock
     cm_mock.__aexit__.return_value = None
     
+    # Define model paths for better line length control
+    thread_model = "neuron_server.models.thread_model.get_session"
+    message_model = "neuron_server.models.message_model.get_session"
+    media_model = "neuron_server.models.media_item_model.get_session"
+    thread_user_model = "neuron_server.models.thread_user_model.get_session"
+    user_model = "neuron_server.models.user_model.get_session"
+    
     # Patch the get_session function to return our mock
-    with patch("neuron_server.models.thread_model.get_session", return_value=cm_mock), \
-         patch("neuron_server.models.message_model.get_session", return_value=cm_mock), \
-         patch("neuron_server.models.media_item_model.get_session", return_value=cm_mock), \
-         patch("neuron_server.models.thread_user_model.get_session", return_value=cm_mock), \
-         patch("neuron_server.models.user_model.get_session", return_value=cm_mock):
+    with (
+        patch(thread_model, return_value=cm_mock),
+        patch(message_model, return_value=cm_mock),
+        patch(media_model, return_value=cm_mock),
+        patch(thread_user_model, return_value=cm_mock),
+        patch(user_model, return_value=cm_mock),
+    ):
         yield None
 
 
@@ -147,7 +156,9 @@ async def test_get_thread_messages_success(
                         # Mock auth token
                         app.request_class.token = mock_token
 
-                        result = await message_controller.get_thread_messages(mock_thread.id)
+                        result = await message_controller.get_thread_messages(
+                            mock_thread.id
+                        )
 
                         assert "threads" in result
                         assert "messages" in result
