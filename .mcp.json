@@ -1,8 +1,16 @@
 {
-  "mcpServers": {
-    "gitea": {
-      "type": "sse",
-      "url": "http://localhost:8080/sse"
+    "mcpServers": {
+        "gitea": {
+            "command": "gitea-mcp",
+            "args": [
+                "-t",
+                "stdio",
+                "--host",
+                "https://gitea.zaks.io"
+            ],
+            "env": {
+                "GITEA_ACCESS_TOKEN": "${GITEA_ACCESS_TOKEN}"
+            }
+        }
     }
-  }
 }
