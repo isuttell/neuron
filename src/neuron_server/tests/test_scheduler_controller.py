@@ -36,7 +36,12 @@ async def mock_db_session() -> None:
     cm_mock.__aenter__.return_value = session_mock
     cm_mock.__aexit__.return_value = None
     
-    with patch("neuron_server.database.get_session", return_value=cm_mock):
+    with (
+        patch("neuron_server.database.get_session", return_value=cm_mock),
+        patch("neuron_server.database.engine", new=AsyncMock()),
+        patch("neuron_server.database.create_async_engine", return_value=AsyncMock()),
+        patch("sqlalchemy.ext.asyncio.create_async_engine", return_value=AsyncMock()),
+    ):
         yield
 
 
@@ -486,6 +491,9 @@ async def test_list_events(
             "event_data": event_data2,
         },
     ]
+    
+    # Set the list_events return value
+    mock_scheduler.list_events.return_value = mock_events
     
     mock_personality = MockPersonality("test-personality-id", "Test Personality")
     
