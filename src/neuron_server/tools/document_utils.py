@@ -103,7 +103,7 @@ async def load_youtube_transcript(
         
         # Convert dictionary items to objects with attributes if needed
         class TranscriptItem:
-            def __init__(self, item_dict):
+            def __init__(self, item_dict: dict[str, Any]) -> None:
                 self.text = item_dict.get('text', '')
                 self.start = item_dict.get('start', 0.0)
                 self.duration = item_dict.get('duration', 0.0)
