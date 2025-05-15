@@ -8,9 +8,12 @@ from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from pytest import MonkeyPatch
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from neuron_server.controllers.auth import TokenPayload
+
 # Mock the cache module
 mock_cache = Mock()
-mock_cache.cache_response = lambda func=None, ttl=None: lambda f: f  # Handle ttl parameter
+# Handle ttl parameter
+mock_cache.cache_response = lambda func=None, ttl=None: lambda f: f
 mock_cache.ClientCache = Mock()
 sys.modules["neuron_server.cache"] = mock_cache
 
@@ -33,18 +36,20 @@ sys.modules["redis"] = redis_mock
 
 # Mock LangGraph and its modules
 langgraph_mock = Mock()
+langgraph_graph = Mock()
+langgraph_graph_message = Mock() 
+langgraph_graph_message.add_messages = Mock()
 langgraph_checkpoint = Mock()
 langgraph_checkpoint_postgres = Mock()
 langgraph_checkpoint_postgres_aio = Mock()
 langgraph_checkpoint_postgres_aio.AsyncPostgresSaver = Mock()
 
 sys.modules["langgraph"] = langgraph_mock
-sys.modules["langgraph.graph"] = Mock()
+sys.modules["langgraph.graph"] = langgraph_graph
+sys.modules["langgraph.graph.message"] = langgraph_graph_message
 sys.modules["langgraph.checkpoint"] = langgraph_checkpoint
 sys.modules["langgraph.checkpoint.postgres"] = langgraph_checkpoint_postgres
 sys.modules["langgraph.checkpoint.postgres.aio"] = langgraph_checkpoint_postgres_aio
-
-from neuron_server.controllers.auth import TokenPayload
 
 # Mock Neo4j
 mock_neo4j = Mock()
@@ -100,13 +105,13 @@ mock_chat.create.return_value = {
 
 # Define a custom client class that doesn't check for API key
 class MockOpenAI:
-    def __init__(self, api_key=None, **kwargs):
+    def __init__(self, api_key: str = None, **kwargs: dict) -> None:
         self.embeddings = mock_embeddings
         self.chat = MagicMock()
         self.chat.completions = mock_chat
 
 class MockAsyncOpenAI:
-    def __init__(self, api_key=None, **kwargs):
+    def __init__(self, api_key: str = None, **kwargs: dict) -> None:
         self.embeddings = mock_embeddings
         self.chat = MagicMock()
         self.chat.completions = mock_chat
@@ -244,19 +249,20 @@ def mock_ai_message() -> AIMessage:
     )
 
 
+# Create modules mock for OpenAI
+mock_openai = Mock(OpenAI=MockOpenAI, AsyncOpenAI=MockAsyncOpenAI)
+mock_openai_simple = Mock(OpenAI=MockOpenAI)
+mock_openai_full = Mock(OpenAI=MockOpenAI, AsyncOpenAI=MockAsyncOpenAI)
+
+sys.modules["neuron_server.llms.openai"] = mock_openai
+sys.modules["neuron_server.llms.openai.openai"] = mock_openai
+sys.modules["neuron_server.tools.inspect_image_tool.openai"] = mock_openai_simple
+sys.modules["neuron_server.tools.openai_tts_tool.openai"] = mock_openai_simple
+sys.modules["neuron_server.tools.whisper_stt_tool.openai"] = mock_openai_simple
+sys.modules["neuron_server.llms.agent.openai"] = mock_openai_simple
+sys.modules["neuron_server.llms.embeddings.openai"] = mock_openai_full
+
 @pytest.fixture(autouse=True)
 def mock_openai_modules() -> None:
     """Mock OpenAI modules in various places they might be imported."""
-    with (
-        patch("neuron_server.llms.openai.openai.OpenAI", MockOpenAI),
-        patch("neuron_server.llms.openai.openai.AsyncOpenAI", MockAsyncOpenAI),
-        patch("neuron_server.llms.openai.OpenAI", MockOpenAI),
-        patch("neuron_server.llms.openai.AsyncOpenAI", MockAsyncOpenAI),
-        patch("neuron_server.tools.inspect_image_tool.openai.OpenAI", MockOpenAI),
-        patch("neuron_server.tools.openai_tts_tool.openai.OpenAI", MockOpenAI),
-        patch("neuron_server.tools.whisper_stt_tool.openai.OpenAI", MockOpenAI),
-        patch("neuron_server.llms.agent.openai.OpenAI", MockOpenAI),
-        patch("neuron_server.llms.embeddings.openai.OpenAI", MockOpenAI),
-        patch("neuron_server.llms.embeddings.openai.AsyncOpenAI", MockAsyncOpenAI),
-    ):
-        yield
+    yield
