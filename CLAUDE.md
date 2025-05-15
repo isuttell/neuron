@@ -116,4 +116,4 @@ This project uses a self-hosted Gitea instance at https://gitea.zaks.io for vers
 - CI/CD is handled by Gitea Actions, which run the lint and test commands automatically
 - Always check the Gitea Actions status on pull requests before merging
 
-For complete PR requirements and process, refer to @./PR_REQUIREMENTS.md
+For complete PR requirements and process, refer to @PR_REQUIREMENTS.md
