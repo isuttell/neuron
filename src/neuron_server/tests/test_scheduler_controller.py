@@ -28,6 +28,17 @@ def app() -> Quart:
     
     return app
 
+@pytest.fixture(autouse=True)
+async def mock_db_session() -> None:
+    """Mock the database session to prevent actual database connections."""
+    session_mock = AsyncMock()
+    cm_mock = AsyncMock()
+    cm_mock.__aenter__.return_value = session_mock
+    cm_mock.__aexit__.return_value = None
+    
+    with patch("neuron_server.database.get_session", return_value=cm_mock):
+        yield
+
 
 @pytest.fixture
 def mock_scheduler() -> AsyncMock:
