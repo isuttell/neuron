@@ -4,9 +4,7 @@
             "command": "gitea-mcp",
             "args": [
                 "-t",
-                "sse",
-                "-port",
-                "8080",
+                "stdio",
                 "--host",
                 "https://gitea.zaks.io"
             ],
