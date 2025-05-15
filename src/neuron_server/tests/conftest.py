@@ -43,6 +43,8 @@ langgraph_checkpoint = Mock()
 langgraph_checkpoint_postgres = Mock()
 langgraph_checkpoint_postgres_aio = Mock()
 langgraph_checkpoint_postgres_aio.AsyncPostgresSaver = Mock()
+langgraph_prebuilt = Mock()
+langgraph_prebuilt.ToolNode = Mock()
 
 sys.modules["langgraph"] = langgraph_mock
 sys.modules["langgraph.graph"] = langgraph_graph
@@ -50,6 +52,7 @@ sys.modules["langgraph.graph.message"] = langgraph_graph_message
 sys.modules["langgraph.checkpoint"] = langgraph_checkpoint
 sys.modules["langgraph.checkpoint.postgres"] = langgraph_checkpoint_postgres
 sys.modules["langgraph.checkpoint.postgres.aio"] = langgraph_checkpoint_postgres_aio
+sys.modules["langgraph.prebuilt"] = langgraph_prebuilt
 
 # Mock Neo4j
 mock_neo4j = Mock()
