@@ -24,14 +24,52 @@ mock_pubsub.subscribe = AsyncMock()
 sys.modules["neuron_server.pubsub"] = mock_pubsub
 
 # Mock Redis
+class AsyncContextManagerMock(AsyncMock):
+    """Mock that supports async context manager protocol."""
+    async def __aenter__(self):
+        return self
+        
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        return None
+
 redis_mock = Mock()
+
+# Create a proper mock Redis client that supports async context manager
+redis_client_mock = AsyncContextManagerMock()
+redis_client_mock.close = AsyncMock()
+redis_client_mock.config_set = AsyncMock()
+redis_client_mock.set = AsyncMock(return_value=True)
+redis_client_mock.setex = AsyncMock()
+redis_client_mock.get = AsyncMock(return_value=None)
+redis_client_mock.exists = AsyncMock(return_value=False)
+redis_client_mock.sadd = AsyncMock()
+redis_client_mock.smembers = AsyncMock(return_value=set())
+redis_client_mock.srem = AsyncMock()
+redis_client_mock.delete = AsyncMock()
+redis_client_mock.execute = AsyncMock()
+
+# Create pipeline mock that supports async context manager
+pipeline_mock = AsyncContextManagerMock()
+pipeline_mock.set = AsyncMock(return_value=pipeline_mock)
+pipeline_mock.setex = AsyncMock(return_value=pipeline_mock)
+pipeline_mock.sadd = AsyncMock(return_value=pipeline_mock)
+pipeline_mock.execute = AsyncMock(return_value=[True] * 5)
+
+# Add pipeline method to client
+redis_client_mock.pipeline = AsyncMock(return_value=pipeline_mock)
+
+# Setup Redis mock
+redis_mock.Redis = Mock(return_value=redis_client_mock)
 redis_mock.asyncio = Mock()
-redis_mock.asyncio.from_url = Mock(return_value=Mock())
+redis_mock.asyncio.from_url = Mock(return_value=redis_client_mock)
 redis_mock.typing = Mock()
 redis_mock.typing.ExpiryT = object
 redis_mock.typing.ResponseT = object
 redis_mock.exceptions = Mock()
-redis_mock.exceptions.ConnectionError = type('ConnectionError', (Exception,), {})
+redis_mock.exceptions.ConnectionError = type('ConnectionError', (BaseException,), {})
+redis_mock.exceptions.RedisError = type('RedisError', (BaseException,), {})
+redis_mock.RedisError = type('RedisError', (BaseException,), {})
+
 sys.modules["redis"] = redis_mock
 
 # Mock LangGraph and its modules
@@ -269,3 +307,36 @@ sys.modules["neuron_server.llms.embeddings.openai"] = mock_openai_full
 def mock_openai_modules() -> None:
     """Mock OpenAI modules in various places they might be imported."""
     yield
+
+@pytest.fixture(autouse=True)
+def mock_quart_app() -> None:
+    """Make Quart app mocks work with async context manager protocol."""
+    from quart import Quart
+    
+    # Add async context manager support to Quart app test client and request context
+    original_test_client = Quart.test_client
+    original_test_request_context = Quart.test_request_context
+    
+    def patched_test_client(self):
+        client = original_test_client(self)
+        if not hasattr(client, "__aenter__"):
+            client.__aenter__ = AsyncMock(return_value=client)
+            client.__aexit__ = AsyncMock(return_value=None)
+        return client
+    
+    def patched_test_request_context(self, *args, **kwargs):
+        ctx = original_test_request_context(self, *args, **kwargs)
+        if not hasattr(ctx, "__aenter__"):
+            ctx.__aenter__ = AsyncMock(return_value=ctx)
+            ctx.__aexit__ = AsyncMock(return_value=None)
+        return ctx
+    
+    # Patch the methods
+    Quart.test_client = patched_test_client
+    Quart.test_request_context = patched_test_request_context
+    
+    yield
+    
+    # Restore original methods after tests
+    Quart.test_client = original_test_client
+    Quart.test_request_context = original_test_request_context
