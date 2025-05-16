@@ -4,7 +4,7 @@ import json
 from collections.abc import AsyncGenerator
 from contextlib import suppress
 from datetime import datetime, timedelta
-from unittest.mock import AsyncMock, call, patch
+from unittest.mock import AsyncMock, call
 
 import pytest
 import pytz

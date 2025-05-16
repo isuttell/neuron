@@ -96,8 +96,9 @@ redis_mock.exceptions.ConnectionError = type('ConnectionError', (BaseException,)
 redis_mock.exceptions.RedisError = type('RedisError', (BaseException,), {})
 redis_mock.RedisError = type('RedisError', (BaseException,), {})
 # Add more specific Redis exceptions
-redis_mock.exceptions.LockError = type('LockError', (redis_mock.exceptions.RedisError,), {})
-redis_mock.exceptions.WatchError = type('WatchError', (redis_mock.exceptions.RedisError,), {})
+redis_error = redis_mock.exceptions.RedisError
+redis_mock.exceptions.LockError = type('LockError', (redis_error,), {})
+redis_mock.exceptions.WatchError = type('WatchError', (redis_error,), {})
 
 sys.modules["redis"] = redis_mock
 
