@@ -15,6 +15,10 @@ from neuron_server.controllers.auth import TokenPayload
 
 @pytest.fixture
 def app() -> Quart:
+    """Return the Quart app with patched test client and request context.
+    
+    The patching is done in conftest.py mock_quart_app fixture.
+    """
     return neuron_app
 
 
@@ -34,9 +38,15 @@ def mock_redis() -> MagicMock:
 
 
 @pytest.fixture
-def mock_scheduler() -> MagicMock:
+def mock_scheduler() -> AsyncMock:
+    """Mock the scheduler to avoid actual scheduler operations."""
     with patch("neuron_server.api.scheduler") as mock:
         mock.start = AsyncMock()
+        mock.stop = AsyncMock()
+        mock.schedule_event = AsyncMock()
+        mock.get_event = AsyncMock()
+        mock.delete_event = AsyncMock()
+        mock.list_events = AsyncMock(return_value=[])
         yield mock
 
 

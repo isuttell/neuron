@@ -52,12 +52,32 @@ redis_client_mock.smembers = AsyncMock(return_value=set())
 redis_client_mock.srem = AsyncMock()
 redis_client_mock.delete = AsyncMock()
 redis_client_mock.execute = AsyncMock()
+redis_client_mock.ping = AsyncMock()
+redis_client_mock.psubscribe = AsyncMock()
+redis_client_mock.get_message = AsyncMock(return_value=None)
+
+# Create pubsub mock
+pubsub_mock = AsyncContextManagerMock()
+pubsub_mock.ping = AsyncMock()
+pubsub_mock.subscribe = AsyncMock()
+pubsub_mock.get_message = AsyncMock(return_value=None)
+pubsub_mock.listen = AsyncMock()
+pubsub_mock.__aiter__ = AsyncMock(return_value=pubsub_mock)
+pubsub_mock.__anext__ = AsyncMock(side_effect=StopAsyncIteration)
+pubsub_mock.unsubscribe = AsyncMock()
+pubsub_mock.psubscribe = AsyncMock()
+pubsub_mock.punsubscribe = AsyncMock()
+
+# Add pubsub method to client
+redis_client_mock.pubsub = AsyncMock(return_value=pubsub_mock)
 
 # Create pipeline mock that supports async context manager
 pipeline_mock = AsyncContextManagerMock()
 pipeline_mock.set = AsyncMock(return_value=pipeline_mock)
 pipeline_mock.setex = AsyncMock(return_value=pipeline_mock)
 pipeline_mock.sadd = AsyncMock(return_value=pipeline_mock)
+pipeline_mock.srem = AsyncMock(return_value=pipeline_mock)
+pipeline_mock.delete = AsyncMock(return_value=pipeline_mock)
 pipeline_mock.execute = AsyncMock(return_value=[True] * 5)
 
 # Add pipeline method to client
@@ -66,6 +86,7 @@ redis_client_mock.pipeline = AsyncMock(return_value=pipeline_mock)
 # Setup Redis mock
 redis_mock.Redis = Mock(return_value=redis_client_mock)
 redis_mock.asyncio = Mock()
+redis_mock.asyncio.Redis = Mock(return_value=redis_client_mock)
 redis_mock.asyncio.from_url = Mock(return_value=redis_client_mock)
 redis_mock.typing = Mock()
 redis_mock.typing.ExpiryT = object
@@ -74,6 +95,9 @@ redis_mock.exceptions = Mock()
 redis_mock.exceptions.ConnectionError = type('ConnectionError', (BaseException,), {})
 redis_mock.exceptions.RedisError = type('RedisError', (BaseException,), {})
 redis_mock.RedisError = type('RedisError', (BaseException,), {})
+# Add more specific Redis exceptions
+redis_mock.exceptions.LockError = type('LockError', (redis_mock.exceptions.RedisError,), {})
+redis_mock.exceptions.WatchError = type('WatchError', (redis_mock.exceptions.RedisError,), {})
 
 sys.modules["redis"] = redis_mock
 
@@ -125,6 +149,17 @@ sys.modules["langchain_neo4j.chains"] = Mock()
 sys.modules["langchain_neo4j.chains.graph_qa"] = Mock()
 sys.modules["langchain_neo4j.chains.graph_qa.cypher"] = Mock()
 sys.modules["langchain_neo4j.chains.graph_qa.cypher"].GraphCypherQAChain = Mock()
+
+# Mock PGVector
+mock_pgvector = Mock()
+mock_pgvector.PGVector = Mock()
+sys.modules["langchain_postgres"] = mock_pgvector
+sys.modules["langchain_postgres.vectorstores"] = mock_pgvector
+
+# Mock the vectorstores module
+mock_vectorstores = Mock()
+mock_vectorstores.memories_store = Mock()
+sys.modules["neuron_server.vectorstores"] = mock_vectorstores
 
 # Mock neo4j-graphrag
 sys.modules["neo4j_graphrag"] = Mock()
@@ -179,9 +214,8 @@ mock_scheduler.delete_event = AsyncMock()
 mock_scheduler.list_events = AsyncMock(return_value=[])
 mock_scheduler.get_event = AsyncMock()
 
-# Mock API module
-sys.modules["neuron_server.api"] = Mock()
-sys.modules["neuron_server.api"].scheduler = mock_scheduler
+# Don't mock the entire API module, just patch the scheduler inside the tests
+# We need to maintain the actual Quart app for the API tests
 
 # Create mock SQLAlchemy session
 mock_session = AsyncMock(spec=AsyncSession)
