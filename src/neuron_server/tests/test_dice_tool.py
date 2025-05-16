@@ -1,6 +1,5 @@
 """Unit tests for the dice tool."""
 
-import re
 from unittest.mock import patch
 
 import pytest
@@ -15,16 +14,21 @@ class TestDiceRoll:
     def test_valid_dice_roll(self) -> None:
         """Test valid dice roll parameters."""
         # Test with minimum values
-        dice_roll = DiceRoll(count=1, sides=2)
-        assert dice_roll.count == 1
-        assert dice_roll.sides == 2
+        min_count = 1
+        min_sides = 2
+        dice_roll = DiceRoll(count=min_count, sides=min_sides)
+        assert dice_roll.count == min_count
+        assert dice_roll.sides == min_sides
         assert dice_roll.modifier is None
 
         # Test with modifier
-        dice_roll = DiceRoll(count=3, sides=6, modifier=2)
-        assert dice_roll.count == 3
-        assert dice_roll.sides == 6
-        assert dice_roll.modifier == 2
+        count = 3
+        sides = 6
+        modifier = 2
+        dice_roll = DiceRoll(count=count, sides=sides, modifier=modifier)
+        assert dice_roll.count == count
+        assert dice_roll.sides == sides
+        assert dice_roll.modifier == modifier
 
     def test_invalid_dice_roll_count(self) -> None:
         """Test invalid dice count validation."""
@@ -52,42 +56,58 @@ class TestParseDiceExpression:
     def test_basic_dice_expression(self) -> None:
         """Test parsing basic dice expressions."""
         # Test simple expression
-        result = parse_dice_expression("1d6")
-        assert result.count == 1
-        assert result.sides == 6
+        simple_count = 1
+        simple_sides = 6
+        result = parse_dice_expression(f"{simple_count}d{simple_sides}")
+        assert result.count == simple_count
+        assert result.sides == simple_sides
         assert result.modifier is None
 
         # Test multi-dice expression
-        result = parse_dice_expression("3d8")
-        assert result.count == 3
-        assert result.sides == 8
+        multi_count = 3
+        multi_sides = 8
+        result = parse_dice_expression(f"{multi_count}d{multi_sides}")
+        assert result.count == multi_count
+        assert result.sides == multi_sides
         assert result.modifier is None
 
         # Test large numbers
-        result = parse_dice_expression("20d100")
-        assert result.count == 20
-        assert result.sides == 100
+        large_count = 20
+        large_sides = 100
+        result = parse_dice_expression(f"{large_count}d{large_sides}")
+        assert result.count == large_count
+        assert result.sides == large_sides
         assert result.modifier is None
 
     def test_dice_expression_with_modifiers(self) -> None:
         """Test parsing dice expressions with modifiers."""
         # Test positive modifier
-        result = parse_dice_expression("2d6+3")
-        assert result.count == 2
-        assert result.sides == 6
-        assert result.modifier == 3
+        pos_count = 2
+        pos_sides = 6
+        pos_modifier = 3
+        result = parse_dice_expression(f"{pos_count}d{pos_sides}+{pos_modifier}")
+        assert result.count == pos_count
+        assert result.sides == pos_sides
+        assert result.modifier == pos_modifier
 
         # Test negative modifier
-        result = parse_dice_expression("4d10-2")
-        assert result.count == 4
-        assert result.sides == 10
-        assert result.modifier == -2
+        neg_count = 4
+        neg_sides = 10
+        neg_modifier = -2
+        result = parse_dice_expression(f"{neg_count}d{neg_sides}{neg_modifier}")
+        assert result.count == neg_count
+        assert result.sides == neg_sides
+        assert result.modifier == neg_modifier
 
         # Test large modifier
-        result = parse_dice_expression("1d20+10")
-        assert result.count == 1
-        assert result.sides == 20
-        assert result.modifier == 10
+        large_mod_count = 1
+        large_mod_sides = 20
+        large_modifier = 10
+        dice_expr = f"{large_mod_count}d{large_mod_sides}+{large_modifier}"
+        result = parse_dice_expression(dice_expr)
+        assert result.count == large_mod_count
+        assert result.sides == large_mod_sides
+        assert result.modifier == large_modifier
 
     def test_invalid_dice_expressions(self) -> None:
         """Test parsing invalid dice expressions."""
@@ -125,7 +145,8 @@ class TestParseDiceExpression:
             result = parse_dice_expression(expression)
             assert result.count > 0
             assert result.sides > 0
-            # The modifier is None because the regex doesn't match the incomplete modifier
+            # The modifier is None because the regex doesn't match the
+            # incomplete modifier
             assert result.modifier is None
 
 
@@ -156,14 +177,16 @@ class TestDiceTool:
             result = dice_tool._run(["2d6", "1d4"])
             
             # Should be called 3 times: twice for 2d6 and once for 1d4
-            assert mock_randint.call_count == 3
+            expected_calls = 3
+            assert mock_randint.call_count == expected_calls
             
             # Check that both dice results are in the output
             assert "Rolled 2d6:" in result
             assert "Rolled 1d4:" in result
             
             # Make sure there are two lines in the result
-            assert len(result.split("\n")) == 2
+            expected_lines = 2
+            assert len(result.split("\n")) == expected_lines
 
     def test_run_with_modifiers(self) -> None:
         """Test running the tool with dice expressions that include modifiers."""
@@ -187,7 +210,8 @@ class TestDiceTool:
             dice_tool = DiceTool()
             result = dice_tool._run(["3d8"])
             
-            assert mock_randint.call_count == 3
+            expected_dice_count = 3
+            assert mock_randint.call_count == expected_dice_count
             assert "Rolled 3d8:" in result
             assert "results=6+3+8" in result
             assert "total=17" in result  # 6 + 3 + 8 = 17
@@ -201,7 +225,8 @@ class TestDiceTool:
             dice_tool = DiceTool()
             result = dice_tool._run(["1d20+10", "2d6-1", "2d4"])
             
-            assert mock_randint.call_count == 5
+            expected_dice_count = 5  # 1 + 2 + 2
+            assert mock_randint.call_count == expected_dice_count
             
             assert "Rolled 1d20+10:" in result
             assert "Rolled 2d6-1:" in result
