@@ -2,6 +2,7 @@ import asyncio
 import time
 from io import BytesIO
 from typing import Any, TypeVar
+from uuid import uuid4
 
 import aiohttp
 import pandas as pd
@@ -13,6 +14,7 @@ from langchain_core.runnables import RunnableConfig
 from PIL import Image
 from pydantic import BaseModel, Field
 
+from neuron_server.config import config
 from neuron_server.logger import logger
 from neuron_server.util.image_utilities import create_image_url
 
@@ -30,7 +32,19 @@ class InspectImageToolArgs(BaseModel):
 
 
 async def get_image_bytes(image_url: str) -> bytes:
-    async with aiohttp.ClientSession() as session, session.get(image_url) as response:
+    # Generate a random session token
+    session_token = str(uuid4())
+    
+    # Set the cookie in the session
+    cookies = (
+        {"neuron_session": session_token} 
+        if config.static_require_auth else None
+    )
+    
+    async with (
+        aiohttp.ClientSession(cookies=cookies) as session,
+        session.get(image_url) as response
+    ):
         response.raise_for_status()
         return await response.content.read()
 

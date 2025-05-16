@@ -89,3 +89,4 @@ class UserModel(BaseModel):
             if user:
                 return cls.model_validate(user.__dict__)
             return None
+            
