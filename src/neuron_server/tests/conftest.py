@@ -1,56 +1,252 @@
 import sys
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import openai
 import pytest
 from langchain_core.messages import AIMessage
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from pytest import MonkeyPatch
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from neuron_server.config import Config
+from neuron_server.controllers.auth import TokenPayload
 
-# Mock API clients and database connections before any imports
-openai.OpenAI = MagicMock()
-openai.AsyncOpenAI = MagicMock()
+# Mock the cache module
+mock_cache = Mock()
+# Handle ttl parameter
+mock_cache.cache_response = lambda func=None, ttl=None: lambda f: f
+mock_cache.ClientCache = Mock()
+sys.modules["neuron_server.cache"] = mock_cache
+
+# Mock the pubsub module
+mock_pubsub = Mock()
+mock_pubsub.publish = AsyncMock()
+mock_pubsub.subscribe = AsyncMock()
+sys.modules["neuron_server.pubsub"] = mock_pubsub
+
+# Mock Redis
+class AsyncContextManagerMock(AsyncMock):
+    """Mock that supports async context manager protocol."""
+    async def __aenter__(self) -> "AsyncContextManagerMock":
+        return self
+        
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: object | None,
+    ) -> None:
+        return None
+
+redis_mock = Mock()
+
+# Create a proper mock Redis client that supports async context manager
+redis_client_mock = AsyncContextManagerMock()
+redis_client_mock.close = AsyncMock()
+redis_client_mock.config_set = AsyncMock()
+redis_client_mock.set = AsyncMock(return_value=True)
+redis_client_mock.setex = AsyncMock()
+redis_client_mock.get = AsyncMock(return_value=None)
+redis_client_mock.exists = AsyncMock(return_value=False)
+redis_client_mock.sadd = AsyncMock()
+redis_client_mock.smembers = AsyncMock(return_value=set())
+redis_client_mock.srem = AsyncMock()
+redis_client_mock.delete = AsyncMock()
+redis_client_mock.execute = AsyncMock()
+redis_client_mock.ping = AsyncMock()
+redis_client_mock.psubscribe = AsyncMock()
+redis_client_mock.get_message = AsyncMock(return_value=None)
+
+# Create pubsub mock
+pubsub_mock = AsyncContextManagerMock()
+pubsub_mock.ping = AsyncMock()
+pubsub_mock.subscribe = AsyncMock()
+pubsub_mock.get_message = AsyncMock(return_value=None)
+pubsub_mock.listen = AsyncMock()
+pubsub_mock.__aiter__ = AsyncMock(return_value=pubsub_mock)
+pubsub_mock.__anext__ = AsyncMock(side_effect=StopAsyncIteration)
+pubsub_mock.unsubscribe = AsyncMock()
+pubsub_mock.psubscribe = AsyncMock()
+pubsub_mock.punsubscribe = AsyncMock()
+
+# Add pubsub method to client
+redis_client_mock.pubsub = AsyncMock(return_value=pubsub_mock)
+
+# Create pipeline mock that supports async context manager
+pipeline_mock = AsyncContextManagerMock()
+pipeline_mock.set = AsyncMock(return_value=pipeline_mock)
+pipeline_mock.setex = AsyncMock(return_value=pipeline_mock)
+pipeline_mock.sadd = AsyncMock(return_value=pipeline_mock)
+pipeline_mock.srem = AsyncMock(return_value=pipeline_mock)
+pipeline_mock.delete = AsyncMock(return_value=pipeline_mock)
+pipeline_mock.execute = AsyncMock(return_value=[True] * 5)
+
+# Add pipeline method to client
+redis_client_mock.pipeline = AsyncMock(return_value=pipeline_mock)
+
+# Setup Redis mock
+redis_mock.Redis = Mock(return_value=redis_client_mock)
+redis_mock.asyncio = Mock()
+redis_mock.asyncio.Redis = Mock(return_value=redis_client_mock)
+redis_mock.asyncio.from_url = Mock(return_value=redis_client_mock)
+redis_mock.typing = Mock()
+redis_mock.typing.ExpiryT = object
+redis_mock.typing.ResponseT = object
+redis_mock.exceptions = Mock()
+redis_mock.exceptions.ConnectionError = type('ConnectionError', (BaseException,), {})
+redis_mock.exceptions.RedisError = type('RedisError', (BaseException,), {})
+redis_mock.RedisError = type('RedisError', (BaseException,), {})
+# Add more specific Redis exceptions
+redis_error = redis_mock.exceptions.RedisError
+redis_mock.exceptions.LockError = type('LockError', (redis_error,), {})
+redis_mock.exceptions.WatchError = type('WatchError', (redis_error,), {})
+
+sys.modules["redis"] = redis_mock
+
+# Mock LangGraph and its modules
+langgraph_mock = Mock()
+langgraph_graph = Mock()
+langgraph_graph_message = Mock() 
+langgraph_graph_message.add_messages = Mock()
+langgraph_checkpoint = Mock()
+langgraph_checkpoint_postgres = Mock()
+langgraph_checkpoint_postgres_aio = Mock()
+langgraph_checkpoint_postgres_aio.AsyncPostgresSaver = Mock()
+langgraph_prebuilt = Mock()
+langgraph_prebuilt.ToolNode = Mock()
+
+sys.modules["langgraph"] = langgraph_mock
+sys.modules["langgraph.graph"] = langgraph_graph
+sys.modules["langgraph.graph.message"] = langgraph_graph_message
+sys.modules["langgraph.checkpoint"] = langgraph_checkpoint
+sys.modules["langgraph.checkpoint.postgres"] = langgraph_checkpoint_postgres
+sys.modules["langgraph.checkpoint.postgres.aio"] = langgraph_checkpoint_postgres_aio
+sys.modules["langgraph.prebuilt"] = langgraph_prebuilt
 
 # Mock Neo4j
 mock_neo4j = Mock()
 mock_driver = Mock()
 mock_driver.verify_connectivity = Mock()
-mock_neo4j.GraphDatabase.driver.return_value = mock_driver
+mock_neo4j.GraphDatabase = Mock()
+mock_neo4j.GraphDatabase.driver = Mock(return_value=mock_driver)
+
+# Mock Neo4j exceptions
+mock_neo4j.exceptions = Mock()
+mock_neo4j.exceptions.CypherSyntaxError = type('CypherSyntaxError', (Exception,), {})
+mock_neo4j.exceptions.DriverError = type('DriverError', (Exception,), {})
+mock_neo4j.exceptions.Neo4jError = type('Neo4jError', (Exception,), {})
+
+# Mock neo4j Record
+mock_neo4j.Record = Mock()
+mock_neo4j.Driver = Mock()
+
+sys.modules["neo4j"] = mock_neo4j
+
+# Mock langchain-neo4j modules
+sys.modules["langchain_neo4j"] = Mock()
+sys.modules["langchain_neo4j.graphs"] = Mock()
+sys.modules["langchain_neo4j.graphs.neo4j_graph"] = Mock()
+sys.modules["langchain_neo4j.graphs.neo4j_graph"].Neo4jGraph = Mock()
+sys.modules["langchain_neo4j.chains"] = Mock()
+sys.modules["langchain_neo4j.chains.graph_qa"] = Mock()
+sys.modules["langchain_neo4j.chains.graph_qa.cypher"] = Mock()
+sys.modules["langchain_neo4j.chains.graph_qa.cypher"].GraphCypherQAChain = Mock()
+
+# Mock PGVector
+mock_pgvector = Mock()
+mock_pgvector.PGVector = Mock()
+sys.modules["langchain_postgres"] = mock_pgvector
+sys.modules["langchain_postgres.vectorstores"] = mock_pgvector
+
+# Mock the vectorstores module
+mock_vectorstores = Mock()
+mock_vectorstores.memories_store = Mock()
+sys.modules["neuron_server.vectorstores"] = mock_vectorstores
+
+# Mock neo4j-graphrag
+sys.modules["neo4j_graphrag"] = Mock()
+sys.modules["neo4j_graphrag.retrievers"] = Mock()
+sys.modules["neo4j_graphrag.retrievers.text2cypher"] = Mock()
+sys.modules["neo4j_graphrag.retrievers.text2cypher"].extract_cypher = Mock()
+sys.modules["neo4j_graphrag.retrievers.text2cypher"].Text2CypherRetriever = Mock()
 
 # Mock Tavily
 mock_tavily = Mock()
 mock_tavily.TavilySearchAPIWrapper = Mock
 sys.modules["langchain_community.tools.tavily_search"] = mock_tavily
 
-# Mock Neo4jGraph
-mock_neo4j_graph = Mock()
-mock_neo4j_graph.Neo4jGraph = Mock()
-sys.modules["langchain_neo4j.graphs.neo4j_graph"] = mock_neo4j_graph
-
-# Mock OpenAI embeddings
+# Mock OpenAI API
+# Mock embeddings response
 mock_embeddings = MagicMock()
 mock_embeddings.create.return_value = {"data": [{"embedding": [0.1] * 1536}]}
-openai.OpenAI.return_value.embeddings = mock_embeddings
-openai.AsyncOpenAI.return_value.embeddings = mock_embeddings
 
-# Mock OpenAI chat completions
+# Mock chat completions response
 mock_chat = MagicMock()
 mock_chat.create.return_value = {
     "choices": [{"message": {"content": "Test response", "tool_calls": []}}]
 }
-openai.OpenAI.return_value.chat.completions = mock_chat
-openai.AsyncOpenAI.return_value.chat.completions = mock_chat
 
-# Mock LangChain classes
+# Define a custom client class that doesn't check for API key
+class MockOpenAI:
+    def __init__(self, api_key: str = None, **kwargs: dict) -> None:
+        self.embeddings = mock_embeddings
+        self.chat = MagicMock()
+        self.chat.completions = mock_chat
+
+class MockAsyncOpenAI:
+    def __init__(self, api_key: str = None, **kwargs: dict) -> None:
+        self.embeddings = mock_embeddings
+        self.chat = MagicMock()
+        self.chat.completions = mock_chat
+
+# Patch OpenAI
+openai.OpenAI = MockOpenAI
+openai.AsyncOpenAI = MockAsyncOpenAI
+openai.OpenAIError = type('OpenAIError', (Exception,), {})
+
+# Mock langchain OpenAI classes
 OpenAIEmbeddings.validate_environment = MagicMock()
 ChatOpenAI.validate_environment = MagicMock()
 
+# Mock scheduler
+mock_scheduler = AsyncMock()
+mock_scheduler.create_event = AsyncMock(return_value="test-event-id")
+mock_scheduler.update_event = AsyncMock()
+mock_scheduler.delete_event = AsyncMock()
+mock_scheduler.list_events = AsyncMock(return_value=[])
+mock_scheduler.get_event = AsyncMock()
 
-def pytest_configure() -> None:
-    """Configure test environment before running tests."""
-    pass
+# Don't mock the entire API module, just patch the scheduler inside the tests
+# We need to maintain the actual Quart app for the API tests
+
+# Create mock SQLAlchemy session
+mock_session = AsyncMock(spec=AsyncSession)
+mock_session.__aenter__.return_value = mock_session
+mock_session.__aexit__.return_value = None
+mock_session.commit = AsyncMock()
+mock_session.rollback = AsyncMock()
+mock_session.close = AsyncMock()
+mock_session.execute = AsyncMock()
+mock_session.flush = AsyncMock()
+mock_session.refresh = AsyncMock()
+mock_session.scalar = AsyncMock()
+
+# Create mock engine
+mock_engine = Mock()
+mock_engine.begin = AsyncMock()
+mock_engine.dispose = AsyncMock()
+
+
+@pytest.fixture(autouse=True)
+def mock_database() -> None:
+    """Mock database connections for all tests."""
+    # Apply patches
+    with (
+        patch("sqlalchemy.ext.asyncio.create_async_engine", return_value=mock_engine),
+        patch("neuron_server.database.get_session", return_value=mock_session),
+        patch("neuron_server.database.engine", mock_engine),
+        patch("neuron_server.database.start", AsyncMock()),
+    ):
+        yield
 
 
 @pytest.fixture(autouse=True)
@@ -111,10 +307,17 @@ def mock_env_vars(monkeypatch: MonkeyPatch) -> None:
 
 
 @pytest.fixture
-def mock_config() -> None:
-    """Mock configuration for testing."""
-    with patch("neuron_server.config.config", Config()):
-        yield
+def mock_token() -> TokenPayload:
+    """Create a mock token for testing."""
+    return TokenPayload(
+        sub="test_user",
+        user_id="test-user-id",
+        nickname="Test User",
+        email="test@example.com",
+        picture=None,
+        roles=["user"],
+        permissions=["read:events", "write:events"]
+    )
 
 
 @pytest.fixture
@@ -127,11 +330,57 @@ def mock_ai_message() -> AIMessage:
     )
 
 
-@pytest.fixture
-def mock_openai() -> None:
-    """Mock OpenAI client for testing."""
-    with patch("openai.OpenAI") as mock:
-        mock.return_value.chat.completions.create.return_value = {
-            "choices": [{"message": {"content": "Test response", "tool_calls": []}}]
-        }
-        yield mock
+# Create modules mock for OpenAI
+mock_openai = Mock(OpenAI=MockOpenAI, AsyncOpenAI=MockAsyncOpenAI)
+mock_openai_simple = Mock(OpenAI=MockOpenAI)
+mock_openai_full = Mock(OpenAI=MockOpenAI, AsyncOpenAI=MockAsyncOpenAI)
+
+sys.modules["neuron_server.llms.openai"] = mock_openai
+sys.modules["neuron_server.llms.openai.openai"] = mock_openai
+sys.modules["neuron_server.tools.inspect_image_tool.openai"] = mock_openai_simple
+sys.modules["neuron_server.tools.openai_tts_tool.openai"] = mock_openai_simple
+sys.modules["neuron_server.tools.whisper_stt_tool.openai"] = mock_openai_simple
+sys.modules["neuron_server.llms.agent.openai"] = mock_openai_simple
+sys.modules["neuron_server.llms.embeddings.openai"] = mock_openai_full
+
+@pytest.fixture(autouse=True)
+def mock_openai_modules() -> None:
+    """Mock OpenAI modules in various places they might be imported."""
+    yield
+
+@pytest.fixture(autouse=True)
+def mock_quart_app() -> None:
+    """Make Quart app mocks work with async context manager protocol."""
+    from quart import Quart
+    
+    # Add async context manager support to Quart app test client and request context
+    original_test_client = Quart.test_client
+    original_test_request_context = Quart.test_request_context
+    
+    def patched_test_client(self: Quart) -> object:
+        client = original_test_client(self)
+        if not hasattr(client, "__aenter__"):
+            client.__aenter__ = AsyncMock(return_value=client)
+            client.__aexit__ = AsyncMock(return_value=None)
+        return client
+    
+    def patched_test_request_context(
+        self: Quart, 
+        *args: object, 
+        **kwargs: object
+    ) -> object:
+        ctx = original_test_request_context(self, *args, **kwargs)
+        if not hasattr(ctx, "__aenter__"):
+            ctx.__aenter__ = AsyncMock(return_value=ctx)
+            ctx.__aexit__ = AsyncMock(return_value=None)
+        return ctx
+    
+    # Patch the methods
+    Quart.test_client = patched_test_client
+    Quart.test_request_context = patched_test_request_context
+    
+    yield
+    
+    # Restore original methods after tests
+    Quart.test_client = original_test_client
+    Quart.test_request_context = original_test_request_context
