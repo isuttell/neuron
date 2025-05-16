@@ -68,8 +68,17 @@ class AppImageTool(BaseTool):
                         f"{required_extension}"
                     )
                 try:
+                    # Generate a random session token
+                    session_token = str(uuid4())
+                    
+                    # Set the cookie in the session
+                    cookies = (
+                        {"neuron_session": session_token} 
+                        if neuron_config.static_require_auth else None
+                    )
+                    
                     async with (
-                        aiohttp.ClientSession() as session,
+                        aiohttp.ClientSession(cookies=cookies) as session,
                         session.get(url) as response,
                         aiofiles.open(tmp_upload_file, "wb") as file,
                     ):

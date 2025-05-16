@@ -1,6 +1,7 @@
 import os
 import re
 import time
+import uuid
 from typing import Any, Literal
 
 import aiohttp
@@ -150,7 +151,17 @@ async def load_pdf_from_url(
         # Create a temporary file that will be automatically cleaned up
         with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tf:
             temp_file = tf.name
-            async with aiohttp.ClientSession() as session:
+
+            # Generate a random session token
+            session_token = str(uuid.uuid4())
+            
+            # Set the cookie in the session
+            cookies = (
+                {"neuron_session": session_token} 
+                if neuron_config.static_require_auth else None
+            )
+            
+            async with aiohttp.ClientSession(cookies=cookies) as session:
                 try:
                     async with session.get(url) as response:
                         response.raise_for_status()
@@ -200,10 +211,20 @@ async def load_text_from_url(
         DocumentLoadError: If the text cannot be loaded
     """
     try:
-        async with aiohttp.ClientSession() as session, session.get(url) as response:
-            response.raise_for_status()
-            text = await response.text()
-            extension = url.rsplit(".", 1)[-1] if "." in url else "txt"
+        # Generate a random session token
+        session_token = str(uuid.uuid4())
+        
+        # Set the cookie in the session
+        cookies = (
+            {"neuron_session": session_token} 
+            if neuron_config.static_require_auth else None
+        )
+        
+        async with aiohttp.ClientSession(cookies=cookies) as session:
+            async with session.get(url) as response:
+                response.raise_for_status()
+                text = await response.text()
+                extension = url.rsplit(".", 1)[-1] if "." in url else "txt"
             return Document(
                 page_content=text,
                 metadata={
