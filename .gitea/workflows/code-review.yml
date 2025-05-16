@@ -64,31 +64,25 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GITEA_ACCESS_TOKEN: ${{ secrets.GT_TOKEN }}
+          PR_NUMBER: ${{ gitea.event.pull_request.number }}
         run: |
           echo "Fetching PR diff..."
           # Fetch the PR diff from Gitea API
           curl -sSL -H "Authorization: token $GITEA_ACCESS_TOKEN" \
-            "${{ gitea.server_url }}/api/v1/repos/${{ gitea.repository_owner }}/${{ gitea.repository_name }}/pulls/${{ gitea.event.number }}.diff" \
+            "${{ gitea.server_url }}/api/v1/repos/${{ gitea.repository_owner }}/${{ gitea.repository_name }}/pulls/$PR_NUMBER.diff" \
             -o pr.diff
 
           echo "Running code review..."
-          # Create a custom prompt with the diff included
-          PR_DIFF=$(cat pr.diff)
-          PR_NUMBER="${{ gitea.event.number }}"
+          PROMPT="Please review the code changes in this PR based on the diff. 
+
+          1. Check for existing comments on the PR #$PR_NUMBER for context
+          2. Read related code for additional context so you understand the impact of the diff
+          3. Analyze code quality, potential bugs, and improvements of diff
+          4. Use Gitea MCP tools to comment directly on PR #$PR_NUMBER
+          5. Be specific in your comments and reference line numbers when possible
+          6. Focus on problems and potential improvements
           
-          PROMPT=$(cat <<EOF
-Please review the code changes in this PR based on the diff:
-
-<git_diff>
-${PR_DIFF}
-</git_diff>
-
-1. Check for existing comments on the PR #${PR_NUMBER}
-2. Based on the diff above, analyze code quality, potential bugs, and improvements
-3. Use the Gitea MCP tools to leave new/updated comments directly on PR #${PR_NUMBER}
-4. Be specific in your comments and reference files and line numbers when possible
-5. Focus on the problems and potential improvements
-EOF
-)
-          # Run a single Claude command for the entire process
-          echo "$PROMPT" | claude -p --max-turns 25 --verbose
+          Be concise."
+          
+          # Create input for Claude that includes both prompt and diff
+          (echo "$PROMPT"; echo; echo "<git_diff>"; cat pr.diff; echo "</git_diff>") | claude -p --max-turns 25
