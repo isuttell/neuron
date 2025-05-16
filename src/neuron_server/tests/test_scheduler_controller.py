@@ -472,10 +472,11 @@ async def test_list_events(
     
     with (
         patch("neuron_server.api.scheduler", mock_scheduler),
-        patch(
-            "neuron_server.controllers.scheduler_controller.PersonalityModel.get_many",
-            side_effect=mock_get_many,
-        ),
+        patch("neuron_server.models.personality_model.PersonalityModel.get_many", side_effect=mock_get_many),
+        patch("neuron_server.controllers.scheduler_controller.PersonalityModel.get_many", side_effect=mock_get_many),
+        # Prevent database connections
+        patch("sqlalchemy.ext.asyncio.create_async_engine", return_value=AsyncMock()),
+        patch("neuron_server.database.get_session", return_value=AsyncMock()),
     ):
         test_client = app.test_client()
         response = await test_client.get(
