@@ -2,9 +2,17 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Repository Information
+
+- **Repository Name**: isuttell/neuron
+- **Repository URL**: https://gitea.zaks.io/isuttell/neuron
+- **Git Remote Server**: Gitea (self-hosted at gitea.zaks.io)
+
+Note: This local directory may be named differently (e.g., neuron-02), but the actual repository name is "isuttell/neuron".
+
 ## Project Overview
 
-[Neuron](https://gitea.zaks.io/isuttell/neuron) is a realtime chat application built with LangChain and LangGraph that provides an extensible platform for testing and experimenting with various LLM models and tool capabilities. 
+Neuron is a realtime chat application built with LangChain and LangGraph that provides an extensible platform for testing and experimenting with various LLM models and tool capabilities.
 
 ## Architecture
 
@@ -113,6 +121,7 @@ poetry run ruff check --fix src/neuron_server/
 This project uses a self-hosted Gitea instance at https://gitea.zaks.io for version control and CI/CD. When working with this repository:
 
 - Always use the Gitea MCP tools installed for this project to interact with the repository
+- Always specify the correct repository owner and name (isuttell/neuron) when using Gitea commands
 - CI/CD is handled by Gitea Actions, which run the lint and test commands automatically
 - Always check the Gitea Actions status on pull requests before merging
 - Always run lint and formatting commands to automatically fix issues before making manual code changes:
