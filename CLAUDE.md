@@ -115,5 +115,8 @@ This project uses a self-hosted Gitea instance at https://gitea.zaks.io for vers
 - Always use the Gitea MCP tools installed for this project to interact with the repository
 - CI/CD is handled by Gitea Actions, which run the lint and test commands automatically
 - Always check the Gitea Actions status on pull requests before merging
+- Always run lint and formatting commands to automatically fix issues before making manual code changes:
+  - Frontend: `npm run lint`
+  - Backend: `poetry run ruff check --fix src/neuron_server/`
 
 For complete PR requirements and process, refer to @PR_REQUIREMENTS.md
