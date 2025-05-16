@@ -145,32 +145,56 @@ def mock_user() -> MagicMock:
 @pytest.fixture
 def mock_redis() -> AsyncMock:
     """Mock Redis to avoid connection errors during tests."""
+    # Create a comprehensive mock Redis client
     mock_redis = AsyncMock()
     mock_redis.get.return_value = None
-    with patch("neuron_server.cache.get_redis_client") as mock_get_redis:
-        mock_get_redis.return_value = mock_redis
+    mock_redis.set.return_value = True
+    mock_redis.setex.return_value = True
+    mock_redis.delete.return_value = 1
+    mock_redis.exists.return_value = 0
+    mock_redis.close.return_value = None
+    mock_redis.__aenter__.return_value = mock_redis
+    mock_redis.__aexit__.return_value = None
+    
+    # Mock pipeline operations
+    mock_pipeline = AsyncMock()
+    mock_pipeline.execute.return_value = []
+    mock_redis.pipeline.return_value = mock_pipeline
+    
+    # Mock pubsub operations
+    mock_pubsub = AsyncMock()
+    mock_pubsub.subscribe.return_value = None
+    mock_pubsub.get_message.return_value = None
+    mock_pubsub.__aiter__.return_value = mock_pubsub
+    mock_pubsub.__anext__.side_effect = StopAsyncIteration
+    mock_redis.pubsub.return_value = mock_pubsub
+    
+    # Create shorter path names for patching
+    cache_path = "neuron_server.cache"
+    auth_path = "neuron_server.controllers.auth"
+    with (
+        patch(f"{cache_path}.get_redis_client", return_value=mock_redis),
+        patch(f"{cache_path}.cache_response", lambda func=None, ttl=None: lambda f: f),
+        patch(f"{auth_path}.get_jwks", new_callable=AsyncMock) as mock_jwks,
+    ):
+        mock_jwks.return_value = {"keys": []}
         yield mock_redis
 
 
 @pytest.fixture
-def mock_decode_token() -> AsyncMock:
+def mock_decode_token(mock_redis: AsyncMock) -> AsyncMock:
     """Mock the decode_token function."""
-    # First patch get_jwks to avoid Redis connections
-    auth_path = "neuron_server.controllers.auth.get_jwks"
-    with patch(auth_path, new_callable=AsyncMock) as mock_jwks:
-        mock_jwks.return_value = {"keys": []}
-        
-        # Then patch the decode_token function
-        with patch("neuron_server.controllers.auth.decode_token") as mock:
-            mock.return_value = TokenPayload(
-                user_id="test_user_id",
-                roles=[],
-                email="test@example.com",
-                nickname="test_user",
-                picture=None,
-                permissions=[],
-            )
-            yield mock
+    # Patch the decode_token function directly
+    with patch("neuron_server.controllers.auth.decode_token") as mock:
+        mock.return_value = TokenPayload(
+            user_id="test_user_id",
+            roles=[],
+            email="test@example.com",
+            nickname="test_user",
+            picture=None,
+            permissions=[],
+        )
+        yield mock
 
 
 @pytest.mark.asyncio
@@ -786,7 +810,8 @@ def thread_test_context(
     app: Quart, 
     mock_token: TokenPayload, 
     mock_thread: MagicMock,
-    mock_redis: AsyncMock
+    mock_redis: AsyncMock,
+    mock_decode_token: AsyncMock
 ) -> dict:
     """Fixture that combines common test objects to reduce function arguments."""
     # Create additional mocks needed for tests
@@ -812,13 +837,22 @@ def thread_test_context(
         "nickname": user.nickname,
     }
     
-    return {
-        "app": app,
-        "mock_token": mock_token,
-        "mock_thread": mock_thread,
-        "mock_thread_user": thread_user,
-        "mock_user": user,
-    }
+    # Ensure the auth mocking is setup properly for Redis-free tests
+    cache_path = "neuron_server.cache"
+    auth_path = "neuron_server.controllers.auth"
+    with (
+        patch(f"{auth_path}.get_jwks", new_callable=AsyncMock) as mock_jwks,
+        patch(f"{cache_path}.get_redis_client", return_value=mock_redis)
+    ):
+        mock_jwks.return_value = {"keys": []}
+        
+        return {
+            "app": app,
+            "mock_token": mock_token,
+            "mock_thread": mock_thread,
+            "mock_thread_user": thread_user,
+            "mock_user": user,
+        }
 
 
 @pytest.mark.asyncio
