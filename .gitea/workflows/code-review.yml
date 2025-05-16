@@ -43,15 +43,22 @@ jobs:
           # Configure the Gitea MCP server using the CLI with SSE transport
           claude mcp add gitea \
             -e GITEA_ACCESS_TOKEN=$GITEA_ACCESS_TOKEN \
-            -- gitea-mcp -t sse -port 8080 \
+            -- gitea-mcp \
             -host $GITEA_BASE \
             -token $GITEA_ACCESS_TOKEN
           claude mcp list
-          echo "Configured MCP server for Gitea with SSE transport"
+          echo "Configured MCP server for Gitea"
 
-          # Configure allowed tools for Claude - simplifying to just essentials
-          claude config set allowedTools "Read,mcp__gitea__create_issue_comment"
-          echo "Configured Claude allowed tools with simplified set"
+          # Configure allowed tools for Claude
+          claude config add allowedTools "Read"
+          claude config add allowedTools "Bash(git show:*)"
+          claude config add allowedTools "Bash(git log:*)"
+          claude config add allowedTools "Bash(git diff:*)"
+          claude config add allowedTools "mcp__gitea__create_issue_comment"
+          claude config add allowedTools "mcp__gitea__get_pull_request_by_index"
+
+          echo "Configured Claude allowed tools"
+          claude config get allowedTools
 
       - name: Run Claude review
         env:
@@ -81,4 +88,4 @@ $(cat pr.diff)
 EOF
 )
           # Run a single Claude command for the entire process
-          echo "$PROMPT" | claude -p
+          echo "$PROMPT" | claude -p --max-turns 25 --verbose
