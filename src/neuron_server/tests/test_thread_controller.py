@@ -143,18 +143,34 @@ def mock_user() -> MagicMock:
 
 
 @pytest.fixture
+def mock_redis() -> AsyncMock:
+    """Mock Redis to avoid connection errors during tests."""
+    mock_redis = AsyncMock()
+    mock_redis.get.return_value = None
+    with patch("neuron_server.cache.get_redis_client") as mock_get_redis:
+        mock_get_redis.return_value = mock_redis
+        yield mock_redis
+
+
+@pytest.fixture
 def mock_decode_token() -> AsyncMock:
     """Mock the decode_token function."""
-    with patch("neuron_server.controllers.auth.decode_token") as mock:
-        mock.return_value = TokenPayload(
-            user_id="test_user_id",
-            roles=[],
-            email="test@example.com",
-            nickname="test_user",
-            picture=None,
-            permissions=[],
-        )
-        yield mock
+    # First patch get_jwks to avoid Redis connections
+    auth_path = "neuron_server.controllers.auth.get_jwks"
+    with patch(auth_path, new_callable=AsyncMock) as mock_jwks:
+        mock_jwks.return_value = {"keys": []}
+        
+        # Then patch the decode_token function
+        with patch("neuron_server.controllers.auth.decode_token") as mock:
+            mock.return_value = TokenPayload(
+                user_id="test_user_id",
+                roles=[],
+                email="test@example.com",
+                nickname="test_user",
+                picture=None,
+                permissions=[],
+            )
+            yield mock
 
 
 @pytest.mark.asyncio
@@ -163,6 +179,7 @@ async def test_get_thread(
     mock_token: TokenPayload,
     mock_thread: MagicMock,
     mock_decode_token: AsyncMock,
+    mock_redis: AsyncMock,
 ) -> None:
     """Test getting a thread by ID."""
     thread_id = mock_thread.id
@@ -199,7 +216,10 @@ async def test_get_thread(
 
 @pytest.mark.asyncio
 async def test_get_thread_not_found(
-    app: Quart, mock_token: TokenPayload, mock_decode_token: AsyncMock
+    app: Quart, 
+    mock_token: TokenPayload, 
+    mock_decode_token: AsyncMock, 
+    mock_redis: AsyncMock,
 ) -> None:
     """Test getting a thread that doesn't exist."""
     thread_id = uuid4()
@@ -217,9 +237,7 @@ async def test_get_thread_not_found(
             app.request_class.token = mock_token
 
             # Call the endpoint function directly
-            from neuron_server.controllers.thread_controller import (
-                get_thread,
-            )
+            from neuron_server.controllers.thread_controller import get_thread
 
             with pytest.raises(NotFound) as excinfo:
                 await get_thread(thread_id)
@@ -233,7 +251,11 @@ async def test_get_thread_not_found(
 
 @pytest.mark.asyncio
 async def test_get_thread_access_denied(
-    app: Quart, mock_token: TokenPayload, mock_thread: MagicMock, mock_decode_token: AsyncMock
+    app: Quart,
+    mock_token: TokenPayload,
+    mock_thread: MagicMock,
+    mock_decode_token: AsyncMock,
+    mock_redis: AsyncMock,
 ) -> None:
     """Test getting a thread the user doesn't have access to."""
     thread_id = mock_thread.id
@@ -242,7 +264,9 @@ async def test_get_thread_access_denied(
 
     with (
         patch.object(ThreadModel, "get", new_callable=AsyncMock) as mock_get,
-        patch.object(ThreadUserModel, "get", new_callable=AsyncMock) as mock_thread_user_get,
+        patch.object(
+            ThreadUserModel, "get", new_callable=AsyncMock
+        ) as mock_thread_user_get,
     ):
         # Setup mocks
         mock_get.return_value = mock_thread
@@ -278,13 +302,16 @@ async def test_get_threads_for_personality(
     mock_token: TokenPayload,
     mock_thread: MagicMock,
     mock_decode_token: AsyncMock,
+    mock_redis: AsyncMock,
 ) -> None:
     """Test getting threads for a personality."""
     personality_id = mock_thread.personality_id
 
     with (
         patch.object(ThreadModel, "list", new_callable=AsyncMock) as mock_list,
-        patch.object(ThreadUserModel, "get_user_threads", new_callable=AsyncMock) as mock_get_user_threads,
+        patch.object(
+            ThreadUserModel, "get_user_threads", new_callable=AsyncMock
+        ) as mock_get_user_threads,
     ):
         # Setup mocks
         mock_list.return_value = [mock_thread]
@@ -316,14 +343,21 @@ async def test_get_threads_for_personality(
 
 
 @pytest.mark.asyncio
-async def test_get_recent_threads(
-    app: Quart,
-    mock_token: TokenPayload,
-    mock_thread: MagicMock,
-    mock_personality: MagicMock,
-    mock_decode_token: AsyncMock,
-) -> None:
+async def test_get_recent_threads(thread_test_context: dict) -> None:
     """Test getting recent threads."""
+    app = thread_test_context["app"]
+    mock_token = thread_test_context["mock_token"]
+    mock_thread = thread_test_context["mock_thread"]
+    
+    # Create a mock personality for this test
+    mock_personality = MagicMock()
+    mock_personality.id = uuid4()
+    mock_personality.name = "Test Personality"
+    mock_personality.model_dump.return_value = {
+        "id": str(mock_personality.id),
+        "name": mock_personality.name,
+    }
+    
     with (
         patch.object(
             ThreadModel, "get_recent_threads", new_callable=AsyncMock
@@ -364,14 +398,21 @@ async def test_get_recent_threads(
 
 
 @pytest.mark.asyncio
-async def test_create_thread(
-    app: Quart,
-    mock_token: TokenPayload,
-    mock_thread: MagicMock,
-    mock_personality: MagicMock,
-    mock_decode_token: AsyncMock,
-) -> None:
+async def test_create_thread(thread_test_context: dict) -> None:
     """Test creating a new thread."""
+    app = thread_test_context["app"]
+    mock_token = thread_test_context["mock_token"]
+    mock_thread = thread_test_context["mock_thread"]
+    
+    # Create a mock personality for this test
+    mock_personality = MagicMock()
+    mock_personality.id = uuid4()
+    mock_personality.name = "Test Personality"
+    mock_personality.model_dump.return_value = {
+        "id": str(mock_personality.id),
+        "name": mock_personality.name,
+    }
+    
     personality_id = mock_personality.id
 
     # Let's use a simpler approach by mocking directly at the controller level
@@ -414,9 +455,11 @@ async def test_create_thread(
             from neuron_server.controllers.thread_controller import post_create_thread
 
             # Mock at the module level, not the property level
-            with patch("neuron_server.controllers.thread_controller.process_message_request", 
-                       new_callable=AsyncMock, return_value="Test prompt") as mock_process:
-                
+            process_path = "neuron_server.controllers.thread_controller"
+            msg_path = f"{process_path}.process_message_request"
+            with patch(
+                msg_path, new_callable=AsyncMock, return_value="Test prompt"
+            ) as mock_process:
                 result = await post_create_thread()
 
                 # Verify response
@@ -437,6 +480,7 @@ async def test_create_thread_missing_personality(
     app: Quart,
     mock_token: TokenPayload,
     mock_decode_token: AsyncMock,
+    mock_redis: AsyncMock,
 ) -> None:
     """Test creating a thread without a personality ID."""
     form_data = {
@@ -468,6 +512,7 @@ async def test_create_thread_personality_not_found(
     app: Quart,
     mock_token: TokenPayload,
     mock_decode_token: AsyncMock,
+    mock_redis: AsyncMock,
 ) -> None:
     """Test creating a thread with a non-existent personality."""
     personality_id = uuid4()
@@ -512,6 +557,7 @@ async def test_delete_thread(
     mock_token: TokenPayload,
     mock_thread: MagicMock,
     mock_decode_token: AsyncMock,
+    mock_redis: AsyncMock,
 ) -> None:
     """Test deleting a thread."""
     thread_id = mock_thread.id
@@ -551,7 +597,10 @@ async def test_delete_thread(
 
 @pytest.mark.asyncio
 async def test_delete_thread_not_found(
-    app: Quart, mock_token: TokenPayload, mock_decode_token: AsyncMock
+    app: Quart, 
+    mock_token: TokenPayload, 
+    mock_decode_token: AsyncMock, 
+    mock_redis: AsyncMock,
 ) -> None:
     """Test deleting a thread that doesn't exist."""
     thread_id = uuid4()
@@ -584,7 +633,11 @@ async def test_delete_thread_not_found(
 
 @pytest.mark.asyncio
 async def test_delete_thread_not_owner(
-    app: Quart, mock_token: TokenPayload, mock_thread: MagicMock, mock_decode_token: AsyncMock
+    app: Quart,
+    mock_token: TokenPayload,
+    mock_thread: MagicMock,
+    mock_decode_token: AsyncMock,
+    mock_redis: AsyncMock,
 ) -> None:
     """Test deleting a thread the user doesn't own."""
     thread_id = mock_thread.id
@@ -623,6 +676,7 @@ async def test_update_thread(
     mock_token: TokenPayload,
     mock_thread: MagicMock,
     mock_decode_token: AsyncMock,
+    mock_redis: AsyncMock,
 ) -> None:
     """Test updating a thread."""
     thread_id = mock_thread.id
@@ -635,7 +689,9 @@ async def test_update_thread(
 
     with (
         patch.object(ThreadModel, "get", new_callable=AsyncMock) as mock_get,
-        patch.object(ThreadUserModel, "get", new_callable=AsyncMock) as mock_thread_user_get,
+        patch.object(
+            ThreadUserModel, "get", new_callable=AsyncMock
+        ) as mock_thread_user_get,
         patch.object(ThreadModel, "update", new_callable=AsyncMock) as mock_update,
     ):
         # Setup mocks
@@ -670,7 +726,11 @@ async def test_update_thread(
 
 @pytest.mark.asyncio
 async def test_update_thread_not_owner(
-    app: Quart, mock_token: TokenPayload, mock_thread: MagicMock, mock_decode_token: AsyncMock
+    app: Quart,
+    mock_token: TokenPayload,
+    mock_thread: MagicMock,
+    mock_decode_token: AsyncMock,
+    mock_redis: AsyncMock,
 ) -> None:
     """Test updating a thread the user doesn't own."""
     thread_id = mock_thread.id
@@ -685,7 +745,9 @@ async def test_update_thread_not_owner(
 
     with (
         patch.object(ThreadModel, "get", new_callable=AsyncMock) as mock_get,
-        patch.object(ThreadUserModel, "get", new_callable=AsyncMock) as mock_thread_user_get,
+        patch.object(
+            ThreadUserModel, "get", new_callable=AsyncMock
+        ) as mock_thread_user_get,
     ):
         # Setup mocks
         mock_get.return_value = mock_thread
@@ -717,25 +779,70 @@ async def test_update_thread_not_owner(
         )
 
 
-@pytest.mark.asyncio
-async def test_get_thread_users(
-    app: Quart,
-    mock_token: TokenPayload,
+# Create a simplified fixture that avoids too many arguments issue
+# by bundling the necessary context for thread user tests
+@pytest.fixture
+def thread_test_context(
+    app: Quart, 
+    mock_token: TokenPayload, 
     mock_thread: MagicMock,
-    mock_thread_user: MagicMock,
-    mock_user: MagicMock,
-    mock_decode_token: AsyncMock,
-) -> None:
+    mock_redis: AsyncMock
+) -> dict:
+    """Fixture that combines common test objects to reduce function arguments."""
+    # Create additional mocks needed for tests
+    thread_user = MagicMock()
+    thread_user.id = uuid4()
+    thread_user.thread_id = mock_thread.id
+    thread_user.user_id = "test_user_id"
+    thread_user.role = "admin"
+    thread_user.model_dump.return_value = {
+        "id": str(thread_user.id),
+        "thread_id": str(thread_user.thread_id),
+        "user_id": thread_user.user_id,
+        "role": thread_user.role,
+    }
+    
+    user = MagicMock()
+    user.id = "test_user_id"
+    user.email = "test@example.com"
+    user.nickname = "test_user"
+    user.model_dump.return_value = {
+        "id": user.id,
+        "email": user.email,
+        "nickname": user.nickname,
+    }
+    
+    return {
+        "app": app,
+        "mock_token": mock_token,
+        "mock_thread": mock_thread,
+        "mock_thread_user": thread_user,
+        "mock_user": user,
+    }
+
+
+@pytest.mark.asyncio
+async def test_get_thread_users(thread_test_context: dict) -> None:
     """Test getting users associated with a thread."""
+    app = thread_test_context["app"]
+    mock_token = thread_test_context["mock_token"]
+    mock_thread = thread_test_context["mock_thread"]
+    mock_thread_user = thread_test_context["mock_thread_user"]
+    mock_user = thread_test_context["mock_user"]
+    
     thread_id = mock_thread.id
 
     with (
         patch.object(ThreadModel, "get", new_callable=AsyncMock) as mock_get_thread,
-        patch.object(ThreadUserModel, "get", new_callable=AsyncMock) as mock_get_thread_user,
+        patch.object(
+            ThreadUserModel, "get", new_callable=AsyncMock
+        ) as mock_get_thread_user,
         patch.object(
             ThreadUserModel, "get_thread_users", new_callable=AsyncMock
         ) as mock_get_thread_users,
-        patch.object(UserModel, "get_by_ids", new_callable=AsyncMock) as mock_get_by_ids,
+        patch.object(
+            UserModel, "get_by_ids", new_callable=AsyncMock
+        ) as mock_get_by_ids,
     ):
         # Setup mocks
         mock_get_thread.return_value = mock_thread
@@ -768,24 +875,26 @@ async def test_get_thread_users(
         mock_get_by_ids.assert_called_with(user_ids=[mock_thread_user.user_id])
 
 
-
 @pytest.mark.asyncio
-async def test_add_thread_user(
-    app: Quart,
-    mock_token: TokenPayload,
-    mock_thread: MagicMock,
-    mock_user: MagicMock,
-    mock_thread_user: MagicMock,
-    mock_decode_token: AsyncMock,
-) -> None:
+async def test_add_thread_user(thread_test_context: dict) -> None:
     """Test adding a user to a thread."""
+    app = thread_test_context["app"]
+    mock_token = thread_test_context["mock_token"]
+    mock_thread = thread_test_context["mock_thread"]
+    mock_user = thread_test_context["mock_user"]
+    mock_thread_user = thread_test_context["mock_thread_user"]
+    
     thread_id = mock_thread.id
     user_id = "new_user_id"
 
     with (
         patch.object(ThreadModel, "get", new_callable=AsyncMock) as mock_get_thread,
-        patch.object(UserModel, "get_by_ids", new_callable=AsyncMock) as mock_get_by_ids,
-        patch.object(ThreadUserModel, "get", new_callable=AsyncMock) as mock_get_thread_user,
+        patch.object(
+            UserModel, "get_by_ids", new_callable=AsyncMock
+        ) as mock_get_by_ids,
+        patch.object(
+            ThreadUserModel, "get", new_callable=AsyncMock
+        ) as mock_get_thread_user,
         patch.object(
             ThreadUserModel, "create", new_callable=AsyncMock
         ) as mock_create_thread_user,
@@ -823,22 +932,25 @@ async def test_add_thread_user(
 
 
 @pytest.mark.asyncio
-async def test_add_thread_user_already_exists(
-    app: Quart,
-    mock_token: TokenPayload,
-    mock_thread: MagicMock,
-    mock_user: MagicMock,
-    mock_thread_user: MagicMock,
-    mock_decode_token: AsyncMock,
-) -> None:
+async def test_add_thread_user_already_exists(thread_test_context: dict) -> None:
     """Test adding a user that's already in the thread."""
+    app = thread_test_context["app"]
+    mock_token = thread_test_context["mock_token"]
+    mock_thread = thread_test_context["mock_thread"]
+    mock_user = thread_test_context["mock_user"]
+    mock_thread_user = thread_test_context["mock_thread_user"]
+    
     thread_id = mock_thread.id
     user_id = "existing_user_id"
 
     with (
         patch.object(ThreadModel, "get", new_callable=AsyncMock) as mock_get_thread,
-        patch.object(UserModel, "get_by_ids", new_callable=AsyncMock) as mock_get_by_ids,
-        patch.object(ThreadUserModel, "get", new_callable=AsyncMock) as mock_get_thread_user,
+        patch.object(
+            UserModel, "get_by_ids", new_callable=AsyncMock
+        ) as mock_get_by_ids,
+        patch.object(
+            ThreadUserModel, "get", new_callable=AsyncMock
+        ) as mock_get_thread_user,
     ):
         # Setup mocks
         mock_get_thread.return_value = mock_thread
@@ -871,22 +983,25 @@ async def test_add_thread_user_already_exists(
 
 
 @pytest.mark.asyncio
-async def test_add_thread_user_by_email(
-    app: Quart,
-    mock_token: TokenPayload,
-    mock_thread: MagicMock,
-    mock_user: MagicMock,
-    mock_thread_user: MagicMock,
-    mock_decode_token: AsyncMock,
-) -> None:
+async def test_add_thread_user_by_email(thread_test_context: dict) -> None:
     """Test adding a user to a thread by email."""
+    app = thread_test_context["app"]
+    mock_token = thread_test_context["mock_token"]
+    mock_thread = thread_test_context["mock_thread"]
+    mock_user = thread_test_context["mock_user"]
+    mock_thread_user = thread_test_context["mock_thread_user"]
+    
     thread_id = mock_thread.id
     email = "user@example.com"
 
     with (
         patch.object(ThreadModel, "get", new_callable=AsyncMock) as mock_get_thread,
-        patch.object(UserModel, "get_by_email", new_callable=AsyncMock) as mock_get_by_email,
-        patch.object(ThreadUserModel, "get", new_callable=AsyncMock) as mock_get_thread_user,
+        patch.object(
+            UserModel, "get_by_email", new_callable=AsyncMock
+        ) as mock_get_by_email,
+        patch.object(
+            ThreadUserModel, "get", new_callable=AsyncMock
+        ) as mock_get_thread_user,
         patch.object(
             ThreadUserModel, "create", new_callable=AsyncMock
         ) as mock_create_thread_user,
@@ -928,21 +1043,22 @@ async def test_add_thread_user_by_email(
 
 
 @pytest.mark.asyncio
-async def test_update_thread_user(
-    app: Quart,
-    mock_token: TokenPayload,
-    mock_thread: MagicMock,
-    mock_thread_user: MagicMock,
-    mock_decode_token: AsyncMock,
-) -> None:
+async def test_update_thread_user(thread_test_context: dict) -> None:
     """Test updating a user's role in a thread."""
+    app = thread_test_context["app"] 
+    mock_token = thread_test_context["mock_token"]
+    mock_thread = thread_test_context["mock_thread"]
+    mock_thread_user = thread_test_context["mock_thread_user"]
+    
     thread_id = mock_thread.id
     user_id = "target_user_id"
     new_role = "admin"
 
     with (
         patch.object(ThreadModel, "get", new_callable=AsyncMock) as mock_get_thread,
-        patch.object(ThreadUserModel, "get", new_callable=AsyncMock) as mock_get_thread_user,
+        patch.object(
+            ThreadUserModel, "get", new_callable=AsyncMock
+        ) as mock_get_thread_user,
         patch.object(
             ThreadUserModel, "update_role", new_callable=AsyncMock
         ) as mock_update_role,
@@ -985,6 +1101,7 @@ async def test_remove_thread_user(
     mock_token: TokenPayload,
     mock_thread: MagicMock,
     mock_decode_token: AsyncMock,
+    mock_redis: AsyncMock,
 ) -> None:
     """Test removing a user from a thread when the current user is an admin."""
     thread_id = mock_thread.id
@@ -996,7 +1113,9 @@ async def test_remove_thread_user(
 
     with (
         patch.object(ThreadModel, "get", new_callable=AsyncMock) as mock_get_thread,
-        patch.object(ThreadUserModel, "get", new_callable=AsyncMock) as mock_get_thread_user,
+        patch.object(
+            ThreadUserModel, "get", new_callable=AsyncMock
+        ) as mock_get_thread_user,
         patch.object(
             ThreadUserModel, "delete", new_callable=AsyncMock
         ) as mock_delete_thread_user,
@@ -1041,6 +1160,7 @@ async def test_remove_thread_user_self(
     mock_token: TokenPayload,
     mock_thread: MagicMock,
     mock_decode_token: AsyncMock,
+    mock_redis: AsyncMock,
 ) -> None:
     """Test a user removing themselves from a thread."""
     thread_id = mock_thread.id
