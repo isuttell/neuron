@@ -470,13 +470,18 @@ async def test_list_events(
     async def mock_get_many(personality_ids: set) -> list[MockPersonality]:
         return [mock_personality]
     
+    # Create shorter path names for better readability
+    model_path = "neuron_server.models.personality_model.PersonalityModel"
+    controller_path = "neuron_server.controllers.scheduler_controller.PersonalityModel"
+    db_path = "neuron_server.database"
+    
     with (
         patch("neuron_server.api.scheduler", mock_scheduler),
-        patch("neuron_server.models.personality_model.PersonalityModel.get_many", side_effect=mock_get_many),
-        patch("neuron_server.controllers.scheduler_controller.PersonalityModel.get_many", side_effect=mock_get_many),
+        patch(f"{model_path}.get_many", side_effect=mock_get_many),
+        patch(f"{controller_path}.get_many", side_effect=mock_get_many),
         # Prevent database connections
         patch("sqlalchemy.ext.asyncio.create_async_engine", return_value=AsyncMock()),
-        patch("neuron_server.database.get_session", return_value=AsyncMock()),
+        patch(f"{db_path}.get_session", return_value=AsyncMock()),
     ):
         test_client = app.test_client()
         response = await test_client.get(
