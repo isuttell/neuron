@@ -1,25 +1,28 @@
 import sys
-from unittest.mock import AsyncMock, Mock, patch
+from dataclasses import dataclass
+from typing import Optional
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 from quart import Quart
-from werkzeug.exceptions import BadRequest, HTTPException, NotFound
+from werkzeug.exceptions import HTTPException
 
 # Mock controller imports
 blueprint = Mock()
-sys.modules["neuron_server.controllers.scheduler_controller"] = Mock(blueprint=blueprint)
+mock_controller = Mock(blueprint=blueprint)
+sys.modules["neuron_server.controllers.scheduler_controller"] = mock_controller
 
 # Mock auth
+@dataclass
 class TokenPayload:
     """Mock token payload for testing."""
-    def __init__(self, sub, user_id, nickname, email, picture, roles, permissions):
-        self.sub = sub
-        self.user_id = user_id
-        self.nickname = nickname
-        self.email = email
-        self.picture = picture
-        self.roles = roles
-        self.permissions = permissions
+    sub: str
+    user_id: str
+    nickname: str
+    email: str
+    picture: Optional[str]
+    roles: list[str]
+    permissions: list[str]
 
 # HTTP status codes
 HTTP_OK = 200
@@ -29,7 +32,7 @@ HTTP_NOT_FOUND = 404
 
 
 @pytest.fixture
-def app():
+def app() -> Quart:
     """Create a test Quart application with the scheduler blueprint registered."""
     app = Quart(__name__)
     app.register_blueprint(blueprint, url_prefix="/api/scheduler")
@@ -37,14 +40,14 @@ def app():
     
     # Add HTTP error handler
     @app.errorhandler(HTTPException)
-    async def http_error(error):
+    async def http_error(error: HTTPException) -> tuple[dict[str, str], int]:
         return {"error": error.name, "message": error.description}, error.code
     
     return app
 
 
 @pytest.fixture
-def mock_scheduler():
+def mock_scheduler() -> AsyncMock:
     """Create a mock scheduler for testing."""
     mock = AsyncMock()
     mock.create_event = AsyncMock(return_value="test-event-id")
@@ -56,7 +59,7 @@ def mock_scheduler():
 
 
 @pytest.fixture
-def mock_token():
+def mock_token() -> TokenPayload:
     """Create a mock auth token for testing."""
     return TokenPayload(
         sub="test_user",
@@ -70,7 +73,7 @@ def mock_token():
 
 
 @pytest.fixture
-def mock_personality_model():
+def mock_personality_model() -> AsyncMock:
     """Create a mock personality model for testing."""
     mock_personality = AsyncMock()
     mock_personality.model_dump.return_value = {
@@ -84,7 +87,7 @@ def mock_personality_model():
 
 
 @pytest.mark.asyncio
-async def test_scheduler_controller_mock():
+async def test_scheduler_controller_mock() -> None:
     """Test with isolated mocking to avoid import issues."""
     # This test is a placeholder - it always passes
     # The real integration tests are in test_scheduler_controller.py

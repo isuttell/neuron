@@ -1,9 +1,11 @@
+from collections.abc import AsyncGenerator
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import UUID, uuid4
 
 import pytest
 from quart import Quart
+from sqlalchemy.ext.asyncio import AsyncSession
 from werkzeug.exceptions import BadRequest, NotFound
 
 from neuron_server.controllers import message_controller
@@ -71,6 +73,34 @@ def app() -> Quart:
     return app
 
 
+@pytest.fixture(autouse=True)
+async def mock_db_session() -> AsyncGenerator[None, None]:
+    """Mock the database session to prevent actual database connections."""
+    session_mock = AsyncMock(spec=AsyncSession)
+    
+    # Create a context manager mock that returns the session mock
+    cm_mock = AsyncMock()
+    cm_mock.__aenter__.return_value = session_mock
+    cm_mock.__aexit__.return_value = None
+    
+    # Define model paths for better line length control
+    thread_model = "neuron_server.models.thread_model.get_session"
+    message_model = "neuron_server.models.message_model.get_session"
+    media_model = "neuron_server.models.media_item_model.get_session"
+    thread_user_model = "neuron_server.models.thread_user_model.get_session"
+    user_model = "neuron_server.models.user_model.get_session"
+    
+    # Patch the get_session function to return our mock
+    with (
+        patch(thread_model, return_value=cm_mock),
+        patch(message_model, return_value=cm_mock),
+        patch(media_model, return_value=cm_mock),
+        patch(thread_user_model, return_value=cm_mock),
+        patch(user_model, return_value=cm_mock),
+    ):
+        yield None
+
+
 @pytest.mark.asyncio
 async def test_get_thread_messages_success(
     app: Quart,
@@ -109,26 +139,32 @@ async def test_get_thread_messages_success(
                 "neuron_server.controllers.message_controller.ThreadUserModel"
             ) as mock_thread_user:
                 mock_thread_user.get_thread_users = AsyncMock(return_value=[])
+                with patch(
+                    "neuron_server.controllers.message_controller.UserModel"
+                ) as mock_user_model:
+                    mock_user_model.get_by_ids = AsyncMock(return_value=[])
 
-            async with app.test_request_context(
-                "/thread/123",
-                headers={
-                    "Authorization": (
-                        "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9"
-                        ".eyJzdWIiOiJ0ZXN0In0.abc"
-                    )
-                },
-            ):
-                # Mock auth token
-                app.request_class.token = mock_token
+                    async with app.test_request_context(
+                        "/thread/123",
+                        headers={
+                            "Authorization": (
+                                "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9"
+                                ".eyJzdWIiOiJ0ZXN0In0.abc"
+                            )
+                        },
+                    ):
+                        # Mock auth token
+                        app.request_class.token = mock_token
 
-                result = await message_controller.get_thread_messages(mock_thread.id)
+                        result = await message_controller.get_thread_messages(
+                            mock_thread.id
+                        )
 
-                assert "threads" in result
-                assert "messages" in result
-                assert "media" in result
-                assert len(result["messages"]) == 1
-                assert result["messages"][0]["content"] == "Hello"
+                        assert "threads" in result
+                        assert "messages" in result
+                        assert "media" in result
+                        assert len(result["messages"]) == 1
+                        assert result["messages"][0]["content"] == "Hello"
 
 
 @pytest.mark.asyncio
