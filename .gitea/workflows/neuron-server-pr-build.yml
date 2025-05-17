@@ -29,14 +29,7 @@ jobs:
           driver: docker
           install: true
 
-      - name: Cache Docker layers
-        uses: actions/cache@v3
-        with:
-          path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-pr-${{ steps.dockerfile-hash.outputs.hash }}-${{ github.event.pull_request.number }}
-          restore-keys: |
-            ${{ runner.os }}-buildx-pr-${{ steps.dockerfile-hash.outputs.hash }}-
-            ${{ runner.os }}-buildx-pr-
+# Docker driver with buildx uses its own internal caching mechanism
 
       - name: Build image
         id: build-only
@@ -48,5 +41,3 @@ jobs:
           push: false
           load: true
           tags: gitea.zaks.io/isuttell/neuron:pr-${{ github.event.pull_request.number }}
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache
