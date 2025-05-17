@@ -22,14 +22,21 @@ jobs:
         id: dockerfile-hash
         run: echo "hash=$(sha256sum Dockerfile | awk '{print $1}')" >> $GITHUB_OUTPUT
 
-      - name: Docker layer caching
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: https://gitea.com/docker/setup-buildx-action@v3
+        with:
+          driver: docker
+          install: true
+
+      - name: Cache Docker layers
         uses: actions/cache@v3
         with:
-          path: /var/lib/docker
-          key: ${{ runner.os }}-docker-pr-${{ steps.dockerfile-hash.outputs.hash }}-${{ github.event.pull_request.number }}
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-pr-${{ steps.dockerfile-hash.outputs.hash }}-${{ github.event.pull_request.number }}
           restore-keys: |
-            ${{ runner.os }}-docker-pr-${{ steps.dockerfile-hash.outputs.hash }}-
-            ${{ runner.os }}-docker-pr-
+            ${{ runner.os }}-buildx-pr-${{ steps.dockerfile-hash.outputs.hash }}-
+            ${{ runner.os }}-buildx-pr-
 
       - name: Build image
         id: build-only
@@ -37,5 +44,9 @@ jobs:
         with:
           context: .
           file: Dockerfile
+          builder: ${{ steps.buildx.outputs.name }}
           push: false
+          load: true
           tags: gitea.zaks.io/isuttell/neuron:pr-${{ github.event.pull_request.number }}
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
