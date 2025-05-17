@@ -2,7 +2,10 @@ import asyncio
 import os
 import subprocess
 from typing import Any, Literal
+from uuid import uuid4
 
+import aiofiles
+import aiohttp
 from langchain.tools import BaseTool
 from langchain_core.runnables import RunnableConfig
 from pydantic import BaseModel, Field
@@ -63,6 +66,37 @@ output filename to the user as they can't directly access it.
 
     args_schema: type[FFmpegToolArgs] = FFmpegToolArgs
 
+    async def _download_file_with_auth(self, url: str) -> str:
+        """Download a file with authentication and return the local path."""
+        if not url.startswith(neuron_config.static_content_url):
+            return url  # Not a URL from our server, just return it
+            
+        # Generate a random session token
+        session_token = str(uuid4())
+        
+        # Set the cookie in the session
+        cookies = (
+            {"neuron_session": session_token} 
+            if neuron_config.static_require_auth else None
+        )
+        
+        # Create a temporary file for download
+        ext = os.path.splitext(url)[1]
+        tmp_file = os.path.abspath(
+            os.path.join(neuron_config.temp_folder, f"{uuid4().hex}{ext}")
+        )
+        
+        # Download the file
+        async with (
+            aiohttp.ClientSession(cookies=cookies) as session,
+            session.get(url) as response,
+            aiofiles.open(tmp_file, "wb") as file,
+        ):
+            response.raise_for_status()
+            await file.write(await response.content.read())
+        
+        return tmp_file
+
     def _run(
         self,
         *args: tuple[Any, ...],
@@ -70,20 +104,56 @@ output filename to the user as they can't directly access it.
     ) -> str:
         return asyncio.run(self._arun(*args, **kwargs))
 
-    async def _arun(
+    async def _arun(  # noqa: PLR0912, PLR0915
         self,
         name: str,
         args: list[str],
         extension: Literal["mp3", "mp4", "wav"],
         config: RunnableConfig,
     ) -> str:
-        process: subprocess.CompletedProcess[str]
+        process: subprocess.CompletedProcess[str] | None = None
+        tmp_files = []
+        
         try:
             filename = safe_filename("ffmpeg", name, extension)
             output = os.path.abspath(
                 os.path.join(neuron_config.static_folder, filename)
             )
-            args = (
+            
+            # Find all input URL arguments and download them with authentication
+            modified_args = []
+            i = 0
+            while i < len(args):
+                if (args[i] == "-i" and i + 1 < len(args) and 
+                    args[i + 1].startswith(("http://", "https://"))):
+                    
+                    # This is an input URL, download it
+                    modified_args.append("-i")
+                    local_path = await self._download_file_with_auth(args[i + 1])
+                    if local_path != args[i + 1]:  # If we downloaded a file
+                        tmp_files.append(local_path)
+                    modified_args.append(local_path)
+                    i += 2
+                elif args[i].startswith("concat:") and ":" in args[i]:
+                    # Handle concat URLs like concat:file1.mp3|file2.mp3
+                    concat_parts = args[i].split(":", 1)[1].split("|")
+                    new_parts = []
+                    for part in concat_parts:
+                        if part.startswith(("http://", "https://")):
+                            local_path = await self._download_file_with_auth(part)
+                            if local_path != part:  # If we downloaded a file
+                                tmp_files.append(local_path)
+                            new_parts.append(local_path)
+                        else:
+                            new_parts.append(part)
+                    modified_args.append(f"concat:{('|').join(new_parts)}")
+                    i += 1
+                else:
+                    modified_args.append(args[i])
+                    i += 1
+            
+            # Prepare the final command
+            command = (
                 [
                     "ffmpeg",
                     "-hide_banner",
@@ -91,19 +161,24 @@ output filename to the user as they can't directly access it.
                     "-loglevel",
                     "error",
                 ]
-                + args
+                + modified_args
                 + [output]
             )
+            
+            logger.info(f"Running: {' '.join(command)}")
+            
             process = await run_subprocess(
-                args,
+                command,
                 text=True,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 timeout=600,
                 cwd=neuron_config.static_folder,
             )
+            
             if not os.path.exists(output):
                 raise FFmpegToolError("Output file not found", process.stderr)
+                
             url = neuron_config.static_content_url + "/" + filename
             create_params = MediaItemModel.CreateParams(
                 url=url,
@@ -128,3 +203,11 @@ Filename: {output}
                 logger.error(process.stderr)
                 raise FFmpegToolError(str(e), process.stderr) from e
             raise e
+        finally:
+            # Clean up temporary files
+            for tmp_file in tmp_files:
+                if os.path.exists(tmp_file):
+                    try:
+                        os.remove(tmp_file)
+                    except Exception as e:
+                        logger.error(f"Error removing temporary file {tmp_file}: {e}")
