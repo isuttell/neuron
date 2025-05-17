@@ -2,6 +2,7 @@ name: Claude PR Review
 
 on:
   pull_request:
+    types: [opened]
     branches: [ master ]
 
 jobs:
@@ -14,42 +15,73 @@ jobs:
         with:
           fetch-depth: 0
 
+      # Cache tools directory
+      - name: Cache tools
+        id: cache-tools
+        uses: actions/cache@v3
+        with:
+          path: ./.tools
+          key: ${{ runner.os }}-tools-v1-gitea-mcp-0.1.9-claude-cli
+
+      # Setup Node.js with its own caching
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '20'
+          cache: 'npm'
 
-      - name: Download and setup gitea-mcp
+      # Single step to install tools if cache miss
+      - name: Install tools
+        if: steps.cache-tools.outputs.cache-hit != 'true'
         run: |
-          wget https://gitea.com/gitea/gitea-mcp/releases/download/v0.1.9/gitea-mcp_Linux_x86_64.tar.gz
-          # Extract to /usr/local/bin which is in the default PATH
-          sudo tar -xzf gitea-mcp_Linux_x86_64.tar.gz -C /usr/local/bin
-          sudo chmod +x /usr/local/bin/gitea-mcp
-          # Verify it's accessible
-          which gitea-mcp || { echo "ERROR: gitea-mcp not found in PATH"; exit 1; }
+          # Create tools directory
+          mkdir -p .tools
+          echo "Installing gitea-mcp..."
 
-      - name: Install Claude CLI
+          # Download and extract gitea-mcp to our tools directory
+          wget -q https://gitea.com/gitea/gitea-mcp/releases/download/v0.1.9/gitea-mcp_Linux_x86_64.tar.gz
+          tar -xzf gitea-mcp_Linux_x86_64.tar.gz -C .tools
+          chmod +x .tools/gitea-mcp
+          rm gitea-mcp_Linux_x86_64.tar.gz
+
+          # Create a package.json for local installation
+          echo '{"name":"code-review-tools","private":true,"dependencies":{"@anthropic-ai/claude-code":"latest"}}' > .tools/package.json
+
+          # Install Claude CLI locally
+          cd .tools
+          npm install
+          cd ..
+
+      # Add tools to PATH
+      - name: Add tools to PATH
         run: |
-          npm install -g @anthropic-ai/claude-code
-          # Log Claude version for debugging
-          claude --version || echo "Claude version command not available"
+          # Add our tools directory to PATH
+          echo "$PWD/.tools" >> $GITHUB_PATH
+          echo "$PWD/.tools/node_modules/.bin" >> $GITHUB_PATH
 
+      # Verify tools are working
+      - name: Verify tools
+        run: |
+          gitea-mcp --version || echo "gitea-mcp version not available"
+          claude --version || echo "Claude version not available"
 
+      # Configure Claude
       - name: Configure Claude
         env:
           GITEA_ACCESS_TOKEN: ${{ secrets.GT_TOKEN }}
-          GITEA_BASE:  ${{ gitea.server_url }}
+          GITEA_BASE: ${{ gitea.server_url }}
         run: |
-          # Configure the Gitea MCP server using the CLI with SSE transport
+          # Configure MCP server
           claude mcp add gitea \
             -e GITEA_ACCESS_TOKEN=$GITEA_ACCESS_TOKEN \
-            -- gitea-mcp \
+            -- ${{ github.workspace }}/.tools/gitea-mcp \
             -host $GITEA_BASE \
             -token $GITEA_ACCESS_TOKEN
+
           claude mcp list
           echo "Configured MCP server for Gitea"
 
-          # Configure allowed tools for Claude
+          # Configure tools
           claude config add allowedTools "Read"
           claude config add allowedTools "Bash(git show:*)"
           claude config add allowedTools "Bash(git log:*)"
