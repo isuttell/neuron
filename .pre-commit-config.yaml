@@ -17,6 +17,9 @@ repos:
     rev: v1.6.26
     hooks:
     -   id: actionlint
+        name: Lint Gitea Actions workflow files
+        description: Lint Gitea Actions workflow YAML files using actionlint
+        files: ^\.gitea/workflows/.*\.ya?ml$
 
 -   repo: local
     hooks:
