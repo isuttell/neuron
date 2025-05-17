@@ -73,16 +73,17 @@ jobs:
             -o pr.diff
 
           echo "Running code review..."
-          PROMPT="Please review the code changes in this PR based on the diff. 
+          PROMPT="Please review the code changes in this PR based on the diff.
 
-          1. Check for existing comments on the PR #$PR_NUMBER for context
-          2. Read related code for additional context so you understand the impact of the diff
-          3. Analyze code quality, potential bugs, and improvements of diff
-          4. Use Gitea MCP tools to comment directly on PR #$PR_NUMBER
-          5. Be specific in your comments and reference line numbers when possible
-          6. Focus on problems and potential improvements
-          
-          Be concise."
-          
+          1. Read all previous comments on the PR #$PR_NUMBER to understand ongoing discussions
+          2. Continue any conversation threads from previous comments when appropriate
+          3. Read related code for additional context so you understand the impact of the diff
+          4. Analyze code quality, potential bugs, and improvements of diff
+          5. Use Gitea MCP tools to comment directly on PR #$PR_NUMBER
+          6. Be specific in your comments and reference line numbers when possible
+          7. Focus on problems and potential improvements
+
+          Your response should be concise, professional, and clever. Avoid unnecessary explanations and focus on meaningful insights."
+
           # Create input for Claude that includes both prompt and diff
           (echo "$PROMPT"; echo; echo "<git_diff>"; cat pr.diff; echo "</git_diff>") | claude -p --max-turns 25
