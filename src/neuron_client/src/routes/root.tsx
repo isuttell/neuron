@@ -102,11 +102,14 @@ export function RootComponent() {
     );
   }
 
+  // Check if all authentication and connection conditions are met
+  const isFullyAuthenticated = !isLoading && isAuthenticated && isConnected && userSynced;
+
   return (
     <SidebarProvider>
       <ThreadTitleUpdater />
       <main className="flex flex-1">
-        {!isLoading && isAuthenticated && isConnected ? (
+        {isFullyAuthenticated ? (
           <>
             <MainSidebar />
             <Outlet />
