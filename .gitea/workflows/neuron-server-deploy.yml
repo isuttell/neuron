@@ -40,7 +40,7 @@ jobs:
       - name: Deployment notification
         run: |
           if [[ "${{ github.ref }}" == refs/tags/* ]]; then
-            echo "🚀 Deploying tagged release ${{ github.ref_name }} to production"
+            echo "🚀 Successfully pushed image gitea.zaks.io/isuttell/neuron:${{ github.ref_name }} for production deployment"
           else
-            echo "🚀 Deploying latest build from ${{ github.ref_name }} to staging"
+            echo "🚀 Successfully pushed image gitea.zaks.io/isuttell/neuron:latest for staging deployment"
           fi
