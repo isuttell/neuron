@@ -191,7 +191,13 @@ poetry run ruff check --fix src/neuron_server/
 npm install
 ```
 
-5. Start the development servers:
+5. Setup pre-commit hooks (after installing):
+```bash
+# Install the pre-commit hooks
+pre-commit install
+```
+
+6. Start the development servers:
 
 ```bash
 # Terminal 1: Start the backend
@@ -219,6 +225,30 @@ This will start the following services:
 - Redis cache
 
 Access the application at http://localhost:5000
+
+## Pre-commit Hooks
+
+This project uses pre-commit hooks to ensure code quality and consistency. The hooks automatically run:
+
+### Frontend Hooks:
+- ESLint checks and auto-fixes issues
+- TypeScript type checking
+- Jest tests for changed files
+
+### Backend Hooks:
+- Ruff linting with auto-fixes
+- Python tests for affected modules
+
+To install the hooks after cloning the repository:
+
+```bash
+# Frontend hooks setup (husky)
+npm install
+
+# Backend hooks setup (pre-commit)
+pip install pre-commit
+pre-commit install
+```
 
 ## Contributing
 

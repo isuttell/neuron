@@ -1,0 +1,44 @@
+repos:
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+    -   id: trailing-whitespace
+    -   id: end-of-file-fixer
+    -   id: check-yaml
+    -   id: check-added-large-files
+
+-   repo: https://github.com/charliermarsh/ruff-pre-commit
+    rev: v0.11.10
+    hooks:
+    -   id: ruff
+        args: [--fix]
+
+-   repo: local
+    hooks:
+    -   id: pytest-check
+        name: pytest-check
+        entry: poetry run pytest src/neuron_server/
+        language: system
+        pass_filenames: false
+        types: [python]
+
+    -   id: frontend-lint
+        name: Frontend Lint
+        entry: npm run lint -- --fix
+        language: system
+        files: ^src/neuron_client/src/.*\.(ts|tsx|js|jsx)$
+        pass_filenames: false
+
+    -   id: frontend-typecheck
+        name: Frontend TypeCheck
+        entry: npm run build
+        language: system
+        files: ^src/neuron_client/src/.*\.(ts|tsx)$
+        pass_filenames: false
+
+    -   id: frontend-test
+        name: Frontend Test
+        entry: npm test
+        language: system
+        files: ^src/neuron_client/src/.*\.(ts|tsx)$
+        pass_filenames: false
