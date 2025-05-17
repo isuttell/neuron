@@ -20,13 +20,13 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Install Poetry
         run: pipx install poetry
 
       - name: Set up Python 3.11
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
           cache: 'pip'
@@ -34,7 +34,7 @@ jobs:
             poetry.lock
 
       - name: Cache Poetry virtualenv
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         id: poetry-cache
         with:
           path: ~/.cache/pypoetry/virtualenvs
@@ -58,7 +58,7 @@ jobs:
         run: /root/.local/bin/poetry run ruff check src/neuron_server/
 
       - name: Cache pytest
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: .pytest_cache
           key: ${{ runner.os }}-pytest-${{ hashFiles('**/poetry.lock') }}-${{ hashFiles('**/src/neuron_server/**') }}
