@@ -43,14 +43,5 @@ jobs:
       - name: Lint with Ruff
         run: poetry run ruff check src/neuron_server/
 
-      - name: Cache pytest
-        uses: actions/cache@v4
-        with:
-          path: .pytest_cache
-          key: ${{ runner.os }}-pytest-${{ hashFiles('**/poetry.lock') }}-${{ hashFiles('**/src/neuron_server/**') }}
-          restore-keys: |
-            ${{ runner.os }}-pytest-${{ hashFiles('**/poetry.lock') }}-
-            ${{ runner.os }}-pytest-
-
       - name: Run tests
         run: poetry run pytest src/neuron_server/ --cov
