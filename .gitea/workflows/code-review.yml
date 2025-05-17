@@ -11,21 +11,21 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       # Cache tools directory
       - name: Cache tools
         id: cache-tools
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ./.tools
           key: ${{ runner.os }}-tools-v1-gitea-mcp-0.1.9-claude-cli
 
       # Setup Node.js with its own caching
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
@@ -69,7 +69,7 @@ jobs:
       - name: Configure Claude
         env:
           GITEA_ACCESS_TOKEN: ${{ secrets.GT_TOKEN }}
-          GITEA_BASE: ${{ gitea.server_url }}
+          GITEA_BASE: ${{ github.server_url }}
         run: |
           # Configure MCP server
           claude mcp add gitea \
@@ -96,12 +96,12 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GITEA_ACCESS_TOKEN: ${{ secrets.GT_TOKEN }}
-          PR_NUMBER: ${{ gitea.event.pull_request.number }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           echo "Fetching PR diff..."
           # Fetch the PR diff from Gitea API
           curl -sSL -H "Authorization: token $GITEA_ACCESS_TOKEN" \
-            "${{ gitea.server_url }}/api/v1/repos/${{ gitea.repository_owner }}/${{ gitea.repository_name }}/pulls/$PR_NUMBER.diff" \
+            "${{ github.server_url }}/api/v1/repos/${{ github.repository }}/pulls/$PR_NUMBER.diff" \
             -o pr.diff
 
           echo "Running code review..."
