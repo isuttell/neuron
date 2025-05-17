@@ -188,8 +188,8 @@ describe("RootComponent", () => {
     });
   });
 
-  // Simplified test that verifies conditions for showing content
-  it("renders spinner until user is synced, then renders content when all conditions are met", async () => {
+  // Verify that content only renders when all required conditions are met
+  it("renders content only when authenticated, connected, and user is synced", async () => {
     // Mock auth and API
     setupAuth0Mock({ isAuthenticated: true, isLoading: false });
     const apiMock = apiModule.api;
