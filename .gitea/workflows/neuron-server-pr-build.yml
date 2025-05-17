@@ -1,0 +1,33 @@
+name: Neuron Server PR Build
+
+on:
+  pull_request:
+    branches: [ master ]
+    paths:
+      - 'src/**'
+      - 'Dockerfile'
+      - 'pyproject.toml'
+      - 'poetry.lock'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.gitea/workflows/neuron-server-pr-build.yml'
+
+jobs:
+  build-neuron:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Build and verify image
+        id: build-only
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile
+          push: false
+          tags: gitea.zaks.io/isuttell/neuron:pr-${{ github.event.pull_request.number }}
+
+      - name: Verify build success
+        run: |
+          echo "✅ Build verification successful for PR #${{ github.event.pull_request.number }}"
+          echo "Image was built but not pushed to registry as per PR policy"
