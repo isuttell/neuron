@@ -106,7 +106,7 @@ export function RootComponent() {
     <SidebarProvider>
       <ThreadTitleUpdater />
       <main className="flex flex-1">
-        {!isLoading && isAuthenticated && isConnected ? (
+        {!isLoading && isAuthenticated && isConnected && userSynced ? (
           <>
             <MainSidebar />
             <Outlet />
