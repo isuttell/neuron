@@ -13,6 +13,14 @@ repos:
     -   id: ruff
         args: [--fix]
 
+-   repo: https://github.com/rhysd/actionlint
+    rev: v1.6.26
+    hooks:
+    -   id: actionlint
+        name: Lint Gitea Actions workflow files
+        description: Lint Gitea Actions workflow YAML files using actionlint
+        files: ^\.gitea/workflows/.*\.ya?ml$
+
 -   repo: local
     hooks:
     -   id: pytest-check

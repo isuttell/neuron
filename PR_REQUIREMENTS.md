@@ -30,6 +30,9 @@ Before submitting a PR, verify:
 - [ ] Linting passes: `npm run lint`
 - [ ] Test coverage: `npm run test:coverage`
 
+### For Gitea Actions Workflow Changes (.gitea/workflows)
+- [ ] Linting passes: `actionlint .gitea/workflows/*.yml`
+
 ## Pull Request Process
 
 1. Create a branch from `master` using a concise, descriptive name
