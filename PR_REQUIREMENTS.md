@@ -30,7 +30,7 @@ Before submitting a PR, verify:
 - [ ] Linting passes: `npm run lint`
 - [ ] Test coverage: `npm run test:coverage`
 
-### For Workflow Changes (.gitea/workflows)
+### For Gitea Actions Workflow Changes (.gitea/workflows)
 - [ ] Linting passes: `actionlint .gitea/workflows/*.yml`
 
 ## Pull Request Process
