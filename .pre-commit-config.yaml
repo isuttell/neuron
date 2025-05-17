@@ -13,6 +13,11 @@ repos:
     -   id: ruff
         args: [--fix]
 
+-   repo: https://github.com/rhysd/actionlint
+    rev: v1.6.26
+    hooks:
+    -   id: actionlint
+
 -   repo: local
     hooks:
     -   id: pytest-check
