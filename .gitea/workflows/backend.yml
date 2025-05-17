@@ -29,12 +29,42 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: |
+            poetry.lock
+
+      - name: Cache Poetry virtualenv
+        uses: actions/cache@v3
+        id: poetry-cache
+        with:
+          path: ~/.cache/pypoetry/virtualenvs
+          key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-poetry-
 
       - name: Install dependencies
+        if: steps.poetry-cache.outputs.cache-hit != 'true'
         run: /root/.local/bin/poetry install
+
+      - name: Report cache status
+        run: |
+          if [ "${{ steps.poetry-cache.outputs.cache-hit }}" == "true" ]; then
+            echo "✅ Using cached Poetry virtualenv"
+          else
+            echo "🔄 Fresh install of Python dependencies"
+          fi
 
       - name: Lint with Ruff
         run: /root/.local/bin/poetry run ruff check src/neuron_server/
+
+      - name: Cache pytest
+        uses: actions/cache@v3
+        with:
+          path: .pytest_cache
+          key: ${{ runner.os }}-pytest-${{ hashFiles('**/poetry.lock') }}-${{ hashFiles('**/src/neuron_server/**') }}
+          restore-keys: |
+            ${{ runner.os }}-pytest-${{ hashFiles('**/poetry.lock') }}-
+            ${{ runner.os }}-pytest-
 
       - name: Run tests
         run: /root/.local/bin/poetry run pytest src/neuron_server/ --cov
