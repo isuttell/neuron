@@ -260,4 +260,60 @@ describe("RootComponent", () => {
     expect(mockDispatch).toHaveBeenCalledWith(expect.any(Function)); // fetchConfig
     expect(mockDispatch).toHaveBeenCalledWith(expect.any(Function)); // fetchMediaLists
   });
+
+  // Test specifically for the userSynced state transitions and effects on rendering
+  it("transitions from loading spinner to content when API login completes and sets userSynced to true", async () => {
+    // Mock auth and API, but don't resolve the API promise yet
+    setupAuth0Mock({ isAuthenticated: true, isLoading: false });
+    const apiMock = apiModule.api;
+
+    // Create a manually controllable promise
+    let resolvePromise: (value: { status: string }) => void;
+    const apiPromise = new Promise<{ status: string }>((resolve) => {
+      resolvePromise = resolve;
+    });
+    (apiMock.post as jest.Mock).mockImplementation(() => apiPromise);
+
+    // Create container for assertion
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+
+    // First render - should be in loading state
+    await act(async () => {
+      render(
+        <Provider store={configureStore({
+          reducer: {
+            app: (state = {}) => state,
+            socket: (state = { connected: true }) => state,
+          },
+        })}>
+          <MemoryRouter initialEntries={["/"]}>
+            <Routes>
+              <Route path="/" element={<RootComponent />} />
+            </Routes>
+          </MemoryRouter>
+        </Provider>,
+        { container }
+      );
+    });
+
+    // Verify we're in the loading state with the spinner
+    expect(container.querySelector('[data-testid="spinner"]')).toBeInTheDocument();
+    expect(container.querySelector('[data-testid="main-sidebar"]')).not.toBeInTheDocument();
+
+    // Now resolve the API call, which should set userSynced to true
+    await act(async () => {
+      // Resolve promise which triggers userSynced to be set to true
+      resolvePromise({ status: "success" });
+      // Wait for the state update to propagate
+      await new Promise(r => setTimeout(r, 0));
+    });
+
+    // Verify the transition - spinner should be gone, content should be visible
+    expect(container.querySelector('[data-testid="spinner"]')).not.toBeInTheDocument();
+    expect(container.querySelector('[data-testid="main-sidebar"]')).toBeInTheDocument();
+
+    // Clean up
+    document.body.removeChild(container);
+  });
 });
