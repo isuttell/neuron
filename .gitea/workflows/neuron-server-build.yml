@@ -29,14 +29,46 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - name: Set build mode based on event
+        id: build-mode
+        run: |
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            echo "Building image to validate but not pushing for PR"
+            echo "is_pr=true" >> $GITHUB_OUTPUT
+          else
+            echo "Building and pushing image for ${{ github.ref }}"
+            echo "is_pr=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Login to Gitea Container Registry
+        if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
         with:
           registry: gitea.zaks.io
           username: ${{ secrets.USERNAME }}
           password: ${{ secrets.PASSWORD }}
 
-      - name: Build and push neuron
+      - name: Build image only (PR)
+        if: github.event_name == 'pull_request'
+        id: build-only
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile
+          builder: default
+          load: true
+          push: false
+          tags: gitea.zaks.io/isuttell/neuron:pr-${{ github.event.pull_request.number }}
+
+      - name: Verify build success (PR)
+        if: github.event_name == 'pull_request'
+        run: |
+          echo "✅ Build verification successful for PR #${{ github.event.pull_request.number }}"
+          echo "Image was built but not pushed to registry as per PR policy"
+
+      - name: Build and push image (non-PR)
+        if: github.event_name != 'pull_request'
+        id: build-push
         uses: docker/build-push-action@v5
         with:
           context: .
