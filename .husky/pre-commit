@@ -1,0 +1,6 @@
+#!/usr/bin/env sh
+
+# Run lint-staged for frontend files
+npx lint-staged
+# Run pre-commit for Python files
+pre-commit run --hook-stage pre-commit
