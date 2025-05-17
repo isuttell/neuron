@@ -1,9 +1,9 @@
 import { configureStore } from "@reduxjs/toolkit";
 import "@testing-library/jest-dom";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, act } from "@testing-library/react";
 import React from "react";
 import { Provider } from "react-redux";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Routes, Route } from "react-router-dom";
 import * as hooks from "../../hooks";
 import { RootComponent } from "../root";
 
@@ -100,24 +100,30 @@ describe("RootComponent", () => {
       },
     });
 
+    // Use Routes with a specific path to avoid pathname issues
     return render(
       <Provider store={store}>
-        <MemoryRouter>
-          <RootComponent />
+        <MemoryRouter initialEntries={["/"]}>
+          <Routes>
+            <Route path="/" element={<RootComponent />} />
+          </Routes>
         </MemoryRouter>
       </Provider>
     );
   };
 
-  it("shows loading spinner when still loading auth", () => {
+  it("shows loading spinner when still loading auth", async () => {
     setupAuth0Mock({ isAuthenticated: false, isLoading: true });
-    renderComponent();
+
+    await act(async () => {
+      renderComponent();
+    });
 
     expect(screen.getByTestId("spinner")).toBeInTheDocument();
     expect(screen.queryByTestId("main-sidebar")).not.toBeInTheDocument();
   });
 
-  it("redirects to login when not authenticated", () => {
+  it("redirects to login when not authenticated", async () => {
     const loginWithRedirect = jest.fn();
 
     setupAuth0Mock({ isAuthenticated: false, isLoading: false });
@@ -135,31 +141,37 @@ describe("RootComponent", () => {
       user: undefined,
     } as Auth0ContextInterface<User>);
 
-    renderComponent();
+    await act(async () => {
+      renderComponent();
+    });
 
     expect(loginWithRedirect).toHaveBeenCalled();
     expect(screen.getByTestId("spinner")).toBeInTheDocument();
   });
 
-  it("shows error page when auth error occurs", () => {
+  it("shows error page when auth error occurs", async () => {
     setupAuth0Mock({
       isAuthenticated: false,
       isLoading: false,
       error: new Error("Auth error"),
     });
 
-    renderComponent();
+    await act(async () => {
+      renderComponent();
+    });
 
     expect(screen.getByText("Oops!")).toBeInTheDocument();
     expect(screen.getByText("Error: Auth error")).toBeInTheDocument();
   });
 
-  it("keeps showing spinner when authenticated but not connected", () => {
+  it("keeps showing spinner when authenticated but not connected", async () => {
     setupAuth0Mock({ isAuthenticated: true, isLoading: false });
     setupApiMock(true);
 
     // Connection status is false
-    renderComponent(false);
+    await act(async () => {
+      renderComponent(false);
+    });
 
     expect(screen.getByTestId("spinner")).toBeInTheDocument();
     expect(screen.queryByTestId("main-sidebar")).not.toBeInTheDocument();
@@ -169,23 +181,21 @@ describe("RootComponent", () => {
     // Create necessary mocks
     setupAuth0Mock({ isAuthenticated: true, isLoading: false });
     const apiMock = apiModule.api;
-    (apiMock.post as jest.Mock).mockImplementation(() => {
-      return new Promise<{status: string}>(resolve => {
-        setTimeout(() => resolve({ status: "success" }), 10);
-      });
-    });
 
-    // Render the component
-    renderComponent(true);
+    // Don't resolve the promise - keep it pending so userSynced stays false
+    (apiMock.post as jest.Mock).mockImplementation(() => new Promise(() => {}));
+
+    // Render the component using act to handle async state updates
+    await act(async () => {
+      renderComponent(true);
+    });
 
     // Should still be loading because userSynced is false
     expect(screen.getByTestId("spinner")).toBeInTheDocument();
     expect(screen.queryByTestId("main-sidebar")).not.toBeInTheDocument();
 
-    // Wait for API call to be made
-    await waitFor(() => {
-      expect(apiMock.post).toHaveBeenCalledWith("/users/login", {});
-    });
+    // Verify API call was attempted
+    expect(apiMock.post).toHaveBeenCalledWith("/users/login", {});
   });
 
   // Verify that content only renders when all required conditions are met
@@ -197,52 +207,54 @@ describe("RootComponent", () => {
 
     // Mock state to simulate the userSynced state being true
     const useStateMock = jest.spyOn(React, 'useState');
-    let stateSetter: jest.Mock;
     useStateMock.mockImplementationOnce(() => {
-      stateSetter = jest.fn();
-      return [true, stateSetter]; // Simulate userSynced=true
+      return [true, jest.fn()]; // Simulate userSynced=true
     });
 
     // Mock connected status
     useAppSelectorMock.mockReturnValue(true); // isConnected = true
 
-    // Render with all conditions met
-    const { rerender } = renderComponent(true);
+    // Create fresh render container to avoid conflicts
+    const container = document.createElement('div');
+    document.body.appendChild(container);
 
-    // Initial render should still have spinner because of original implementation
-    expect(screen.queryByTestId("spinner")).toBeInTheDocument();
-
-    // Verify API call was made
-    await waitFor(() => {
-      expect(apiMock.post).toHaveBeenCalledWith("/users/login", {});
+    // Render with all conditions met using act to handle state updates
+    await act(async () => {
+      render(
+        <Provider store={configureStore({
+          reducer: {
+            app: (state = {}) => state,
+            socket: (state = { connected: true }) => state,
+          },
+        })}>
+          <MemoryRouter initialEntries={["/"]}>
+            <Routes>
+              <Route path="/" element={<RootComponent />} />
+            </Routes>
+          </MemoryRouter>
+        </Provider>,
+        { container }
+      );
     });
 
-    // Test the condition directly without relying on state updates
-    const rootJsx = (
-      <Provider store={configureStore({
-        reducer: {
-          app: (state = {}) => state,
-          socket: (state = { connected: true }) => state,
-        },
-      })}>
-        <MemoryRouter>
-          <div data-testid="main-sidebar">MainSidebar</div>
-        </MemoryRouter>
-      </Provider>
-    );
+    // Verify API call was made
+    expect(apiMock.post).toHaveBeenCalledWith("/users/login", {});
 
-    // Re-render with JSX that simulates the content being visible
-    rerender(rootJsx);
+    // Since we're mocking userSynced=true, content should be visible
+    expect(container.querySelector('[data-testid="main-sidebar"]')).toBeInTheDocument();
 
-    // Now we should see the MainSidebar
-    expect(screen.getByTestId("main-sidebar")).toBeInTheDocument();
+    // Clean up
+    document.body.removeChild(container);
   });
 
-  it("connects socket and fetches initial data upon authentication", () => {
+  it("connects socket and fetches initial data upon authentication", async () => {
     setupAuth0Mock({ isAuthenticated: true, isLoading: false });
     setupApiMock(true);
 
-    renderComponent(true);
+    // Use act to handle async state updates
+    await act(async () => {
+      renderComponent(true);
+    });
 
     expect(mockDispatch).toHaveBeenCalledWith({ type: "socket/connect" });
     expect(mockDispatch).toHaveBeenCalledWith(expect.any(Function)); // fetchConfig
