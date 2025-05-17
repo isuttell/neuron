@@ -105,8 +105,17 @@ class ReplicateAudioGenerationTool(BaseTool):
             os.path.join(neuron_config.temp_folder, uuid4().hex)
         )
         try:
+            # Generate a random session token
+            session_token = str(uuid4())
+            
+            # Set the cookie in the session
+            cookies = (
+                {"neuron_session": session_token} 
+                if neuron_config.static_require_auth else None
+            )
+            
             async with (
-                aiohttp.ClientSession() as session,
+                aiohttp.ClientSession(cookies=cookies) as session,
                 session.get(video_url) as response,
             ):
                 response.raise_for_status()

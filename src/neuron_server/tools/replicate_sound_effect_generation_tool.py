@@ -138,8 +138,17 @@ text prompts with the stackadoc/stable-audio-open-1.0 model. Ideal for:
             )
             tmp_files.append(tmp_video_file)
 
+            # Generate a random session token
+            session_token = str(uuid4())
+            
+            # Set the cookie in the session
+            cookies = (
+                {"neuron_session": session_token} 
+                if neuron_config.static_require_auth else None
+            )
+            
             async with (
-                aiohttp.ClientSession() as session,
+                aiohttp.ClientSession(cookies=cookies) as session,
                 session.get(video_url) as response,
                 aiofiles.open(tmp_video_file, "wb") as file,
             ):
