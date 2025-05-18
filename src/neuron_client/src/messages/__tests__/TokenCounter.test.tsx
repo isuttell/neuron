@@ -1,5 +1,4 @@
 import { render, screen } from "@testing-library/react";
-import { TooltipProvider } from "@/components/ui/tooltip";
 import TokenCounter from "../TokenCounter";
 import { formatNumber } from "../../utils/numberFormat";
 
