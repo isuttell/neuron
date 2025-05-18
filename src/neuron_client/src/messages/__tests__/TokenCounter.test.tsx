@@ -1,13 +1,14 @@
 import { render, screen } from "@testing-library/react";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import TokenCounter from "../TokenCounter";
 import { formatNumber } from "../../utils/numberFormat";
 
-// Mock the formatNumber function to make testing easier
+// Mock formatNumber function
 jest.mock("../../utils/numberFormat", () => ({
   formatNumber: jest.fn(),
 }));
 
-// We need to spy on TooltipContent rendered content rather than mocking TokenMetadataTable
+// Mock the TooltipContent component to make it always visible in tests
 jest.mock("@/components/ui/tooltip", () => {
   const actual = jest.requireActual("@/components/ui/tooltip");
   return {
@@ -21,18 +22,22 @@ jest.mock("@/components/ui/tooltip", () => {
   };
 });
 
-// Mock TokenMetadataTable as a simple component
+// Mock TokenMetadataTable component
 jest.mock("../TokenMetadataTable", () => {
-  return function MockTokenMetadataTable(props: {
+  return function MockTokenMetadataTable({
+    input_tokens,
+    output_tokens,
+    total_tokens,
+  }: {
     input_tokens: number;
     output_tokens: number;
     total_tokens: number;
   }) {
     return (
       <div data-testid="token-metadata-table">
-        <div data-testid="input-tokens">{props.input_tokens}</div>
-        <div data-testid="output-tokens">{props.output_tokens}</div>
-        <div data-testid="total-tokens">{props.total_tokens}</div>
+        <div data-testid="input-tokens">{input_tokens}</div>
+        <div data-testid="output-tokens">{output_tokens}</div>
+        <div data-testid="total-tokens">{total_tokens}</div>
       </div>
     );
   };
@@ -41,7 +46,7 @@ jest.mock("../TokenMetadataTable", () => {
 describe("TokenCounter", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    // Default mock implementation for formatNumber
+    // Default implementation for formatNumber
     (formatNumber as jest.Mock).mockImplementation((num) => num.toString());
   });
 
@@ -57,13 +62,13 @@ describe("TokenCounter", () => {
     render(<TokenCounter {...props} />);
 
     // Check that the formatted total tokens value is displayed in the progress bar
-    expect(screen.getAllByText("250").length).toBeGreaterThan(0);
-
-    // Verify the mocked TokenMetadataTable has been rendered with the correct props
-    expect(screen.getByTestId("token-metadata-table")).toBeInTheDocument();
-    expect(screen.getByTestId("input-tokens").textContent).toBe("100");
-    expect(screen.getByTestId("output-tokens").textContent).toBe("150");
-    expect(screen.getByTestId("total-tokens").textContent).toBe("250");
+    const progressText = screen.getAllByText("250").find(element => 
+      element.parentElement?.className.includes("bg-secondary")
+    );
+    expect(progressText).toBeDefined();
+    
+    // Verify formatNumber was called with the correct value
+    expect(formatNumber).toHaveBeenCalledWith(250);
   });
 
   it("calculates the correct percentage width for progress bar", () => {
@@ -75,28 +80,39 @@ describe("TokenCounter", () => {
 
     (formatNumber as jest.Mock).mockReturnValue("500");
 
-    render(<TokenCounter {...props} />);
+    const { container } = render(<TokenCounter {...props} />);
 
     // Get the progress bar element
-    const progressBar = document.querySelector(".bg-primary");
+    const progressBar = container.querySelector(".bg-primary");
     expect(progressBar).not.toBeNull();
-
+    
     // Check that the width is roughly 40% (exact formatting may vary)
     const style = progressBar?.getAttribute("style");
     expect(style).toBeDefined();
-    expect(style).toContain("width: 40%"); // Just check that it contains the correct width
+    expect(style).toContain("width: 40%");
   });
 
-  it("calls formatNumber with the correct total tokens value", () => {
+  it("passes correct props to TokenMetadataTable", () => {
     const props = {
-      input_tokens: 1500,
-      output_tokens: 2500,
-      total_tokens: 4000,
+      input_tokens: 150,
+      output_tokens: 250,
+      total_tokens: 400,
     };
 
     render(<TokenCounter {...props} />);
 
-    // Check that formatNumber was called with the total tokens value
-    expect(formatNumber).toHaveBeenCalledWith(4000);
+    // Now we can find the TokenMetadataTable which is always rendered
+    // because we've mocked the TooltipContent to be visible
+    const tooltipContent = screen.getByTestId("tooltip-content");
+    expect(tooltipContent).toBeInTheDocument();
+    
+    // The rendered TokenMetadataTable should receive the correct props
+    const inputTokens = screen.getByTestId("input-tokens");
+    const outputTokens = screen.getByTestId("output-tokens");
+    const totalTokens = screen.getByTestId("total-tokens");
+    
+    expect(inputTokens.textContent).toBe("150");
+    expect(outputTokens.textContent).toBe("250");
+    expect(totalTokens.textContent).toBe("400");
   });
 });
