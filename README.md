@@ -250,6 +250,20 @@ pip install pre-commit
 pre-commit install
 ```
 
+### Using Pre-commit
+
+Before committing changes, it's recommended to run the pre-commit checks manually to ensure your changes pass all checks:
+
+```bash
+# Run pre-commit on all files
+pre-commit run --all-files
+
+# Run pre-commit on staged files only
+pre-commit run
+```
+
+These checks will automatically run when you attempt to commit, but running them manually first can save time by catching issues early.
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.

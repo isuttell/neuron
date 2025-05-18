@@ -127,5 +127,13 @@ This project uses a self-hosted Gitea instance at https://gitea.zaks.io for vers
 - Always run lint and formatting commands to automatically fix issues before making manual code changes:
   - Frontend: `npm run lint -- --fix`
   - Backend: `poetry run ruff check --fix src/neuron_server/`
+- Always use the pre-commit tool to verify commits will pass checks before actually committing:
+  ```bash
+  # Run pre-commit on all files
+  pre-commit run --all-files
+
+  # Run pre-commit on staged files
+  pre-commit run
+  ```
 
 For complete PR requirements and process, refer to @PR_REQUIREMENTS.md
