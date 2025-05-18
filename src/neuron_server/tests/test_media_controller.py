@@ -13,8 +13,7 @@ from neuron_server.models.media_list_model import MediaListModel
 
 # Constants
 TEST_JWT_TOKEN = "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0In0.abc"
-HTTP_NOT_FOUND = HTTPStatus.NOT_FOUND
-HTTP_FORBIDDEN = HTTPStatus.FORBIDDEN
+ISO_DATETIME = "2023-01-01T12:00:00"
 
 
 @pytest.fixture
@@ -39,7 +38,7 @@ def mock_token() -> TokenPayload:
 @pytest.fixture
 def mock_media_item() -> MagicMock:
     """Create a mock media item for testing."""
-    media_item = MagicMock()
+    media_item = MagicMock(name="MockMediaItem")
     media_item.id = uuid4()
     media_item.name = "Test Media"
     media_item.description = "Test Description"
@@ -62,7 +61,7 @@ def mock_media_item() -> MagicMock:
 @pytest.fixture
 def mock_media_list() -> MagicMock:
     """Create a mock media list for testing."""
-    media_list = MagicMock()
+    media_list = MagicMock(name="MockMediaList")
     media_list.id = uuid4()
     media_list.name = "Test Media List"
     media_list.description = "Test Description"
@@ -85,18 +84,14 @@ def mock_media_list() -> MagicMock:
 @pytest.fixture
 def mock_media_list_item() -> MagicMock:
     """Create a mock media list item for testing."""
-    media_list_item = MagicMock()
+    media_list_item = MagicMock(name="MockMediaListItem")
     media_list_item.id = uuid4()
     media_list_item.media_list_id = uuid4()
     media_list_item.media_item_id = uuid4()
     media_list_item.index = 0
-    media_list_item.created_at = MagicMock()
-    created_time = "2023-01-01T12:00:00"
-    created_at_mock = media_list_item.created_at.astimezone.return_value.isoformat
-    created_at_mock.return_value = created_time
-    media_list_item.updated_at = MagicMock()
-    updated_at_mock = media_list_item.updated_at.astimezone.return_value.isoformat
-    updated_at_mock.return_value = created_time
+    # Simplify datetime handling by using constant strings
+    media_list_item.created_at.astimezone().isoformat.return_value = ISO_DATETIME
+    media_list_item.updated_at.astimezone().isoformat.return_value = ISO_DATETIME
     media_list_item.model_dump.return_value = {
         "id": str(media_list_item.id),
         "media_list_id": str(media_list_item.media_list_id),
@@ -152,6 +147,42 @@ async def test_get_recent_media(
             assert "media_items" in result
             assert len(result["media_items"]) == 1
             assert result["media_items"][0]["id"] == str(mock_media_item.id)
+
+        # Verify mocks were called correctly
+        mock_get_recent.assert_called_once_with(
+            mock_token.user_id, limit=10, offset=0
+        )
+
+
+@pytest.mark.asyncio
+async def test_get_recent_media_empty(
+    app: Quart,
+    mock_token: TokenPayload,
+    mock_decode_token: AsyncMock,
+) -> None:
+    """Test getting recent media items when there are no items."""
+    # Setup mocks
+    with patch.object(
+        MediaItemModel, "get_recent", new_callable=AsyncMock
+    ) as mock_get_recent:
+        mock_get_recent.return_value = []
+
+        # Create request context
+        async with app.test_request_context(
+            "/api/media/recent?limit=10&offset=0",
+            headers={"Authorization": TEST_JWT_TOKEN},
+        ):
+            # Set token on request
+            app.request_class.token = mock_token
+
+            # Call the endpoint function directly
+            from neuron_server.controllers.media_controller import get_recent_media
+
+            result = await get_recent_media()
+
+            # Verify response
+            assert "media_items" in result
+            assert len(result["media_items"]) == 0
 
         # Verify mocks were called correctly
         mock_get_recent.assert_called_once_with(
@@ -377,7 +408,7 @@ async def test_get_media_list_not_found(
             # Verify response
             assert "error" in result
             assert result["error"] == "Media list not found"
-            assert status == HTTP_NOT_FOUND
+            assert status == HTTPStatus.NOT_FOUND
 
         # Verify mocks were called correctly
         mock_get.assert_called_once_with(list_id=list_id)
@@ -418,10 +449,130 @@ async def test_get_media_list_unauthorized(
             # Verify response
             assert "error" in result
             assert result["error"] == "Unauthorized"
-            assert status == HTTP_FORBIDDEN
+            assert status == HTTPStatus.FORBIDDEN
 
         # Verify mocks were called correctly
         mock_get.assert_called_once_with(list_id=list_id)
+
+
+@pytest.mark.asyncio
+async def test_get_media_list_public_visibility(
+    test_context: dict,
+    mock_decode_token: AsyncMock,
+) -> None:
+    """Test accessing a media list with public visibility."""
+    app = test_context["app"]
+    mock_token = test_context["mock_token"]
+    mock_media_list = test_context["mock_media_list"]
+    mock_media_list_item = test_context["mock_media_list_item"]
+    mock_media_item = test_context["mock_media_item"]
+    list_id = mock_media_list.id
+
+    # Change media list owner to be different from token user but with public visibility
+    mock_media_list.user_id = "different_user_id"
+    mock_media_list.shared_with = []
+    mock_media_list.visibility = "public"
+
+    # Setup mocks
+    with (
+        patch.object(
+            MediaListModel, "get", new_callable=AsyncMock
+        ) as mock_get,
+        patch.object(
+            MediaListItemModel, "get_by_list", new_callable=AsyncMock
+        ) as mock_get_by_list,
+        patch.object(
+            MediaItemModel, "get_many", new_callable=AsyncMock
+        ) as mock_get_many,
+    ):
+        mock_get.return_value = mock_media_list
+        mock_get_by_list.return_value = [mock_media_list_item]
+        mock_get_many.return_value = [mock_media_item]
+
+        # Create request context
+        async with app.test_request_context(
+            f"/api/media/lists/{list_id}",
+            headers={"Authorization": TEST_JWT_TOKEN},
+        ):
+            # Set token on request
+            app.request_class.token = mock_token
+
+            # Call the endpoint function directly
+            from neuron_server.controllers.media_controller import get_media_list
+
+            result = await get_media_list(list_id)
+
+            # Verify response - should succeed because it's public
+            assert "media_lists" in result
+            assert "media_list_items" in result
+            assert "media_items" in result
+            assert len(result["media_lists"]) == 1
+            assert result["media_lists"][0]["id"] == str(mock_media_list.id)
+
+        # Verify mocks were called correctly
+        mock_get.assert_called_once_with(list_id=list_id)
+        mock_get_by_list.assert_called_once_with(list_id)
+        mock_get_many.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_get_media_list_shared_with_user(
+    test_context: dict,
+    mock_decode_token: AsyncMock,
+) -> None:
+    """Test accessing a media list that is shared with the user."""
+    app = test_context["app"]
+    mock_token = test_context["mock_token"]
+    mock_media_list = test_context["mock_media_list"]
+    mock_media_list_item = test_context["mock_media_list_item"]
+    mock_media_item = test_context["mock_media_item"]
+    list_id = mock_media_list.id
+
+    # Change media list owner to be different from token user but shared with the user
+    mock_media_list.user_id = "different_user_id"
+    mock_media_list.shared_with = ["test_user_id"]  # User is in shared_with list
+    mock_media_list.visibility = "private"  # Private but shared
+
+    # Setup mocks
+    with (
+        patch.object(
+            MediaListModel, "get", new_callable=AsyncMock
+        ) as mock_get,
+        patch.object(
+            MediaListItemModel, "get_by_list", new_callable=AsyncMock
+        ) as mock_get_by_list,
+        patch.object(
+            MediaItemModel, "get_many", new_callable=AsyncMock
+        ) as mock_get_many,
+    ):
+        mock_get.return_value = mock_media_list
+        mock_get_by_list.return_value = [mock_media_list_item]
+        mock_get_many.return_value = [mock_media_item]
+
+        # Create request context
+        async with app.test_request_context(
+            f"/api/media/lists/{list_id}",
+            headers={"Authorization": TEST_JWT_TOKEN},
+        ):
+            # Set token on request
+            app.request_class.token = mock_token
+
+            # Call the endpoint function directly
+            from neuron_server.controllers.media_controller import get_media_list
+
+            result = await get_media_list(list_id)
+
+            # Verify response - should succeed because it's shared with the user
+            assert "media_lists" in result
+            assert "media_list_items" in result
+            assert "media_items" in result
+            assert len(result["media_lists"]) == 1
+            assert result["media_lists"][0]["id"] == str(mock_media_list.id)
+
+        # Verify mocks were called correctly
+        mock_get.assert_called_once_with(list_id=list_id)
+        mock_get_by_list.assert_called_once_with(list_id)
+        mock_get_many.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -526,7 +677,7 @@ async def test_update_media_list_not_found(
             # Verify response
             assert "error" in result
             assert result["error"] == "Media list not found"
-            assert status == HTTP_NOT_FOUND
+            assert status == HTTPStatus.NOT_FOUND
 
         # Verify mocks were called correctly
         mock_get.assert_called_once_with(list_id=list_id)
@@ -576,7 +727,7 @@ async def test_update_media_list_unauthorized(
             # Verify response
             assert "error" in result
             assert result["error"] == "Unauthorized"
-            assert status == HTTP_FORBIDDEN
+            assert status == HTTPStatus.FORBIDDEN
 
         # Verify mocks were called correctly
         mock_get.assert_called_once_with(list_id=list_id)
@@ -657,7 +808,7 @@ async def test_delete_media_list_not_found(
             # Verify response
             assert "error" in result
             assert result["error"] == "Media list not found"
-            assert status == HTTP_NOT_FOUND
+            assert status == HTTPStatus.NOT_FOUND
 
         # Verify mocks were called correctly
         mock_get.assert_called_once_with(list_id=list_id)
@@ -697,7 +848,7 @@ async def test_delete_media_list_unauthorized(
             # Verify response
             assert "error" in result
             assert result["error"] == "Unauthorized"
-            assert status == HTTP_FORBIDDEN
+            assert status == HTTPStatus.FORBIDDEN
 
         # Verify mocks were called correctly
         mock_get.assert_called_once_with(list_id=list_id)
@@ -740,6 +891,7 @@ async def test_add_media_to_list(
     ):
         mock_get.return_value = mock_media_list
         mock_get_item.return_value = mock_media_item
+        # Mock the current max index as 1, so next index should be 2
         mock_get_max_index.return_value = 1
         mock_add_media_item.return_value = mock_media_list_item
 
@@ -767,6 +919,8 @@ async def test_add_media_to_list(
         mock_get.assert_called_once_with(list_id=list_id)
         mock_get_item.assert_called_once_with(media_id=media_item_id)
         mock_get_max_index.assert_called_once_with(list_id)
+        # Index should be current max index + 1 (1 + 1 = 2)
+        # This matches the logic in media_controller.py lines 171-172
         mock_add_media_item.assert_called_once_with(
             list_id=list_id, media_item_id=media_item_id, index=2
         )
@@ -808,7 +962,7 @@ async def test_add_media_to_list_not_found(
             # Verify response
             assert "error" in result
             assert result["error"] == "Media list not found"
-            assert status == HTTP_NOT_FOUND
+            assert status == HTTPStatus.NOT_FOUND
 
         # Verify mocks were called correctly
         mock_get.assert_called_once_with(list_id=list_id)
@@ -854,7 +1008,7 @@ async def test_add_media_to_list_unauthorized(
             # Verify response
             assert "error" in result
             assert result["error"] == "Unauthorized"
-            assert status == HTTP_FORBIDDEN
+            assert status == HTTPStatus.FORBIDDEN
 
         # Verify mocks were called correctly
         mock_get.assert_called_once_with(list_id=list_id)
@@ -906,7 +1060,7 @@ async def test_add_media_to_list_media_not_found(
             # Verify response
             assert "error" in result
             assert result["error"] == "Media item not found"
-            assert status == HTTP_NOT_FOUND
+            assert status == HTTPStatus.NOT_FOUND
 
         # Verify mocks were called correctly
         mock_get.assert_called_once_with(list_id=list_id)
