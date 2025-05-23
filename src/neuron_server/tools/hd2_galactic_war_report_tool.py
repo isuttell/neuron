@@ -5,6 +5,8 @@ from typing import Any
 
 import aiohttp
 from langchain.tools import BaseTool
+from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnableConfig
 from pydantic import BaseModel
 
@@ -145,16 +147,18 @@ Data interpretation notes:
             from neuron_server.models.provider_model import ProviderModelModel
             llm = await ProviderModelModel.get_active_llm()
 
-            # Generate the report using LLM directly
+            # Generate the report using LLM chain
             json_data = json.dumps(report_data, indent=2)
 
             # Format the prompt with the data
             formatted_human_prompt = human_prompt.format(json_data=json_data)
 
-            return await llm.ainvoke(
+            # Create chain with proper message classes
+            chain = llm.model | StrOutputParser()
+            return await chain.ainvoke(
                 [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": formatted_human_prompt}
+                    SystemMessage(content=system_prompt),
+                    HumanMessage(content=formatted_human_prompt)
                 ],
                 config
             )
