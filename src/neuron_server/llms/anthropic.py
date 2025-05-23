@@ -16,12 +16,14 @@ class AnthropicLLM(LLM):
         model_id: str | None = "claude-3-5-sonnet-20241022",
         provider_model_id: str | None = None,
     ) -> None:
+        max_tokens = 32_000 if "opus" in (model_id or "").lower() else 64_000
+
         model = ChatAnthropic(
             model=model_id,
             temperature=1,
             streaming=True,
-            max_tokens=64_000,
-            thinking={"type": "enabled", "budget_tokens": 10_000},
+            max_tokens=max_tokens,
+            thinking={"type": "enabled", "budget_tokens": 1024},
             verbose=True,
         )
         title_model = ChatAnthropic(
