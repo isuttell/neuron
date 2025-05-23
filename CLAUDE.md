@@ -122,6 +122,7 @@ This project uses a self-hosted Gitea instance at https://gitea.zaks.io for vers
 
 - Always use the Gitea MCP tools installed for this project to interact with the repository
 - Always specify the correct repository owner and name (isuttell/neuron) when using Gitea commands
+- Use the `tea` CLI tool for Gitea operations instead of `gh` - most useful command is `tea pr --repo isuttell/neuron --comments <PR_NUMBER>` which gets comments from a PR
 - CI/CD is handled by Gitea Actions, which run the lint and test commands automatically
 - Always check the Gitea Actions status on pull requests before merging
 - Always run lint and formatting commands to automatically fix issues before making manual code changes:
