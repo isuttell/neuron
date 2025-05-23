@@ -121,3 +121,5 @@ jobs:
             - Acknowledge fixes to previously identified issues
             - Include assessment of code style consistency with the repository
             - Highlight potential impacts on other parts of the codebase
+
+            IMPORTANT: If you encounter any errors, permission issues, or need additional access during the review process, leave a comment on the PR explaining what went wrong and what additional access or fixes are needed.
