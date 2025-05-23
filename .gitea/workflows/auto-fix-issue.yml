@@ -10,23 +10,6 @@ permissions:
   issues: write
 
 jobs:
-  debug-event:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Debug Event
-        env:
-          ISSUE_TITLE: ${{ github.event.issue.title }}
-        run: |
-          echo "Event: ${{ github.event_name }}"
-          echo "Action: ${{ github.event.action }}"
-          echo "Issue Number: ${{ github.event.issue.number }}"
-          echo "Issue Title: $ISSUE_TITLE"
-          echo "Full event JSON: ${{ toJSON(github.event) }}"
-          echo "Labels JSON: ${{ toJSON(github.event.issue.labels) }}"
-          echo "Label added: ${{ github.event.label.name }}"
-          echo "Check auto-fix label result: ${{ contains(github.event.issue.labels.*.name, 'auto-fix') }}"
-          echo "Check label added: ${{ github.event.label.name == 'auto-fix' }}"
-
   auto-fix:
     runs-on: ubuntu-latest
     if: github.event.label.name == 'auto-fix' || contains(github.event.issue.labels.*.name, 'auto-fix')
