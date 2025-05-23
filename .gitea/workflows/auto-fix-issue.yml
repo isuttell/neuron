@@ -14,16 +14,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Debug Event
+        env:
+          ISSUE_TITLE: ${{ github.event.issue.title }}
         run: |
           echo "Event: ${{ github.event_name }}"
           echo "Action: ${{ github.event.action }}"
-          echo "Label: ${{ github.event.label.name }}"
-          echo "Full event:"
-          echo '${{ toJson(github.event) }}'
+          echo "Issue Number: ${{ github.event.issue.number }}"
+          echo "Issue Title: $ISSUE_TITLE"
+          echo "Check auto-fix label result: ${{ contains(github.event.issue.labels.*.name, 'auto-fix') }}"
 
   auto-fix:
     runs-on: ubuntu-latest
-    if: github.event.label.name == 'auto-fix'
+    if: contains(github.event.issue.labels.*.name, 'auto-fix')
 
     steps:
       - name: Checkout code
