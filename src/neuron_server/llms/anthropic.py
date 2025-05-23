@@ -29,9 +29,6 @@ class AnthropicLLM(LLM):
             max_tokens=max_tokens,
             thinking={"type": "enabled", "budget_tokens": 1024},
             verbose=True,
-            model_kwargs={
-                "extra_headers": {"anthropic-beta": "interleaved-thinking-2025-05-14"}
-            },
         )
         title_model = ChatAnthropic(
             model="claude-3-5-haiku-20241022",
