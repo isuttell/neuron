@@ -28,7 +28,7 @@ class AsyncContextManagerMock(AsyncMock):
     """Mock that supports async context manager protocol."""
     async def __aenter__(self) -> "AsyncContextManagerMock":
         return self
-        
+
     async def __aexit__(
         self,
         exc_type: type[BaseException] | None,
@@ -105,7 +105,7 @@ sys.modules["redis"] = redis_mock
 # Mock LangGraph and its modules
 langgraph_mock = Mock()
 langgraph_graph = Mock()
-langgraph_graph_message = Mock() 
+langgraph_graph_message = Mock()
 langgraph_graph_message.add_messages = Mock()
 langgraph_checkpoint = Mock()
 langgraph_checkpoint_postgres = Mock()
@@ -352,21 +352,21 @@ def mock_openai_modules() -> None:
 def mock_quart_app() -> None:
     """Make Quart app mocks work with async context manager protocol."""
     from quart import Quart
-    
+
     # Add async context manager support to Quart app test client and request context
     original_test_client = Quart.test_client
     original_test_request_context = Quart.test_request_context
-    
+
     def patched_test_client(self: Quart) -> object:
         client = original_test_client(self)
         if not hasattr(client, "__aenter__"):
             client.__aenter__ = AsyncMock(return_value=client)
             client.__aexit__ = AsyncMock(return_value=None)
         return client
-    
+
     def patched_test_request_context(
-        self: Quart, 
-        *args: object, 
+        self: Quart,
+        *args: object,
         **kwargs: object
     ) -> object:
         ctx = original_test_request_context(self, *args, **kwargs)
@@ -374,13 +374,13 @@ def mock_quart_app() -> None:
             ctx.__aenter__ = AsyncMock(return_value=ctx)
             ctx.__aexit__ = AsyncMock(return_value=None)
         return ctx
-    
+
     # Patch the methods
     Quart.test_client = patched_test_client
     Quart.test_request_context = patched_test_request_context
-    
+
     yield
-    
+
     # Restore original methods after tests
     Quart.test_client = original_test_client
     Quart.test_request_context = original_test_request_context

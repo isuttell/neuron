@@ -34,15 +34,15 @@ async def scheduler() -> AsyncGenerator[AbstractAsyncRedisEventScheduler, None]:
             self.metadata_prefix = "event_metadata:"
             self._running = False
             self._client = redis_client_mock
-            
+
         async def on_event(self, event_id: str, event_data: dict) -> None:
             """Implementation of abstract method"""
             pass
-            
+
         def redis_client(self) -> object:
             """Override to return the mock Redis client as context manager."""
             return redis_client_mock
-            
+
         async def _get_redis_client(self) -> object:
             """Override to return the mock Redis client."""
             return redis_client_mock
@@ -51,7 +51,7 @@ async def scheduler() -> AsyncGenerator[AbstractAsyncRedisEventScheduler, None]:
     scheduler = SimpleScheduler()
     mock_on_event = AsyncMock()
     scheduler.on_event = mock_on_event
-    
+
     yield scheduler
 
 

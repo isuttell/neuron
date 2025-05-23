@@ -257,13 +257,13 @@ class ReplicateImageGenerationTool(BaseTool):
             tmp_upload_file = os.path.join(neuron_config.temp_folder, uuid4().hex)
             # Generate a random session token
             session_token = str(uuid4())
-            
+
             # Set the cookie in the session
             cookies = (
-                {"neuron_session": session_token} 
+                {"neuron_session": session_token}
                 if neuron_config.static_require_auth else None
             )
-            
+
             async with (
                 aiohttp.ClientSession(cookies=cookies) as session,
                 session.get(image_url) as response,

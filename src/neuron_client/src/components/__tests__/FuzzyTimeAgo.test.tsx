@@ -21,7 +21,7 @@ describe("FuzzyTimeAgo", () => {
     // 30 seconds ago
     const timestamp = NOW - 30 * 1000;
     render(<FuzzyTimeAgo timestamp={timestamp} />);
-    
+
     expect(screen.getByText("just now")).toBeInTheDocument();
   });
 
@@ -29,7 +29,7 @@ describe("FuzzyTimeAgo", () => {
     // 5 minutes ago
     const timestamp = NOW - 5 * 60 * 1000;
     render(<FuzzyTimeAgo timestamp={timestamp} />);
-    
+
     expect(screen.getByText("5m")).toBeInTheDocument();
   });
 
@@ -37,7 +37,7 @@ describe("FuzzyTimeAgo", () => {
     // 3 hours ago
     const timestamp = NOW - 3 * 60 * 60 * 1000;
     render(<FuzzyTimeAgo timestamp={timestamp} />);
-    
+
     expect(screen.getByText("3h")).toBeInTheDocument();
   });
 
@@ -45,7 +45,7 @@ describe("FuzzyTimeAgo", () => {
     // 4 days ago
     const timestamp = NOW - 4 * 24 * 60 * 60 * 1000;
     render(<FuzzyTimeAgo timestamp={timestamp} />);
-    
+
     expect(screen.getByText("4d")).toBeInTheDocument();
   });
 
@@ -53,7 +53,7 @@ describe("FuzzyTimeAgo", () => {
     // 2 months ago
     const timestamp = NOW - 2 * 30 * 24 * 60 * 60 * 1000;
     render(<FuzzyTimeAgo timestamp={timestamp} />);
-    
+
     expect(screen.getByText("2mo")).toBeInTheDocument();
   });
 
@@ -61,7 +61,7 @@ describe("FuzzyTimeAgo", () => {
     // 3 years ago
     const timestamp = NOW - 3 * 365 * 24 * 60 * 60 * 1000;
     render(<FuzzyTimeAgo timestamp={timestamp} />);
-    
+
     expect(screen.getByText("3y")).toBeInTheDocument();
   });
 
@@ -69,14 +69,14 @@ describe("FuzzyTimeAgo", () => {
     // 5 minutes ago
     const timestamp = NOW - 5 * 60 * 1000;
     render(<FuzzyTimeAgo timestamp={timestamp} ago={true} />);
-    
+
     expect(screen.getByText("5m ago")).toBeInTheDocument();
   });
 
   it("applies the className prop correctly", () => {
     const timestamp = NOW - 5 * 60 * 1000;
     const { container } = render(<FuzzyTimeAgo timestamp={timestamp} className="custom-class" />);
-    
+
     expect(container.firstChild).toHaveClass("custom-class");
   });
 
@@ -84,9 +84,9 @@ describe("FuzzyTimeAgo", () => {
     // Create a date string 3 hours before NOW
     const date = new Date(NOW - 3 * 60 * 60 * 1000);
     const dateString = date.toISOString();
-    
+
     render(<FuzzyTimeAgo timestamp={dateString} />);
-    
+
     expect(screen.getByText("3h")).toBeInTheDocument();
   });
 });

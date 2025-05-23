@@ -125,11 +125,11 @@ class TestParseDiceExpression:
         for expression in invalid_expressions:
             with pytest.raises(ValueError):
                 parse_dice_expression(expression)
-    
+
     def test_incomplete_modifiers_in_regex(self) -> None:
         """
         Test for expressions with incomplete modifiers.
-        
+
         Note: The current implementation actually accepts expressions like "4d6+"
         because the modifier part of the regex is optional. This test documents
         this behavior, which could be considered a bug that should be fixed.
@@ -140,7 +140,7 @@ class TestParseDiceExpression:
             "4d6+",    # Plus sign without a number
             "4d6-",    # Minus sign without a number
         ]
-        
+
         for expression in expressions_with_incomplete_modifiers:
             result = parse_dice_expression(expression)
             assert result.count > 0
@@ -158,10 +158,10 @@ class TestDiceTool:
         with patch("random.randint") as mock_randint:
             # Mock the random.randint to return a fixed value for testing
             mock_randint.return_value = 4
-            
+
             dice_tool = DiceTool()
             result = dice_tool._run(["1d6"])
-            
+
             mock_randint.assert_called_once_with(1, 6)
             assert "Rolled 1d6:" in result
             assert "results=4" in result
@@ -172,18 +172,18 @@ class TestDiceTool:
         with patch("random.randint") as mock_randint:
             # Return different values for different calls
             mock_randint.side_effect = [3, 5, 2]
-            
+
             dice_tool = DiceTool()
             result = dice_tool._run(["2d6", "1d4"])
-            
+
             # Should be called 3 times: twice for 2d6 and once for 1d4
             expected_calls = 3
             assert mock_randint.call_count == expected_calls
-            
+
             # Check that both dice results are in the output
             assert "Rolled 2d6:" in result
             assert "Rolled 1d4:" in result
-            
+
             # Make sure there are two lines in the result
             expected_lines = 2
             assert len(result.split("\n")) == expected_lines
@@ -192,10 +192,10 @@ class TestDiceTool:
         """Test running the tool with dice expressions that include modifiers."""
         with patch("random.randint") as mock_randint:
             mock_randint.side_effect = [4]  # Just one roll
-            
+
             dice_tool = DiceTool()
             result = dice_tool._run(["1d20+5"])
-            
+
             mock_randint.assert_called_once_with(1, 20)
             assert "Rolled 1d20+5:" in result
             assert "results=4+5" in result
@@ -206,10 +206,10 @@ class TestDiceTool:
         with patch("random.randint") as mock_randint:
             # 3 dice with 8 sides each
             mock_randint.side_effect = [6, 3, 8]
-            
+
             dice_tool = DiceTool()
             result = dice_tool._run(["3d8"])
-            
+
             expected_dice_count = 3
             assert mock_randint.call_count == expected_dice_count
             assert "Rolled 3d8:" in result
@@ -221,17 +221,17 @@ class TestDiceTool:
         with patch("random.randint") as mock_randint:
             # Multiple expressions with different numbers of dice
             mock_randint.side_effect = [20, 4, 2, 5, 3]  # 1d20, 2d6, 2d4
-            
+
             dice_tool = DiceTool()
             result = dice_tool._run(["1d20+10", "2d6-1", "2d4"])
-            
+
             expected_dice_count = 5  # 1 + 2 + 2
             assert mock_randint.call_count == expected_dice_count
-            
+
             assert "Rolled 1d20+10:" in result
             assert "Rolled 2d6-1:" in result
             assert "Rolled 2d4:" in result
-            
+
             # Check totals
             assert "total=30" in result  # 20 + 10 = 30
             assert "total=5" in result   # 4 + 2 - 1 = 5

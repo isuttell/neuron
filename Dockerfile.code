@@ -52,4 +52,3 @@ RUN /venv/bin/python -c "from astropy.utils.data import download_file; \
   [download_file(url, cache=True) for url in urls]"
 
 ENTRYPOINT [ "/venv/bin/python" ]
-
