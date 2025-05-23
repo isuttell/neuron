@@ -21,11 +21,15 @@ jobs:
           echo "Action: ${{ github.event.action }}"
           echo "Issue Number: ${{ github.event.issue.number }}"
           echo "Issue Title: $ISSUE_TITLE"
+          echo "Full event JSON: ${{ toJSON(github.event) }}"
+          echo "Labels JSON: ${{ toJSON(github.event.issue.labels) }}"
+          echo "Label added: ${{ github.event.label.name }}"
           echo "Check auto-fix label result: ${{ contains(github.event.issue.labels.*.name, 'auto-fix') }}"
+          echo "Check label added: ${{ github.event.label.name == 'auto-fix' }}"
 
   auto-fix:
     runs-on: ubuntu-latest
-    if: contains(github.event.issue.labels.*.name, 'auto-fix')
+    if: github.event.label.name == 'auto-fix' || contains(github.event.issue.labels.*.name, 'auto-fix')
 
     steps:
       - name: Checkout code
