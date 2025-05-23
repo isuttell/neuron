@@ -26,7 +26,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ./.tools
-          key: ${{ runner.os }}-tools-v1-gitea-mcp-0.1.9-tea-0.9.2
+          key: ${{ runner.os }}-tools-v1-gitea-mcp-0.1.9-tea-0.9.2-jq-1.7.1
 
       # Setup Node.js
       - name: Setup Node.js
@@ -47,6 +47,9 @@ jobs:
           echo "Installing tea CLI..."
           curl -sL https://dl.gitea.io/tea/0.9.2/tea-0.9.2-linux-amd64 > .tools/tea
           chmod +x .tools/tea
+          echo "Installing jq..."
+          curl -sL https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-linux-amd64 > .tools/jq
+          chmod +x .tools/jq
 
       # Add tools to PATH
       - name: Add tools to PATH
@@ -92,7 +95,7 @@ jobs:
           model: "claude-sonnet-4-20250514"
           max_turns: 25
           mcp_config: "mcp-config.json"
-          allowed_tools: "Read,Glob,Grep,Bash(git:*),Bash(tea:*),Bash(find:*),Bash(ls:*),Bash(grep:*),WebFetch(domain:gitea.zaks.io),mcp__gitea__create_issue_comment,mcp__gitea__get_pull_request_by_index"
+          allowed_tools: "Read,Glob,Grep,Bash(git:*),Bash(tea:*),Bash(find:*),Bash(ls:*),Bash(grep:*),Bash(jq:*),WebFetch(domain:gitea.zaks.io),mcp__gitea__create_issue_comment,mcp__gitea__get_pull_request_by_index"
           prompt: |
             You are reviewing PR #${{ github.event.pull_request.number }} in this Gitea repository.
 
