@@ -33,13 +33,13 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "20"
 
       # Setup Python for testing
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       # Cache npm dependencies
       - name: Cache npm dependencies
@@ -136,7 +136,7 @@ jobs:
           model: "claude-sonnet-4-20250514"
           max_turns: 15
           mcp_config: "mcp-config.json"
-          allowed_tools: "Read,Write,Glob,Grep,Bash(git:*),Bash(find:*),Bash(ls:*),Bash(grep:*),Bash(jq:*),Edit,MultiEdit,mcp__gitea__get_issue_by_index,mcp__gitea__create_issue_comment"
+          allowed_tools: "Read,Write,View,Glob,GlobTool,Grep,GrepTool,Bash(git:*),Bash(find:*),Bash(ls:*),Bash(grep:*),Bash(jq:*),Edit,MultiEdit,mcp__gitea__get_issue_by_index,mcp__gitea__create_issue_comment"
           prompt: |
             You are analyzing issue #${{ github.event.issue.number }} in this Gitea repository.
 
@@ -144,21 +144,19 @@ jobs:
 
             Steps to follow:
             1. Get issue details using: mcp__gitea__get_issue_by_index with index ${{ github.event.issue.number }}
-            2. Read CLAUDE.md and PR_REQUIREMENTS.md to understand project conventions
-            3. Analyze the issue thoroughly and understand what needs to be fixed
-            4. Search the codebase to identify files that need modification
-            5. Create a detailed step-by-step plan to fix the issue
-            6. Write your plan to a file named 'fix-plan.md' with clear, actionable steps
-            7. Post a comment on the issue summarizing your analysis and plan
+            2. Analyze the issue thoroughly and understand what needs to be fixed
+            3. Search the codebase to identify files that need modification
+            4. Create a detailed step-by-step plan to fix the issue
+            5. Write your plan to a file named 'fix-plan.md' with clear, actionable steps
+            6. Post a comment on the issue summarizing your analysis and plan
 
             The plan file should include:
             - Clear problem statement
             - List of files that need to be modified
             - Detailed implementation steps
             - Required test cases
-            - Success criteria
 
-            If you encounter any errors or need additional permissions, leave a comment on the issue explaining what's needed.
+            If you encounter any errors or need additional permissions, leave a comment on the issue using the Gitea MCP explaining what's needed.
 
       # Step 2a: Prepare implementation prompt
       - name: Prepare Implementation Prompt
@@ -197,7 +195,7 @@ jobs:
           model: "claude-sonnet-4-20250514"
           max_turns: 25
           mcp_config: "mcp-config.json"
-          allowed_tools: "Read,Write,Edit,MultiEdit,Glob,Grep,Bash(git:*),Bash(find:*),Bash(ls:*),Bash(grep:*),Bash(jq:*),mcp__gitea__create_issue_comment"
+          allowed_tools: "Read,Write,View,Edit,MultiEdit,Glob,GlobTool,Grep,GrepTool,Bash(git:*),Bash(find:*),Bash(ls:*),Bash(grep:*),Bash(jq:*),mcp__gitea__create_issue_comment"
           prompt_file: "fix-plan.md"
 
       # Step 3a: Prepare test implementation prompt
@@ -250,9 +248,9 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           model: "claude-sonnet-4-20250514"
-          max_turns: 20
+          max_turns: 25
           mcp_config: "mcp-config.json"
-          allowed_tools: "Read,Write,Edit,MultiEdit,Glob,Grep,Bash(npm:*),Bash(poetry:*),Bash(pytest:*),Bash(jest:*),Bash(git:*),Bash(find:*),Bash(ls:*),Bash(grep:*),Bash(jq:*),mcp__gitea__create_issue_comment"
+          allowed_tools: "Read,Write,View,Edit,MultiEdit,Glob,GlobTool,Grep,GrepTool,Bash(npm:*),Bash(poetry:*),Bash(pytest:*),Bash(jest:*),Bash(git:*),Bash(find:*),Bash(ls:*),Bash(grep:*),Bash(jq:*),mcp__gitea__create_issue_comment"
           prompt_file: "test-requirements.md"
 
       # Step 4a: Check if normal review is possible
@@ -360,9 +358,9 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           model: "claude-sonnet-4-20250514"
-          max_turns: 15
+          max_turns: 25
           mcp_config: "mcp-config.json"
-          allowed_tools: "Read,Write,Edit,MultiEdit,Glob,Grep,Bash(npm:*),Bash(poetry:*),Bash(pytest:*),Bash(jest:*),Bash(git:*),Bash(find:*),Bash(ls:*),Bash(grep:*),Bash(jq:*),mcp__gitea__get_issue_by_index,mcp__gitea__create_issue_comment,mcp__gitea__edit_issue,mcp__gitea__create_pull_request"
+          allowed_tools: "Read,Write,View,Edit,MultiEdit,Glob,GlobTool,Grep,GrepTool,Bash(npm:*),Bash(poetry:*),Bash(pytest:*),Bash(jest:*),Bash(git:*),Bash(find:*),Bash(ls:*),Bash(grep:*),Bash(jq:*),mcp__gitea__get_issue_by_index,mcp__gitea__create_issue_comment,mcp__gitea__edit_issue,mcp__gitea__create_pull_request"
           prompt_file: "review-summary.md"
 
       # Step 4e: Debug Analysis (when review failed)
@@ -376,7 +374,7 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           model: "claude-sonnet-4-20250514"
-          max_turns: 10
+          max_turns: 25
           mcp_config: "mcp-config.json"
-          allowed_tools: "Read,Write,Edit,MultiEdit,Glob,Grep,Bash(git:*),Bash(find:*),Bash(ls:*),Bash(grep:*),Bash(jq:*),mcp__gitea__get_issue_by_index,mcp__gitea__create_issue_comment"
+          allowed_tools: "Read,Write,View,Edit,MultiEdit,Glob,GlobTool,Grep,GrepTool,Bash(git:*),Bash(find:*),Bash(ls:*),Bash(grep:*),Bash(jq:*),mcp__gitea__get_issue_by_index,mcp__gitea__create_issue_comment"
           prompt_file: "debug-analysis.md"
