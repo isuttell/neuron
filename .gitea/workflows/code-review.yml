@@ -55,7 +55,7 @@ jobs:
       # Authenticate tea
       - name: Authenticate tea
         env:
-          GITEA_SERVER_URL: ${{ github.server_url }}
+          GITEA_SERVER_URL: https://gitea.zaks.io
           GITEA_SERVER_TOKEN: ${{ secrets.GT_TOKEN }}
         run: tea login add --name ci
 
