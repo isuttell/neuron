@@ -19,7 +19,7 @@ class HD2GalacticWarReportToolArgs(BaseModel):
     custom_instructions: str = ""
 
 
-@cache_response(ttl=60 * 1)
+@cache_response(ttl=60 * 5)
 async def get_campaigns() -> list[dict[str, Any]]:
     async with aiohttp.ClientSession() as session:
         url = "https://helldiverstrainingmanual.com/api/v1/war/campaign"
@@ -29,7 +29,7 @@ async def get_campaigns() -> list[dict[str, Any]]:
             return await response.json()
 
 
-@cache_response(ttl=60 * 1)
+@cache_response(ttl=60 * 5)
 async def get_news() -> list[dict[str, Any]]:
     async with aiohttp.ClientSession() as session:
         url = "https://helldiverstrainingmanual.com/api/v1/war/news"
@@ -49,7 +49,7 @@ async def get_planets() -> dict[str, dict[str, Any]]:
             return await response.json()
 
 
-@cache_response(ttl=60 * 1)
+@cache_response(ttl=60 * 5)
 async def get_major_orders() -> list[dict[str, Any]]:
     async with aiohttp.ClientSession() as session:
         url = "https://helldiverstrainingmanual.com/api/v1/war/major-orders"
@@ -59,7 +59,7 @@ async def get_major_orders() -> list[dict[str, Any]]:
             return await response.json()
 
 
-@cache_response(ttl=60 * 1)
+@cache_response(ttl=60 * 5)
 async def get_war_status() -> dict[str, Any]:
     async with aiohttp.ClientSession() as session:
         url = "https://helldiverstrainingmanual.com/api/v1/war/status"
@@ -108,7 +108,7 @@ API data and focuses only on relevant information for strategic decision making.
 
             # Create prompt template for generating focused markdown report
             system_prompt = """You are an expert military intelligence analyst
-for Super Earth in the Hellsivers 2 universe. Always stay in character and
+for Super Earth in the Helldivers 2 universe. Always stay in character and
 in universe.
 
 Create a concise, official military status report in markdown format based on
