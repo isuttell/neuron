@@ -21,6 +21,9 @@ class ProviderModelModel(BaseModel):
     provider: Provider = Field(description="The provider of the model")
     model_id: str = Field(description="The model id of the provider")
     enabled: bool = Field(description="Whether the model is enabled")
+    caching_enabled: bool = Field(
+        default=False, description="Whether caching is enabled for this model"
+    )
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC).astimezone())
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC).astimezone())
 
@@ -56,6 +59,7 @@ class ProviderModelModel(BaseModel):
             provider_model.provider = self.provider
             provider_model.model_id = self.model_id
             provider_model.enabled = self.enabled
+            provider_model.caching_enabled = self.caching_enabled
 
             # If enabling this provider, disable all others
             if self.enabled:
@@ -74,7 +78,11 @@ class ProviderModelModel(BaseModel):
 
     def to_llm(self) -> LLM:
         if self.provider == "anthropic":
-            return AnthropicLLM(model_id=self.model_id, provider_model_id=self.id)
+            return AnthropicLLM(
+                model_id=self.model_id,
+                provider_model_id=self.id,
+                caching_enabled=self.caching_enabled,
+            )
         if self.provider == "openai":
             return OpenAILLM(model_id=self.model_id, provider_model_id=self.id)
         if self.provider == "openrouter":

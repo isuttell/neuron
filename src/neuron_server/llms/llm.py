@@ -222,6 +222,22 @@ class LLM:
         graph.checkpointer = checkpointer
         return await graph.aget_state(config)
 
+    def _apply_caching_to_messages(
+        self, messages: Sequence[BaseMessage]
+    ) -> Sequence[BaseMessage]:
+        """Apply caching to messages if this LLM supports it.
+
+        This method can be overridden by specific LLM implementations.
+        The default implementation returns messages unchanged.
+
+        Args:
+            messages: The original messages
+
+        Returns:
+            Messages with caching applied (if supported)
+        """
+        return messages
+
     async def call_model(
         self,
         model: Runnable,
@@ -240,6 +256,10 @@ class LLM:
         """
         # Filter out messages that don't have content
         messages = state.get("messages", [])
+
+        # Apply caching if enabled
+        if getattr(self, 'caching_enabled', False):
+            messages = self._apply_caching_to_messages(messages)
 
         chain = chat_prompt | model
         logger.debug("Invoking model...")
