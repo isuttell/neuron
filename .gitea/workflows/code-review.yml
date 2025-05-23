@@ -57,7 +57,7 @@ jobs:
         env:
           GITEA_SERVER_URL: ${{ secrets.GITEA_URL }}
           GITEA_SERVER_TOKEN: ${{ secrets.GITEA_TOKEN }}
-        run: tea login add --name ci
+        run: tea login add --name ci --url ${{ secrets.GITEA_URL }}
 
       # Setup MCP configuration
       - name: Setup MCP Configuration
