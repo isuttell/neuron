@@ -3,7 +3,12 @@ name: Claude PR Review
 on:
   pull_request:
     types: [opened]
-    branches: [ master ]
+    branches: [master]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
 
 jobs:
   review:
@@ -21,101 +26,79 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ./.tools
-          key: ${{ runner.os }}-tools-v1-gitea-mcp-0.1.9-claude-cli
+          key: ${{ runner.os }}-tools-v1-gitea-mcp-0.1.9
 
-      # Setup Node.js with its own caching
+      # Setup Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
 
-      # Single step to install tools if cache miss
-      - name: Install tools
+      # Install Gitea MCP if cache miss
+      - name: Install Gitea MCP
         if: steps.cache-tools.outputs.cache-hit != 'true'
         run: |
-          # Create tools directory
           mkdir -p .tools
           echo "Installing gitea-mcp..."
-
-          # Download and extract gitea-mcp to our tools directory
           wget -q https://gitea.com/gitea/gitea-mcp/releases/download/v0.1.9/gitea-mcp_Linux_x86_64.tar.gz
           tar -xzf gitea-mcp_Linux_x86_64.tar.gz -C .tools
           chmod +x .tools/gitea-mcp
           rm gitea-mcp_Linux_x86_64.tar.gz
 
-          # Create a package.json for local installation
-          echo '{"name":"code-review-tools","private":true,"dependencies":{"@anthropic-ai/claude-code":"latest"}}' > .tools/package.json
-
-          # Install Claude CLI locally
-          cd .tools
-          npm install
-          cd ..
-
       # Add tools to PATH
       - name: Add tools to PATH
-        run: |
-          # Add our tools directory to PATH
-          echo "$PWD/.tools" >> $GITHUB_PATH
-          echo "$PWD/.tools/node_modules/.bin" >> $GITHUB_PATH
+        run: echo "$PWD/.tools" >> $GITHUB_PATH
 
-      # Verify tools are working
-      - name: Verify tools
-        run: |
-          gitea-mcp --version || echo "gitea-mcp version not available"
-          claude --version || echo "Claude version not available"
-
-      # Configure Claude
-      - name: Configure Claude
+      # Setup MCP configuration
+      - name: Setup MCP Configuration
         env:
           GITEA_ACCESS_TOKEN: ${{ secrets.GT_TOKEN }}
           GITEA_BASE: ${{ github.server_url }}
         run: |
-          # Configure MCP server
-          claude mcp add gitea \
-            -e GITEA_ACCESS_TOKEN=$GITEA_ACCESS_TOKEN \
-            -- ${{ github.workspace }}/.tools/gitea-mcp \
-            -host $GITEA_BASE \
-            -token $GITEA_ACCESS_TOKEN
+          cat > mcp-config.json << EOF
+          {
+            "mcpServers": {
+              "gitea": {
+                "command": "${{ github.workspace }}/.tools/gitea-mcp",
+                "args": ["-host", "${{ github.server_url }}", "-token", "${{ secrets.GT_TOKEN }}"],
+                "env": {
+                  "GITEA_ACCESS_TOKEN": "${{ secrets.GT_TOKEN }}",
+                  "GITEA_BASE": "${{ github.server_url }}"
+                }
+              }
+            }
+          }
+          EOF
 
-          claude mcp list
-          echo "Configured MCP server for Gitea"
-
-          # Configure tools
-          claude config add allowedTools "Read"
-          claude config add allowedTools "Bash(git show:*)"
-          claude config add allowedTools "Bash(git log:*)"
-          claude config add allowedTools "Bash(git diff:*)"
-          claude config add allowedTools "mcp__gitea__create_issue_comment"
-          claude config add allowedTools "mcp__gitea__get_pull_request_by_index"
-
-          echo "Configured Claude allowed tools"
-          claude config get allowedTools
-
-      - name: Run Claude review
+      # Run Claude Code review
+      - name: Claude Code Review
+        uses: anthropics/claude-code-base-action@beta
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GITEA_ACCESS_TOKEN: ${{ secrets.GT_TOKEN }}
+          GITEA_BASE: ${{ github.server_url }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: |
-          echo "Fetching PR diff..."
-          # Fetch the PR diff from Gitea API
-          curl -sSL -H "Authorization: token $GITEA_ACCESS_TOKEN" \
-            "${{ github.server_url }}/api/v1/repos/${{ github.repository }}/pulls/$PR_NUMBER.diff" \
-            -o pr.diff
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          model: "claude-sonnet-4-20250514"
+          max_turns: 25
+          mcp_config: "mcp-config.json"
+          allowed_tools: "Read,Bash(git:*),mcp__gitea__create_issue_comment,mcp__gitea__get_pull_request_by_index"
+          prompt: |
+            You are reviewing PR #${{ github.event.pull_request.number }} in this Gitea repository.
 
-          echo "Running code review..."
-          PROMPT="Please review the code changes in this PR based on the diff.
+            IMPORTANT: You MUST use the Gitea MCP tools available to you:
+            - Use `mcp__gitea__get_pull_request_by_index` to get PR details
+            - Use `mcp__gitea__create_issue_comment` to post your review comments
 
-          1. Read all previous comments on the PR #$PR_NUMBER to understand ongoing discussions
-          2. Continue any conversation threads from previous comments when appropriate
-          3. Read related code for additional context so you understand the impact of the diff
-          4. Analyze code quality, potential bugs, and improvements of diff
-          5. Use Gitea MCP tools to comment directly on PR #$PR_NUMBER
-          6. Be specific in your comments and reference line numbers when possible
-          7. Focus on problems and potential improvements
+            Steps to follow:
+            1. Get PR details using: mcp__gitea__get_pull_request_by_index with index ${{ github.event.pull_request.number }}
+            2. Get the code diff using: git diff origin/master...HEAD
+            3. Read related files for additional context to understand the impact of changes
+            4. Analyze code quality, potential bugs, and improvements in the diff
+            5. Use the Gitea MCP tools to leave a comment with your recommendations
 
-          Your response should be concise, professional, and clever. Avoid unnecessary explanations and focus on meaningful insights."
-
-          # Create input for Claude that includes both prompt and diff
-          (echo "$PROMPT"; echo; echo "<git_diff>"; cat pr.diff; echo "</git_diff>") | claude -p --max-turns 25
+            Your review should be:
+            - Concise, professional, and insightful
+            - Specific with line numbers when possible
+            - Focused on problems and potential improvements
+            - Free of unnecessary explanations
