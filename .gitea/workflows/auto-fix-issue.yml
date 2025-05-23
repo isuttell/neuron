@@ -136,7 +136,7 @@ jobs:
           model: "claude-sonnet-4-20250514"
           max_turns: 15
           mcp_config: "mcp-config.json"
-          allowed_tools: "Read,Write,Glob,Grep,Bash(git:*),Bash(find:*),Bash(ls:*),Bash(grep:*),Bash(jq:*),Edit,mcp__gitea__get_issue_by_index,mcp__gitea__create_issue_comment"
+          allowed_tools: "Read,Write,Glob,Grep,Bash(git:*),Bash(find:*),Bash(ls:*),Bash(grep:*),Bash(jq:*),Edit,MultiEdit,mcp__gitea__get_issue_by_index,mcp__gitea__create_issue_comment"
           prompt: |
             You are analyzing issue #${{ github.event.issue.number }} in this Gitea repository.
 
@@ -197,7 +197,7 @@ jobs:
           model: "claude-sonnet-4-20250514"
           max_turns: 25
           mcp_config: "mcp-config.json"
-          allowed_tools: "Read,Write,Edit,Glob,Grep,Bash(git:*),Bash(find:*),Bash(ls:*),Bash(grep:*),Bash(jq:*),mcp__gitea__create_issue_comment"
+          allowed_tools: "Read,Write,Edit,MultiEdit,Glob,Grep,Bash(git:*),Bash(find:*),Bash(ls:*),Bash(grep:*),Bash(jq:*),mcp__gitea__create_issue_comment"
           prompt_file: "fix-plan.md"
 
       # Step 3a: Prepare test implementation prompt
@@ -252,7 +252,7 @@ jobs:
           model: "claude-sonnet-4-20250514"
           max_turns: 20
           mcp_config: "mcp-config.json"
-          allowed_tools: "Read,Write,Edit,Glob,Grep,Bash(npm:*),Bash(poetry:*),Bash(pytest:*),Bash(jest:*),Bash(git:*),Bash(find:*),Bash(ls:*),Bash(grep:*),Bash(jq:*),mcp__gitea__create_issue_comment"
+          allowed_tools: "Read,Write,Edit,MultiEdit,Glob,Grep,Bash(npm:*),Bash(poetry:*),Bash(pytest:*),Bash(jest:*),Bash(git:*),Bash(find:*),Bash(ls:*),Bash(grep:*),Bash(jq:*),mcp__gitea__create_issue_comment"
           prompt_file: "test-requirements.md"
 
       # Step 4a: Check if normal review is possible
@@ -362,7 +362,7 @@ jobs:
           model: "claude-sonnet-4-20250514"
           max_turns: 15
           mcp_config: "mcp-config.json"
-          allowed_tools: "Read,Write,Glob,Grep,Bash(npm:*),Bash(poetry:*),Bash(pytest:*),Bash(jest:*),Bash(git:*),Bash(find:*),Bash(ls:*),Bash(grep:*),Bash(jq:*),mcp__gitea__get_issue_by_index,mcp__gitea__create_issue_comment,mcp__gitea__edit_issue,mcp__gitea__create_pull_request"
+          allowed_tools: "Read,Write,Edit,MultiEdit,Glob,Grep,Bash(npm:*),Bash(poetry:*),Bash(pytest:*),Bash(jest:*),Bash(git:*),Bash(find:*),Bash(ls:*),Bash(grep:*),Bash(jq:*),mcp__gitea__get_issue_by_index,mcp__gitea__create_issue_comment,mcp__gitea__edit_issue,mcp__gitea__create_pull_request"
           prompt_file: "review-summary.md"
 
       # Step 4e: Debug Analysis (when review failed)
@@ -378,5 +378,5 @@ jobs:
           model: "claude-sonnet-4-20250514"
           max_turns: 10
           mcp_config: "mcp-config.json"
-          allowed_tools: "Read,Write,Glob,Grep,Bash(git:*),Bash(find:*),Bash(ls:*),Bash(grep:*),Bash(jq:*),mcp__gitea__get_issue_by_index,mcp__gitea__create_issue_comment"
+          allowed_tools: "Read,Write,Edit,MultiEdit,Glob,Grep,Bash(git:*),Bash(find:*),Bash(ls:*),Bash(grep:*),Bash(jq:*),mcp__gitea__get_issue_by_index,mcp__gitea__create_issue_comment"
           prompt_file: "debug-analysis.md"
