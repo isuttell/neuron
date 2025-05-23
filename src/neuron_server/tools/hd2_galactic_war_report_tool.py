@@ -5,8 +5,8 @@ from typing import Any
 
 import aiohttp
 from langchain.tools import BaseTool
+from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.output_parsers import StrOutputParser
-from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
 from pydantic import BaseModel
 
@@ -143,21 +143,25 @@ Data interpretation notes:
                     + human_prompt
                 )
 
-            prompt = ChatPromptTemplate.from_messages([
-                ("system", system_prompt),
-                ("human", human_prompt)
-            ])
-
             # Get LLM instance
             from neuron_server.models.provider_model import ProviderModelModel
             llm = await ProviderModelModel.get_active_llm()
 
-            # Create the chain with string output parser
-            chain = prompt | llm | StrOutputParser()
-
-            # Generate the report
+            # Generate the report using LLM chain
             json_data = json.dumps(report_data, indent=2)
-            return await chain.ainvoke({"json_data": json_data}, config=config)
+
+            # Format the prompt with the data
+            formatted_human_prompt = human_prompt.format(json_data=json_data)
+
+            # Create chain with proper message classes
+            chain = llm.model | StrOutputParser()
+            return await chain.ainvoke(
+                [
+                    SystemMessage(content=system_prompt),
+                    HumanMessage(content=formatted_human_prompt)
+                ],
+                config
+            )
 
         except Exception as e:
             logger.error(e, exc_info=True)
