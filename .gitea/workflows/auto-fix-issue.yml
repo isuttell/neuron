@@ -210,6 +210,7 @@ jobs:
 
           The previous implementation step may have failed. Please analyze what went wrong and create appropriate tests for any partial implementation.
           EOF
+          fi
           cat >> test-requirements.md << 'EOF'
 
           ---
