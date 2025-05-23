@@ -4,8 +4,10 @@ import { ChartConfig } from "@/components/ui/chart";
 
 // Mock the recharts library
 jest.mock("recharts", () => ({
-  BarChart: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="bar-chart">{children}</div>
+  BarChart: ({ children, data }: { children: React.ReactNode; data: unknown[] }) => (
+    <div data-testid="bar-chart" data-chart-data={JSON.stringify(data)}>
+      {children}
+    </div>
   ),
   CartesianGrid: () => <div data-testid="cartesian-grid" />,
   XAxis: () => <div data-testid="x-axis" />,
@@ -72,8 +74,10 @@ describe("TokenChart", () => {
     const configData = JSON.parse(container.getAttribute("data-config") || "{}");
     expect(configData).toHaveProperty("input");
     expect(configData).toHaveProperty("output");
+    expect(configData).toHaveProperty("total");
     expect(configData.input.label).toBe("Input Tokens");
     expect(configData.output.label).toBe("Output Tokens");
+    expect(configData.total.label).toBe("Total Tokens");
   });
 
   it("renders the chart components", () => {
@@ -87,48 +91,29 @@ describe("TokenChart", () => {
     expect(screen.getByTestId("bar")).toBeInTheDocument();
   });
 
-  it("filters out messages without usage_metadata", () => {
-    // Mock console.log to verify the data being passed to the chart
-    const originalConsoleLog = console.log;
-    const mockConsoleLog = jest.fn();
-    console.log = mockConsoleLog;
-
+  it("filters out messages without usage_metadata and transforms data correctly", () => {
     render(<TokenChart messages={messages} />);
 
-    // Should only log 2 items (filtering out the empty message)
-    expect(mockConsoleLog).toHaveBeenCalledTimes(1);
-    const loggedData = mockConsoleLog.mock.calls[0][0];
-    expect(loggedData).toHaveLength(2);
+    // Get the chart data from the BarChart component
+    const barChart = screen.getByTestId("bar-chart");
+    const chartData = JSON.parse(barChart.getAttribute("data-chart-data") || "[]");
 
-    // Restore original console.log
-    console.log = originalConsoleLog;
-  });
-
-  it("converts the message data to the correct format for the chart", () => {
-    // Mock console.log to verify the data transformation
-    const originalConsoleLog = console.log;
-    const mockConsoleLog = jest.fn();
-    console.log = mockConsoleLog;
-
-    render(<TokenChart messages={messages} />);
+    // Should only include 2 items (filtering out the empty message)
+    expect(chartData).toHaveLength(2);
 
     // Check the transformed data structure
-    const transformedData = mockConsoleLog.mock.calls[0][0];
-    expect(transformedData[0]).toEqual({
+    expect(chartData[0]).toEqual({
       name: "AI Msg 1",
       input: 100,
       output: 200,
       total: 300,
     });
-    expect(transformedData[1]).toEqual({
+    expect(chartData[1]).toEqual({
       name: "AI Msg 2",
       input: 150,
       output: 250,
       total: 400,
     });
-
-    // Restore original console.log
-    console.log = originalConsoleLog;
   });
 
   it("handles empty messages array", () => {
@@ -138,6 +123,11 @@ describe("TokenChart", () => {
     expect(screen.getByTestId("bar-chart")).toBeInTheDocument();
     expect(screen.getByTestId("cartesian-grid")).toBeInTheDocument();
     expect(screen.getByTestId("x-axis")).toBeInTheDocument();
+
+    // Verify empty data is passed to the chart
+    const barChart = screen.getByTestId("bar-chart");
+    const chartData = JSON.parse(barChart.getAttribute("data-chart-data") || "[]");
+    expect(chartData).toHaveLength(0);
   });
 
   it("handles undefined token values", () => {
@@ -158,19 +148,29 @@ describe("TokenChart", () => {
       },
     ];
 
-    // Mock console.log to verify the data transformation
-    const originalConsoleLog = console.log;
-    const mockConsoleLog = jest.fn();
-    console.log = mockConsoleLog;
-
     render(<TokenChart messages={messagesWithUndefinedValues} />);
 
-    // Check that missing values are replaced with 0
-    const transformedData = mockConsoleLog.mock.calls[0][0];
-    expect(transformedData[0].input).toBe(0);
-    expect(transformedData[1].output).toBe(0);
+    // Get the chart data from the BarChart component
+    const barChart = screen.getByTestId("bar-chart");
+    const chartData = JSON.parse(barChart.getAttribute("data-chart-data") || "[]");
 
-    // Restore original console.log
-    console.log = originalConsoleLog;
+    // Check that missing values are replaced with 0
+    expect(chartData[0].input).toBe(0);
+    expect(chartData[0].output).toBe(200);
+    expect(chartData[0].total).toBe(200);
+
+    expect(chartData[1].input).toBe(150);
+    expect(chartData[1].output).toBe(0);
+    expect(chartData[1].total).toBe(150);
+  });
+
+  it("generates correct AI message names", () => {
+    render(<TokenChart messages={messages} />);
+
+    const barChart = screen.getByTestId("bar-chart");
+    const chartData = JSON.parse(barChart.getAttribute("data-chart-data") || "[]");
+
+    expect(chartData[0].name).toBe("AI Msg 1");
+    expect(chartData[1].name).toBe("AI Msg 2");
   });
 });

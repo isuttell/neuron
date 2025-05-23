@@ -25,6 +25,10 @@ const chartConfig = {
     label: "Output Tokens",
     color: "hsl(var(--chart-2))",
   },
+  total: {
+    label: "Total Tokens",
+    color: "hsl(var(--chart-3))",
+  },
 } satisfies ChartConfig;
 
 const TokenChart: React.FC<TokenChartProps> = ({ messages }) => {
@@ -36,7 +40,6 @@ const TokenChart: React.FC<TokenChartProps> = ({ messages }) => {
       output: message.usage_metadata?.output_tokens || 0,
       total: message.usage_metadata?.total_tokens || 0,
     }));
-  console.log(tokenData);
   return (
     <ChartContainer config={chartConfig}>
       <BarChart data={tokenData}>
