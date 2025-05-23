@@ -101,18 +101,18 @@ async def load_youtube_transcript(
     try:
         video_id = extract_video_id(url)
         transcript = YouTubeTranscriptApi.get_transcript(video_id)
-        
+
         # Convert dictionary items to objects with attributes if needed
         class TranscriptItem:
             def __init__(self, item_dict: dict[str, Any]) -> None:
                 self.text = item_dict.get('text', '')
                 self.start = item_dict.get('start', 0.0)
                 self.duration = item_dict.get('duration', 0.0)
-        
+
         # Convert if transcript items are dictionaries
         if transcript and isinstance(transcript[0], dict):
             transcript = [TranscriptItem(item) for item in transcript]
-            
+
         formatter = WebVTTFormatter()
         return Document(
             page_content=formatter.format_transcript(transcript),
@@ -154,13 +154,13 @@ async def load_pdf_from_url(
 
             # Generate a random session token
             session_token = str(uuid.uuid4())
-            
+
             # Set the cookie in the session
             cookies = (
-                {"neuron_session": session_token} 
+                {"neuron_session": session_token}
                 if neuron_config.static_require_auth else None
             )
-            
+
             async with aiohttp.ClientSession(cookies=cookies) as session:
                 try:
                     async with session.get(url) as response:
@@ -213,13 +213,13 @@ async def load_text_from_url(
     try:
         # Generate a random session token
         session_token = str(uuid.uuid4())
-        
+
         # Set the cookie in the session
         cookies = (
-            {"neuron_session": session_token} 
+            {"neuron_session": session_token}
             if neuron_config.static_require_auth else None
         )
-        
+
         async with aiohttp.ClientSession(cookies=cookies) as session:
             async with session.get(url) as response:
                 response.raise_for_status()

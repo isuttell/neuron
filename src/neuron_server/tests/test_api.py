@@ -16,7 +16,7 @@ from neuron_server.controllers.auth import TokenPayload
 @pytest.fixture
 def app() -> Quart:
     """Return the Quart app with patched test client and request context.
-    
+
     The patching is done in conftest.py mock_quart_app fixture.
     """
     return neuron_app

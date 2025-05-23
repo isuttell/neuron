@@ -69,44 +69,44 @@ output filename to the user as they can't directly access it.
     @staticmethod
     def get_auth_cookies() -> dict[str, str] | None:
         """Get authentication cookies for requests.
-        
+
         Returns:
             Optional dictionary of cookies for authentication
         """
         session_token = str(uuid4())
         return (
-            {"neuron_session": session_token} 
+            {"neuron_session": session_token}
             if neuron_config.static_require_auth else None
         )
 
     @staticmethod
     async def download_file_with_auth(
-        url: str, 
+        url: str,
         cookies: dict[str, str] | None = None
     ) -> tuple[str, bool]:
         """Download a file with authentication and return the local path.
-        
+
         Args:
             url: The URL to download
             cookies: Optional cookies to use for authentication
-            
+
         Returns:
             Tuple of (file_path, is_temporary) where is_temporary indicates
             if the file should be deleted after use
         """
         if not url.startswith(neuron_config.static_content_url):
             return url, False  # Not a URL from our server, just return it
-        
+
         # Use provided cookies or get new ones
         if cookies is None:
             cookies = FFmpegTool.get_auth_cookies()
-        
+
         # Create a temporary file for download
         ext = os.path.splitext(url)[1]
         tmp_file = os.path.abspath(
             os.path.join(neuron_config.temp_folder, f"{uuid4().hex}{ext}")
         )
-        
+
         # Download the file
         async with (
             aiohttp.ClientSession(cookies=cookies) as session,
@@ -115,56 +115,56 @@ output filename to the user as they can't directly access it.
         ):
             response.raise_for_status()
             await file.write(await response.content.read())
-        
+
         return tmp_file, True
 
     @staticmethod
     async def process_url_argument(
-        arg: str, 
+        arg: str,
         cookies: dict[str, str] | None = None
     ) -> tuple[str, list[str]]:
         """Process a URL argument and download it if needed.
-        
+
         Args:
             arg: The argument to process
             cookies: Optional cookies to use for authentication
-            
+
         Returns:
             Tuple of (processed_arg, tmp_files) where tmp_files is a list of
             temporary files that should be deleted after use
         """
         tmp_files = []
-        
+
         if arg.startswith(("http://", "https://")):
             local_path, is_temp = await FFmpegTool.download_file_with_auth(arg, cookies)
             if is_temp:
                 tmp_files.append(local_path)
             return local_path, tmp_files
-        
+
         return arg, tmp_files
 
     @staticmethod
     async def process_concat_argument(
-        arg: str, 
+        arg: str,
         cookies: dict[str, str] | None = None
     ) -> tuple[str, list[str]]:
         """Process a concat argument and download any URLs.
-        
+
         Args:
             arg: The concat argument (e.g., "concat:file1.mp3|file2.mp3")
             cookies: Optional cookies to use for authentication
-            
+
         Returns:
             Tuple of (processed_arg, tmp_files) where tmp_files is a list of
             temporary files that should be deleted after use
         """
         if not arg.startswith("concat:") or ":" not in arg:
             return arg, []
-            
+
         concat_parts = arg.split(":", 1)[1].split("|")
         new_parts = []
         tmp_files = []
-        
+
         for part in concat_parts:
             if part.startswith(("http://", "https://")):
                 local_path, is_temp = await FFmpegTool.download_file_with_auth(
@@ -175,7 +175,7 @@ output filename to the user as they can't directly access it.
                 new_parts.append(local_path)
             else:
                 new_parts.append(part)
-                
+
         return f"concat:{('|').join(new_parts)}", tmp_files
 
     @staticmethod
@@ -184,22 +184,22 @@ output filename to the user as they can't directly access it.
         cookies: dict[str, str] | None = None
     ) -> tuple[list[str], list[str]]:
         """Process all arguments and download files as needed.
-        
+
         Args:
             args: The input arguments
             cookies: Optional cookies to use for authentication
-            
+
         Returns:
             Tuple of (processed_args, tmp_files) where tmp_files is a list of
             temporary files that should be deleted after use
         """
         if cookies is None:
             cookies = FFmpegTool.get_auth_cookies()
-            
+
         modified_args = []
         tmp_files = []
         i = 0
-        
+
         while i < len(args):
             if args[i] == "-i" and i + 1 < len(args):
                 # Handle input file argument
@@ -222,16 +222,16 @@ output filename to the user as they can't directly access it.
                 # Pass through other arguments
                 modified_args.append(args[i])
                 i += 1
-                
+
         return modified_args, tmp_files
 
     @staticmethod
     def get_output_format(extension: Literal["mp3", "mp4", "wav"]) -> str:
         """Get the output format HTML tag.
-        
+
         Args:
             extension: The file extension
-            
+
         Returns:
             HTML tag for displaying the file
         """
@@ -241,23 +241,23 @@ output filename to the user as they can't directly access it.
 
     @staticmethod
     async def run_ffmpeg_command(
-        command: list[str], 
+        command: list[str],
         cwd: str | None = None
     ) -> subprocess.CompletedProcess[str]:
         """Run a ffmpeg command.
-        
+
         Args:
             command: The ffmpeg command to run
             cwd: Optional working directory
-            
+
         Returns:
             CompletedProcess with stdout and stderr
-            
+
         Raises:
             FFmpegToolError: If the command fails
         """
         logger.info(f"Running: {' '.join(command)}")
-        
+
         return await run_subprocess(
             command,
             text=True,
@@ -270,7 +270,7 @@ output filename to the user as they can't directly access it.
     @staticmethod
     def cleanup_temp_files(tmp_files: list[str]) -> None:
         """Clean up temporary files.
-        
+
         Args:
             tmp_files: List of temporary files to delete
         """
@@ -297,18 +297,18 @@ output filename to the user as they can't directly access it.
     ) -> str:
         process: subprocess.CompletedProcess[str] | None = None
         tmp_files: list[str] = []
-        
+
         try:
             # Generate output filename and path
             filename = safe_filename("ffmpeg", name, extension)
             output = os.path.abspath(
                 os.path.join(neuron_config.static_folder, filename)
             )
-            
+
             # Process arguments and download files
             cookies = self.get_auth_cookies()
             modified_args, tmp_files = await self.preprocess_arguments(args, cookies)
-            
+
             # Prepare the final command
             command = (
                 [
@@ -321,17 +321,17 @@ output filename to the user as they can't directly access it.
                 + modified_args
                 + [output]
             )
-            
+
             # Run the ffmpeg command
             process = await self.run_ffmpeg_command(
-                command, 
+                command,
                 cwd=neuron_config.static_folder
             )
-            
+
             # Check that output file exists
             if not os.path.exists(output):
                 raise FFmpegToolError("Output file not found", process.stderr)
-                
+
             # Create media item
             url = neuron_config.static_content_url + "/" + filename
             create_params = MediaItemModel.CreateParams(
@@ -342,7 +342,7 @@ output filename to the user as they can't directly access it.
                 name=name,
             )
             await MediaItemModel.create(params=create_params)
-            
+
             # Return formatted response
             logger.info(f"File saved to {output} <{url}>")
             output_format = self.get_output_format(extension)
@@ -350,7 +350,7 @@ output filename to the user as they can't directly access it.
 {output_format}
 Filename: {output}
 """.strip().format(url=url)
-            
+
         except Exception as e:
             logger.error(e, exc_info=True)
             if process:

@@ -140,13 +140,13 @@ text prompts with the stackadoc/stable-audio-open-1.0 model. Ideal for:
 
             # Generate a random session token
             session_token = str(uuid4())
-            
+
             # Set the cookie in the session
             cookies = (
-                {"neuron_session": session_token} 
+                {"neuron_session": session_token}
                 if neuron_config.static_require_auth else None
             )
-            
+
             async with (
                 aiohttp.ClientSession(cookies=cookies) as session,
                 session.get(video_url) as response,

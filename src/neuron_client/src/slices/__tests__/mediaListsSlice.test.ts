@@ -56,7 +56,7 @@ describe("mediaListsSlice", () => {
     const mediaReducer = (
       state: { items: MediaItem[] } = { items: [mockMediaItem] }
     ): { items: MediaItem[] } => state;
-    
+
     store = configureStore({
       reducer: {
         mediaLists: mediaListsReducer,
@@ -142,7 +142,7 @@ describe("mediaListsSlice", () => {
       it("should update state when fulfilled", () => {
         const secondMediaList = { ...mockMediaList, id: "list-2", name: "Second List" };
         const secondMediaListItem = { ...mockMediaListItem, id: "list-item-2", media_list_id: "list-2" };
-        
+
         store.dispatch(
           fetchMediaLists.fulfilled(
             {
@@ -215,7 +215,7 @@ describe("mediaListsSlice", () => {
             { listId: "list-1", mediaItemId: "media-1", index: 0 }
           )
         );
-        
+
         // Then add another item
         const secondItem = { ...mockMediaListItem, id: "list-item-2", media_item_id: "media-2", index: 1 };
         store.dispatch(
@@ -225,13 +225,13 @@ describe("mediaListsSlice", () => {
             { listId: "list-1", mediaItemId: "media-2", index: 1 }
           )
         );
-        
+
         // Then reorder them
         const reorderedItems = [
           { ...mockMediaListItem, index: 1 },
           { ...secondItem, index: 0 }
         ];
-        
+
         store.dispatch(
           reorderMediaListItems.fulfilled(
             { media_list_items: reorderedItems },
@@ -239,7 +239,7 @@ describe("mediaListsSlice", () => {
             { listId: "list-1", mediaItemIds: ["media-2", "media-1"] }
           )
         );
-        
+
         const state = store.getState().mediaLists;
         expect(state.mediaListItems).toHaveLength(2);
         expect(state.mediaListItems.find(item => item.id === "list-item-1")?.index).toBe(1);
@@ -270,7 +270,7 @@ describe("mediaListsSlice", () => {
         name: "Newer List",
         updated_at: "2024-02-05T12:00:00Z"
       };
-      
+
       store.dispatch(
         createMediaList.fulfilled(
           newerList,
@@ -278,7 +278,7 @@ describe("mediaListsSlice", () => {
           { name: "Newer List", description: "A newer test media list" }
         )
       );
-      
+
       const lists = selectAllMediaLists(store.getState() as RootState);
       expect(lists).toHaveLength(2);
       expect(lists[0].id).toBe("list-2"); // Newer list should be first
@@ -301,7 +301,7 @@ describe("mediaListsSlice", () => {
         id: "invalid-item",
         media_item_id: "non-existent"
       };
-      
+
       store.dispatch(
         addMediaToList.fulfilled(
           { media_list_items: [invalidListItem] },
@@ -309,7 +309,7 @@ describe("mediaListsSlice", () => {
           { listId: "list-1", mediaItemId: "non-existent", index: 1 }
         )
       );
-      
+
       expect(() => {
         selectMediaItemsForList(store.getState() as RootState, "list-1");
       }).toThrow("Media item not found");
@@ -318,7 +318,7 @@ describe("mediaListsSlice", () => {
     it("should select loading state", () => {
       const loading = selectMediaListsLoading(store.getState() as RootState);
       expect(loading).toBe(false);
-      
+
       store.dispatch(fetchMediaLists.pending(""));
       const loadingState = selectMediaListsLoading(store.getState() as RootState);
       expect(loadingState).toBe(true);
@@ -327,7 +327,7 @@ describe("mediaListsSlice", () => {
     it("should select error state", () => {
       const error = selectMediaListsError(store.getState() as RootState);
       expect(error).toBeNull();
-      
+
       store.dispatch(
         fetchMediaLists.rejected(new Error("Test error"), "")
       );

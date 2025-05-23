@@ -37,12 +37,12 @@ def app() -> Quart:
     app = Quart(__name__)
     app.register_blueprint(blueprint, url_prefix="/api/scheduler")
     app.config["TESTING"] = True
-    
+
     # Add HTTP error handler
     @app.errorhandler(HTTPException)
     async def http_error(error: HTTPException) -> tuple[dict[str, str], int]:
         return {"error": error.name, "message": error.description}, error.code
-    
+
     return app
 
 
@@ -63,7 +63,7 @@ def mock_token() -> TokenPayload:
     """Create a mock auth token for testing."""
     return TokenPayload(
         sub="test_user",
-        user_id="test-user-id", 
+        user_id="test-user-id",
         email="test@example.com",
         nickname="Test User",
         picture=None,
@@ -80,7 +80,7 @@ def mock_personality_model() -> AsyncMock:
         "id": "test-personality-id",
         "name": "Test Personality",
     }
-    
+
     mock = AsyncMock()
     mock.get_many = AsyncMock(return_value=[mock_personality])
     return mock

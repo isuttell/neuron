@@ -34,13 +34,13 @@ class InspectImageToolArgs(BaseModel):
 async def get_image_bytes(image_url: str) -> bytes:
     # Generate a random session token
     session_token = str(uuid4())
-    
+
     # Set the cookie in the session
     cookies = (
-        {"neuron_session": session_token} 
+        {"neuron_session": session_token}
         if config.static_require_auth else None
     )
-    
+
     async with (
         aiohttp.ClientSession(cookies=cookies) as session,
         session.get(image_url) as response

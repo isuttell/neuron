@@ -61,11 +61,11 @@ describe("TokenCounter", () => {
     render(<TokenCounter {...props} />);
 
     // Check that the formatted total tokens value is displayed in the progress bar
-    const progressText = screen.getAllByText("250").find(element => 
+    const progressText = screen.getAllByText("250").find(element =>
       element.parentElement?.className.includes("bg-secondary")
     );
     expect(progressText).toBeDefined();
-    
+
     // Verify formatNumber was called with the correct value
     expect(formatNumber).toHaveBeenCalledWith(250);
   });
@@ -84,7 +84,7 @@ describe("TokenCounter", () => {
     // Get the progress bar element
     const progressBar = container.querySelector(".bg-primary");
     expect(progressBar).not.toBeNull();
-    
+
     // Check that the width is roughly 40% (exact formatting may vary)
     const style = progressBar?.getAttribute("style");
     expect(style).toBeDefined();
@@ -104,12 +104,12 @@ describe("TokenCounter", () => {
     // because we've mocked the TooltipContent to be visible
     const tooltipContent = screen.getByTestId("tooltip-content");
     expect(tooltipContent).toBeInTheDocument();
-    
+
     // The rendered TokenMetadataTable should receive the correct props
     const inputTokens = screen.getByTestId("input-tokens");
     const outputTokens = screen.getByTestId("output-tokens");
     const totalTokens = screen.getByTestId("total-tokens");
-    
+
     expect(inputTokens.textContent).toBe("150");
     expect(outputTokens.textContent).toBe("250");
     expect(totalTokens.textContent).toBe("400");

@@ -77,19 +77,19 @@ def app() -> Quart:
 async def mock_db_session() -> AsyncGenerator[None, None]:
     """Mock the database session to prevent actual database connections."""
     session_mock = AsyncMock(spec=AsyncSession)
-    
+
     # Create a context manager mock that returns the session mock
     cm_mock = AsyncMock()
     cm_mock.__aenter__.return_value = session_mock
     cm_mock.__aexit__.return_value = None
-    
+
     # Define model paths for better line length control
     thread_model = "neuron_server.models.thread_model.get_session"
     message_model = "neuron_server.models.message_model.get_session"
     media_model = "neuron_server.models.media_item_model.get_session"
     thread_user_model = "neuron_server.models.thread_user_model.get_session"
     user_model = "neuron_server.models.user_model.get_session"
-    
+
     # Patch the get_session function to return our mock
     with (
         patch(thread_model, return_value=cm_mock),
