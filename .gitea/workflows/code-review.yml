@@ -92,7 +92,7 @@ jobs:
           model: "claude-sonnet-4-20250514"
           max_turns: 25
           mcp_config: "mcp-config.json"
-          allowed_tools: "Read,Bash(git:*,tea:*),WebFetch(domain:zaks.io),mcp__gitea__create_issue_comment,mcp__gitea__get_pull_request_by_index"
+          allowed_tools: "Read,Bash(git:*),Bash(tea:*),Bash(find:*),Bash(ls:*),Bash(grep:*),WebFetch(domain:zaks.io),mcp__gitea__create_issue_comment,mcp__gitea__get_pull_request_by_index"
           prompt: |
             You are reviewing PR #${{ github.event.pull_request.number }} in this Gitea repository.
 
