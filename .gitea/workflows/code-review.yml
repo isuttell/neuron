@@ -2,7 +2,7 @@ name: Claude PR Review
 
 on:
   pull_request:
-    types: [opened]
+    types: [opened, synchronize]
     branches: [master]
 
 permissions:
@@ -92,25 +92,32 @@ jobs:
           model: "claude-sonnet-4-20250514"
           max_turns: 25
           mcp_config: "mcp-config.json"
-          allowed_tools: "Read,Bash(git:*,tea:*),mcp__gitea__create_issue_comment,mcp__gitea__get_pull_request_by_index"
+          allowed_tools: "Read,Bash(git:*,tea:*),WebFetch(domain:zaks.io),mcp__gitea__create_issue_comment,mcp__gitea__get_pull_request_by_index"
           prompt: |
             You are reviewing PR #${{ github.event.pull_request.number }} in this Gitea repository.
 
             IMPORTANT: You have access to the following tools:
             - Gitea MCP tools: Use `mcp__gitea__get_pull_request_by_index` to get PR details and `mcp__gitea__create_issue_comment` to post your review comments
             - Tea CLI: Use `tea pr --repo isuttell/neuron --comments ${{ github.event.pull_request.number }}` to read existing comments on the PR
+            - WebFetch: Use to fetch the PR diff from https://gitea.zaks.io/isuttell/neuron/pulls/${{ github.event.pull_request.number }}.diff
 
             Steps to follow:
             1. Get PR details using: mcp__gitea__get_pull_request_by_index with index ${{ github.event.pull_request.number }}
             2. Read existing PR comments using: tea pr --repo isuttell/neuron --comments ${{ github.event.pull_request.number }}
-            3. Get the code diff using: git diff origin/master...HEAD
+            3. Fetch the PR diff using: WebFetch from https://gitea.zaks.io/isuttell/neuron/pulls/${{ github.event.pull_request.number }}.diff
             4. Read related files for additional context to understand the impact of changes
-            5. Analyze code quality, potential bugs, and improvements in the diff
-            6. Use the Gitea MCP tools to leave a comment with your recommendations
+            5. Analyze code style consistency by comparing with similar files in the repository
+            6. Determine potential impact on other parts of the codebase that depend on the changed code
+            7. Analyze code quality, potential bugs, and improvements in the diff
+            8. Use the Gitea MCP tools to leave a comment with your recommendations
 
             Your review should be:
             - Concise, professional, and insightful
             - Specific with line numbers when possible
             - Focused on problems and potential improvements
             - Free of unnecessary explanations
-            - Avoid duplicating feedback already provided in existing comments
+            - Build on previous conversations from existing comments
+            - Address changes made since your last review (if any)
+            - Acknowledge fixes to previously identified issues
+            - Include assessment of code style consistency with the repository
+            - Highlight potential impacts on other parts of the codebase
