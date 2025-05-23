@@ -10,6 +10,17 @@ permissions:
   issues: write
 
 jobs:
+  debug-event:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Debug Event
+        run: |
+          echo "Event: ${{ github.event_name }}"
+          echo "Action: ${{ github.event.action }}"
+          echo "Label: ${{ github.event.label.name }}"
+          echo "Full event:"
+          echo '${{ toJson(github.event) }}'
+
   auto-fix:
     runs-on: ubuntu-latest
     if: github.event.label.name == 'auto-fix'
