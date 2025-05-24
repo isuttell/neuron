@@ -7,6 +7,8 @@ import messagesReducer, {
   getMessagesError,
   getMessagesLoading,
   getTextContent,
+  getThinkingContent,
+  getCitations,
   partialMessage,
   selectThreadMessages,
   upsertMessage,
@@ -75,6 +77,7 @@ describe("messageSlice", () => {
           id: "123",
           textContent: mockMessage.content,
           thinkingContent: "",
+          citations: [],
           created_at: new Date(mockMessage.created_at).getTime(),
         });
         expect(state.messageIds).toContain("123");
@@ -342,6 +345,148 @@ describe("messageSlice", () => {
         ];
         expect(getTextContent(content)).toBe("Hello\nworld");
       });
+    });
+
+    describe("getThinkingContent", () => {
+      it("should return empty string for string content", () => {
+        expect(getThinkingContent("Hello")).toBe("");
+      });
+
+      it("should extract thinking content from array", () => {
+        const content = [
+          { type: "text", text: "Hello", index: 0 },
+          { type: "thinking", thinking: "Reasoning about the answer", index: 1 },
+        ];
+        expect(getThinkingContent(content)).toBe("Reasoning about the answer");
+      });
+
+      it("should return undefined when no thinking content", () => {
+        const content = [
+          { type: "text", text: "Hello", index: 0 },
+        ];
+        expect(getThinkingContent(content)).toBeUndefined();
+      });
+    });
+
+    describe("getCitations", () => {
+      it("should return empty array for string content", () => {
+        expect(getCitations("Hello")).toEqual([]);
+      });
+
+      it("should extract citations from text content", () => {
+        const content = [
+          {
+            type: "text",
+            text: "The grass is green",
+            index: 0,
+            citations: [
+              {
+                type: "char_location" as const,
+                cited_text: "The grass is green.",
+                document_index: 0,
+                document_title: "My Document",
+                start_char_index: 0,
+                end_char_index: 20,
+              },
+            ],
+          },
+          { type: "text", text: "and the sky is blue", index: 1 },
+        ];
+        const citations = getCitations(content);
+        expect(citations).toHaveLength(1);
+        expect(citations[0].cited_text).toBe("The grass is green.");
+      });
+
+      it("should combine citations from multiple text blocks", () => {
+        const content = [
+          {
+            type: "text",
+            text: "The grass is green",
+            index: 0,
+            citations: [
+              {
+                type: "char_location" as const,
+                cited_text: "The grass is green.",
+                document_index: 0,
+                document_title: "My Document",
+                start_char_index: 0,
+                end_char_index: 20,
+              },
+            ],
+          },
+          {
+            type: "text",
+            text: "and the sky is blue",
+            index: 1,
+            citations: [
+              {
+                type: "char_location" as const,
+                cited_text: "The sky is blue.",
+                document_index: 0,
+                document_title: "My Document",
+                start_char_index: 20,
+                end_char_index: 36,
+              },
+            ],
+          },
+        ];
+        const citations = getCitations(content);
+        expect(citations).toHaveLength(2);
+        expect(citations[0].cited_text).toBe("The grass is green.");
+        expect(citations[1].cited_text).toBe("The sky is blue.");
+      });
+
+      it("should handle content without citations", () => {
+        const content = [
+          { type: "text", text: "Hello", index: 0 },
+          { type: "thinking", thinking: "Thinking...", index: 1 },
+        ];
+        expect(getCitations(content)).toEqual([]);
+      });
+    });
+  });
+
+  describe("message with citations", () => {
+    it("should parse message with citations correctly", () => {
+      const messageWithCitations = {
+        id: "run-789",
+        type: "ai" as const,
+        content: [
+          {
+            type: "text",
+            text: "Based on the document, the grass is green",
+            index: 0,
+            citations: [
+              {
+                type: "char_location" as const,
+                cited_text: "The grass is green.",
+                document_index: 0,
+                document_title: "My Document",
+                start_char_index: 0,
+                end_char_index: 20,
+              },
+            ],
+          },
+        ],
+        thread_id: "thread-1",
+        created_at: "2024-02-04T12:00:00Z",
+        name: undefined,
+        status: undefined,
+        tool_calls: undefined,
+        tool_call_id: undefined,
+        additional_kwargs: undefined,
+        response_metadata: undefined,
+        usage_metadata: undefined,
+        node: undefined,
+      };
+
+      store.dispatch(upsertMessage({ message: messageWithCitations }));
+      const state = store.getState().messages;
+      const message = state.messageMap["789"];
+
+      expect(message.textContent).toBe("Based on the document, the grass is green");
+      expect(message.citations).toHaveLength(1);
+      expect(message.citations![0].cited_text).toBe("The grass is green.");
     });
   });
 });
