@@ -129,25 +129,11 @@ class LLM:
         """
         workflow = StateGraph(AgentState)
         active_tools = tools or default_tools
-        
-        # Separate native tools from BaseTool instances
-        native_tools = []
-        
-        # Add Anthropic native web search if this is an Anthropic model
-        if hasattr(self, 'provider') and self.provider == 'anthropic':
-            web_search_tool = {
-                "type": "web_search_20250305",
-                "name": "web_search",
-                "max_uses": 10
-            }
-            native_tools.append(web_search_tool)
-        
-        # Bind all tools (BaseTool instances + native tools) to the model
-        all_tools = list(active_tools) + native_tools
-        model = self.model.bind_tools(all_tools)
-        
-        # Only add BaseTool instances to ToolNode
-        # Native tools are handled directly by the model
+
+        # Bind tools to the model
+        model = self.model.bind_tools(active_tools)
+
+        # Add tools to ToolNode
         workflow.add_node("tools", ToolNode(active_tools))
 
         async def agent_node(state: AgentState, config: RunnableConfig) -> AgentState:

@@ -60,7 +60,7 @@ def test_get_message_content_with_tool_use() -> None:
             "input": {"location": "San Francisco"}
         }
     ])
-    
+
     # Test structured format
     result = get_message_content(msg, format_as_string=False)
     expected_count = 2
@@ -69,7 +69,7 @@ def test_get_message_content_with_tool_use() -> None:
     assert result[1]["type"] == "tool_use"
     assert result[1]["name"] == "get_weather"
     assert result[1]["input"]["location"] == "San Francisco"
-    
+
     # Test string format
     result_str = get_message_content(msg, format_as_string=True)
     assert result_str == "Let me check the weather\n[Tool: get_weather]"
@@ -84,7 +84,7 @@ def test_get_message_content_with_unknown_type() -> None:
             "data": {"key": "value"}
         }
     ])
-    
+
     # Test structured format - should pass through all fields
     result = get_message_content(msg, format_as_string=False)
     assert len(result) == 1

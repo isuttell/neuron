@@ -37,7 +37,7 @@ jobs:
         run: poetry env use ${{ steps.setup-python.outputs.python-path }}
 
       - name: Install dependencies
-        run: poetry install --no-interaction --no-root
+        run: poetry install --no-interaction
 
       - name: Lint with Ruff
         run: poetry run ruff check src/neuron_server/
