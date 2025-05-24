@@ -423,11 +423,10 @@ class LLM:
         """
         messages = state.get("messages", [])
         last_message = messages[-1]
-        assert isinstance(last_message, AIMessage)
-        # If there is no function call, then we finish
-        if last_message.tool_calls:
+        # Only check for tool calls if it's an AIMessage
+        if isinstance(last_message, AIMessage) and last_message.tool_calls:
             return "tools"
-        # Otherwise if there is, we continue
+        # Otherwise continue
         return "continue"
 
     def should_call_update_memory(
