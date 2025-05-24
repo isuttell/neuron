@@ -23,14 +23,26 @@ The system is designed to be highly modular, allowing easy addition of new tools
 
 Neuron consists of several key components:
 
-- **Backend**: Python-based server using Quart for async HTTP and WebSocket support
-- **Frontend**: React application with TypeScript, Redux, and Shadcn UI components
+- **Backend**: Python-based API server using Quart for async HTTP and WebSocket support
+- **Frontend**: React application served by nginx, built with TypeScript, Redux, and Shadcn UI
 - **Database**: PostgreSQL with PGVector for vector storage
 - **Knowledge Graph**: Neo4j for semantic data relationships
 - **Cache**: Redis for pub/sub messaging and task scheduling
 - **AI Integration**: LangChain and LangGraph for LLM workflows
 
 The application uses a WebSocket-based event system for real-time communication between the client and server, with REST endpoints for resource management.
+
+### Container Architecture
+
+Neuron uses a microservices architecture with separate containers:
+
+- **neuron-client**: nginx container serving the React application
+- **neuron-server**: Python API server handling all backend logic
+- **PostgreSQL**: Database with pgvector extension for embeddings
+- **Neo4j**: Graph database for knowledge management
+- **Redis**: Cache and message broker
+
+This separation allows for independent scaling and deployment of frontend and backend components.
 
 ## Tools
 
@@ -219,12 +231,32 @@ docker-compose up -d
 
 This will start the following services:
 
-- Neuron server
-- PostgreSQL database
-- Neo4j graph database
-- Redis cache
+- **client**: nginx serving the React frontend (port 4449)
+- **server**: Python API server (port 5000)
+- **db**: PostgreSQL database with pgvector
+- **neo4j**: Graph database (ports 7474, 7687)
+- **redis**: Cache and message broker (port 6379)
 
-Access the application at http://localhost:5000
+Access the application at http://localhost:4449
+
+#### Building Images
+
+To build the Docker images locally:
+
+```bash
+# Build both client and server
+docker-compose build
+
+# Build only the client
+docker-compose build client
+
+# Build only the server
+docker-compose build server
+```
+
+#### Production Deployment
+
+For production deployments, the containers are configured to work with Traefik as a reverse proxy. The client container serves static files via nginx, while API requests are routed directly to the server container, avoiding double-proxying overhead.
 
 ## Pre-commit Hooks
 
