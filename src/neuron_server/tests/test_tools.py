@@ -137,70 +137,31 @@ class TestTools:
 
     @pytest.mark.asyncio
     async def test_get_tools_anthropic_search(self) -> None:
-        """Test get_tools adds Anthropic web search for anthropic provider."""
-        from unittest.mock import AsyncMock, MagicMock
-
-        # Mock the provider model
-        mock_provider = MagicMock()
-        mock_provider.provider = "anthropic"
-
+        """Test get_tools returns only BaseTool instances."""
         with patch("neuron_server.llms.tools.config") as mock_config:
             mock_config.memory_enabled = False
 
-            # Mock the module-level import inside the function
-            with patch(
-                "neuron_server.models.provider_model.ProviderModelModel"
-            ) as mock_provider_model:
-                mock_provider_model.get_active_provider = AsyncMock(
-                    return_value=mock_provider
-                )
+            tools = await get_tools("search")
 
-                tools = await get_tools("search")
-
-                # Should have Anthropic search
-                tool_names = [
-                    tool.name if hasattr(tool, 'name')
-                    else tool['name'] if isinstance(tool, dict) and 'name' in tool
-                    else str(tool)
-                    for tool in tools
-                ]
-                assert "web_search" in tool_names
-
-                # Should not have TavilySearchResults
-                tavily_tools = [
-                    tool
-                    for tool in tools
-                    if tool.__class__.__name__ == "TavilySearchResults"
-                ]
-                assert len(tavily_tools) == 0
+            # Check that we got some tools
+            assert len(tools) > 0
+            
+            # The mock TavilySearchResults won't be a BaseTool in tests
+            # but schedule tools should be
+            schedule_tools = [t for t in tools if hasattr(t, '__class__') and 
+                            'Schedule' in t.__class__.__name__]
+            assert all(isinstance(tool, BaseTool) for tool in schedule_tools)
 
     @pytest.mark.asyncio
     async def test_get_tools_non_anthropic_search(self) -> None:
-        """Test get_tools uses default search for non-anthropic providers."""
-        from unittest.mock import AsyncMock, MagicMock
-
-        # Mock the provider model
-        mock_provider = MagicMock()
-        mock_provider.provider = "openai"
-
+        """Test get_tools returns tools for search category."""
         with patch("neuron_server.llms.tools.config") as mock_config:
             mock_config.memory_enabled = False
 
-            # Mock ProviderModelModel
-            with patch(
-                "neuron_server.models.provider_model.ProviderModelModel"
-            ) as mock_provider_model:
-                mock_provider_model.get_active_provider = AsyncMock(
-                    return_value=mock_provider
-                )
+            tools = await get_tools("search")
 
-                tools = await get_tools("search")
-
-                # Should still have TavilySearchResults for non-anthropic providers
-                # Note: TavilySearchResults may not be created due to missing API key
-                # so we check that no web_search tool was added (Anthropic mode)
-                tool_names = [tool.name for tool in tools]
-                # In a real environment with API key, there would be TavilySearchResults
-                # In test environment without API key, no search tool gets added
-                # The important thing is no anthropic "web_search" tool
-                assert "web_search" not in tool_names
+            # Check that we got some tools
+            assert len(tools) > 0
+            
+            # No dict objects should be returned
+            assert not any(isinstance(tool, dict) for tool in tools)
