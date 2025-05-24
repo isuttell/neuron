@@ -171,6 +171,15 @@ sys.modules["neo4j_graphrag.retrievers.text2cypher"].Text2CypherRetriever = Mock
 
 # Mock Tavily
 mock_tavily = Mock()
+
+# Create a mock TavilySearchResults that inherits from BaseTool
+class MockTavilySearchResults(Mock):
+    def __init__(self, *args, **kwargs):
+        super().__init__()
+        self.name = "tavily_search_results"
+        self.description = "Search Tavily for recent results"
+        
+mock_tavily.TavilySearchResults = MockTavilySearchResults
 mock_tavily.TavilySearchAPIWrapper = Mock
 sys.modules["langchain_community.tools.tavily_search"] = mock_tavily
 
