@@ -35,41 +35,14 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
-      - name: Cache node modules
-        uses: actions/cache@v4
-        id: npm-cache
-        with:
-          path: node_modules
-          key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-npm-
-
       - name: Install dependencies
-        if: steps.npm-cache.outputs.cache-hit != 'true'
         run: npm ci
-
-      - name: Report cache status
-        run: |
-          if [ "${{ steps.npm-cache.outputs.cache-hit }}" == "true" ]; then
-            echo "✅ Using cached node_modules"
-          else
-            echo "🔄 Fresh install of dependencies"
-          fi
 
       - name: Lint
         run: npm run lint
 
       - name: Test
         run: npm test
-
-      - name: Cache build output
-        uses: actions/cache@v4
-        id: build-cache
-        with:
-          path: dist
-          key: ${{ runner.os }}-build-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-build-
 
       - name: Build
         run: npm run build
