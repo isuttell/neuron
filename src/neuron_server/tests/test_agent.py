@@ -163,7 +163,7 @@ async def dummy_llm_get_active() -> DummyLLM:
     return DummyLLM()
 
 
-def dummy_get_tools(tool_set: list | None) -> None:
+async def dummy_get_tools(tool_set: list | None) -> None:
     return None
 
 

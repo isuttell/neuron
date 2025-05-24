@@ -65,7 +65,11 @@ class MissingContextError(Exception):
 async def ainvoke_update_personality(
     llm: LLM, personality: PersonalityModel, context: str, prompt: str
 ) -> str:
-    tools = get_tools(personality.tool_set) if personality.tool_set else default_tools
+    tools = (
+        await get_tools(personality.tool_set)
+        if personality.tool_set
+        else default_tools
+    )
     chain: Runnable = (
         personality_update_prompt | llm.model.bind_tools(tools) | StrOutputParser()
     )
