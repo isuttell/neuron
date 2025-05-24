@@ -95,7 +95,7 @@ jobs:
           model: "claude-sonnet-4-20250514"
           max_turns: 25
           mcp_config: "mcp-config.json"
-          allowed_tools: "Read,View,Glob,GlobTool,Grep,GrepTool,Bash(git:*),Bash(tea:*),Bash(find:*),Bash(ls:*),Bash(grep:*),Bash(jq:*),WebFetch(domain:gitea.zaks.io),mcp__gitea__create_issue_comment,mcp__gitea__get_pull_request_by_index"
+          allowed_tools: "Read,View,Glob,GlobTool,Grep,GrepTool,Bash(git:*),Bash(tea:*),Bash(find:*),Bash(ls:*),Bash(grep:*),Bash(jq:*),Bash(touch:*),WebFetch(domain:gitea.zaks.io),mcp__gitea__create_issue_comment,mcp__gitea__get_pull_request_by_index"
           prompt: |
             You are reviewing PR #${{ github.event.pull_request.number }} in this Gitea repository.
 
@@ -113,6 +113,7 @@ jobs:
             6. Determine potential impact on other parts of the codebase that depend on the changed code
             7. Analyze code quality, potential bugs, and improvements in the diff
             8. Use the Gitea MCP tools to leave a comment with your recommendations
+            9. If you approve of the PR with no critical issues, create a file named APPROVED by running: touch APPROVED
 
             Your review should be:
             - Concise, professional, and insightful
@@ -124,5 +125,20 @@ jobs:
             - Acknowledge fixes to previously identified issues
             - Include assessment of code style consistency with the repository
             - Highlight potential impacts on other parts of the codebase
+            - Avoid repeating feedback already given in previous reviews on this PR
+            - Keep follow-up reviews brief if there are minimal changes since your last review
 
             IMPORTANT: If you encounter any errors, permission issues, or need additional access during the review process, leave a comment on the PR explaining what went wrong and what additional access or fixes are needed.
+
+      # Check if PR was approved
+      - name: Check PR Approval Status
+        id: check-approval
+        run: |
+          if [ -f "APPROVED" ]; then
+            echo "✅ PR has been approved by Claude"
+            echo "approved=true" >> $GITHUB_OUTPUT
+          else
+            echo "❌ PR has not been approved - review comments have been posted"
+            echo "approved=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
