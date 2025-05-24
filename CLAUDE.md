@@ -138,3 +138,12 @@ This project uses a self-hosted Gitea instance at https://gitea.zaks.io for vers
   ```
 
 For complete PR requirements and process, refer to @PR_REQUIREMENTS.md
+
+## Monitoring and Logs
+
+### Querying Preprod Logs with Loki
+
+The preprod environment uses Loki for log aggregation. To query Neuron logs:
+
+1. Use `mcp__loki__get_loki_label_values(label="container")` to find Neuron containers (they start with "neuron-")
+2. Query logs with `mcp__loki__query_loki(query='{container="neuron-neuron_server-1"}', limit=50)`
