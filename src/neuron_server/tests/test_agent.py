@@ -270,49 +270,104 @@ class MockStreamConfig:
 
 @pytest.mark.asyncio
 async def test_message_id_consistency_during_streaming() -> None:
-    """Test that AI message gets consistent ID assigned in call_model."""
+    """Test that message IDs are handled consistently during streaming."""
 
-    from langchain_core.runnables import RunnableConfig
+    from datetime import datetime
 
-    from neuron_server.llms.llm import LLM
+    from langchain_core.messages import HumanMessage
 
-    # Create a mock LLM instance
-    llm = LLM(
-        model=MagicMock(),
-        title_model=MagicMock(),
-        memory_model=MagicMock(),
-        provider_model_id="test-provider"
-    )
+    from neuron_server.llms.agent import StreamEventContext, _process_stream_events
+    from neuron_server.models.personality_model import PersonalityModel
+    from neuron_server.models.thread_model import ThreadModel
 
-    # Mock the chain invoke to return an AIMessage without ID
-    mock_response = AIMessage(content="Test response")
+    # Create mock objects
+    thread = MagicMock(spec=ThreadModel)
+    thread.id = uuid4()
+    thread.name = "Test Thread"
+    thread.status = "idle"
 
-    mock_chain = MagicMock()
-    mock_chain.ainvoke = AsyncMock(return_value=mock_response)
+    personality = MagicMock(spec=PersonalityModel)
+    personality.context = "Test personality"
 
-    # Test state and config with ai_message_id
-    test_id = str(uuid4())
-    state = {"messages": []}
-    config = RunnableConfig(configurable={"ai_message_id": test_id})
+    config = {
+        "thread_id": thread.id,
+        "personality_id": uuid4(),
+        "user_id": uuid4(),
+        "username": "TestUser",
+        "location": "Test Location"
+    }
 
-    with patch('neuron_server.llms.llm.chat_prompt', MagicMock()), \
-         patch.object(llm, 'model') as mock_model:
+    human_message = HumanMessage(content="Test message")
 
-        # Mock the chain creation
-        mock_model.bind_tools.return_value = mock_model
+    # Mock graph that yields streaming events
+    mock_graph = MagicMock()
 
-        # Patch the chain creation to return our mock
-        with patch(
-            'neuron_server.llms.llm.chat_prompt.__or__',
-            return_value=mock_chain
-        ):
-            result = await llm.call_model(mock_model, state, config)
+    # Create a run_id to track
+    test_run_id = str(uuid4())
 
-    # The returned message should have our test ID
-    returned_message = result["messages"][0]
-    assert returned_message.id == test_id, (
-        f"AIMessage should have assigned ID {test_id}, "
-        f"got {returned_message.id}"
+    # Simulate streaming events
+    async def mock_stream_events(*args: Any, **kwargs: Any) -> AsyncIterator[dict]:
+        # Yield streaming chunk
+        yield {
+            "event": "on_chat_model_stream",
+            "name": "test_model",
+            "data": {"chunk": AIMessage(content="Hello")},
+            "run_id": test_run_id,
+            "metadata": {"langgraph_node": "agent"}
+        }
+        # Yield final message
+        yield {
+            "event": "on_chat_model_end",
+            "name": "test_model",
+            "data": {"output": AIMessage(content="Hello world")},
+            "run_id": test_run_id,
+            "metadata": {"langgraph_node": "agent"}
+        }
+
+    mock_graph.astream_events = mock_stream_events
+
+    # Track published events
+    published_events = []
+
+    async def mock_publish(channel: str, event: object) -> None:
+        published_events.append(event)
+
+    # Create a mock state object with values attribute
+    mock_state = MagicMock()
+    mock_state.values = {"messages": []}
+
+    aget_state_mock = AsyncMock(return_value=mock_state)
+    with patch('neuron_server.llms.agent.pubsub.publish', mock_publish), \
+         patch('neuron_server.llms.agent.aget_state', aget_state_mock):
+
+        ctx = StreamEventContext(
+            thread=thread,
+            graph=mock_graph,
+            human_message=human_message,
+            personality=personality,
+            config=config,
+            start_time=datetime.now()
+        )
+
+        await _process_stream_events(ctx)
+
+    # Verify that partial and complete messages have the same ID (run_id)
+    partial_msg_id = None
+    complete_msg_id = None
+
+    for event in published_events:
+        if hasattr(event, 'message'):
+            if hasattr(event.message, 'status') and event.message.status == 'streaming':
+                partial_msg_id = event.message.id
+            elif event.message.type == 'ai' and not hasattr(event.message, 'status'):
+                complete_msg_id = event.message.id
+
+    assert partial_msg_id is not None, "Should have published a partial message"
+    assert complete_msg_id is not None, "Should have published a complete message"
+    assert partial_msg_id == complete_msg_id == test_run_id, (
+        f"Partial and complete messages should use run_id as their ID. "
+        f"Expected: {test_run_id}, Partial: {partial_msg_id}, "
+        f"Complete: {complete_msg_id}"
     )
 
 

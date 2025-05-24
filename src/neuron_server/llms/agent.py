@@ -647,8 +647,6 @@ async def _process_stream_events(ctx: StreamEventContext) -> str | None:
     index = -1
     active_runs: dict[str, str] = {}
     state_result: str | None = None
-    # Generate a consistent message ID to use for both partial and complete messages
-    ai_message_id = str(uuid4())
 
     async for body in ctx["graph"].astream_events(
         {
@@ -665,7 +663,6 @@ async def _process_stream_events(ctx: StreamEventContext) -> str | None:
                 "personality_id": str(ctx["config"]["personality_id"]),
                 "username": ctx["config"]["username"],
                 "user_id": str(ctx["config"]["user_id"]),
-                "ai_message_id": ai_message_id,  # Pass our generated ID
             },
         },
         version="v2",
@@ -723,7 +720,7 @@ async def _process_stream_events(ctx: StreamEventContext) -> str | None:
                     "app",
                     PartialMessageEvent(
                         message=PartialMessage(
-                            id=ai_message_id,  # Use our consistent message ID
+                            id=run_id,  # Use run_id directly as message ID
                             type="ai",
                             content=content,
                             thread_id=ctx["thread"].id,
@@ -737,10 +734,9 @@ async def _process_stream_events(ctx: StreamEventContext) -> str | None:
         elif kind == "on_chat_model_end":
             output: AIMessage = data["output"]
             if "update_title" not in active_runs.values():
-                # Override the message ID to match our generated ID
-                # used for partial messages
+                # Use the run_id as the message ID to match streaming messages
                 message_data = output.model_dump()
-                message_data["id"] = ai_message_id  # Use same ID as partial messages
+                message_data["id"] = run_id
 
                 message = ThreadMessage(
                     **message_data,
