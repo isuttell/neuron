@@ -1,0 +1,102 @@
+# Nonproduction Docker Compose Configuration for neuron.zaks.io
+#
+# This configuration is used for the nonprod environment in the home lab.
+# It includes specific settings for Traefik ingress, persistent volumes,
+# and integration with the home network infrastructure.
+#
+# DO NOT use this for local development - use docker-compose.yml and docker-compose.override.yml instead.
+
+services:
+  neuron_server:
+    image: gitea.zaks.io/isuttell/neuron:latest
+    restart: unless-stopped
+    ports:
+      - 4999:5000
+    environment:
+      - MPLCONFIGDIR=/app/tmp
+    env_file:
+      - .env
+    volumes:
+      - neuron-static:/static
+      - neuron-tmp:/app/tmp
+      - /opt/services/network-services/config/homepage/images/:/images/homepage
+      - /opt/services/homeassistant/config/www:/images/homeassistant
+      - /var/run/docker.sock:/var/run/docker.sock
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.neuron.entrypoints=https"
+      - "traefik.http.routers.neuron.rule=Host(`neuron.zaks.io`)"
+      - "traefik.http.services.neuron.loadbalancer.healthcheck.path=/status"
+      - "traefik.http.services.neuron.loadbalancer.healthcheck.timeout=30s"
+      - "com.centurylinklabs.watchtower.enable=true"
+
+  neuron_database:
+    image: pgvector/pgvector:pg17
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - neuron-database:/var/lib/postgresql/data
+    ports:
+      - 5432:5432
+
+  neuron_redis:
+    restart: unless-stopped
+    image: redis:7.4-alpine
+    command: redis-server --save 60 1
+    volumes:
+      - redis-data:/data
+
+  neuron_neo4j:
+    restart: unless-stopped
+    image: neo4j:5.26
+    ports:
+      - 7474:7474
+      - 7687:7687
+    volumes:
+      - neuron-neo4j-data:/data
+      - neuron-neo4j-logs:/logs
+      - neuron-neo4j-config:/config
+      - neuron-neo4j-plugins:/plugins
+    env_file:
+      - neo4j.env
+
+volumes:
+  redis-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /opt/lib/neuron/redis
+  neuron-static:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /opt/lib/neuron/static
+  neuron-database:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /opt/lib/neuron/database
+  neuron-tmp:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /opt/lib/neuron/tmp
+  neuron-neo4j-logs:
+  neuron-neo4j-config:
+  neuron-neo4j-plugins:
+  neuron-neo4j-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /opt/lib/neuron/neo4j
+
+networks:
+  default:
+    name: home-network
+    external: true
