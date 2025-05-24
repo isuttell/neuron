@@ -33,7 +33,10 @@ export interface Message {
     input_tokens?: number;
     output_tokens?: number;
     total_tokens?: number;
-    [key: string]: number | undefined;
+    input_token_details?: {
+      cache_creation?: number;
+      cache_read?: number;
+    };
   };
   created_at?: string;
   node?: string;
