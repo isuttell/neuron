@@ -26,6 +26,9 @@ export default defineConfig(({ mode }) => ({
       "/static": {
         target: "http://localhost:5003",
       },
+      "/logo.svg": {
+        target: "http://localhost:5003",
+      },
       "/ws": {
         target: "ws://localhost:5003",
         ws: true,
