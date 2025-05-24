@@ -46,8 +46,14 @@ def _process_list_content_as_string(content: list) -> str:
     for part in content:
         if isinstance(part, str):
             text_parts.append(part)
-        elif isinstance(part, dict) and part.get("type") == "text":
-            text_parts.append(part["text"])
+        elif isinstance(part, dict):
+            part_type = part.get("type")
+            if part_type == "text":
+                text_parts.append(part.get("text", ""))
+            elif part_type == "tool_use":
+                # Include tool use in string representation
+                tool_name = part.get("name", "unknown_tool")
+                text_parts.append(f"[Tool: {tool_name}]")
     return "\n".join(text_parts)
 
 
@@ -62,7 +68,9 @@ def _process_list_content_as_structured(content: list) -> list[dict[str, Any]] |
         elif isinstance(part, dict):
             content_type = part.get("type")
             if content_type == "text":
-                contents.append({"type": "text", "text": part["text"], "index": index})
+                contents.append(
+                    {"type": "text", "text": part.get("text", ""), "index": index}
+                )
                 index += 1
             elif content_type == "thinking":
                 contents.append(
@@ -72,6 +80,25 @@ def _process_list_content_as_structured(content: list) -> list[dict[str, Any]] |
                         "index": index,
                     }
                 )
+                index += 1
+            elif content_type == "tool_use":
+                # Handle tool use content
+                contents.append(
+                    {
+                        "type": "tool_use",
+                        "id": part.get("id", ""),
+                        "name": part.get("name", ""),
+                        "input": part.get("input", {}),
+                        "index": index,
+                    }
+                )
+                index += 1
+            else:
+                # Handle any other content types generically
+                # Copy all fields from the original part
+                generic_content = {"index": index}
+                generic_content.update(part)
+                contents.append(generic_content)
                 index += 1
     return contents if contents else None
 
