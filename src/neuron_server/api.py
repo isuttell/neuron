@@ -110,6 +110,15 @@ async def index(**kwargs: Any) -> Response:
 
 
 # Assets don't change so we can cache them for a long time
+# Public route for logo without authentication
+@blueprint.get("/logo.svg")
+@cors(allowed_methods=["GET", "OPTIONS"])
+@cache_control(max_age=31536000)
+async def get_logo() -> Response:
+    """Serve logo.svg without authentication requirement."""
+    return await send_from_directory(config.client_assets_folder, "logo.svg")
+
+
 @blueprint.get("/static/<path:path>")
 @blueprint.get("/neuron/static/<path:path>")
 @cors(allowed_methods=["GET", "OPTIONS"], allowed_headers=["Authorization"])
