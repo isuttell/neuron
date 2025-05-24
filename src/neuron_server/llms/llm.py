@@ -279,11 +279,6 @@ class LLM:
             config,
         )
 
-        # Set the message ID if provided in config (for consistency with streaming)
-        ai_message_id = config.get("configurable", {}).get("ai_message_id")
-        if ai_message_id:
-            response.id = ai_message_id
-
         response.created_at = datetime.now().astimezone().isoformat()
 
         # Log non-standard finish reasons
