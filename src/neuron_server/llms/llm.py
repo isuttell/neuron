@@ -134,10 +134,7 @@ class LLM:
         all_tools = list(active_tools)
         
         # Add Anthropic native web search if this is an Anthropic model
-        # Import here to avoid circular dependency
-        from neuron_server.llms.anthropic import AnthropicLLM
-        
-        if isinstance(self, AnthropicLLM):
+        if hasattr(self, 'provider') and self.provider == 'anthropic':
             web_search_tool = {
                 "type": "web_search_20250305",
                 "name": "web_search",
