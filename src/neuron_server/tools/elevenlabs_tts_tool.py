@@ -44,6 +44,7 @@ AvailableVoices = Literal[
     "Sexy Female Villain Voice",  # Seductive young American female villain
     "Nassim - Corporate Narration",  # Deep middle-aged American male for
     # corporate narration
+    "Donovan",  # Deep male hard boiled conversational voice
 ]
 
 
@@ -76,6 +77,7 @@ Scott - drill instructor: Middle-aged British male with crisp drill instructor v
 Isaac: Personal cloned voice
 Sexy Female Villain Voice: Young American female with confident, seductive villain voice
 Nassim: Middle-aged American male with deep voice for corporate narration
+Donovan: Deep male voice with hard boiled conversational style
 """
     )
     text: str = Field(description="The text to be spoken.")
