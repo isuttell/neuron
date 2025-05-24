@@ -174,7 +174,7 @@ mock_tavily = Mock()
 
 # Create a mock TavilySearchResults that inherits from BaseTool
 class MockTavilySearchResults(Mock):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: object, **kwargs: object) -> None:
         super().__init__()
         self.name = "tavily_search_results"
         self.description = "Search Tavily for recent results"
