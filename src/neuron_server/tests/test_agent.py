@@ -49,6 +49,51 @@ def test_get_message_content_empty() -> None:
     assert result is None
 
 
+def test_get_message_content_with_tool_use() -> None:
+    """Test handling of tool_use content type."""
+    msg = DummyMessage([
+        {"type": "text", "text": "Let me check the weather"},
+        {
+            "type": "tool_use",
+            "id": "tool_123",
+            "name": "get_weather",
+            "input": {"location": "San Francisco"}
+        }
+    ])
+    
+    # Test structured format
+    result = get_message_content(msg, format_as_string=False)
+    expected_count = 2
+    assert len(result) == expected_count
+    assert result[0]["type"] == "text"
+    assert result[1]["type"] == "tool_use"
+    assert result[1]["name"] == "get_weather"
+    assert result[1]["input"]["location"] == "San Francisco"
+    
+    # Test string format
+    result_str = get_message_content(msg, format_as_string=True)
+    assert result_str == "Let me check the weather\n[Tool: get_weather]"
+
+
+def test_get_message_content_with_unknown_type() -> None:
+    """Test handling of unknown content types."""
+    msg = DummyMessage([
+        {
+            "type": "custom_type",
+            "custom_field": "custom_value",
+            "data": {"key": "value"}
+        }
+    ])
+    
+    # Test structured format - should pass through all fields
+    result = get_message_content(msg, format_as_string=False)
+    assert len(result) == 1
+    assert result[0]["type"] == "custom_type"
+    assert result[0]["custom_field"] == "custom_value"
+    assert result[0]["data"]["key"] == "value"
+    assert "index" in result[0]
+
+
 # --- Tests for Debouncer class ---
 
 
