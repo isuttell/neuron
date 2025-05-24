@@ -3,7 +3,6 @@ import json
 import logging
 import os
 import re
-from typing import Any
 
 import openai
 from quart import Blueprint, Quart, Response, send_from_directory, websocket
@@ -79,8 +78,6 @@ router.register_controller(prompt_router)
 
 app = Quart(
     __name__,
-    static_url_path="/",
-    static_folder=config.client_assets_folder,
     root_path="/",
 )
 
@@ -88,39 +85,16 @@ app = Quart(
 blueprint = Blueprint(
     "neuron",
     __name__,
-    static_url_path="/",
-    static_folder=config.client_assets_folder,
 )
 
 
-@blueprint.get("/")
-@blueprint.get("/thread/<thread_id>")
-@blueprint.get("/personalities")
-@blueprint.get("/personality/<personality_id>")
-@blueprint.get("/personality/<personality_id>/embeddings")
-@blueprint.get("/gallery")
-@blueprint.get("/code-viewer")
-@blueprint.get("/stats")
-@blueprint.get("/prompts")
-@blueprint.get("/scheduled")
-@blueprint.get("/providers")
-@blueprint.get("/share/<list_id>")
-async def index(**kwargs: Any) -> Response:
-    return await blueprint.send_static_file("index.html")
+# Client routes removed - now handled by separate nginx container
 
 
-# Assets don't change so we can cache them for a long time
-# Public route for logo without authentication
-@blueprint.get("/logo.svg")
-@cors(allowed_methods=["GET", "OPTIONS"])
-@cache_control(max_age=31536000)
-async def get_logo() -> Response:
-    """Serve logo.svg without authentication requirement."""
-    return await send_from_directory(config.client_assets_folder, "logo.svg")
+# Logo route removed - now served by nginx container
 
 
 @blueprint.get("/static/<path:path>")
-@blueprint.get("/neuron/static/<path:path>")
 @cors(allowed_methods=["GET", "OPTIONS"], allowed_headers=["Authorization"])
 @cache_control(max_age=31536000)
 @requires_cookie

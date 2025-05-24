@@ -1,12 +1,18 @@
 services:
+  client:
+    ports:
+      - 4449:80
+    volumes:
+      - ./src/neuron_client/dist:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+
   server:
     env_file:
       - .env-docker
     ports:
-      - 4449:5000
+      - 5000:5000
     volumes:
       - ./static:/neuron/static
-      - ./src/neuron_client:/app/src/neuron_client
       - ./src/neuron_server:/app/src/neuron_server
 
   db:

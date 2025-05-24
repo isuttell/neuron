@@ -7,8 +7,23 @@
 # DO NOT use this for local development - use docker-compose.yml and docker-compose.override.yml instead.
 
 services:
+  neuron_client:
+    image: gitea.zaks.io/isuttell/neuron-client:latest
+    restart: unless-stopped
+    depends_on:
+      - neuron_server
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.neuron-client.entrypoints=https"
+      - "traefik.http.routers.neuron-client.rule=Host(`neuron.zaks.io`) && PathPrefix(`/`)"
+      - "traefik.http.routers.neuron-client.priority=1"
+      - "traefik.http.services.neuron-client.loadbalancer.server.port=80"
+      - "traefik.http.services.neuron-client.loadbalancer.healthcheck.path=/health"
+      - "traefik.http.services.neuron-client.loadbalancer.healthcheck.timeout=30s"
+      - "com.centurylinklabs.watchtower.enable=true"
+
   neuron_server:
-    image: gitea.zaks.io/isuttell/neuron:latest
+    image: gitea.zaks.io/isuttell/neuron-server:latest
     restart: unless-stopped
     ports:
       - 4999:5000
@@ -24,10 +39,12 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.neuron.entrypoints=https"
-      - "traefik.http.routers.neuron.rule=Host(`neuron.zaks.io`)"
-      - "traefik.http.services.neuron.loadbalancer.healthcheck.path=/status"
-      - "traefik.http.services.neuron.loadbalancer.healthcheck.timeout=30s"
+      - "traefik.http.routers.neuron-api.entrypoints=https"
+      - "traefik.http.routers.neuron-api.rule=Host(`neuron.zaks.io`) && (PathPrefix(`/api`) || PathPrefix(`/ws`))"
+      - "traefik.http.routers.neuron-api.priority=10"
+      - "traefik.http.services.neuron-api.loadbalancer.server.port=5000"
+      - "traefik.http.services.neuron-api.loadbalancer.healthcheck.path=/status"
+      - "traefik.http.services.neuron-api.loadbalancer.healthcheck.timeout=30s"
       - "com.centurylinklabs.watchtower.enable=true"
 
   neuron_database:

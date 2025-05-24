@@ -1,8 +1,21 @@
 services:
+  client:
+    restart: unless-stopped
+    image: gitea.zaks.io/isuttell/neuron-client:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.client
+    depends_on:
+      - server
+
   server:
     restart: unless-stopped
-    image: gitea.zaks.io/isuttell/neuron:latest
+    image: gitea.zaks.io/isuttell/neuron-server:latest
     build: .
+    depends_on:
+      - db
+      - neo4j
+      - redis
 
   db:
     restart: unless-stopped

@@ -1,18 +1,3 @@
-FROM node:20 AS client-builder
-
-WORKDIR /app
-
-COPY ["package*.json", "."]
-
-RUN npm ci --no-audit --no-fund
-
-COPY ["tsconfig*.json", "vite.config.ts", "eslint.config.js", "postcss.config.js", "tailwind.config.js", "components.json", "./"]
-COPY ["src/neuron_client/index.html", "./src/neuron_client/"]
-COPY ["src/neuron_client/public/", "./src/neuron_client/public/"]
-COPY ["src/neuron_client/src/", "./src/neuron_client/src/"]
-
-RUN NODE_ENV=development npx vite build --mode development
-
 FROM python:3.12-slim-bookworm AS server-builder
 
 ENV LANG=C.UTF-8
@@ -66,7 +51,6 @@ WORKDIR /app
 COPY --from=server-builder /app/.venv /app/.venv
 COPY src/neuron_server /app/src/neuron_server
 COPY pyproject.toml /app/pyproject.toml
-COPY --from=client-builder /app/src/neuron_client/dist /app/src/neuron_client/dist
 
 RUN pip install -e .
 
