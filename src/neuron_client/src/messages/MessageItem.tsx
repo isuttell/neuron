@@ -179,6 +179,7 @@ const MessageItem: React.FC<MessageItemProps> = ({
                       input_tokens={message.usage_metadata.input_tokens ?? 0}
                       output_tokens={message.usage_metadata.output_tokens ?? 0}
                       total_tokens={message.usage_metadata.total_tokens ?? 0}
+                      input_token_details={message.usage_metadata.input_token_details as { cache_creation?: number; cache_read?: number } | undefined}
                     />
                   </TooltipContent>
                 </Tooltip>
