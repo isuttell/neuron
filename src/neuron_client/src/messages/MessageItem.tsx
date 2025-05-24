@@ -21,6 +21,7 @@ import React, { memo, useState } from "react";
 import { formatNumber } from "../utils/numberFormat";
 import Content from "./Content";
 import TokenMetadataTable from "./TokenMetadataTable";
+import Citations from "./Citations";
 interface MessageItemProps {
   messageId: string;
   onPromptClick?: (prompt: string) => void;
@@ -47,6 +48,7 @@ const MessageItem: React.FC<MessageItemProps> = ({
     textContent,
     thinkingContent,
     user_id,
+    citations,
   } = message;
 
   // Get the message user from the users slice if available
@@ -143,11 +145,16 @@ const MessageItem: React.FC<MessageItemProps> = ({
 
           {body && body.trim().length > 0 ? (
             !showTools ? (
-              <Content
-                content={body}
-                preload={status === "streaming" ? "none" : "auto"}
-                onPromptClick={onPromptClick}
-              />
+              <>
+                <Content
+                  content={body}
+                  preload={status === "streaming" ? "none" : "auto"}
+                  onPromptClick={onPromptClick}
+                />
+                {citations && citations.length > 0 && (
+                  <Citations citations={citations} />
+                )}
+              </>
             ) : (
               <div className="whitespace-pre-wrap">{body}</div>
             )

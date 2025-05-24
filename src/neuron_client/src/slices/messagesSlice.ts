@@ -10,10 +10,21 @@ interface BaseContent {
   index: number;
 }
 
+// Citation interface
+export interface Citation {
+  type: "char_location";
+  cited_text: string;
+  document_index: number;
+  document_title: string;
+  start_char_index: number;
+  end_char_index: number;
+}
+
 // Text content
 interface TextContent extends BaseContent {
   type: "text";
   text: string;
+  citations?: Citation[];
 }
 
 // Thinking content
@@ -75,6 +86,7 @@ export interface Message extends Omit<IncomingMessage, "created_at"> {
   updated_at?: number;
   textContent: string;
   thinkingContent?: string;
+  citations?: Citation[];
 }
 
 interface IncomingPartialMessage extends Omit<IncomingMessage, "status"> {
@@ -137,6 +149,19 @@ export function getThinkingContent(
   return thinking?.thinking;
 }
 
+export function getCitations(content: Content[] | string): Citation[] {
+  if (typeof content === "string") {
+    return [];
+  }
+  const citations: Citation[] = [];
+  content.forEach((item) => {
+    if (item.type === "text" && (item as TextContent).citations) {
+      citations.push(...((item as TextContent).citations || []));
+    }
+  });
+  return citations;
+}
+
 /**
  * Parses an incoming message dates and returns a Message object
  * @param message - The incoming message
@@ -148,6 +173,7 @@ function parseIncomingMessage(message: IncomingMessage): Message {
     id: message.id.replace("run-", ""),
     textContent: getTextContent(message.content),
     thinkingContent: getThinkingContent(message.content),
+    citations: getCitations(message.content),
     created_at: message.created_at
       ? new Date(message.created_at).getTime()
       : undefined,
