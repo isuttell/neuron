@@ -124,5 +124,7 @@ jobs:
             - Acknowledge fixes to previously identified issues
             - Include assessment of code style consistency with the repository
             - Highlight potential impacts on other parts of the codebase
+            - Avoid repeating feedback already given in previous reviews on this PR
+            - Keep follow-up reviews brief if there are minimal changes since your last review
 
             IMPORTANT: If you encounter any errors, permission issues, or need additional access during the review process, leave a comment on the PR explaining what went wrong and what additional access or fixes are needed.
