@@ -238,20 +238,36 @@ memory_tools: list[BaseTool] = [
 personality_tools: list[BaseTool] = []
 
 
-def get_tools(query: str) -> list[BaseTool]:
+async def get_tools(query: str) -> list:
     """Get tools based on query string.
 
     Args:
         query: Query string containing tool categories separated by '+'
 
     Returns:
-        List of tools from requested categories plus required tools
+        List of tools from requested categories plus required tools. May include
+        both BaseTool objects and dict objects for Anthropic native tools.
     """
-    ts: list[BaseTool] = []
+    ts: list = []
     if query.strip():
         # Only process non-empty queries
         categories = [name for name in query.strip("+").split("+") if name in tool_sets]
         ts = [tool for name in categories for tool in tool_sets[name]]
+
+    # Add Anthropic web search if provider is anthropic and search is requested
+    if query.strip() and "search" in query.strip("+").split("+"):
+        try:
+            from neuron_server.models.provider_model import ProviderModelModel
+            active_provider = await ProviderModelModel.get_active_provider()
+            if active_provider and active_provider.provider == "anthropic":
+                tool = {
+                    "type": "web_search_20250305",
+                    "name": "web_search",
+                    "max_uses": 10
+                }
+                ts.append(tool)
+        except Exception:
+            pass
 
     # Required Tools
     if config.memory_enabled:
@@ -259,4 +275,11 @@ def get_tools(query: str) -> list[BaseTool]:
     ts.extend(personality_tools)
     ts.extend(schedule_tools)
 
-    return list({tool.name: tool for tool in ts}.values())
+    return list(
+        {
+            getattr(tool, "name", tool.get("name"))
+            if isinstance(tool, dict)
+            else tool.name: tool
+            for tool in ts
+        }.values()
+    )

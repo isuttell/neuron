@@ -278,7 +278,7 @@ async def execute_agent(
         raise BadRequest("Personality not found")
 
     llm: LLM = await ProviderModelModel.get_active_llm()
-    tools = get_tools(personality.tool_set) if personality.tool_set else None
+    tools = await get_tools(personality.tool_set) if personality.tool_set else None
     graph = llm.create_workflow(tools)
     graph.checkpointer = None
     result: AIMessage = await graph.ainvoke(
@@ -797,7 +797,7 @@ async def astream(args: StreamArgs) -> str | None:
 
         llm: LLM = await ProviderModelModel.get_active_llm()
         logger.debug(f"provider_model_id={llm.provider_model_id}")
-        tools = get_tools(personality.tool_set) if personality.tool_set else None
+        tools = await get_tools(personality.tool_set) if personality.tool_set else None
         graph = llm.create_workflow(tools)
         graph.checkpointer = AsyncPostgresSaver(pool)
 
