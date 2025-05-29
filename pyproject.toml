@@ -66,6 +66,7 @@ pytest-asyncio = "*"
 pytest-aiohttp = "*"
 ruff = "*"
 black = "*"
+pytest-testmon = "2.1.3"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
