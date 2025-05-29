@@ -6,6 +6,15 @@ on:
     tags: [ 'v*' ]
     paths:
       - 'src/**'
+      - '!src/**/__tests__/**'
+      - '!src/**/tests/**'
+      - '!**/*.test.ts'
+      - '!**/*.test.tsx'
+      - '!**/*.spec.ts'
+      - '!**/*.spec.tsx'
+      - '!**/test_*.py'
+      - '!**/*_test.py'
+      - '!**/conftest.py'
       - 'Dockerfile'
       - 'pyproject.toml'
       - 'poetry.lock'
