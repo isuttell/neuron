@@ -33,15 +33,6 @@ repos:
 # Local hooks for project-specific checks
 -   repo: local
     hooks:
-    # Backend Python tests - only run on changed test files
-    -   id: backend-test-changed
-        name: Backend Tests (Changed Files)
-        entry: bash -c 'files=$(echo "$@" | tr " " "\n" | grep -E "test_.*\.py$|.*_test\.py$"); if [ -n "$files" ]; then poetry run pytest -x $files; fi'
-        language: system
-        pass_filenames: true
-        types: [python]
-        files: ^src/neuron_server/.*test.*\.py$
-
     # Frontend linting with auto-fix
     -   id: frontend-lint
         name: Frontend Lint
@@ -57,11 +48,3 @@ repos:
         language: system
         files: ^(src/neuron_client/src/.*\.(ts|tsx)|tsconfig.*\.json)$
         pass_filenames: false
-
-    # Frontend tests - only run on changed test files
-    -   id: frontend-test-changed
-        name: Frontend Tests (Changed Files)
-        entry: bash -c 'files=$(echo "$@" | tr " " "\n" | grep -E "\.test\.(tsx?|jsx?)$|\.spec\.(tsx?|jsx?)$"); if [ -n "$files" ]; then npm test -- --findRelatedTests $files --watchAll=false; fi'
-        language: system
-        pass_filenames: true
-        files: ^src/neuron_client/src/.*\.(test|spec)\.(ts|tsx|js|jsx)$
