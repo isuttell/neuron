@@ -1,13 +1,6 @@
 name: Backend CI
 
 on:
-  push:
-    branches: [ master ]
-    paths:
-      - 'src/neuron_server/**'
-      - 'pyproject.toml'
-      - 'poetry.lock'
-      - '.gitea/workflows/backend.yml'
   pull_request:
     branches: [ master ]
     paths:

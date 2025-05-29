@@ -4,11 +4,6 @@ on:
   pull_request:
     paths:
       - '.gitea/workflows/**'
-  push:
-    branches:
-      - master
-    paths:
-      - '.gitea/workflows/**'
 
 jobs:
   actionlint:
