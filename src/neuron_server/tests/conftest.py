@@ -15,7 +15,7 @@ mock_tiktoken = Mock()
 
 class MockEncoding:
     """Mock tiktoken encoding class."""
-    def encode(self, text: str) -> list[int]:
+    def encode(self, text: str, allowed_special: set[str] | str = set(), disallowed_special: str = "all") -> list[int]:
         """Return mock tokens proportional to text length."""
         if not text:
             return []
