@@ -60,8 +60,6 @@ from neuron_server.tools.media_list_update_tool import MediaListUpdateTool
 from neuron_server.tools.memory_recall_tool import MemoryRecallTool
 from neuron_server.tools.memory_store_tool import MemoryStoreTool
 from neuron_server.tools.moon_tool import MoonTool
-from neuron_server.tools.openai_image_tool import OpenAIImageGenerationTool
-from neuron_server.tools.openai_tts_tool import OpenAITTSTool
 from neuron_server.tools.openweathermap_forecast_tool import (
     OpenWeatherMapForecastTool,
 )
@@ -123,7 +121,6 @@ tool_sets: dict[str, list[BaseTool]] = {
     ],
     "document_query": [],
     "image": [
-        OpenAIImageGenerationTool(),
         ReplicateImageGenerationTool(),
         InspectImageTool(),
         AppImageTool(),
@@ -142,7 +139,6 @@ tool_sets: dict[str, list[BaseTool]] = {
         WhisperSTTTool(),
     ],
     "tts": [
-        OpenAITTSTool(),
         ElevenLabsTTSTool(),
         ReplicatePlayDialogTool(),
         FFmpegTool(),
