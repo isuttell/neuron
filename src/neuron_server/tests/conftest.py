@@ -377,6 +377,7 @@ sys.modules["neuron_server.tools.whisper_stt_tool.openai"] = mock_openai_simple
 sys.modules["neuron_server.llms.agent.openai"] = mock_openai_simple
 sys.modules["neuron_server.llms.embeddings.openai"] = mock_openai_full
 
+
 @pytest.fixture(autouse=True)
 def mock_openai_modules() -> None:
     """Mock OpenAI modules in various places they might be imported."""
