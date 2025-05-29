@@ -66,6 +66,7 @@ from neuron_server.tools.openweathermap_forecast_tool import (
 from neuron_server.tools.openweathermap_overview_tool import (
     OpenWeatherMapOverviewTool,
 )
+from neuron_server.tools.read_thread_memory_tool import ReadThreadMemoryTool
 from neuron_server.tools.replicate_audio_generation_tool import (
     ReplicateAudioGenerationTool,
 )
@@ -84,6 +85,7 @@ from neuron_server.tools.schedule_prompt_tool import SchedulePromptTool
 from neuron_server.tools.schedule_remove_tool import ScheduleRemoveTool
 from neuron_server.tools.security_camera_tool import SecurityCameraTool
 from neuron_server.tools.send_notification_tool import SendNotificationTool
+from neuron_server.tools.set_thread_memory_tool import SetThreadMemoryTool
 from neuron_server.tools.sun_tool import SunTool
 from neuron_server.tools.whisper_stt_tool import WhisperSTTTool
 
@@ -231,6 +233,12 @@ memory_tools: list[BaseTool] = [
     MemoryRecallTool(),
     MemoryStoreTool(),
 ]
+
+thread_memory_tools: list[BaseTool] = [
+    ReadThreadMemoryTool(),
+    SetThreadMemoryTool(),
+]
+
 personality_tools: list[BaseTool] = []
 
 
@@ -255,5 +263,6 @@ async def get_tools(query: str) -> list[BaseTool]:
         ts.extend(memory_tools)
     ts.extend(personality_tools)
     ts.extend(schedule_tools)
+    ts.extend(thread_memory_tools)
 
     return list({tool.name: tool for tool in ts}.values())
