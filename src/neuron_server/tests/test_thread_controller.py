@@ -507,49 +507,12 @@ async def test_create_thread_missing_personality(
     mock_redis: AsyncMock,
 ) -> None:
     """Test creating a thread without a personality ID."""
-    form_data = {
-        # Missing personality_id
-        "name": "Test Thread",
-    }
+    # Mock the agent.astream to prevent coroutine warnings
+    with patch("neuron_server.llms.agent.astream") as mock_astream:
+        mock_astream.return_value = None
 
-    async with app.test_request_context(
-        "/api/thread/",
-        method="POST",
-        form=form_data,
-        headers={"Authorization": TEST_JWT_TOKEN},
-    ):
-        # Set token on request
-        app.request_class.token = mock_token
-
-        # Call the endpoint function directly
-        from neuron_server.controllers.thread_controller import post_create_thread
-
-        with pytest.raises(BadRequest) as excinfo:
-            await post_create_thread()
-
-        # Verify error message
-        assert "personality_id is required" in str(excinfo.value)
-
-
-@pytest.mark.asyncio
-async def test_create_thread_personality_not_found(
-    app: Quart,
-    mock_token: TokenPayload,
-    mock_decode_token: AsyncMock,
-    mock_redis: AsyncMock,
-) -> None:
-    """Test creating a thread with a non-existent personality."""
-    personality_id = uuid4()
-
-    with patch.object(
-        PersonalityModel, "get", new_callable=AsyncMock
-    ) as mock_get_personality:
-        # Setup mocks
-        mock_get_personality.return_value = None
-
-        # Create request context with form data
         form_data = {
-            "personality_id": str(personality_id),
+            # Missing personality_id
             "name": "Test Thread",
         }
 
@@ -569,7 +532,53 @@ async def test_create_thread_personality_not_found(
                 await post_create_thread()
 
             # Verify error message
-            assert "Personality not found" in str(excinfo.value)
+            assert "personality_id is required" in str(excinfo.value)
+
+
+@pytest.mark.asyncio
+async def test_create_thread_personality_not_found(
+    app: Quart,
+    mock_token: TokenPayload,
+    mock_decode_token: AsyncMock,
+    mock_redis: AsyncMock,
+) -> None:
+    """Test creating a thread with a non-existent personality."""
+    personality_id = uuid4()
+
+    # Mock the agent.astream to prevent coroutine warnings
+    with patch("neuron_server.llms.agent.astream") as mock_astream:
+        with patch.object(
+            PersonalityModel, "get", new_callable=AsyncMock
+        ) as mock_get_personality:
+            # Setup mocks
+            mock_get_personality.return_value = None
+            mock_astream.return_value = None
+
+            # Create request context with form data
+            form_data = {
+                "personality_id": str(personality_id),
+                "name": "Test Thread",
+            }
+
+            async with app.test_request_context(
+                "/api/thread/",
+                method="POST",
+                form=form_data,
+                headers={"Authorization": TEST_JWT_TOKEN},
+            ):
+                # Set token on request
+                app.request_class.token = mock_token
+
+                # Call the endpoint function directly
+                from neuron_server.controllers.thread_controller import (
+                    post_create_thread,
+                )
+
+                with pytest.raises(BadRequest) as excinfo:
+                    await post_create_thread()
+
+                # Verify error message
+                assert "Personality not found" in str(excinfo.value)
 
         # Verify mocks were called correctly
         mock_get_personality.assert_called_once_with(personality_id=personality_id)
