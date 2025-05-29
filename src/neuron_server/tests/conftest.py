@@ -26,7 +26,7 @@ class MockEncoding:
             return []
         # Return approximately 1 token per 4 characters (rough approximation)
         return list(range(len(text) // 4 + 1))
-    
+
     def decode(self, tokens: list[int]) -> str:
         """Return mock decoded text."""
         return "decoded_text"

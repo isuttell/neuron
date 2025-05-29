@@ -57,8 +57,8 @@ class TestSetThreadMemoryTool:
         """Test that the tool has correct properties."""
         tool = SetThreadMemoryTool()
         assert tool.name == "set_thread_memory"
-        assert "planning board" in tool.description.lower()
-        assert "complex tasks" in tool.description.lower()
+        assert "internal task tracker" in tool.description.lower()
+        assert "complex" in tool.description.lower()
         assert "checkboxes" in tool.description.lower()
 
     @pytest.mark.asyncio
@@ -88,7 +88,7 @@ class TestSetThreadMemoryTool:
                 "memory",
                 sample_planning_board,
             )
-            assert result == "Successfully updated planning board."
+            assert result == "Successfully updated your internal task tracker."
 
     @pytest.mark.asyncio
     async def test_successful_update_with_previous(
@@ -118,8 +118,8 @@ class TestSetThreadMemoryTool:
                 "memory",
                 sample_planning_board,
             )
-            assert "Successfully updated planning board" in result
-            assert "Previous content that was overwritten:" in result
+            assert "Successfully updated your internal task tracker" in result
+            assert "Previous notes that were overwritten:" in result
             assert previous_content in result
 
     @pytest.mark.asyncio
@@ -189,7 +189,7 @@ class TestSetThreadMemoryTool:
         ):
             tool = SetThreadMemoryTool()
             result = tool._run(memory=sample_planning_board, config=mock_config)
-            assert "Successfully updated planning board" in result
+            assert "Successfully updated your internal task tracker" in result
 
 
 class TestReadThreadMemoryTool:
@@ -199,9 +199,9 @@ class TestReadThreadMemoryTool:
         """Test that the tool has correct properties."""
         tool = ReadThreadMemoryTool()
         assert tool.name == "read_thread_memory"
-        assert "planning board" in tool.description.lower()
-        assert "task progress" in tool.description.lower()
-        assert "complex tasks" in tool.description.lower()
+        assert "internal task tracker" in tool.description.lower()
+        assert "working on" in tool.description.lower()
+        assert "complex" in tool.description.lower()
 
     @pytest.mark.asyncio
     async def test_successful_read_with_content(
@@ -221,7 +221,7 @@ class TestReadThreadMemoryTool:
             tool = ReadThreadMemoryTool()
             result = await tool._arun(config=mock_config)
 
-            assert result == f"Current planning board:\n\n{sample_planning_board}"
+            assert result == f"Your internal task tracker:\n\n{sample_planning_board}"
 
     @pytest.mark.asyncio
     async def test_successful_read_empty_memory(
@@ -241,7 +241,7 @@ class TestReadThreadMemoryTool:
             tool = ReadThreadMemoryTool()
             result = await tool._arun(config=mock_config)
 
-            assert "Planning board is empty" in result
+            assert "internal task tracker is empty" in result
             assert "set_thread_memory" in result
 
     @pytest.mark.asyncio
@@ -250,7 +250,7 @@ class TestReadThreadMemoryTool:
         invalid_config = {"configurable": {}}
 
         tool = ReadThreadMemoryTool()
-        with pytest.raises(RuntimeError, match="Failed to read planning board"):
+        with pytest.raises(RuntimeError, match="Failed to read internal task tracker"):
             await tool._arun(config=invalid_config)
 
     @pytest.mark.asyncio
@@ -260,7 +260,9 @@ class TestReadThreadMemoryTool:
             ThreadModel, "get", new_callable=AsyncMock, return_value=None
         ):
             tool = ReadThreadMemoryTool()
-            with pytest.raises(RuntimeError, match="Failed to read planning board"):
+            with pytest.raises(
+                RuntimeError, match="Failed to read internal task tracker"
+            ):
                 await tool._arun(config=mock_config)
 
     @pytest.mark.asyncio
@@ -273,7 +275,9 @@ class TestReadThreadMemoryTool:
             side_effect=Exception("Database error"),
         ):
             tool = ReadThreadMemoryTool()
-            with pytest.raises(RuntimeError, match="Failed to read planning board"):
+            with pytest.raises(
+                RuntimeError, match="Failed to read internal task tracker"
+            ):
                 await tool._arun(config=mock_config)
 
     def test_run_sync_wrapper(self, mock_config: RunnableConfig) -> None:
@@ -290,7 +294,7 @@ class TestReadThreadMemoryTool:
         ):
             tool = ReadThreadMemoryTool()
             result = tool._run(config=mock_config)
-            assert "Current planning board" in result
+            assert "Your internal task tracker" in result
             assert "Test content" in result
 
 
@@ -332,7 +336,7 @@ class TestThreadMemoryToolsIntegration:
             set_result = await set_tool._arun(
                 memory=sample_planning_board, config=mock_config
             )
-            assert set_result == "Successfully updated planning board."
+            assert set_result == "Successfully updated your internal task tracker."
 
             # Verify set was called
             mock_set.assert_called_once()
@@ -387,12 +391,12 @@ class TestThreadMemoryToolsIntegration:
 
             # Set initial tasks
             result1 = await set_tool._arun(memory=initial_tasks, config=mock_config)
-            assert result1 == "Successfully updated planning board."
+            assert result1 == "Successfully updated your internal task tracker."
             assert mock_set.call_count == 1
 
             # Update with completed task
             result2 = await set_tool._arun(memory=updated_tasks, config=mock_config)
-            assert "Previous content that was overwritten:" in result2
+            assert "Previous notes that were overwritten:" in result2
             assert initial_tasks in result2
             expected_calls = 2
             assert mock_set.call_count == expected_calls

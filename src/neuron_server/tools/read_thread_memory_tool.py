@@ -16,10 +16,11 @@ class ReadThreadMemoryToolArgs(BaseModel):
 class ReadThreadMemoryTool(BaseTool):
     name: str = "read_thread_memory"
     description: str = (
-        "Read the current planning board to check task progress, review plans, "
-        "and see what tasks remain. Use this frequently during complex tasks to "
-        "stay on track and ensure nothing is missed. Returns the full planning "
-        "board content including task checklists and notes."
+        "Read YOUR internal task tracker to check what you're working on. This "
+        "shows YOUR private notes about what to analyze, implement, or track - "
+        "not visible to the user. Use frequently during complex work to stay "
+        "organized. Returns your full task list and notes. Remember: this is "
+        "YOUR workspace, not the user's."
     )
 
     args_schema: type[ReadThreadMemoryToolArgs] = ReadThreadMemoryToolArgs
@@ -46,11 +47,11 @@ class ReadThreadMemoryTool(BaseTool):
 
             if not thread.memory:
                 return (
-                    "Planning board is empty. Use set_thread_memory to create "
-                    "a task list."
+                    "Your internal task tracker is empty. Use set_thread_memory "
+                    "to create your task list."
                 )
 
-            return f"Current planning board:\n\n{thread.memory}"
+            return f"Your internal task tracker:\n\n{thread.memory}"
         except Exception as e:
             logger.error("Failed to read thread memory: %s", str(e), exc_info=True)
-            raise RuntimeError("Failed to read planning board") from e
+            raise RuntimeError("Failed to read internal task tracker") from e

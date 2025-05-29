@@ -12,10 +12,11 @@ from neuron_server.models.thread_model import ThreadModel
 class SetThreadMemoryToolArgs(BaseModel):
     memory: str = Field(
         description=(
-            "The planning board content including task lists, checklists, and notes. "
-            "Format as markdown with checkboxes for tasks (e.g., '- [ ] Task to do' "
-            "or '- [x] Completed task'). This completely overwrites the existing "
-            "planning board. Include ALL tasks and notes, not just updates."
+            "Your internal task tracking and planning notes. This is YOUR private "
+            "workspace for tracking what you need to do - not the user's tasks. "
+            "Format as markdown with checkboxes (e.g., '- [ ] Analyze code structure' "
+            "or '- [x] Updated function signatures'). This completely overwrites your "
+            "existing notes. Include ALL your tasks and observations, not just updates."
         )
     )
 
@@ -23,12 +24,12 @@ class SetThreadMemoryToolArgs(BaseModel):
 class SetThreadMemoryTool(BaseTool):
     name: str = "set_thread_memory"
     description: str = (
-        "A planning board for complex tasks. Use this to maintain task checklists, "
-        "plans, and progress tracking. Store tasks as markdown checkboxes that can be "
-        "checked off as completed. This is essential for complicated multi-step tasks "
-        "to ensure nothing is missed. The planning board persists across messages in "
-        "the thread, helping you stay organized and on track. Update it frequently as "
-        "you complete tasks and discover new subtasks."
+        "YOUR internal task tracker and memory - not visible to the user. Use this "
+        "to track YOUR work: what you need to analyze, implement, or remember. "
+        "Essential for complex requests to ensure you complete all steps. Store your "
+        "tasks as markdown checkboxes. This is YOUR private workspace that persists "
+        "in the thread. Update frequently as you work through problems and discover "
+        "subtasks. The user cannot see this - it's only for YOUR organization."
     )
 
     args_schema: type[SetThreadMemoryToolArgs] = SetThreadMemoryToolArgs
@@ -63,13 +64,13 @@ class SetThreadMemoryTool(BaseTool):
             # Return success message with previous content
             if previous_memory:
                 return (
-                    "Successfully updated planning board.\n\n"
-                    "Previous content that was overwritten:\n"
+                    "Successfully updated your internal task tracker.\n\n"
+                    "Previous notes that were overwritten:\n"
                     "```\n"
                     f"{previous_memory}\n"
                     "```"
                 )
-            return "Successfully updated planning board."
+            return "Successfully updated your internal task tracker."
         except Exception as e:
             logger.error("Failed to update thread memory: %s", str(e), exc_info=True)
             raise RuntimeError("Failed to update thread memory") from e
