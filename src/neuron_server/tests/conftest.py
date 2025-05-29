@@ -10,6 +10,26 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from neuron_server.controllers.auth import TokenPayload
 
+# Mock tiktoken to prevent network requests during tests
+mock_tiktoken = Mock()
+
+class MockEncoding:
+    """Mock tiktoken encoding class."""
+    def encode(self, text: str) -> list[int]:
+        """Return mock tokens proportional to text length."""
+        if not text:
+            return []
+        # Return approximately 1 token per 4 characters (rough approximation)
+        return list(range(len(text) // 4 + 1))
+    
+    def decode(self, tokens: list[int]) -> str:
+        """Return mock decoded text."""
+        return "decoded_text"
+
+mock_tiktoken.encoding_for_model = Mock(return_value=MockEncoding())
+mock_tiktoken.get_encoding = Mock(return_value=MockEncoding())
+sys.modules["tiktoken"] = mock_tiktoken
+
 # Mock the cache module
 mock_cache = Mock()
 # Handle ttl parameter
