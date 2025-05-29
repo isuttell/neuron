@@ -26,7 +26,7 @@ class MockEncoding:
             return []
         # Return approximately 1 token per 4 characters (rough approximation)
         return list(range(len(text) // 4 + 1))
-    
+
     def decode(self, tokens: list[int]) -> str:
         """Return mock decoded text."""
         return "decoded_text"
@@ -381,7 +381,9 @@ sys.modules["neuron_server.llms.embeddings.openai"] = mock_openai_full
 mock_tiktoken = Mock()
 mock_encoding = Mock()
 # Make encode return a list with length proportional to the text
-mock_encoding.encode = Mock(side_effect=lambda text: list(range(len(text))) if text else [])
+mock_encoding.encode = Mock(
+    side_effect=lambda text: list(range(len(text))) if text else []
+)
 mock_tiktoken.encoding_for_model = Mock(return_value=mock_encoding)
 mock_tiktoken.get_encoding = Mock(return_value=mock_encoding)
 sys.modules["tiktoken"] = mock_tiktoken
