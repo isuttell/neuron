@@ -377,16 +377,6 @@ sys.modules["neuron_server.tools.whisper_stt_tool.openai"] = mock_openai_simple
 sys.modules["neuron_server.llms.agent.openai"] = mock_openai_simple
 sys.modules["neuron_server.llms.embeddings.openai"] = mock_openai_full
 
-# Mock tiktoken to prevent network access during tests
-mock_tiktoken = Mock()
-mock_encoding = Mock()
-# Make encode return a list with length proportional to the text
-mock_encoding.encode = Mock(
-    side_effect=lambda text: list(range(len(text))) if text else []
-)
-mock_tiktoken.encoding_for_model = Mock(return_value=mock_encoding)
-mock_tiktoken.get_encoding = Mock(return_value=mock_encoding)
-sys.modules["tiktoken"] = mock_tiktoken
 
 @pytest.fixture(autouse=True)
 def mock_openai_modules() -> None:
