@@ -510,7 +510,7 @@ async def test_create_thread_missing_personality(
     # Mock the agent.astream to prevent coroutine warnings
     with patch("neuron_server.llms.agent.astream") as mock_astream:
         mock_astream.return_value = None
-        
+
         form_data = {
             # Missing personality_id
             "name": "Test Thread",
@@ -570,7 +570,9 @@ async def test_create_thread_personality_not_found(
                 app.request_class.token = mock_token
 
                 # Call the endpoint function directly
-                from neuron_server.controllers.thread_controller import post_create_thread
+                from neuron_server.controllers.thread_controller import (
+                    post_create_thread,
+                )
 
                 with pytest.raises(BadRequest) as excinfo:
                     await post_create_thread()
