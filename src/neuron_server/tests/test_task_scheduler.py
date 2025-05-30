@@ -64,7 +64,7 @@ class TestTaskScheduler:
         assert isinstance(scheduler, TaskScheduler)
 
     @pytest.mark.asyncio
-    async def test_update_event_success(self, task_scheduler: TaskScheduler):
+    async def test_update_event_success(self, task_scheduler: TaskScheduler) -> None:
         """Test successful event update."""
         event_id = "test-event-123"
         existing_event = {
@@ -97,7 +97,7 @@ class TestTaskScheduler:
         )
 
     @pytest.mark.asyncio
-    async def test_update_event_not_found(self, task_scheduler: TaskScheduler):
+    async def test_update_event_not_found(self, task_scheduler: TaskScheduler) -> None:
         """Test updating non-existent event raises ValueError."""
         event_id = "non-existent-event"
 
@@ -112,7 +112,7 @@ class TestTaskScheduler:
     @pytest.mark.asyncio
     async def test_update_event_with_recurring_pattern(
         self, task_scheduler: TaskScheduler
-    ):
+    ) -> None:
         """Test updating event with recurring pattern."""
         event_id = "recurring-event"
         existing_event = {"event_id": event_id, "event_data": {"old": "data"}}
@@ -139,7 +139,7 @@ class TestTaskScheduler:
         mock_thread_model: Mock,
         task_scheduler: TaskScheduler,
         sample_stream_event: StreamEvent,
-    ):
+    ) -> None:
         """Test processing event with existing thread."""
         event_id = "test-event"
         metadata = sample_stream_event.model_dump()
@@ -173,7 +173,7 @@ class TestTaskScheduler:
         self,
         mock_thread_model: Mock,
         task_scheduler: TaskScheduler,
-    ):
+    ) -> None:
         """Test processing event that creates a new thread."""
         event_id = "test-event"
         # Create a stream event with no thread
@@ -195,7 +195,9 @@ class TestTaskScheduler:
 
         # Mock astream at the source module
         with (
-            patch("neuron_server.llms.agent.astream", new_callable=AsyncMock) as mock_astream,
+            patch(
+                "neuron_server.llms.agent.astream", new_callable=AsyncMock
+            ) as mock_astream,
             patch("neuron_server.task_scheduler.StreamEvent") as mock_stream_event,
         ):
             # Make it return our modified data
@@ -230,8 +232,8 @@ class TestTaskScheduler:
         mock_thread_model: Mock,
         task_scheduler: TaskScheduler,
         sample_stream_event: StreamEvent,
-        caplog,
-    ):
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
         """Test processing event when thread is not found."""
         event_id = "test-event"
         metadata = sample_stream_event.model_dump()
@@ -251,7 +253,7 @@ class TestTaskScheduler:
         mock_thread_model: Mock,
         task_scheduler: TaskScheduler,
         sample_stream_event: StreamEvent,
-    ):
+    ) -> None:
         """Test that existing stream is cancelled when new event arrives."""
         event_id = "test-event"
         metadata = sample_stream_event.model_dump()
@@ -281,8 +283,8 @@ class TestTaskScheduler:
         mock_thread_model: Mock,
         task_scheduler: TaskScheduler,
         sample_stream_event: StreamEvent,
-        caplog,
-    ):
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
         """Test handling of stream errors."""
         event_id = "test-event"
         metadata = sample_stream_event.model_dump()
@@ -308,8 +310,8 @@ class TestTaskScheduler:
 
     @pytest.mark.asyncio
     async def test_on_event_invalid_metadata(
-        self, task_scheduler: TaskScheduler, caplog
-    ):
+        self, task_scheduler: TaskScheduler, caplog: pytest.LogCaptureFixture
+    ) -> None:
         """Test handling of invalid event metadata."""
         event_id = "test-event"
         invalid_metadata = {"invalid": "data"}  # Missing required fields
@@ -326,7 +328,7 @@ class TestTaskScheduler:
         mock_thread_model: Mock,
         task_scheduler: TaskScheduler,
         sample_stream_event: StreamEvent,
-    ):
+    ) -> None:
         """Test that completed streams are cleaned up from active streams."""
         event_id = "test-event"
         metadata = sample_stream_event.model_dump()
@@ -355,8 +357,11 @@ class TestTaskScheduler:
     @pytest.mark.asyncio
     @patch("neuron_server.task_scheduler.datetime")
     async def test_on_event_logging_timestamp(
-        self, mock_datetime: Mock, task_scheduler: TaskScheduler, caplog
-    ):
+        self,
+        mock_datetime: Mock,
+        task_scheduler: TaskScheduler,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
         """Test that event processing logs include timestamp."""
         # Mock datetime
         mock_now = Mock()
@@ -377,7 +382,7 @@ class TestTaskScheduler:
     @patch("neuron_server.task_scheduler.logger")
     async def test_update_event_debug_logging(
         self, mock_logger: Mock, task_scheduler: TaskScheduler
-    ):
+    ) -> None:
         """Test debug logging in update_event."""
         event_id = "test-event"
         task_scheduler.get_event = AsyncMock(return_value={"event_id": event_id})
