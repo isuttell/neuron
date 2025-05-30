@@ -18,7 +18,7 @@ const mockFillRect = jest.fn();
 const mockGetContext = jest.fn(() => ({
   fillRect: mockFillRect,
   fillStyle: "",
-}));
+})) as jest.Mock;
 
 // Mock fetch
 global.fetch = jest.fn();
@@ -41,6 +41,7 @@ global.ResizeObserver = MockResizeObserver as unknown as typeof ResizeObserver;
 describe("AudioBarVisualization", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // @ts-expect-error - Mocking canvas context for testing
     HTMLCanvasElement.prototype.getContext = mockGetContext;
 
     // Mock canvas properties
