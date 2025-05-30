@@ -140,6 +140,10 @@ need it.
         try:
             logger.debug(f"Generating elevenlabs audio using {model}...")
             client = AsyncElevenLabs(api_key=neuron_config.elevenlabs_api_key)
+
+            # Get voice mappings
+            voice_map = await self._get_voice_mappings(client)
+
             working_dir = os.path.abspath(
                 os.path.join(neuron_config.temp_folder, uuid4().hex)
             )
@@ -154,18 +158,31 @@ need it.
                     f"Generating elevenlabs audio for line: "
                     f"[{line.voice}] {cleaned_text}"
                 )
-                response = await client.generate(
+
+                # Get voice ID from mapping
+                voice_id = voice_map.get(line.voice)
+                if not voice_id:
+                    raise ValueError(
+                        f"Voice '{line.voice}' not found in ElevenLabs voice list"
+                    )
+
+                # Use the new API method
+                audio_stream = await client.text_to_speech.stream(
                     text=cleaned_text,
-                    voice=line.voice,
-                    model=model,
+                    voice_id=voice_id,
+                    model_id=model,
                 )
+
                 audio_file_path = os.path.abspath(
                     os.path.join(working_dir, f"line-{index}.mp3")
                 )
                 audio_files.append(audio_file_path)
+
+                # Write the stream to file
                 with open(audio_file_path, "wb") as file:
-                    async for chunk in response:
+                    async for chunk in audio_stream:
                         file.write(chunk)
+
                 logger.debug(f"Saved generated audio chunk at {audio_file_path}")
             filename = safe_filename("elevenlabs_tts", name, "mp3")
             output = os.path.abspath(
@@ -214,6 +231,27 @@ need it.
             raise
         finally:
             shutil.rmtree(working_dir)
+
+    async def _get_voice_mappings(self, client: AsyncElevenLabs) -> dict[str, str]:
+        """Get voice name to ID mappings from ElevenLabs API."""
+        try:
+            # Get voices from the API
+            voices_response = await client.voices.get_all()
+            voice_map = {}
+
+            for voice in voices_response.voices:
+                # Map voice name to ID
+                voice_map[voice.name] = voice.voice_id
+
+            logger.debug(f"Loaded {len(voice_map)} voice mappings from ElevenLabs API")
+            return voice_map
+
+        except Exception as e:
+            logger.error(f"Failed to get voice mappings from API: {e}")
+            raise RuntimeError(
+                "Unable to retrieve voice list from ElevenLabs API. "
+                "Please check your API key and connection."
+            ) from e
 
 
 def main() -> None:
