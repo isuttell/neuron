@@ -1,6 +1,5 @@
 """Unit tests for ElevenLabs TTS tool."""
 
-from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -138,9 +137,13 @@ class TestElevenLabsTTSTool:
                     self.index += 1
                     return chunk
 
-            async def mock_stream(**kwargs: Any) -> MockAsyncGenerator:
-                return MockAsyncGenerator([b"audio_chunk_1", b"audio_chunk_2"])
-            mock_client.text_to_speech.stream.side_effect = mock_stream
+            # Create a separate mock for the stream method that returns
+            # an async generator
+            stream_mock = MagicMock()
+            stream_mock.return_value = MockAsyncGenerator(
+                [b"audio_chunk_1", b"audio_chunk_2"]
+            )
+            mock_client.text_to_speech.stream = stream_mock
 
             # Mock config
             mock_config_obj.elevenlabs_api_key = "test_api_key"
@@ -246,9 +249,11 @@ class TestElevenLabsTTSTool:
                     self.index += 1
                     return chunk
 
-            async def mock_stream(**kwargs: Any) -> MockAsyncGenerator:
-                return MockAsyncGenerator([b"audio_data"])
-            mock_client.text_to_speech.stream.side_effect = mock_stream
+            # Create a separate mock for the stream method that returns
+            # an async generator
+            stream_mock = MagicMock()
+            stream_mock.return_value = MockAsyncGenerator([b"audio_data"])
+            mock_client.text_to_speech.stream = stream_mock
 
             # Mock config
             mock_config_obj.elevenlabs_api_key = "test_api_key"
