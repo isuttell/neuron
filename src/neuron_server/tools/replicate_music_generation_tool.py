@@ -160,7 +160,9 @@ class ReplicateMusicGenerationTool(BaseTool):
             logger.warning(e, exc_info=True)
 
         try:
-            output = await replicate.async_run(self.ref, input=input_args)
+            output: replicate.helpers.FileOutput = await replicate.async_run(
+                self.ref, input=input_args
+            )
 
             # Clean slug and prepare filename
             filename = safe_filename(self.ref.replace("/", "_"), name, extension)

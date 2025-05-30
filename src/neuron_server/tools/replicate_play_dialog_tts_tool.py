@@ -6,6 +6,7 @@ from typing import Any, Literal
 
 import aiofiles
 import replicate
+import replicate.helpers
 from langchain.tools import BaseTool
 from langchain_core.runnables import RunnableConfig
 from pydantic import BaseModel, ConfigDict, Field
@@ -172,10 +173,9 @@ class ReplicatePlayDialogTool(BaseTool):
                 os.path.join(neuron_config.static_folder, filename)
             )
 
-            # Save the generated audio
+            # Save the generated audio - PlayHT Dialog returns complete file content
             async with aiofiles.open(file_path, "wb") as file:
-                async for chunk in output:
-                    await file.write(chunk)
+                await file.write(output)
 
             url = f"{neuron_config.static_content_url}/{filename}"
             create_params = MediaItemModel.CreateParams(
