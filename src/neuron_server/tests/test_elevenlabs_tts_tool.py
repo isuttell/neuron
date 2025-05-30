@@ -1,6 +1,6 @@
 """Unit tests for ElevenLabs TTS tool."""
 
-from collections.abc import AsyncIterator
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -122,12 +122,25 @@ class TestElevenLabsTTSTool:
             mock_response = MagicMock(voices=[mock_voice1, mock_voice2])
             mock_client.voices.get_all.return_value = mock_response
 
-            # Mock audio stream
-            async def mock_stream_generator() -> AsyncIterator[bytes]:
-                yield b"audio_chunk_1"
-                yield b"audio_chunk_2"
+            # Mock audio stream as async generator
+            class MockAsyncGenerator:
+                def __init__(self, chunks: list[bytes]) -> None:
+                    self.chunks = chunks
+                    self.index = 0
 
-            mock_client.text_to_speech.stream.return_value = mock_stream_generator()
+                def __aiter__(self) -> "MockAsyncGenerator":
+                    return self
+
+                async def __anext__(self) -> bytes:
+                    if self.index >= len(self.chunks):
+                        raise StopAsyncIteration
+                    chunk = self.chunks[self.index]
+                    self.index += 1
+                    return chunk
+
+            async def mock_stream(**kwargs: Any) -> MockAsyncGenerator:
+                return MockAsyncGenerator([b"audio_chunk_1", b"audio_chunk_2"])
+            mock_client.text_to_speech.stream.side_effect = mock_stream
 
             # Mock config
             mock_config_obj.elevenlabs_api_key = "test_api_key"
@@ -217,11 +230,25 @@ class TestElevenLabsTTSTool:
             mock_response = MagicMock(voices=[mock_voice])
             mock_client.voices.get_all.return_value = mock_response
 
-            # Mock audio stream
-            async def mock_stream_generator() -> AsyncIterator[bytes]:
-                yield b"audio_data"
+            # Mock audio stream as async generator
+            class MockAsyncGenerator:
+                def __init__(self, chunks: list[bytes]) -> None:
+                    self.chunks = chunks
+                    self.index = 0
 
-            mock_client.text_to_speech.stream.return_value = mock_stream_generator()
+                def __aiter__(self) -> "MockAsyncGenerator":
+                    return self
+
+                async def __anext__(self) -> bytes:
+                    if self.index >= len(self.chunks):
+                        raise StopAsyncIteration
+                    chunk = self.chunks[self.index]
+                    self.index += 1
+                    return chunk
+
+            async def mock_stream(**kwargs: Any) -> MockAsyncGenerator:
+                return MockAsyncGenerator([b"audio_data"])
+            mock_client.text_to_speech.stream.side_effect = mock_stream
 
             # Mock config
             mock_config_obj.elevenlabs_api_key = "test_api_key"
