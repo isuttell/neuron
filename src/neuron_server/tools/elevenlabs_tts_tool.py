@@ -167,7 +167,7 @@ need it.
                     )
 
                 # Use the new API method
-                audio_stream = await client.text_to_speech.stream(
+                audio_stream = client.text_to_speech.stream(
                     text=cleaned_text,
                     voice_id=voice_id,
                     model_id=model,
