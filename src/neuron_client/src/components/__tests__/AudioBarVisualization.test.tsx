@@ -41,7 +41,6 @@ global.ResizeObserver = MockResizeObserver as unknown as typeof ResizeObserver;
 describe("AudioBarVisualization", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    // @ts-expect-error - Mocking canvas context for testing
     HTMLCanvasElement.prototype.getContext = mockGetContext;
 
     // Mock canvas properties
