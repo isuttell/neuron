@@ -1,5 +1,6 @@
 """CSRF protection for Neuron API."""
 import base64
+import binascii
 import hashlib
 import hmac
 import json
@@ -112,7 +113,7 @@ def verify_cookie_data(signed_data: str) -> dict[str, Any] | None:
         return data
 
     except (
-        base64.binascii.Error,
+        binascii.Error,
         UnicodeDecodeError,
         json.JSONDecodeError,
         ValueError,
