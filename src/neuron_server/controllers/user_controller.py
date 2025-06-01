@@ -1,7 +1,11 @@
 from quart import Blueprint, Response, jsonify, request
 
-from neuron_server.config import config
 from neuron_server.controllers.auth import TokenPayload, requires_auth
+from neuron_server.controllers.csrf import (
+    COOKIE_MAX_AGE,
+    IS_PRODUCTION,
+    create_session_cookie,
+)
 from neuron_server.models import UserModel  # Import UserModel
 
 user_bp = Blueprint("user", __name__)
@@ -19,17 +23,24 @@ async def login_user() -> Response:  # Add return type hint
     # Call the upsert method on the UserModel
     await UserModel.upsert_from_payload(payload)
 
-    # Create response
-    response = jsonify({"status": "success", "user_id": payload.user_id})
+    # Create session cookie with CSRF token
+    cookie_value, csrf_token = create_session_cookie(payload.user_id, include_csrf=True)
 
-    # Set cookie with user ID that expires in 24 hours
+    # Create response with CSRF token
+    response = jsonify({
+        "status": "success",
+        "user_id": payload.user_id,
+        "csrf_token": csrf_token  # Send CSRF token to client
+    })
+
+    # Set secure session cookie
     response.set_cookie(
         "neuron_session",
-        value=payload.user_id,
-        max_age=86400,  # 24 hours in seconds
+        value=cookie_value,
+        max_age=COOKIE_MAX_AGE,
         httponly=True,
-        samesite="Lax",
-        secure=not config.debug  # Use secure cookies in production
+        samesite="Lax",  # Protect against CSRF attacks
+        secure=IS_PRODUCTION  # Use secure cookies in production
     )
 
     return response, 200

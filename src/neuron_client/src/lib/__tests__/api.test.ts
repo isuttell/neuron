@@ -27,6 +27,7 @@ describe("ApiClient", () => {
     it("should make a GET request with correct headers", async () => {
       (global.fetch as jest.Mock).mockResolvedValueOnce({
         ok: true,
+        headers: new Map([["content-type", "application/json"]]),
         json: () => Promise.resolve(mockResponse),
       });
 
@@ -37,6 +38,7 @@ describe("ApiClient", () => {
           Authorization: `Bearer ${mockToken}`,
           "Content-Type": "application/json",
         },
+        credentials: "include",
       });
       expect(result).toEqual(mockResponse);
     });
@@ -45,9 +47,11 @@ describe("ApiClient", () => {
       (global.fetch as jest.Mock).mockResolvedValueOnce({
         ok: false,
         statusText: "Not Found",
+        headers: new Map([["content-type", "application/json"]]),
+        json: () => Promise.resolve({ error: "Not Found" }),
       });
 
-      await expect(api.get("/test")).rejects.toThrow("API Error: Not Found");
+      await expect(api.get("/test")).rejects.toThrow("Not Found");
     });
   });
 
@@ -57,6 +61,7 @@ describe("ApiClient", () => {
     it("should make a POST request with correct headers and body", async () => {
       (global.fetch as jest.Mock).mockResolvedValueOnce({
         ok: true,
+        headers: new Map([["content-type", "application/json"]]),
         json: () => Promise.resolve(mockResponse),
       });
 
@@ -69,6 +74,7 @@ describe("ApiClient", () => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(postData),
+        credentials: "include",
       });
       expect(result).toEqual(mockResponse);
     });
@@ -77,10 +83,12 @@ describe("ApiClient", () => {
       (global.fetch as jest.Mock).mockResolvedValueOnce({
         ok: false,
         statusText: "Bad Request",
+        headers: new Map([["content-type", "application/json"]]),
+        json: () => Promise.resolve({ error: "Bad Request" }),
       });
 
       await expect(api.post("/test", postData)).rejects.toThrow(
-        "API Error: Bad Request"
+        "Bad Request"
       );
     });
   });
@@ -91,6 +99,7 @@ describe("ApiClient", () => {
     it("should make a PUT request with correct headers and body", async () => {
       (global.fetch as jest.Mock).mockResolvedValueOnce({
         ok: true,
+        headers: new Map([["content-type", "application/json"]]),
         json: () => Promise.resolve(mockResponse),
       });
 
@@ -103,6 +112,7 @@ describe("ApiClient", () => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(putData),
+        credentials: "include",
       });
       expect(result).toEqual(mockResponse);
     });
@@ -111,10 +121,12 @@ describe("ApiClient", () => {
       (global.fetch as jest.Mock).mockResolvedValueOnce({
         ok: false,
         statusText: "Bad Request",
+        headers: new Map([["content-type", "application/json"]]),
+        json: () => Promise.resolve({ error: "Bad Request" }),
       });
 
       await expect(api.put("/test", putData)).rejects.toThrow(
-        "API Error: Bad Request"
+        "Bad Request"
       );
     });
   });
@@ -123,6 +135,7 @@ describe("ApiClient", () => {
     it("should make a DELETE request with correct headers", async () => {
       (global.fetch as jest.Mock).mockResolvedValueOnce({
         ok: true,
+        headers: new Map([["content-type", "application/json"]]),
         json: () => Promise.resolve(mockResponse),
       });
 
@@ -134,6 +147,7 @@ describe("ApiClient", () => {
           Authorization: `Bearer ${mockToken}`,
           "Content-Type": "application/json",
         },
+        credentials: "include",
       });
       expect(result).toEqual(mockResponse);
     });
@@ -142,9 +156,11 @@ describe("ApiClient", () => {
       (global.fetch as jest.Mock).mockResolvedValueOnce({
         ok: false,
         statusText: "Not Found",
+        headers: new Map([["content-type", "application/json"]]),
+        json: () => Promise.resolve({ error: "Not Found" }),
       });
 
-      await expect(api.delete("/test")).rejects.toThrow("API Error: Not Found");
+      await expect(api.delete("/test")).rejects.toThrow("Not Found");
     });
   });
 

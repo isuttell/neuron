@@ -220,5 +220,25 @@ class Config(BaseModel):
         description="Auth0 client ID",
     )
 
+    # CSRF Configuration
+    secret_key: str = Field(
+        default=os.environ.get(
+            "SECRET_KEY", "dev-secret-key-only-for-local-development"
+        ),
+        description="Secret key for CSRF token signing. MUST be set in production!",
+    )
+    csrf_cookie_max_age: int = Field(
+        default=int(os.environ.get("CSRF_COOKIE_MAX_AGE", "86400")),  # 24 hours
+        description="CSRF cookie max age in seconds",
+    )
+    csrf_token_rotation: bool = Field(
+        default=os.environ.get("CSRF_TOKEN_ROTATION", "True").lower() == "true",
+        description="Enable CSRF token rotation on each request",
+    )
+    is_production: bool = Field(
+        default=os.environ.get("ENVIRONMENT", "development").lower() == "production",
+        description="Whether the application is running in production",
+    )
+
 
 config = Config()
