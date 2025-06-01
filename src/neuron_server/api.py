@@ -237,7 +237,8 @@ async def refresh_csrf() -> tuple[dict[str, str], int]:
         max_age=config.csrf_cookie_max_age,
         httponly=True,
         samesite="Lax",
-        secure=config.is_production
+        secure=config.is_production,
+        path="/"  # Ensure cookie is sent with all requests
     )
 
     return response, 200

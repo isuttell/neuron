@@ -40,7 +40,8 @@ async def login_user() -> Response:  # Add return type hint
         max_age=COOKIE_MAX_AGE,
         httponly=True,
         samesite="Lax",  # Protect against CSRF attacks
-        secure=IS_PRODUCTION  # Use secure cookies in production
+        secure=IS_PRODUCTION,  # Use secure cookies in production
+        path="/"  # Ensure cookie is sent with all requests
     )
 
     return response, 200
