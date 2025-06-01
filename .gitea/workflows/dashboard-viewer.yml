@@ -63,3 +63,29 @@ jobs:
       - name: Run backend tests
         working-directory: src/dashboard-viewer
         run: poetry run pytest tests/ --cov=dashboard_viewer/ --cov-report=xml --cov-report=term
+
+  # Docker build verification
+  docker-build:
+    name: Docker Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver: docker
+          install: true
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: src/dashboard-viewer
+          file: src/dashboard-viewer/Dockerfile
+          builder: ${{ steps.buildx.outputs.name }}
+          push: false
+          load: true
+          tags: gitea.zaks.io/isuttell/dashboard-viewer:pr-${{ github.event.pull_request.number }}
