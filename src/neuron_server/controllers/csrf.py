@@ -209,6 +209,7 @@ async def rotate_csrf_token(response: Response, user_id: str) -> str:
         httponly=True,
         samesite="Lax",
         secure=IS_PRODUCTION,  # Use secure flag in production
+        path="/"  # Ensure cookie is sent with all requests
     )
 
     if config.debug:
