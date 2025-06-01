@@ -27,8 +27,9 @@ class MockWebSocket {
     }, 0)
   }
 
-  send(_data: string) {
-    // Mock implementation
+  send(data: string) {
+    // Mock implementation - data parameter is used for sending messages
+    void data
   }
 
   close() {
@@ -46,11 +47,19 @@ class MockWebSocket {
 }
 
 // Add mock property to access instances
-(MockWebSocket as any).mock = {
+interface MockWebSocketConstructor {
+  new (url: string): MockWebSocket
+  mock: {
+    instances: MockWebSocket[]
+  }
+}
+
+const MockWebSocketWithMock = MockWebSocket as unknown as MockWebSocketConstructor
+MockWebSocketWithMock.mock = {
   instances: mockWebSocketInstances
 }
 
-global.WebSocket = MockWebSocket as any
+global.WebSocket = MockWebSocket as unknown as typeof WebSocket
 
 // Mock navigator.wakeLock
 Object.defineProperty(navigator, 'wakeLock', {

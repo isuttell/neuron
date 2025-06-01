@@ -1,5 +1,6 @@
 import { DashboardImageWS } from '@/components/DashboardImageWS'
 import { useState, useEffect, useRef } from 'react'
+import type { ServerStatus } from '@/types/dashboard'
 
 // Configuration can be passed via environment variables or window object
 const DASHBOARD_URL = import.meta.env.VITE_DASHBOARD_URL || '/image'
@@ -7,7 +8,7 @@ const FADE_DURATION = parseInt(import.meta.env.VITE_FADE_DURATION || '5000')
 
 function App() {
   const [showDebug, setShowDebug] = useState(false)
-  const [serverStatus, setServerStatus] = useState<any>(null)
+  const [serverStatus, setServerStatus] = useState<ServerStatus | null>(null)
   const [wakeLockStatus, setWakeLockStatus] = useState<string>('not supported')
   const wakeLockRef = useRef<WakeLockSentinel | null>(null)
 

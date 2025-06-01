@@ -3,7 +3,7 @@ import { useWebSocket } from '@/hooks/useWebSocket'
 import { ImageTransition } from './ImageTransition'
 import { LoadingSpinner } from './LoadingSpinner'
 import { cn } from '@/lib/utils'
-import type { DashboardImageProps } from '@/types/dashboard'
+import type { DashboardImageProps, WebSocketMessage } from '@/types/dashboard'
 
 export function DashboardImageWS({
   url,
@@ -53,11 +53,9 @@ export function DashboardImageWS({
     img.src = newUrl;
   }, [url, fadeDuration]);
 
-  const handleWebSocketMessage = useCallback((message: any) => {
-    if (message.type === 'image_changed') {
+  const handleWebSocketMessage = useCallback((message: WebSocketMessage) => {
+    if (message.type === 'image_updated') {
       handleImageChange();
-    } else if (message.type === 'error') {
-      console.error('Server error:', message.message);
     }
   }, [handleImageChange]);
 

@@ -89,7 +89,7 @@ export function useETagMonitor({
         clearTimeout(intervalRef.current)
       }
     }
-  }, []) // Only run on mount
+  }, [checkForUpdate]) // Include checkForUpdate dependency
 
   return {
     currentETag,

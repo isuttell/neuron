@@ -24,3 +24,17 @@ export interface DashboardImageProps {
   fadeDuration?: number
   className?: string
 }
+
+export interface WebSocketMessage {
+  type: 'ping' | 'pong' | 'image_updated'
+  timestamp?: string
+  hash_changed?: boolean
+}
+
+export interface ServerStatus {
+  is_polling: boolean
+  connected_clients: number
+  current_etag: string | null
+  last_check: string | null
+  js_hash: string | null
+}

@@ -2,11 +2,21 @@ import { renderHook, act } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { useWebSocket } from '@/hooks/useWebSocket'
 
+// Mock WebSocket message type for testing
+interface MockWebSocketMessage {
+  type: string
+  etag?: string
+  timestamp?: string
+  js_hash?: string
+  hash_changed?: boolean
+}
+
 describe('useWebSocket', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     // Reset WebSocket instances
-    ;(global.WebSocket as any).mock.instances.length = 0
+    const mockWebSocket = global.WebSocket as unknown as { mock: { instances: Array<unknown> } }
+    mockWebSocket.mock.instances.length = 0
   })
 
   it('should connect to WebSocket and update state', async () => {
@@ -39,7 +49,7 @@ describe('useWebSocket', () => {
     })
 
     // Simulate receiving a message
-    const mockMessage = {
+    const mockMessage: MockWebSocketMessage = {
       type: 'image_changed',
       etag: 'new-etag',
       timestamp: new Date().toISOString()
@@ -47,7 +57,8 @@ describe('useWebSocket', () => {
 
     await act(async () => {
       // Get the WebSocket instance and simulate a message
-      const ws = (global.WebSocket as any).mock.instances[0]
+      const mockWebSocket = global.WebSocket as unknown as { mock: { instances: Array<{ onmessage?: (event: MessageEvent) => void }> } }
+      const ws = mockWebSocket.mock.instances[0]
       if (ws.onmessage) {
         ws.onmessage(new MessageEvent('message', {
           data: JSON.stringify(mockMessage)
@@ -76,14 +87,15 @@ describe('useWebSocket', () => {
     })
 
     // Simulate pong with hash change
-    const pongMessage = {
+    const pongMessage: MockWebSocketMessage = {
       type: 'pong',
       js_hash: 'new-hash',
       hash_changed: true
     }
 
     await act(async () => {
-      const ws = (global.WebSocket as any).mock.instances[0]
+      const mockWebSocket = global.WebSocket as unknown as { mock: { instances: Array<{ onmessage?: (event: MessageEvent) => void }> } }
+      const ws = mockWebSocket.mock.instances[0]
       if (ws.onmessage) {
         ws.onmessage(new MessageEvent('message', {
           data: JSON.stringify(pongMessage)
@@ -105,14 +117,15 @@ describe('useWebSocket', () => {
     })
 
     // Simulate pong without hash change
-    const pongMessage = {
+    const pongMessage: MockWebSocketMessage = {
       type: 'pong',
       js_hash: 'same-hash',
       hash_changed: false
     }
 
     await act(async () => {
-      const ws = (global.WebSocket as any).mock.instances[0]
+      const mockWebSocket = global.WebSocket as unknown as { mock: { instances: Array<{ onmessage?: (event: MessageEvent) => void }> } }
+      const ws = mockWebSocket.mock.instances[0]
       if (ws.onmessage) {
         ws.onmessage(new MessageEvent('message', {
           data: JSON.stringify(pongMessage)
