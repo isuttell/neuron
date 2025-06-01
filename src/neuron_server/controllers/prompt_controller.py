@@ -5,6 +5,7 @@ from quart import Blueprint, Response, request
 from werkzeug.exceptions import NotFound
 
 from neuron_server.controllers.auth import requires_auth
+from neuron_server.controllers.csrf import requires_csrf
 from neuron_server.event_router import EventRouter
 from neuron_server.models.personality_model import PersonalityModel
 from neuron_server.models.prompt_model import PromptModel
@@ -46,6 +47,7 @@ async def list_prompts() -> dict[str, list[dict]]:
 
 @blueprint.post("/")
 @requires_auth
+@requires_csrf
 async def create_prompt() -> dict[str, list[dict]]:
     body = await request.get_json()
     payload = CreatePrompt(**body)
@@ -58,6 +60,7 @@ async def create_prompt() -> dict[str, list[dict]]:
 
 @blueprint.put("/<uuid:prompt_id>")
 @requires_auth
+@requires_csrf
 async def update_prompt(prompt_id: UUID) -> dict[str, list[dict]]:
     body = await request.get_json()
     payload = UpdatePrompt(**body)
@@ -73,6 +76,7 @@ async def update_prompt(prompt_id: UUID) -> dict[str, list[dict]]:
 
 @blueprint.delete("/<uuid:prompt_id>")
 @requires_auth
+@requires_csrf
 async def delete_prompt(prompt_id: UUID) -> Response:
     await PromptModel.delete(prompt_id=prompt_id)
     return Response(status=204)

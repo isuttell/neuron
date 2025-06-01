@@ -4,6 +4,7 @@ from quart import Blueprint, request
 from werkzeug.exceptions import Forbidden
 
 from neuron_server.controllers.auth import requires_auth
+from neuron_server.controllers.csrf import requires_csrf
 from neuron_server.models.provider_model import ProviderModelModel
 
 provider_blueprint = Blueprint("provider", __name__)
@@ -27,6 +28,7 @@ async def list_providers() -> dict[str, list[dict] | UUID | None]:
 
 @provider_blueprint.post("/<uuid:provider_id>/activate")
 @requires_auth
+@requires_csrf
 async def activate_provider(provider_id: UUID) -> dict[str, str | UUID]:
     """Activate a specific provider"""
     if "admin" not in request.token.roles:

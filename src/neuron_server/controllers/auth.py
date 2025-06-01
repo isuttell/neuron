@@ -118,13 +118,27 @@ def requires_auth(func: Callable[..., T]) -> Callable[..., T]:
 
 
 def requires_cookie(func: Callable[..., T]) -> Callable[..., T]:
-    """Determines if the session cookie is present"""
+    """Determines if the session cookie is present and valid"""
 
     @wraps(func)
     async def decorated(*args: object, **kwargs: object) -> T:
         cookie = request.cookies.get("neuron_session")
         if not cookie and config.static_require_auth:
             raise Unauthorized("Authentication required")
+
+        # If cookie exists, verify it's valid
+        if cookie:
+            from neuron_server.controllers.csrf import verify_cookie_data
+
+            cookie_data = verify_cookie_data(cookie)
+            if not cookie_data and config.static_require_auth:
+                raise Unauthorized("Invalid session cookie")
+
+            # Attach user info to request if valid
+            if cookie_data:
+                request.user_id = cookie_data.get("user_id")
+                request.session_data = cookie_data
+
         return await func(*args, **kwargs)
 
     return decorated

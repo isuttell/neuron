@@ -13,7 +13,8 @@ from neuron_server.config import config
 from neuron_server.controllers.app_controller import (
     blueprint as app_blueprint,
 )
-from neuron_server.controllers.auth import decode_token, requires_cookie
+from neuron_server.controllers.auth import decode_token, requires_auth, requires_cookie
+from neuron_server.controllers.csrf import create_session_cookie
 from neuron_server.controllers.embedding_controller import (
     blueprint as embedding_blueprint,
 )
@@ -207,6 +208,39 @@ app.register_blueprint(media_blueprint, url_prefix="/api/media")
 app.register_blueprint(scheduler_blueprint, url_prefix="/api/scheduler")
 app.register_blueprint(provider_blueprint, url_prefix="/api/providers")
 app.register_blueprint(user_bp, url_prefix="/api/users")
+
+
+@app.route("/api/auth/refresh-csrf", methods=["POST"])
+@requires_auth
+async def refresh_csrf() -> tuple[dict[str, str], int]:
+    """
+    Refresh CSRF token endpoint.
+    Used by the frontend when CSRF token becomes invalid.
+    """
+    from quart import jsonify, request
+
+    # Create new session cookie with CSRF token
+    cookie_value, csrf_token = create_session_cookie(
+        request.token.user_id, include_csrf=True
+    )
+
+    # Create response with new CSRF token
+    response = jsonify({
+        "status": "success",
+        "csrf_token": csrf_token
+    })
+
+    # Set new session cookie
+    response.set_cookie(
+        "neuron_session",
+        value=cookie_value,
+        max_age=config.csrf_cookie_max_age,
+        httponly=True,
+        samesite="Lax",
+        secure=config.is_production
+    )
+
+    return response, 200
 
 
 @app.errorhandler(openai.APIError)

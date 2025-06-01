@@ -5,6 +5,7 @@ from quart import Blueprint, Response, request
 from werkzeug.exceptions import NotFound
 
 from neuron_server.controllers.auth import requires_auth
+from neuron_server.controllers.csrf import requires_csrf
 from neuron_server.models.embedding_model import EmbeddingModel
 from neuron_server.vectorstores import memories_store
 
@@ -22,6 +23,7 @@ class EmbeddingUpsert(BaseModel):
 
 @blueprint.post("/<string:embedding_id>")
 @requires_auth
+@requires_csrf
 async def upsert_embedding(embedding_id: str) -> dict[str, list[dict]]:
     """Upsert an embedding by ID.
 
@@ -58,6 +60,7 @@ async def upsert_embedding(embedding_id: str) -> dict[str, list[dict]]:
 
 @blueprint.delete("/<string:embedding_id>")
 @requires_auth
+@requires_csrf
 async def delete_embedding(embedding_id: str) -> Response:
     embedding = await EmbeddingModel.get(embedding_id=embedding_id)
     if not embedding:
@@ -68,6 +71,7 @@ async def delete_embedding(embedding_id: str) -> Response:
 
 
 @requires_auth
+@requires_csrf
 @blueprint.delete("/bulk")
 async def bulk_delete_embeddings() -> Response:
     """Delete multiple embeddings at once.

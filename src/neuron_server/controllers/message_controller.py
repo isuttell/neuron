@@ -7,6 +7,7 @@ from werkzeug.exceptions import BadRequest, NotFound
 
 from neuron_server.config import config as neuron_config
 from neuron_server.controllers.auth import requires_auth
+from neuron_server.controllers.csrf import requires_csrf
 from neuron_server.controllers.events.message_events import (
     CancelMessage,
     PostMessage,
@@ -140,6 +141,7 @@ def format_ai_uploaded_file(filename: str, ext: str, url: str) -> str:
 
 @blueprint.post("/thread/<uuid:thread_id>")
 @requires_auth
+@requires_csrf
 async def post_thread_message(thread_id: UUID) -> tuple[dict[str, str], int]:
     thread = await ThreadModel.get(thread_id=thread_id)
     if not thread:

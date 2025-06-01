@@ -3,6 +3,7 @@ from quart import Blueprint, Response, request
 from werkzeug.exceptions import BadRequest, NotFound
 
 from neuron_server.controllers.auth import requires_auth
+from neuron_server.controllers.csrf import requires_csrf
 from neuron_server.models.personality_model import PersonalityModel
 
 blueprint = Blueprint("scheduler", __name__)
@@ -15,6 +16,7 @@ class ScheduleEvent(BaseModel):
 
 @blueprint.post("/events")
 @requires_auth
+@requires_csrf
 async def create_event() -> dict[str, str]:
     """Create a new scheduled event"""
     from neuron_server.api import scheduler
@@ -35,6 +37,7 @@ async def create_event() -> dict[str, str]:
 
 @blueprint.put("/events/<event_id>")
 @requires_auth
+@requires_csrf
 async def update_event(event_id: str) -> dict[str, str]:
     """Update an existing scheduled event"""
     from neuron_server.api import scheduler
@@ -98,6 +101,7 @@ async def list_events() -> dict[str, list[dict]]:
 
 @blueprint.delete("/events/<event_id>")
 @requires_auth
+@requires_csrf
 async def delete_event(event_id: str) -> Response:
     """Delete a scheduled event"""
     from neuron_server.api import scheduler
