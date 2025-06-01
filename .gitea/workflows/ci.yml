@@ -1,0 +1,220 @@
+name: CI
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+
+jobs:
+  # Backend Python tests and linting
+  backend:
+    name: Backend Tests (Python)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: 2.1.3
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+
+      - name: Cache Poetry dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pypoetry
+          key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-poetry-
+
+      - name: Install backend dependencies
+        run: poetry install --no-interaction --no-ansi
+
+      - name: Run backend linting (Ruff)
+        run: poetry run ruff check src/neuron_server/
+
+      - name: Run backend tests
+        run: poetry run pytest src/neuron_server/ --cov=src/neuron_server/ --cov-report=xml --cov-report=term
+
+      - name: Upload backend coverage
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage.xml
+          flags: backend
+          name: backend-coverage
+
+  # Frontend React tests and linting
+  frontend:
+    name: Frontend Tests (React)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Run frontend linting
+        run: npm run lint
+
+      - name: Run frontend type checking
+        run: npx tsc --noEmit
+
+      - name: Run frontend tests
+        run: npm run test:coverage
+
+      - name: Upload frontend coverage
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage/lcov.info
+          flags: frontend
+          name: frontend-coverage
+
+  # Dashboard Viewer tests and linting
+  dashboard-viewer:
+    name: Dashboard Viewer Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: 'src/dashboard-viewer/package-lock.json'
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: 2.1.3
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+
+      - name: Install dashboard viewer frontend dependencies
+        working-directory: src/dashboard-viewer
+        run: npm ci
+
+      - name: Install dashboard viewer backend dependencies
+        working-directory: src/dashboard-viewer
+        run: poetry install --no-interaction --no-ansi
+
+      - name: Run dashboard viewer frontend linting
+        working-directory: src/dashboard-viewer
+        run: npm run lint
+
+      - name: Run dashboard viewer frontend type checking
+        working-directory: src/dashboard-viewer
+        run: npx tsc --noEmit
+
+      - name: Run dashboard viewer frontend tests
+        working-directory: src/dashboard-viewer
+        run: npm test
+
+      - name: Run dashboard viewer frontend build
+        working-directory: src/dashboard-viewer
+        run: npm run build
+
+      - name: Run dashboard viewer backend tests
+        working-directory: src/dashboard-viewer
+        run: poetry run pytest tests/ --cov=dashboard_viewer/ --cov-report=xml --cov-report=term
+
+      - name: Upload dashboard viewer coverage
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./src/dashboard-viewer/coverage.xml
+          flags: dashboard-viewer
+          name: dashboard-viewer-coverage
+
+  # Docker build test for dashboard viewer
+  docker-build:
+    name: Docker Build Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build dashboard viewer Docker image
+        working-directory: src/dashboard-viewer
+        run: docker build -t dashboard-viewer:test .
+
+      - name: Test dashboard viewer Docker image
+        working-directory: src/dashboard-viewer
+        run: |
+          # Start container in background with health check
+          docker run -d --name dashboard-test -p 8000:8000 \
+            -e IMAGE_URL=https://httpbin.org/base64/iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg== \
+            dashboard-viewer:test
+
+          # Wait for container to start and become healthy
+          sleep 15
+
+          # Test health endpoint with retry
+          for i in {1..5}; do
+            if curl -f http://localhost:8000/api/status; then
+              echo "Health check passed"
+              break
+            fi
+            echo "Attempt $i failed, retrying..."
+            sleep 3
+          done
+
+          # Test that the main endpoint is accessible
+          curl -f http://localhost:8000/ > /dev/null
+
+          # Cleanup
+          docker stop dashboard-test
+          docker rm dashboard-test
+
+  # Pre-commit hooks validation
+  pre-commit:
+    name: Pre-commit Hooks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install pre-commit
+        run: pip install pre-commit
+
+      - name: Cache pre-commit
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pre-commit
+          key: ${{ runner.os }}-pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
+
+      - name: Run pre-commit hooks
+        run: pre-commit run --all-files
