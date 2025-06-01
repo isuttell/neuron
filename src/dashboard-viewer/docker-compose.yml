@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  dashboard-viewer:
+    build: .
+    ports:
+      - "${EXTERNAL_PORT:-8000}:8000"
+    environment:
+      - IMAGE_URL=${IMAGE_URL:-https://ha.zaks.io/local/dashboard-art.png}
+      - PORT=8000
+      - HOST=0.0.0.0
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    # Uncomment if you need to connect to other containers
+    # networks:
+    #   - homeassistant_network

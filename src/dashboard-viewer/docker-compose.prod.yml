@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  dashboard-viewer:
+    image: dashboard-viewer:latest
+    container_name: dashboard-viewer
+    ports:
+      - "8000:8000"  # Change to your desired port
+    environment:
+      # For Home Assistant running in host mode with Traefik:
+
+      # Option 1: Direct to HA port on host (RECOMMENDED)
+      - IMAGE_URL=http://host.docker.internal:8123/local/dashboard-art.png
+
+      # Option 2: Through Traefik (if Traefik is in Docker)
+      # - IMAGE_URL=http://traefik/local/dashboard-art.png
+
+      # Option 3: Using host IP directly
+      # - IMAGE_URL=http://192.168.1.160:8123/local/dashboard-art.png
+
+      - PORT=8000
+      - HOST=0.0.0.0
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    # If you want to use Traefik for dashboard-viewer too:
+    # labels:
+    #   - "traefik.enable=true"
+    #   - "traefik.http.routers.dashboard.rule=Host(`dashboard.zaks.io`)"
+    #   - "traefik.http.services.dashboard.loadbalancer.server.port=8000"
