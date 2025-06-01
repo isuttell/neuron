@@ -3,7 +3,9 @@
 from functools import wraps
 from typing import Any, Callable
 
-from quart import Response
+from quart import Response, request
+
+from neuron_server.config import config
 
 
 def cors(
@@ -14,7 +16,8 @@ def cors(
     """Add CORS headers to response.
 
     Args:
-        allowed_origins: List of allowed origins. Defaults to ["*"].
+        allowed_origins: List of allowed origins. Defaults to production origins
+            or all origins in debug mode.
         allowed_methods: List of allowed methods. Defaults to
             ["GET", "POST", "PUT", "DELETE", "OPTIONS"].
         allowed_headers: List of allowed headers. Defaults to
@@ -24,7 +27,20 @@ def cors(
         Decorated function that adds CORS headers to response.
     """
     if allowed_origins is None:
-        allowed_origins = ["*"]
+        if config.debug:
+            # Allow localhost origins in debug mode
+            allowed_origins = [
+                "http://localhost:3000",
+                "http://localhost:5173",
+                "http://localhost:5174",
+                "http://127.0.0.1:3000",
+                "http://127.0.0.1:5173",
+                "http://127.0.0.1:5174",
+                "https://neuron.zaks.io"
+            ]
+        else:
+            # Production: only allow specific domain
+            allowed_origins = ["https://neuron.zaks.io"]
     if allowed_methods is None:
         allowed_methods = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
     if allowed_headers is None:
@@ -37,14 +53,23 @@ def cors(
 
         @wraps(func)
         async def wrapped_func(*args: Any, **kwargs: Any) -> Response:
+            # Get the origin from the request
+            origin = request.headers.get("Origin", "")
+
+            # Always process the request since CORS is a browser protection
             response: Response = await func(*args, **kwargs)
-            response.headers["Access-Control-Allow-Origin"] = ", ".join(allowed_origins)
-            response.headers["Access-Control-Allow-Methods"] = ", ".join(
-                allowed_methods
-            )
-            response.headers["Access-Control-Allow-Headers"] = ", ".join(
-                allowed_headers
-            )
+
+            # Only add CORS headers if origin is allowed
+            if origin in allowed_origins:
+                response.headers["Access-Control-Allow-Origin"] = origin
+                response.headers["Access-Control-Allow-Methods"] = ", ".join(
+                    allowed_methods
+                )
+                response.headers["Access-Control-Allow-Headers"] = ", ".join(
+                    allowed_headers
+                )
+                response.headers["Access-Control-Allow-Credentials"] = "true"
+
             return response
 
         return wrapped_func
