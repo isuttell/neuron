@@ -8,7 +8,7 @@ repos:
     -   id: check-yaml
     -   id: check-added-large-files
     -   id: check-json
-        exclude: ^(tsconfig.*\.json|\.vscode/.*\.json)$
+        exclude: ^(tsconfig.*\.json|\.vscode/.*\.json|src/dashboard-viewer/tsconfig.*\.json)$
     -   id: check-toml
     -   id: check-merge-conflict
     -   id: debug-statements
