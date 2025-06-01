@@ -16,11 +16,24 @@ A React-based dashboard image viewer with built-in proxy server that automatical
 
 ### Using Docker
 
+#### Using Pre-built Image (Recommended)
+
 ```bash
-# Using docker-compose
+# Using docker run with registry image
+docker run -p 8000:8000 -e IMAGE_URL="https://your-image-url.com/image.png" gitea.zaks.io/isuttell/dashboard-viewer:latest
+
+# Using docker-compose with registry image
+IMAGE_URL="https://your-image-url.com/image.png" docker-compose -f docker-compose.prod.yml up
+```
+
+#### Building Locally
+
+```bash
+# Using docker-compose with local build
 IMAGE_URL="https://your-image-url.com/image.png" docker-compose up
 
-# Using docker run
+# Using docker run with local build
+docker build -t dashboard-viewer .
 docker run -p 8000:8000 -e IMAGE_URL="https://your-image-url.com/image.png" dashboard-viewer
 ```
 

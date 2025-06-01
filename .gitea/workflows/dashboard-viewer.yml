@@ -1,11 +1,8 @@
 name: Dashboard Viewer CI
 
 on:
-  push:
-    paths:
-      - 'src/dashboard-viewer/**'
-      - '.gitea/workflows/dashboard-viewer.yml'
   pull_request:
+    branches: [ master ]
     paths:
       - 'src/dashboard-viewer/**'
       - '.gitea/workflows/dashboard-viewer.yml'
@@ -67,9 +64,9 @@ jobs:
         working-directory: src/dashboard-viewer
         run: poetry run pytest tests/ --cov=dashboard_viewer/ --cov-report=xml --cov-report=term
 
-  # Simple Docker build verification (no container run)
+  # Docker build verification
   docker-build:
-    name: Docker Build Verification
+    name: Docker Build
     runs-on: ubuntu-latest
 
     steps:
@@ -77,11 +74,18 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
+        id: buildx
         uses: docker/setup-buildx-action@v3
+        with:
+          driver: docker
+          install: true
 
       - name: Build Docker image
-        working-directory: src/dashboard-viewer
-        run: docker build -t dashboard-viewer:test .
-
-      - name: Verify image was built
-        run: docker images | grep dashboard-viewer
+        uses: docker/build-push-action@v5
+        with:
+          context: src/dashboard-viewer
+          file: src/dashboard-viewer/Dockerfile
+          builder: ${{ steps.buildx.outputs.name }}
+          push: false
+          load: true
+          tags: gitea.zaks.io/isuttell/dashboard-viewer:pr-${{ github.event.pull_request.number }}

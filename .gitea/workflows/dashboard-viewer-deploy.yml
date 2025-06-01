@@ -1,0 +1,59 @@
+name: Dashboard Viewer Deploy
+
+on:
+  push:
+    branches: [ master ]
+    tags: [ 'dashboard-v*' ]
+    paths:
+      - 'src/dashboard-viewer/**'
+      - '!src/dashboard-viewer/**/__tests__/**'
+      - '!src/dashboard-viewer/**/tests/**'
+      - '!src/dashboard-viewer/**/*.test.ts'
+      - '!src/dashboard-viewer/**/*.test.tsx'
+      - '!src/dashboard-viewer/**/test_*.py'
+      - '.gitea/workflows/dashboard-viewer-deploy.yml'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Login to Gitea Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: gitea.zaks.io
+          username: ${{ secrets.USERNAME }}
+          password: ${{ secrets.PASSWORD }}
+
+      - name: Calculate Dockerfile hash
+        id: dockerfile-hash
+        working-directory: src/dashboard-viewer
+        run: echo "hash=$(sha256sum Dockerfile | awk '{print $1}')" >> $GITHUB_OUTPUT
+
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver: docker
+          install: true
+
+      - name: Build and push image
+        id: build-push
+        uses: docker/build-push-action@v5
+        with:
+          context: src/dashboard-viewer
+          file: src/dashboard-viewer/Dockerfile
+          builder: ${{ steps.buildx.outputs.name }}
+          push: true
+          tags: |
+            gitea.zaks.io/isuttell/dashboard-viewer:latest
+            ${{ startsWith(github.ref, 'refs/tags/dashboard-v') && format('gitea.zaks.io/isuttell/dashboard-viewer:{0}', github.ref_name) || '' }}
+
+      - name: Deployment notification
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/dashboard-v* ]]; then
+            echo "🚀 Successfully pushed image gitea.zaks.io/isuttell/dashboard-viewer:${{ github.ref_name }} for production deployment"
+          else
+            echo "🚀 Successfully pushed image gitea.zaks.io/isuttell/dashboard-viewer:latest for staging deployment"
+          fi
