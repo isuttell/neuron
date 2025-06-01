@@ -73,6 +73,9 @@ from neuron_server.tools.replicate_audio_generation_tool import (
 from neuron_server.tools.replicate_image_generation_tool import (
     ReplicateImageGenerationTool,
 )
+from neuron_server.tools.replicate_kontext_image_tool import (
+    ReplicateKontextImageTool,
+)
 from neuron_server.tools.replicate_music_generation_tool import (
     ReplicateMusicGenerationTool,
 )
@@ -124,6 +127,7 @@ tool_sets: dict[str, list[BaseTool]] = {
     "document_query": [],
     "image": [
         ReplicateImageGenerationTool(),
+        ReplicateKontextImageTool(),
         InspectImageTool(),
         AppImageTool(),
     ],
