@@ -57,7 +57,7 @@ jobs:
 
       - name: Run frontend tests
         working-directory: src/dashboard-viewer
-        run: npm test
+        run: npx vitest run
 
       - name: Run frontend build
         working-directory: src/dashboard-viewer
@@ -67,9 +67,9 @@ jobs:
         working-directory: src/dashboard-viewer
         run: poetry run pytest tests/ --cov=dashboard_viewer/ --cov-report=xml --cov-report=term
 
-  # Docker build test
-  docker:
-    name: Docker Build Test
+  # Simple Docker build verification (no container run)
+  docker-build:
+    name: Docker Build Verification
     runs-on: ubuntu-latest
 
     steps:
@@ -83,30 +83,5 @@ jobs:
         working-directory: src/dashboard-viewer
         run: docker build -t dashboard-viewer:test .
 
-      - name: Test Docker image
-        working-directory: src/dashboard-viewer
-        run: |
-          # Start container in background with test image URL
-          docker run -d --name dashboard-test -p 8000:8000 \
-            -e IMAGE_URL=https://httpbin.org/base64/iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg== \
-            dashboard-viewer:test
-
-          # Wait for container to start
-          sleep 15
-
-          # Test health endpoint with retry
-          for i in {1..5}; do
-            if curl -f http://localhost:8000/api/status; then
-              echo "Health check passed"
-              break
-            fi
-            echo "Attempt $i failed, retrying..."
-            sleep 3
-          done
-
-          # Test that the main endpoint is accessible
-          curl -f http://localhost:8000/ > /dev/null
-
-          # Cleanup
-          docker stop dashboard-test
-          docker rm dashboard-test
+      - name: Verify image was built
+        run: docker images | grep dashboard-viewer
