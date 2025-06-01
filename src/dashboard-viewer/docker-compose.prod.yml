@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   dashboard-viewer:
-    image: dashboard-viewer:latest
+    image: gitea.zaks.io/isuttell/dashboard-viewer:latest
     container_name: dashboard-viewer
     ports:
       - "8000:8000"  # Change to your desired port
