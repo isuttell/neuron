@@ -54,7 +54,7 @@ export function DashboardImageWS({
   }, [url, fadeDuration]);
 
   const handleWebSocketMessage = useCallback((message: WebSocketMessage) => {
-    if (message.type === 'image_updated') {
+    if (message.type === 'image_changed') {
       handleImageChange();
     }
   }, [handleImageChange]);

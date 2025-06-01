@@ -26,8 +26,13 @@ export interface DashboardImageProps {
 }
 
 export interface WebSocketMessage {
-  type: 'ping' | 'pong' | 'image_updated'
+  type: 'connected' | 'image_changed' | 'error' | 'pong' | string
+  etag?: string
+  current_etag?: string
   timestamp?: string
+  message?: string
+  last_check?: string | null
+  js_hash?: string
   hash_changed?: boolean
 }
 

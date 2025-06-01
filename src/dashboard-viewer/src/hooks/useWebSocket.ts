@@ -1,15 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-
-interface WebSocketMessage {
-  type: 'connected' | 'image_changed' | 'error' | 'pong' | string;
-  etag?: string;
-  current_etag?: string;
-  timestamp?: string;
-  message?: string;
-  last_check?: string | null;
-  js_hash?: string;
-  hash_changed?: boolean;
-}
+import type { WebSocketMessage } from '@/types/dashboard';
 
 interface UseWebSocketOptions {
   onMessage?: (message: WebSocketMessage) => void;
