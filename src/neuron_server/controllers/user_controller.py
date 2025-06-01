@@ -1,5 +1,6 @@
 from quart import Blueprint, Response, jsonify, request
 
+from neuron_server.config import config
 from neuron_server.controllers.auth import TokenPayload, requires_auth
 from neuron_server.models import UserModel  # Import UserModel
 
@@ -27,7 +28,8 @@ async def login_user() -> Response:  # Add return type hint
         value=payload.user_id,
         max_age=86400,  # 24 hours in seconds
         httponly=True,
-        samesite="Lax"
+        samesite="Lax",
+        secure=not config.debug  # Use secure cookies in production
     )
 
     return response, 200

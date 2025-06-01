@@ -3,6 +3,7 @@
 import pytest
 from quart import Quart, Response
 
+from neuron_server.config import config
 from neuron_server.decorators.http_decorators import cache_control, cors
 
 
@@ -22,8 +23,13 @@ async def test_cors_default_headers(app: Quart) -> None:
         return Response("test")
 
     async with app.test_client() as client:
-        response = await client.get("/test")
-        assert response.headers["Access-Control-Allow-Origin"] == "*"
+        # Test with allowed origin in debug mode
+        if config.debug:
+            response = await client.get("/test", headers={"Origin": "http://localhost:5173"})
+            assert response.headers["Access-Control-Allow-Origin"] == "http://localhost:5173"
+        else:
+            response = await client.get("/test", headers={"Origin": "https://neuron.zaks.io"})
+            assert response.headers["Access-Control-Allow-Origin"] == "https://neuron.zaks.io"
         assert (
             response.headers["Access-Control-Allow-Methods"]
             == "GET, POST, PUT, DELETE, OPTIONS"
@@ -32,6 +38,11 @@ async def test_cors_default_headers(app: Quart) -> None:
             response.headers["Access-Control-Allow-Headers"]
             == "Content-Type, Authorization"
         )
+        assert response.headers["Access-Control-Allow-Credentials"] == "true"
+
+        # Test with disallowed origin - no CORS headers should be added
+        response = await client.get("/test", headers={"Origin": "http://evil.com"})
+        assert "Access-Control-Allow-Origin" not in response.headers
 
 
 @pytest.mark.asyncio
@@ -51,10 +62,16 @@ async def test_cors_custom_headers(app: Quart) -> None:
         return Response("test")
 
     async with app.test_client() as client:
-        response = await client.get("/test")
+        # Test with allowed origin
+        response = await client.get("/test", headers={"Origin": "http://localhost:3000"})
         assert response.headers["Access-Control-Allow-Origin"] == origins[0]
         assert response.headers["Access-Control-Allow-Methods"] == "GET, POST"
         assert response.headers["Access-Control-Allow-Headers"] == "X-Custom-Header"
+        assert response.headers["Access-Control-Allow-Credentials"] == "true"
+
+        # Test with disallowed origin - no CORS headers should be added
+        response = await client.get("/test", headers={"Origin": "http://evil.com"})
+        assert "Access-Control-Allow-Origin" not in response.headers
 
 
 @pytest.mark.asyncio
