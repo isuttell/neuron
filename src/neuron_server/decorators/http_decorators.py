@@ -56,9 +56,11 @@ def cors(
             # Get the origin from the request
             origin = request.headers.get("Origin", "")
 
-            # Check if the origin is allowed
+            # Always process the request since CORS is a browser protection
+            response: Response = await func(*args, **kwargs)
+
+            # Only add CORS headers if origin is allowed
             if origin in allowed_origins:
-                response: Response = await func(*args, **kwargs)
                 response.headers["Access-Control-Allow-Origin"] = origin
                 response.headers["Access-Control-Allow-Methods"] = ", ".join(
                     allowed_methods
@@ -67,9 +69,6 @@ def cors(
                     allowed_headers
                 )
                 response.headers["Access-Control-Allow-Credentials"] = "true"
-            else:
-                # If origin not allowed, still process the request but no CORS
-                response: Response = await func(*args, **kwargs)
 
             return response
 
