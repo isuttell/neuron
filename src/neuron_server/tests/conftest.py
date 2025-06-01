@@ -474,7 +474,9 @@ def bypass_csrf_in_tests(request) -> None:
             # Only modify for non-GET requests
             if quart_request.method not in ["GET", "HEAD", "OPTIONS"]:
                 # Create valid session cookie with CSRF token
-                cookie_value, csrf_token = create_session_cookie("test_user_id", include_csrf=True)
+                cookie_value, csrf_token = create_session_cookie(
+                    "test_user_id", include_csrf=True
+                )
 
                 # Mock the cookies
                 class MockCookies(dict):
@@ -498,7 +500,9 @@ def bypass_csrf_in_tests(request) -> None:
 
                 # Set session data attributes
                 quart_request.user_id = "test_user_id"
-                quart_request.session_data = {"user_id": "test_user_id", "csrf_token": csrf_token}
+                quart_request.session_data = {
+                    "user_id": "test_user_id", "csrf_token": csrf_token
+                }
 
         ctx.push = patched_push
         return ctx
@@ -521,7 +525,9 @@ def bypass_csrf_in_tests(request) -> None:
             headers = kwargs.get('headers', {})
             # Add CSRF headers if not present
             if 'X-CSRF-Token' not in headers and 'Cookie' not in headers:
-                cookie_value, csrf_token = create_session_cookie("test_user_id", include_csrf=True)
+                cookie_value, csrf_token = create_session_cookie(
+                    "test_user_id", include_csrf=True
+                )
                 headers['X-CSRF-Token'] = csrf_token
                 headers['Cookie'] = f"neuron_session={cookie_value}"
                 kwargs['headers'] = headers
@@ -530,7 +536,9 @@ def bypass_csrf_in_tests(request) -> None:
         async def wrapped_put(path, **kwargs):
             headers = kwargs.get('headers', {})
             if 'X-CSRF-Token' not in headers and 'Cookie' not in headers:
-                cookie_value, csrf_token = create_session_cookie("test_user_id", include_csrf=True)
+                cookie_value, csrf_token = create_session_cookie(
+                    "test_user_id", include_csrf=True
+                )
                 headers['X-CSRF-Token'] = csrf_token
                 headers['Cookie'] = f"neuron_session={cookie_value}"
                 kwargs['headers'] = headers
@@ -539,7 +547,9 @@ def bypass_csrf_in_tests(request) -> None:
         async def wrapped_patch(path, **kwargs):
             headers = kwargs.get('headers', {})
             if 'X-CSRF-Token' not in headers and 'Cookie' not in headers:
-                cookie_value, csrf_token = create_session_cookie("test_user_id", include_csrf=True)
+                cookie_value, csrf_token = create_session_cookie(
+                    "test_user_id", include_csrf=True
+                )
                 headers['X-CSRF-Token'] = csrf_token
                 headers['Cookie'] = f"neuron_session={cookie_value}"
                 kwargs['headers'] = headers
@@ -548,7 +558,9 @@ def bypass_csrf_in_tests(request) -> None:
         async def wrapped_delete(path, **kwargs):
             headers = kwargs.get('headers', {})
             if 'X-CSRF-Token' not in headers and 'Cookie' not in headers:
-                cookie_value, csrf_token = create_session_cookie("test_user_id", include_csrf=True)
+                cookie_value, csrf_token = create_session_cookie(
+                    "test_user_id", include_csrf=True
+                )
                 headers['X-CSRF-Token'] = csrf_token
                 headers['Cookie'] = f"neuron_session={cookie_value}"
                 kwargs['headers'] = headers
@@ -591,7 +603,6 @@ def bypass_csrf_in_tests(request) -> None:
         mock_extract.side_effect = mock_extract_csrf
 
         # Make verify_cookie_data handle test cookies
-        original_verify = mock_verify.wraps  # Get the original function
         def mock_verify_func(cookie):
             if cookie == "test_user_id":
                 # Old style test cookie for backward compatibility

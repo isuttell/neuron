@@ -19,7 +19,9 @@ def get_csrf_headers(user_id: str = "test_user_id") -> tuple[dict[str, str], str
     return headers, cookie_value
 
 
-def add_csrf_to_headers(headers: dict[str, str], user_id: str = "test_user_id") -> dict[str, str]:
+def add_csrf_to_headers(
+    headers: dict[str, str], user_id: str = "test_user_id"
+) -> dict[str, str]:
     """
     Add CSRF headers to existing headers.
 

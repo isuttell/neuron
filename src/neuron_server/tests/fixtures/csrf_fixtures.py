@@ -19,5 +19,8 @@ def bypass_csrf_decorator(func: Callable[..., T]) -> Callable[..., T]:
 @pytest.fixture(autouse=True)
 def mock_csrf_decorator():
     """Mock the requires_csrf decorator to bypass CSRF checks in tests."""
-    with patch("neuron_server.controllers.csrf.requires_csrf", side_effect=bypass_csrf_decorator):
+    with patch(
+        "neuron_server.controllers.csrf.requires_csrf",
+        side_effect=bypass_csrf_decorator
+    ):
         yield
