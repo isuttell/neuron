@@ -216,6 +216,76 @@ async def rotate_csrf_token(response: Response, user_id: str) -> str:
     return new_csrf_token
 
 
+async def _validate_csrf_cookie(request: Request) -> dict[str, Any]:
+    """Validate and extract CSRF cookie data."""
+    cookie = request.cookies.get("neuron_session")
+    if not cookie:
+        if config.debug:
+            logger.warning(
+                f"CSRF check failed: Session cookie missing for "
+                f"{request.method} {request.path}"
+            )
+        raise CSRFError("Session cookie missing")
+
+    cookie_data = verify_cookie_data(cookie)
+    if not cookie_data:
+        if config.debug:
+            logger.warning(
+                f"CSRF check failed: Invalid session cookie for "
+                f"{request.method} {request.path}"
+            )
+        raise CSRFError("Invalid session cookie")
+
+    return cookie_data
+
+
+async def _validate_csrf_tokens(request: Request, cookie_data: dict[str, Any]) -> None:
+    """Validate CSRF tokens from cookie and request."""
+    stored_csrf = cookie_data.get("csrf_token")
+    if not stored_csrf:
+        if config.debug:
+            logger.warning(
+                f"CSRF check failed: Token not in session for "
+                f"{request.method} {request.path}"
+            )
+        raise CSRFError("CSRF token not found in session")
+
+    provided_csrf = await extract_csrf_token(request)
+    if not provided_csrf:
+        if config.debug:
+            logger.warning(
+                f"CSRF check failed: Token missing from request for "
+                f"{request.method} {request.path}"
+            )
+        raise CSRFError("CSRF token missing from request")
+
+    if not hmac.compare_digest(stored_csrf, provided_csrf):
+        user_id = cookie_data.get("user_id", "unknown")
+        logger.warning(
+            f"CSRF token mismatch for user {user_id} from IP {request.remote_addr} "
+            f"on {request.method} {request.path}"
+        )
+        if config.debug:
+            logger.debug(
+                f"Expected: {stored_csrf[:8]}..., Got: {provided_csrf[:8]}..."
+            )
+        raise CSRFError("Invalid CSRF token")
+
+
+async def _handle_token_rotation(result: object, user_id: str) -> None:
+    """Handle CSRF token rotation in response."""
+    if not ENABLE_TOKEN_ROTATION or not isinstance(result, Response):
+        return
+
+    new_token = await rotate_csrf_token(result, user_id)
+    if new_token:
+        result.headers["X-New-CSRF-Token"] = new_token
+        if config.debug:
+            logger.debug(
+                f"Added new CSRF token to response headers for user {user_id}"
+            )
+
+
 def requires_csrf(func: Callable[..., T]) -> Callable[..., T]:
     """
     Decorator to require CSRF validation for state-changing operations.
@@ -227,77 +297,21 @@ def requires_csrf(func: Callable[..., T]) -> Callable[..., T]:
         if request.method in ["GET", "HEAD", "OPTIONS"]:
             return await func(*args, **kwargs)
 
-        # Get session cookie
-        cookie = request.cookies.get("neuron_session")
-        if not cookie:
-            if config.debug:
-                logger.warning(
-                    f"CSRF check failed: Session cookie missing for "
-                    f"{request.method} {request.path}"
-                )
-            raise CSRFError("Session cookie missing")
+        # Validate cookie and extract data
+        cookie_data = await _validate_csrf_cookie(request)
 
-        # Verify cookie and extract data
-        cookie_data = verify_cookie_data(cookie)
-        if not cookie_data:
-            if config.debug:
-                logger.warning(
-                    f"CSRF check failed: Invalid session cookie for "
-                    f"{request.method} {request.path}"
-                )
-            raise CSRFError("Invalid session cookie")
+        # Validate CSRF tokens
+        await _validate_csrf_tokens(request, cookie_data)
 
-        # Get CSRF token from cookie
-        stored_csrf = cookie_data.get("csrf_token")
-        if not stored_csrf:
-            if config.debug:
-                logger.warning(
-                    f"CSRF check failed: Token not in session for "
-                    f"{request.method} {request.path}"
-                )
-            raise CSRFError("CSRF token not found in session")
-
-        # Get CSRF token from request
-        provided_csrf = await extract_csrf_token(request)
-        if not provided_csrf:
-            if config.debug:
-                logger.warning(
-                    f"CSRF check failed: Token missing from request for "
-                    f"{request.method} {request.path}"
-                )
-            raise CSRFError("CSRF token missing from request")
-
-        # Compare tokens
-        if not hmac.compare_digest(stored_csrf, provided_csrf):
-            user_id = cookie_data.get("user_id", "unknown")
-            logger.warning(
-                f"CSRF token mismatch for user {user_id} from IP {request.remote_addr} "
-                f"on {request.method} {request.path}"
-            )
-            if config.debug:
-                logger.debug(
-                    f"Expected: {stored_csrf[:8]}..., Got: {provided_csrf[:8]}..."
-                )
-            raise CSRFError("Invalid CSRF token")
-
-        # Attach validated user data to request for convenience
+        # Attach validated user data to request
         request.user_id = cookie_data.get("user_id")
         request.session_data = cookie_data
 
         # Execute the protected function
         result = await func(*args, **kwargs)
 
-        # Rotate CSRF token if enabled and response is available
-        if ENABLE_TOKEN_ROTATION and isinstance(result, Response):
-            new_token = await rotate_csrf_token(result, request.user_id)
-            # Add new token to response headers (more reliable than body modification)
-            if new_token:
-                result.headers["X-New-CSRF-Token"] = new_token
-                if config.debug:
-                    logger.debug(
-                        f"Added new CSRF token to response headers for user "
-                        f"{request.user_id}"
-                    )
+        # Handle token rotation
+        await _handle_token_rotation(result, request.user_id)
 
         return result
 
