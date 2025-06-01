@@ -11,9 +11,10 @@ import { TimelineControls } from "./TimelineControls";
 
 interface MediaTimelineProps {
   threadId: string;
+  widthMode?: "narrow" | "wide" | "hidden";
 }
 
-function MediaTimeline({ threadId }: MediaTimelineProps) {
+function MediaTimeline({ threadId, widthMode }: MediaTimelineProps) {
   const mediaItems = useAppSelector(selectAllMedia);
   const [currentIndex, setCurrentIndex] = useState<number>(-1);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -66,6 +67,18 @@ function MediaTimeline({ threadId }: MediaTimelineProps) {
     });
     return indices;
   }, [allItems, audioItems]);
+
+  // Determine thumbnail size based on width mode
+  const thumbnailSize = useMemo(() => {
+    switch (widthMode) {
+      case "wide":
+        return "xl" as const;
+      case "narrow":
+        return "l" as const;
+      default:
+        return "l" as const;
+    }
+  }, [widthMode]);
 
   // Initialize audio element
   useEffect(() => {
@@ -374,7 +387,7 @@ function MediaTimeline({ threadId }: MediaTimelineProps) {
                     description={item.description}
                     width={1024}
                     height={1024}
-                    thumbnail_size="t"
+                    thumbnail_size={thumbnailSize}
                     showControls={false}
                     objectFit="contain"
                     mediaItem={item}

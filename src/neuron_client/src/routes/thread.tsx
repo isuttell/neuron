@@ -165,7 +165,7 @@ export default function Thread() {
           )}
         >
           {widthMode !== "hidden" && threadId ? (
-            <MediaTimeline key={threadId} threadId={threadId} />
+            <MediaTimeline key={threadId} threadId={threadId} widthMode={widthMode} />
           ) : null}
         </div>
       </div>
