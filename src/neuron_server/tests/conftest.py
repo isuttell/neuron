@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import openai
 import pytest
+import redis.asyncio as redis
 from langchain_core.messages import AIMessage
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from pytest import MonkeyPatch
@@ -80,6 +81,12 @@ redis_client_mock.execute = AsyncMock()
 redis_client_mock.ping = AsyncMock()
 redis_client_mock.psubscribe = AsyncMock()
 redis_client_mock.get_message = AsyncMock(return_value=None)
+# Add rate limiting specific methods
+redis_client_mock.zremrangebyscore = AsyncMock(return_value=0)
+redis_client_mock.zcard = AsyncMock(return_value=0)
+redis_client_mock.zrange = AsyncMock(return_value=[])
+redis_client_mock.zadd = AsyncMock(return_value=1)
+redis_client_mock.expire = AsyncMock(return_value=True)
 
 # Create pubsub mock
 pubsub_mock = AsyncContextManagerMock()
@@ -117,6 +124,11 @@ redis_mock.typing = Mock()
 redis_mock.typing.ExpiryT = object
 redis_mock.typing.ResponseT = object
 redis_mock.exceptions = Mock()
+# Add Redis exception classes
+redis_mock.ConnectionError = redis.ConnectionError
+redis_mock.TimeoutError = redis.TimeoutError
+redis_mock.RedisError = redis.RedisError
+redis_mock.asyncio.ConnectionPool = Mock
 redis_mock.exceptions.ConnectionError = type('ConnectionError', (BaseException,), {})
 redis_mock.exceptions.RedisError = type('RedisError', (BaseException,), {})
 redis_mock.RedisError = type('RedisError', (BaseException,), {})

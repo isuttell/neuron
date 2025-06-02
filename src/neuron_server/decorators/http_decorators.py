@@ -1,13 +1,19 @@
 """HTTP decorators for Quart applications."""
 
+import logging
 import time
+from collections.abc import Awaitable, Callable
 from functools import wraps
-from typing import Any, Callable
+from typing import Any, TypeVar
 
-import redis
+import redis.asyncio as redis
 from quart import Response, jsonify, request
 
 from neuron_server.config import config
+
+T = TypeVar("T")
+
+logger = logging.getLogger(__name__)
 
 
 def cors(
@@ -138,15 +144,26 @@ class RateLimitExceededError(Exception):
 
 
 class RateLimiter:
-    """Redis-based sliding window rate limiter."""
+    """Redis-based sliding window rate limiter with connection management."""
 
     def __init__(self) -> None:
-        self.redis_client = redis.Redis(
-            host=config.redis.host,
-            port=config.redis.port,
-            db=config.redis.db,
-            password=config.redis.password,
-            decode_responses=True,
+        self._redis_config = {
+            "host": config.redis.host,
+            "port": config.redis.port,
+            "db": config.redis.db,
+            "password": config.redis.password,
+            "decode_responses": True,
+            "socket_connect_timeout": 5,
+            "socket_timeout": 5,
+            "retry_on_timeout": True,
+            "health_check_interval": 30,
+        }
+        self.redis_client = self._create_redis_client()
+
+    def _create_redis_client(self) -> redis.Redis:
+        """Create Redis client with connection pool and retry logic."""
+        return redis.Redis(
+            connection_pool=redis.ConnectionPool(**self._redis_config),
         )
 
     def _get_client_ip(self) -> str:
@@ -207,7 +224,69 @@ class RateLimiter:
             "requests_per_hour": 500,
         }
 
-    def _check_rate_limit(
+    async def _execute_redis_command(
+        self,
+        command_name: str,
+        command_func: Callable[[], Awaitable[T]],
+        *,
+        max_retries: int = 2,
+        fail_fast: bool = True,
+    ) -> T:
+        """
+        Execute Redis command with connection management and retry logic.
+
+        Args:
+            command_name: Name of the command for logging
+            command_func: Function that executes the Redis command
+            max_retries: Maximum number of retries for connection errors
+            fail_fast: If True, raise on Redis errors (protects system)
+
+        Returns:
+            Result of the Redis command
+
+        Raises:
+            Exception: If Redis fails and fail_fast is True
+        """
+        for attempt in range(max_retries + 1):
+            try:
+                return await command_func()
+            except redis.ConnectionError as e:
+                if attempt < max_retries:
+                    logger.warning(
+                        f"Redis connection error on {command_name} "
+                        f"(attempt {attempt + 1}/{max_retries + 1}): {e}"
+                    )
+                    # Quick retry for connection issues
+                    time.sleep(0.1 * (attempt + 1))
+                    continue
+                # Final attempt failed
+                logger.error(
+                    f"Redis connection failed after {max_retries + 1} attempts "
+                    f"for {command_name}: {e}",
+                    exc_info=True
+                )
+                if fail_fast:
+                    raise
+            except redis.TimeoutError as e:
+                # Don't retry timeouts - Redis is overwhelmed
+                logger.error(
+                    f"Redis timeout error on {command_name}: {e}",
+                    exc_info=True
+                )
+                if fail_fast:
+                    raise
+            except redis.RedisError as e:
+                logger.error(
+                    f"Redis error on {command_name}: {e}",
+                    exc_info=True
+                )
+                if fail_fast:
+                    raise
+
+        # Should not reach here with fail_fast=True
+        raise RuntimeError(f"Redis command {command_name} failed after all retries")
+
+    async def _check_rate_limit(
         self, key: str, limit: int, window_seconds: int
     ) -> tuple[bool, int]:
         """
@@ -220,14 +299,23 @@ class RateLimiter:
         window_start = now - window_seconds
 
         # Remove old entries outside the window
-        self.redis_client.zremrangebyscore(key, 0, window_start)
+        await self._execute_redis_command(
+            "zremrangebyscore",
+            lambda: self.redis_client.zremrangebyscore(key, 0, window_start)
+        )
 
         # Count current requests in window
-        current_count = self.redis_client.zcard(key)
+        current_count = await self._execute_redis_command(
+            "zcard",
+            lambda: self.redis_client.zcard(key)
+        )
 
         if current_count >= limit:
             # Get the oldest entry to calculate retry time
-            oldest_entries = self.redis_client.zrange(key, 0, 0, withscores=True)
+            oldest_entries = await self._execute_redis_command(
+                "zrange",
+                lambda: self.redis_client.zrange(key, 0, 0, withscores=True)
+            )
             if oldest_entries:
                 oldest_time = oldest_entries[0][1]
                 retry_after = int(oldest_time + window_seconds - now) + 1
@@ -235,14 +323,20 @@ class RateLimiter:
             return False, 60  # Default retry after 60 seconds
 
         # Add current request
-        self.redis_client.zadd(key, {str(now): now})
+        await self._execute_redis_command(
+            "zadd",
+            lambda: self.redis_client.zadd(key, {str(now): now})
+        )
 
         # Set expiration on the key
-        self.redis_client.expire(key, window_seconds + 10)
+        await self._execute_redis_command(
+            "expire",
+            lambda: self.redis_client.expire(key, window_seconds + 10)
+        )
 
         return True, 0
 
-    def check_limits(self, client_ip: str, limit_type: str = "api") -> None:
+    async def check_limits(self, client_ip: str, limit_type: str = "api") -> None:
         """
         Check all rate limits for a client.
 
@@ -259,7 +353,7 @@ class RateLimiter:
         # Include limit_type in the key to separate static vs API limits
         # Check per-minute limit
         minute_key = f"rate_limit:{limit_type}:{auth_status}:{client_ip}:minute"
-        allowed, retry_after = self._check_rate_limit(
+        allowed, retry_after = await self._check_rate_limit(
             minute_key, limits["requests_per_minute"], 60
         )
         if not allowed:
@@ -269,7 +363,7 @@ class RateLimiter:
 
         # Check per-hour limit
         hour_key = f"rate_limit:{limit_type}:{auth_status}:{client_ip}:hour"
-        allowed, retry_after = self._check_rate_limit(
+        allowed, retry_after = await self._check_rate_limit(
             hour_key, limits["requests_per_hour"], 3600
         )
         if not allowed:
@@ -303,7 +397,7 @@ def rate_limit(enabled: bool = True, limit_type: str = "api") -> Callable:
 
             try:
                 client_ip = _rate_limiter._get_client_ip()
-                _rate_limiter.check_limits(client_ip, limit_type)
+                await _rate_limiter.check_limits(client_ip, limit_type)
 
                 # Rate limit passed, process request normally
                 return await func(*args, **kwargs)
@@ -318,7 +412,7 @@ def rate_limit(enabled: bool = True, limit_type: str = "api") -> Callable:
                     "limit_value": e.limit_value,
                 }
 
-                response = await jsonify(error_response)
+                response = jsonify(error_response)
                 response.status_code = 429
                 response.headers["Retry-After"] = str(e.retry_after)
                 response.headers["X-RateLimit-Limit"] = str(e.limit_value)
@@ -330,9 +424,37 @@ def rate_limit(enabled: bool = True, limit_type: str = "api") -> Callable:
                 return response
 
             except Exception as e:
-                # Log the error but don't block the request on rate limiter failures
-                print(f"Rate limiter error: {e}")
-                return await func(*args, **kwargs)
+                # Only handle Redis-related exceptions
+                is_redis_error = False
+                try:
+                    is_redis_error = isinstance(
+                        e, (redis.ConnectionError, redis.TimeoutError, redis.RedisError)
+                    )
+                except (TypeError, AttributeError):
+                    # In test environment, redis may not have these exception types
+                    is_redis_error = type(e).__name__ in (
+                        'ConnectionError', 'TimeoutError', 'RedisError'
+                    )
+
+                if is_redis_error:
+                    # Log the error and reject the request to protect the system
+                    logger.error(
+                        "Rate limiter error - rejecting request to protect system: %s",
+                        e,
+                        exc_info=True
+                    )
+                    # Return 503 Service Unavailable when rate limiter fails
+                    error_response = {
+                        "error": "service_unavailable",
+                        "message": "Rate limiting service temporarily unavailable",
+                        "retry_after": 60,
+                    }
+                    response = jsonify(error_response)
+                    response.status_code = 503
+                    response.headers["Retry-After"] = "60"
+                    return response
+                # Re-raise non-Redis exceptions (like BadRequest)
+                raise
 
         return wrapped_func
 
