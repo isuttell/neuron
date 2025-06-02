@@ -66,12 +66,27 @@ docker build -t dashboard-viewer .
 
 ## Configuration
 
-### Backend Environment Variables
+### Backend Configuration
 
-- `IMAGE_URL` - **Required**: The URL of the image to display (e.g., `https://ha.zaks.io/local/dashboard-art.png`)
+The backend uses pydantic-settings for configuration management. You can configure it using:
+
+1. **Environment variables**
+2. **`.env` file** (automatically loaded if present)
+
+Copy `.env.example` to `.env` and update with your values:
+
+```bash
+cp .env.example .env
+```
+
+#### Environment Variables
+
+- `IMAGE_URL` - The URL of the image to display (default: `https://ha.zaks.io/local/dashboard-art.png`)
 - `PORT` - Port to run the server on (default: `8000`)
 - `HOST` - Host to bind to (default: `0.0.0.0`)
 - `DEV_MODE` - Enable auto-reload for development (default: `false`)
+- `HOMEASSISTANT_URL` - Home Assistant instance URL (optional)
+- `HOMEASSISTANT_TOKEN` - Home Assistant long-lived access token (optional)
 
 ### Frontend Environment Variables (Build Time)
 

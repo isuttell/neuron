@@ -135,15 +135,15 @@ else:
 
 def main() -> None:
     """Main entry point for the dashboard viewer server."""
-    import os
-
     import uvicorn
+
+    from .config import settings
 
     uvicorn.run(
         "dashboard_viewer.server:app",
-        host=HOST,
-        port=PORT,
-        reload=os.getenv("DEV_MODE", "false").lower() == "true",
+        host=settings.host,
+        port=settings.port,
+        reload=settings.dev_mode,
     )
 
 
