@@ -72,7 +72,7 @@ export function MainSidebar() {
 
   return (
     <Sidebar className="z-50">
-      <SidebarHeader className="border-b">
+      <SidebarHeader className="border-b ipad-sidebar-spacing">
         <AspectRatio
           ratio={1}
           className="flex justify-center rounded-lg bg-muted items-center m-2"
