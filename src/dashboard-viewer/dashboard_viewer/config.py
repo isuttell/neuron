@@ -35,6 +35,12 @@ class Settings(BaseSettings):
         description="Enable development mode with auto-reload"
     )
 
+    # Path configuration
+    vite_base_path: str = Field(
+        default="",
+        description="Base path for subpath deployment (e.g., '/dashboard')"
+    )
+
     # Model configuration
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -66,3 +72,4 @@ PORT = settings.port
 HOST = settings.host
 HOMEASSISTANT_URL = settings.homeassistant_url
 HOMEASSISTANT_TOKEN = settings.homeassistant_token or ""
+BASE_PATH = settings.vite_base_path

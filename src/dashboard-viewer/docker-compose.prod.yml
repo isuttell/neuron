@@ -4,8 +4,6 @@ services:
   dashboard-viewer:
     image: gitea.zaks.io/isuttell/dashboard-viewer:latest
     container_name: dashboard-viewer
-    ports:
-      - "8000:8000"  # Change to your desired port
     environment:
       # For Home Assistant running in host mode with Traefik:
 
@@ -21,11 +19,28 @@ services:
       - PORT=8000
       - HOST=0.0.0.0
       - HOMEASSISTANT_TOKEN=${HOMEASSISTANT_TOKEN}
+      - VITE_BASE_PATH=/dashboard
     restart: unless-stopped
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    # If you want to use Traefik for dashboard-viewer too:
-    # labels:
-    #   - "traefik.enable=true"
-    #   - "traefik.http.routers.dashboard.rule=Host(`dashboard.zaks.io`)"
-    #   - "traefik.http.services.dashboard.loadbalancer.server.port=8000"
+    networks:
+      - traefik
+    labels:
+      # Enable Traefik for this service
+      - "traefik.enable=true"
+
+      # Subpath configuration for https://lapetus.zaks.io/dashboard
+      - "traefik.http.routers.dashboard-viewer.rule=Host(`lapetus.zaks.io`) && PathPrefix(`/dashboard`)"
+      - "traefik.http.routers.dashboard-viewer.entrypoints=https"
+
+      # Service configuration
+      - "traefik.http.services.dashboard-viewer.loadbalancer.server.port=8000"
+      - "traefik.http.services.dashboard-viewer.loadbalancer.healthcheck.path=/dashboard/"
+      - "traefik.http.services.dashboard-viewer.loadbalancer.healthcheck.timeout=30s"
+
+      # Watchtower auto-updates
+      - "com.centurylinklabs.watchtower.enable=true"
+
+networks:
+  traefik:
+    external: true
