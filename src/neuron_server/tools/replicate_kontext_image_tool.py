@@ -121,12 +121,20 @@ Prompting Best Practices:
 - For text edits: Use quotes around text to replace
 - For backgrounds: Specify what to preserve and what to change
 - Use descriptive action verbs for better control
+- Keep prompts professional and avoid potentially sensitive language
+
+Content Guidelines (to avoid moderation flags):
+- Focus on artistic and creative transformations
+- Use professional, descriptive language
+- Avoid references to violence, explicit content, or harmful activities
+- Be specific about artistic styles rather than vague transformations
 
 Example prompts:
 - "Change the background to a sunset beach while keeping the person"
 - "Convert this to a Renaissance painting style with visible brushstrokes"
 - "Replace the 'STOP' sign with 'GO' while maintaining the same design"
 - "Add falling snow to this winter scene while preserving all other elements"
+- "Transform the clothing to business attire while maintaining pose"
 """.strip(),
     )
     model: Literal[
@@ -346,6 +354,24 @@ class ReplicateKontextImageTool(BaseTool):
 
         except Exception as error:
             logger.error(f"Error in FLUX Kontext image editing: {error}", exc_info=True)
+
+            # Handle specific error cases
+            error_message = str(error)
+            if "E005" in error_message or "flagged as sensitive" in error_message:
+                # Provide more helpful error message for sensitivity issues
+                raise ValueError(
+                    "The image or editing prompt was flagged by content moderation. "
+                    "Please try using a different image or rephrasing your editing "
+                    "instructions to be more specific and avoid potentially sensitive "
+                    f"content. Original error: {error}"
+                ) from error
+            if "Server disconnected" in error_message:
+                raise ConnectionError(
+                    "Connection to Replicate service was lost. This may be a "
+                    "temporary issue with the service. Please try again in a moment. "
+                    f"Original error: {error}"
+                ) from error
+            # Re-raise original error for other cases
             raise error
         finally:
             # Cleanup temporary files
