@@ -1,6 +1,7 @@
 import { User } from "@auth0/auth0-react"; // Import User type
 import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
 import type { RootState } from "../store";
+import { api } from "@/lib/api";
 
 // Constants for localStorage keys
 const STORAGE_KEY = "neuron_app_settings";
@@ -54,11 +55,7 @@ const saveState = (state: AppState) => {
 };
 
 export const fetchConfig = createAsyncThunk("app/fetchConfig", async () => {
-  const response = await fetch("/api/app/config");
-  if (!response.ok) {
-    throw new Error("Failed to fetch config");
-  }
-  return (await response.json()) as Config;
+  return await api.get<Config>("/app/config");
 });
 
 export const appSlice = createSlice({

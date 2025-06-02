@@ -1,17 +1,22 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
-import { getAccessToken } from "./getToken";
+import { api } from "@/lib/api";
+
+interface MediaFile {
+  id: string;
+  path: string;
+  url: string;
+  prompt: string | null;
+  created_at: string;
+  size: number;
+  mime_type: string;
+  media_type: string;
+}
 
 export const fetchImages = createAsyncThunk(
   "images/fetchImages",
   async (_, thunkAPI) => {
     try {
-      const accessToken = await getAccessToken();
-      const response = await fetch(`/api/images/`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-      const data = await response.json();
+      const data = await api.get<MediaFile[]>("/images/");
       return data;
     } catch (error) {
       if (error instanceof Error) {
