@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import type { WebSocketMessage } from '@/types/dashboard';
+import { useAppDispatch } from '@/store/hooks';
+import { setConnected, setDisconnected, updateEtag } from '@/store/connectionSlice';
+import { setSensors, updateSensors } from '@/store/sensorSlice';
 
 interface UseWebSocketOptions {
   onMessage?: (message: WebSocketMessage) => void;
@@ -17,6 +20,7 @@ export function useWebSocket(
     heartbeatInterval = 10000  // Reduced to 10 seconds for hash checking
   } = options;
 
+  const dispatch = useAppDispatch();
   const [isConnected, setIsConnected] = useState(false);
   const [lastMessage, setLastMessage] = useState<WebSocketMessage | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -62,8 +66,30 @@ export function useWebSocket(
 
           // Handle different message types
           if (message.type === 'connected') {
-            // Store initial JS hash
+            // Store initial JS hash and dispatch connection info
             currentJsHashRef.current = message.js_hash || null;
+            dispatch(setConnected({
+              currentEtag: message.current_etag || null,
+              lastCheck: message.last_check || null,
+              jsHash: message.js_hash || null
+            }));
+          } else if (message.type === 'sensors_state') {
+            // Initial sensor state
+            dispatch(setSensors({
+              sensors: message.sensors || [],
+              timestamp: message.timestamp || new Date().toISOString()
+            }));
+          } else if (message.type === 'sensors_update') {
+            // Sensor updates
+            dispatch(updateSensors({
+              sensors: message.sensors || [],
+              timestamp: message.timestamp || new Date().toISOString()
+            }));
+          } else if (message.type === 'image_changed') {
+            // Update ETag when image changes
+            if (message.etag) {
+              dispatch(updateEtag(message.etag));
+            }
           } else if (message.type === 'pong') {
             // Check for hash changes in pong response
             if (message.hash_changed) {
@@ -90,6 +116,7 @@ export function useWebSocket(
       ws.onclose = (event) => {
         console.log(`[WebSocket] Connection closed. Code: ${event.code}, Reason: ${event.reason}`);
         setIsConnected(false);
+        dispatch(setDisconnected());
 
         // Clear heartbeat
         if (heartbeatIntervalRef.current) {
@@ -115,7 +142,7 @@ export function useWebSocket(
         connect();
       }, reconnectInterval);
     }
-  }, [url, reconnectInterval, heartbeatInterval]);
+  }, [url, reconnectInterval, heartbeatInterval, dispatch]);
 
   useEffect(() => {
     console.log('[WebSocket] Hook mounted, initiating connection');

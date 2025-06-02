@@ -9,6 +9,7 @@ services:
       - IMAGE_URL=${IMAGE_URL:-https://ha.zaks.io/local/dashboard-art.png}
       - PORT=8000
       - HOST=0.0.0.0
+      - HOMEASSISTANT_URL=${HOMEASSISTANT_URL:-https://ha.zaks.io}
       - HOMEASSISTANT_TOKEN=${HOMEASSISTANT_TOKEN}
     restart: unless-stopped
     extra_hosts:

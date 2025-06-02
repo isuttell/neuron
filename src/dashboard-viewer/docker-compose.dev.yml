@@ -10,6 +10,7 @@ services:
       - PORT=8000
       - HOST=0.0.0.0
       - DEV_MODE=true  # Enable auto-reload
+      - HOMEASSISTANT_URL=${HOMEASSISTANT_URL:-https://ha.zaks.io}
       - HOMEASSISTANT_TOKEN=${HOMEASSISTANT_TOKEN}
     restart: unless-stopped
     extra_hosts:
@@ -18,4 +19,5 @@ services:
       # Mount source files for development
       - ./dashboard_viewer:/app/dashboard_viewer:ro
       - ./dist:/app/dist:ro
+      - ./dashboard_sensors.yaml:/app/dashboard_sensors.yaml:ro
     command: ["poetry", "run", "dashboard-viewer"]

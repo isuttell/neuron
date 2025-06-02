@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { screen, fireEvent, waitFor } from '@testing-library/react'
 import App from '../App'
+import { renderWithProviders as render } from './test-utils'
 
 // Mock the DashboardImageWS component
 vi.mock('@/components/DashboardImageWS', () => ({

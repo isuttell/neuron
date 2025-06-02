@@ -1,7 +1,9 @@
 import { DashboardImageWS } from '@/components/DashboardImageWS'
+import { SensorGrid } from '@/components/SensorGrid'
 import { useState, useEffect, useRef } from 'react'
 import type { ServerStatus } from '@/types/dashboard'
-import { Lock, LockOpen, AlertCircle, XCircle, RotateCw, Wifi, WifiOff } from 'lucide-react'
+import { Lock, LockOpen, AlertCircle, XCircle, RotateCw, Wifi, WifiOff, Settings } from 'lucide-react'
+import { useAppSelector } from '@/store/hooks'
 
 // Configuration can be passed via environment variables or window object
 const DASHBOARD_URL = import.meta.env.VITE_DASHBOARD_URL || '/image'
@@ -12,7 +14,11 @@ function App() {
   const [serverStatus, setServerStatus] = useState<ServerStatus | null>(null)
   const [wakeLockStatus, setWakeLockStatus] = useState<string>('not supported')
   const [wsConnected, setWsConnected] = useState(false)
+  const [showSensors, setShowSensors] = useState(false)
   const wakeLockRef = useRef<WakeLockSentinel | null>(null)
+
+  // Get sensor count from Redux store
+  const sensorCount = useAppSelector(state => Object.keys(state.sensors.sensors).length)
 
   // Request wake lock to prevent screen from sleeping
   useEffect(() => {
@@ -96,55 +102,103 @@ function App() {
   }, [showDebug])
 
   return (
-    <div className="fixed inset-0 bg-black">
-      <DashboardImageWS
-        url={DASHBOARD_URL}
-        fadeDuration={FADE_DURATION}
-        className="w-full h-full"
-        onConnectionChange={setWsConnected}
-      />
+    <div className="fixed inset-0 bg-black flex flex-col">
+      <div className="flex-1 relative">
+        <DashboardImageWS
+          url={DASHBOARD_URL}
+          fadeDuration={FADE_DURATION}
+          className="w-full h-full"
+          onConnectionChange={setWsConnected}
+        />
+      </div>
 
-      {/* Control bar - always visible */}
+      {/* Control bar - toggle button always visible */}
       <div className="absolute top-4 right-4 flex flex-col gap-2 z-10">
-        {/* Refresh button */}
-        <button
-          onClick={() => window.location.reload()}
-          className="p-2 bg-gray-900 bg-opacity-75 rounded-md hover:bg-opacity-90 transition-all cursor-pointer"
-          title="Refresh page"
-          type="button"
-        >
-          <RotateCw className="w-6 h-6 text-white" />
-        </button>
-
-        {/* WebSocket connection indicator */}
-        <div
-          className="p-2 bg-gray-900 bg-opacity-75 rounded-md"
-          title={`WebSocket: ${wsConnected ? 'Connected' : 'Disconnected'}`}
-        >
-          {wsConnected ? (
-            <Wifi className="w-6 h-6 text-green-400" />
-          ) : (
-            <WifiOff className="w-6 h-6 text-red-400" />
-          )}
+        {/* Toggle button - always visible */}
+        <div className="flex items-center gap-2">
+          <div className="min-w-12"></div>
+          <button
+            onClick={() => setShowSensors(!showSensors)}
+            className="p-2 bg-gray-900 bg-opacity-75 rounded-md hover:bg-opacity-90 transition-all cursor-pointer w-10 h-10 flex items-center justify-center"
+            title="Toggle control panel"
+            type="button"
+          >
+            <Settings className="w-6 h-6 text-white" />
+          </button>
         </div>
 
-        {/* Wake lock indicator */}
-        <div
-          className="p-2 bg-gray-900 bg-opacity-75 rounded-md"
-          title={`Wake Lock: ${wakeLockStatus}`}
-        >
-          {wakeLockStatus === 'active' && (
-            <Lock className="w-6 h-6 text-green-400" />
-          )}
-          {wakeLockStatus === 'not supported' && (
-            <LockOpen className="w-6 h-6 text-yellow-400" />
-          )}
-          {wakeLockStatus === 'failed' && (
-            <XCircle className="w-6 h-6 text-red-400" />
-          )}
-          {wakeLockStatus === 'released' && (
-            <AlertCircle className="w-6 h-6 text-orange-400" />
-          )}
+        {/* All controls - slide animation */}
+        <div className={`overflow-hidden transition-all duration-300 ease-in-out ${
+          showSensors ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+        }`}>
+          {/* Control icons */}
+          <div className={`transform transition-transform duration-300 ease-in-out ${
+            showSensors ? 'translate-x-0' : 'translate-x-full'
+          } flex flex-col gap-2`}>
+            {/* Refresh button */}
+            <div className="flex items-center gap-2">
+              <div className="min-w-12"></div>
+              <button
+                onClick={() => window.location.reload()}
+                className="p-2 bg-gray-900 bg-opacity-75 rounded-md hover:bg-opacity-90 transition-all cursor-pointer w-10 h-10 flex items-center justify-center"
+                title="Refresh page"
+                type="button"
+              >
+                <RotateCw className="w-6 h-6 text-white" />
+              </button>
+            </div>
+
+            {/* WebSocket connection indicator */}
+            <div className="flex items-center gap-2">
+              <div className="min-w-12"></div>
+              <div
+                className="p-2 bg-gray-900 bg-opacity-75 rounded-md w-10 h-10 flex items-center justify-center"
+                title={`WebSocket: ${wsConnected ? 'Connected' : 'Disconnected'}`}
+              >
+                {wsConnected ? (
+                  <Wifi className="w-6 h-6 text-green-400" />
+                ) : (
+                  <WifiOff className="w-6 h-6 text-red-400" />
+                )}
+              </div>
+            </div>
+
+            {/* Wake lock indicator */}
+            <div className="flex items-center gap-2">
+              <div className="min-w-12"></div>
+              <div
+                className="p-2 bg-gray-900 bg-opacity-75 rounded-md w-10 h-10 flex items-center justify-center"
+                title={`Wake Lock: ${wakeLockStatus}`}
+              >
+                {wakeLockStatus === 'active' && (
+                  <Lock className="w-6 h-6 text-green-400" />
+                )}
+                {wakeLockStatus === 'not supported' && (
+                  <LockOpen className="w-6 h-6 text-yellow-400" />
+                )}
+                {wakeLockStatus === 'failed' && (
+                  <XCircle className="w-6 h-6 text-red-400" />
+                )}
+                {wakeLockStatus === 'released' && (
+                  <AlertCircle className="w-6 h-6 text-orange-400" />
+                )}
+              </div>
+            </div>
+
+            {/* Sensors with divider */}
+            {sensorCount > 0 && (
+              <>
+                {/* Divider */}
+                <div className="flex items-center gap-2">
+                  <div className="min-w-12"></div>
+                  <div className="h-px bg-gray-600 bg-opacity-50 w-10"></div>
+                </div>
+
+                {/* Sensors */}
+                <SensorGrid />
+              </>
+            )}
+          </div>
         </div>
       </div>
 
