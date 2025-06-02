@@ -1,7 +1,6 @@
 import os
 import re
 import time
-import uuid
 from typing import Any, Literal
 
 import aiohttp
@@ -152,14 +151,12 @@ async def load_pdf_from_url(
         with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tf:
             temp_file = tf.name
 
-            # Generate a random session token
-            session_token = str(uuid.uuid4())
-
-            # Set the cookie in the session
-            cookies = (
-                {"neuron_session": session_token}
-                if neuron_config.static_require_auth else None
-            )
+            # Generate proper signed session cookie for internal tool access
+            cookies = None
+            if neuron_config.static_require_auth:
+                from neuron_server.controllers.csrf import create_session_cookie
+                session_cookie, _ = create_session_cookie("system", include_csrf=False)
+                cookies = {"neuron_session": session_cookie}
 
             async with aiohttp.ClientSession(cookies=cookies) as session:
                 try:
@@ -211,14 +208,12 @@ async def load_text_from_url(
         DocumentLoadError: If the text cannot be loaded
     """
     try:
-        # Generate a random session token
-        session_token = str(uuid.uuid4())
-
-        # Set the cookie in the session
-        cookies = (
-            {"neuron_session": session_token}
-            if neuron_config.static_require_auth else None
-        )
+        # Generate proper signed session cookie for internal tool access
+        cookies = None
+        if neuron_config.static_require_auth:
+            from neuron_server.controllers.csrf import create_session_cookie
+            session_cookie, _ = create_session_cookie("system", include_csrf=False)
+            cookies = {"neuron_session": session_cookie}
 
         async with aiohttp.ClientSession(cookies=cookies) as session:
             async with session.get(url) as response:
