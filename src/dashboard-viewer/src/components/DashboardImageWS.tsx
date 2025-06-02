@@ -8,8 +8,11 @@ import type { DashboardImageProps, WebSocketMessage } from '@/types/dashboard'
 export function DashboardImageWS({
   url,
   fadeDuration = 1000,
-  className
-}: Omit<DashboardImageProps, 'pollInterval'>) {
+  className,
+  onConnectionChange
+}: Omit<DashboardImageProps, 'pollInterval'> & {
+  onConnectionChange?: (connected: boolean) => void
+}) {
   const [hasError, setHasError] = useState(false)
   const [isInitialLoad, setIsInitialLoad] = useState(true)
   const [isTransitioning, setIsTransitioning] = useState(false)
@@ -80,6 +83,11 @@ export function DashboardImageWS({
       console.error('WebSocket error:', wsError);
     }
   }, [wsError]);
+
+  // Report connection status changes
+  useEffect(() => {
+    onConnectionChange?.(isConnected);
+  }, [isConnected, onConnectionChange]);
 
   if (isInitialLoad) {
     return (

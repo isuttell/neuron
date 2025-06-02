@@ -33,10 +33,12 @@ export function useWebSocket(
   }, [onMessage]);
 
   const connect = useCallback(() => {
+    console.log(`[WebSocket] Attempting to connect to: ${url}`);
     try {
       const ws = new WebSocket(url);
 
       ws.onopen = () => {
+        console.log('[WebSocket] Connected successfully');
         setIsConnected(true);
         setError(null);
 
@@ -81,11 +83,12 @@ export function useWebSocket(
       };
 
       ws.onerror = (event) => {
-        console.error('WebSocket error:', event);
+        console.error('[WebSocket] Connection error:', event);
         setError('WebSocket connection error');
       };
 
-      ws.onclose = () => {
+      ws.onclose = (event) => {
+        console.log(`[WebSocket] Connection closed. Code: ${event.code}, Reason: ${event.reason}`);
         setIsConnected(false);
 
         // Clear heartbeat
@@ -95,6 +98,7 @@ export function useWebSocket(
         }
 
         // Schedule reconnect
+        console.log(`[WebSocket] Scheduling reconnect in ${reconnectInterval}ms`);
         reconnectTimeoutRef.current = setTimeout(() => {
           connect();
         }, reconnectInterval);
@@ -102,10 +106,11 @@ export function useWebSocket(
 
       wsRef.current = ws;
     } catch (err) {
-      console.error('Failed to create WebSocket:', err);
+      console.error('[WebSocket] Failed to create WebSocket:', err);
       setError('Failed to connect');
 
       // Schedule reconnect
+      console.log(`[WebSocket] Scheduling reconnect in ${reconnectInterval}ms after error`);
       reconnectTimeoutRef.current = setTimeout(() => {
         connect();
       }, reconnectInterval);
@@ -113,9 +118,11 @@ export function useWebSocket(
   }, [url, reconnectInterval, heartbeatInterval]);
 
   useEffect(() => {
+    console.log('[WebSocket] Hook mounted, initiating connection');
     connect();
 
     return () => {
+      console.log('[WebSocket] Hook unmounting, cleaning up');
       // Cleanup
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
