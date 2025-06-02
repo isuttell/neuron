@@ -123,7 +123,7 @@ Below is a selection of available tools and their primary functions:
 
 ### Prerequisites
 
-- Python 3.11
+- Python 3.12
 - Node.js 20+
 - PostgreSQL with pgvector extension
 - Neo4j 5.x
