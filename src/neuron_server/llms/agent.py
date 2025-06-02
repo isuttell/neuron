@@ -323,7 +323,7 @@ async def execute_agent(
             "location": location,
             "username": username,
             "personality": personality.context,
-            "now": datetime.now().astimezone().isoformat(timespec="seconds"),
+            "now": datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S %Z"),
         },
         config={
             "configurable": {
