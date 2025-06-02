@@ -22,8 +22,8 @@ export const fetchPersonalities = createAsyncThunk(
   "personalities/fetchPersonalities",
   async (_, thunkAPI) => {
     try {
-      const personalities = await api.get<Personality[]>(`/personalities/`);
-      return { personalities };
+      const response = await api.get<{ personalities: Personality[] }>(`/personalities/`);
+      return response;
     } catch (error) {
       if (error instanceof Error) {
         return thunkAPI.rejectWithValue(error.message);
@@ -171,8 +171,8 @@ export const updatePersonalityLogo = createAsyncThunk(
   "personalities/updateLogo",
   async (personalityId: string, thunkAPI) => {
     try {
-      const personalities = await api.post<Personality[]>(`/personalities/${personalityId}/logo`, {});
-      return { personalities };
+      const response = await api.post<{ personalities: Personality[]; logo: string; response: string }>(`/personalities/${personalityId}/logo`, {});
+      return { personalities: response.personalities };
     } catch (error) {
       if (error instanceof Error) {
         return thunkAPI.rejectWithValue(error.message);
