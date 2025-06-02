@@ -31,6 +31,7 @@ RUN poetry config virtualenvs.create false && \
 # Copy the module and test files
 COPY dashboard_viewer/ ./dashboard_viewer/
 COPY test-ws.html .
+COPY dashboard_sensors.yaml .
 
 # Copy built frontend from previous stage
 COPY --from=frontend-builder /app/dist ./dist

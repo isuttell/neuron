@@ -6,7 +6,9 @@ from unittest.mock import Mock, patch, MagicMock
 from pathlib import Path
 from fastapi.testclient import TestClient
 
-from dashboard_viewer.server import app, get_js_hash, PollingState
+from dashboard_viewer.server import app
+from dashboard_viewer.polling import get_js_hash, PollingState
+from dashboard_viewer.websocket import ConnectionManager
 
 
 @pytest.fixture
@@ -27,14 +29,14 @@ def test_get_js_hash():
 
     with patch('pathlib.Path.read_text', return_value=mock_content):
         with patch('pathlib.Path.exists', return_value=True):
-            hash_value = get_js_hash()
+            hash_value = get_js_hash(Path("/fake/dist"))
             assert hash_value == "ABC123def"
 
 
 def test_get_js_hash_file_not_exists():
     """Test hash extraction when index.html doesn't exist."""
     with patch('pathlib.Path.exists', return_value=False):
-        hash_value = get_js_hash()
+        hash_value = get_js_hash(Path("/fake/dist"))
         assert hash_value is None
 
 
@@ -49,7 +51,7 @@ def test_get_js_hash_no_match():
 
     with patch('pathlib.Path.read_text', return_value=mock_content):
         with patch('pathlib.Path.exists', return_value=True):
-            hash_value = get_js_hash()
+            hash_value = get_js_hash(Path("/fake/dist"))
             assert hash_value is None
 
 
@@ -81,8 +83,6 @@ def test_api_status(client):
 @pytest.mark.asyncio
 async def test_websocket_connection():
     """Test WebSocket connection and initial message."""
-    from dashboard_viewer.server import ConnectionManager
-
     # Create a new manager for isolated testing
     manager = ConnectionManager()
 
@@ -116,8 +116,6 @@ def test_polling_state_initialization():
 @pytest.mark.asyncio
 async def test_connection_manager_broadcast():
     """Test ConnectionManager broadcast functionality."""
-    from dashboard_viewer.server import ConnectionManager
-
     manager = ConnectionManager()
 
     # Mock WebSocket connections
