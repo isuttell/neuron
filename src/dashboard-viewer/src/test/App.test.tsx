@@ -163,6 +163,7 @@ describe('App Component', () => {
       const mockWakeLock = {
         released: false,
         type: 'screen' as WakeLockType,
+        onrelease: null,
         addEventListener: vi.fn((event: string, callback: () => void) => {
           if (event === 'release') {
             releaseCallback = callback
