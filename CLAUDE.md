@@ -137,6 +137,52 @@ This project uses a self-hosted Gitea instance at https://gitea.zaks.io for vers
   pre-commit run
   ```
 
+## Pull Request Requirements
+
+**IMPORTANT**: Before creating any pull request, you MUST ensure all tests, lint checks, formatting, and type checks are passing. The CI/CD pipeline will run these checks automatically, and PRs with failing checks cannot be merged.
+
+### Required Checks Before PR Submission
+
+#### Frontend Checks
+All of these commands must pass without errors:
+```bash
+# 1. Lint check (as run in CI)
+npm run lint
+
+# 2. Test suite (as run in CI)
+npm test
+
+# 3. Build verification (as run in CI)
+npm run build
+```
+
+#### Backend Checks
+All of these commands must pass without errors:
+```bash
+# 1. Lint check with Ruff (as run in CI)
+poetry run ruff check src/neuron_server/
+
+# 2. Test suite with coverage (as run in CI)
+poetry run pytest src/neuron_server/ --cov
+```
+
+#### Workflow File Checks (if modifying .gitea/workflows)
+```bash
+# Lint workflow files
+actionlint .gitea/workflows/*.yml
+```
+
+### Auto-fixing Issues
+If any checks fail, try auto-fixing first:
+- Frontend: `npm run lint -- --fix`
+- Backend: `poetry run ruff check --fix src/neuron_server/`
+
+### Verification Process
+1. Run all applicable checks based on what you've modified
+2. Fix any issues that arise
+3. Re-run checks to ensure they pass
+4. Only then create the pull request
+
 For complete PR requirements and process, refer to @PR_REQUIREMENTS.md
 
 ## Monitoring and Logs
