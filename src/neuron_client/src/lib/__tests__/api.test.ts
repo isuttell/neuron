@@ -1,5 +1,6 @@
 import { api } from "../api";
 import { getAccessToken } from "@/actions/getToken";
+import { setCSRFToken, getCSRFToken, clearCSRFToken } from "../csrf";
 
 // Mock the getAccessToken function
 jest.mock("@/actions/getToken");
@@ -17,10 +18,14 @@ describe("ApiClient", () => {
 
     // Mock fetch globally
     global.fetch = jest.fn();
+
+    // Clear CSRF token before each test
+    clearCSRFToken();
   });
 
   afterEach(() => {
     jest.resetAllMocks();
+    clearCSRFToken();
   });
 
   describe("GET requests", () => {
@@ -178,6 +183,177 @@ describe("ApiClient", () => {
       (getAccessToken as jest.Mock).mockRejectedValueOnce(tokenError);
 
       await expect(api.get("/test")).rejects.toThrow("Token error");
+    });
+  });
+
+  describe("CSRF token handling", () => {
+    const csrfToken = "test-csrf-token";
+
+    it("should capture CSRF token from login response body", async () => {
+      const loginResponse = {
+        status: "success",
+        user_id: "user123",
+        csrf_token: csrfToken,
+      };
+
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        headers: new Map([["content-type", "application/json"]]),
+        json: () => Promise.resolve(loginResponse),
+      });
+
+      // Make login request
+      await api.post("/users/login", {});
+
+      // Verify CSRF token was stored
+      expect(getCSRFToken()).toBe(csrfToken);
+    });
+
+    it("should capture new_csrf_token from response body (legacy)", async () => {
+      const responseWithNewToken = {
+        data: "test",
+        new_csrf_token: csrfToken,
+      };
+
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        headers: new Map([["content-type", "application/json"]]),
+        json: () => Promise.resolve(responseWithNewToken),
+      });
+
+      await api.post("/test", {});
+
+      expect(getCSRFToken()).toBe(csrfToken);
+    });
+
+    it("should capture CSRF token from X-New-CSRF-Token header (preferred)", async () => {
+      const responseWithHeaderToken = { data: "test" };
+
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        headers: new Map([
+          ["content-type", "application/json"],
+          ["X-New-CSRF-Token", csrfToken],
+        ]),
+        json: () => Promise.resolve(responseWithHeaderToken),
+      });
+
+      await api.post("/test", {});
+
+      expect(getCSRFToken()).toBe(csrfToken);
+    });
+
+    it("should prefer header token over body token", async () => {
+      const headerToken = "header-csrf-token";
+      const bodyToken = "body-csrf-token";
+
+      const responseWithBothTokens = {
+        data: "test",
+        new_csrf_token: bodyToken,
+        csrf_token: bodyToken,
+      };
+
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        headers: new Map([
+          ["content-type", "application/json"],
+          ["X-New-CSRF-Token", headerToken],
+        ]),
+        json: () => Promise.resolve(responseWithBothTokens),
+      });
+
+      await api.post("/test", {});
+
+      expect(getCSRFToken()).toBe(headerToken);
+    });
+
+    it("should include CSRF token in POST request headers when available", async () => {
+      // Set up CSRF token
+      setCSRFToken(csrfToken);
+
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        headers: new Map([["content-type", "application/json"]]),
+        json: () => Promise.resolve(mockResponse),
+      });
+
+      await api.post("/test", { data: "test" });
+
+      expect(global.fetch).toHaveBeenCalledWith("/api/test", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${mockToken}`,
+          "Content-Type": "application/json",
+          "X-CSRF-Token": csrfToken,
+        },
+        body: JSON.stringify({ data: "test" }),
+        credentials: "include",
+      });
+    });
+
+    it("should include CSRF token in FormData for POST requests", async () => {
+      // Set up CSRF token
+      setCSRFToken(csrfToken);
+
+      const formData = new FormData();
+      formData.append("test", "value");
+
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        headers: new Map([["content-type", "application/json"]]),
+        json: () => Promise.resolve(mockResponse),
+      });
+
+      await api.post("/test", formData);
+
+      // Check that fetch was called with FormData that includes CSRF token
+      const fetchCall = (global.fetch as jest.Mock).mock.calls[0];
+      const requestBody = fetchCall[1].body as FormData;
+
+      expect(requestBody.get("csrf_token")).toBe(csrfToken);
+      expect(requestBody.get("test")).toBe("value");
+    });
+
+    it("should store new CSRF token from error response", async () => {
+      const newCsrfToken = "new-csrf-token";
+      const errorResponse = {
+        error: "Invalid request",
+        new_csrf_token: newCsrfToken,
+      };
+
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: false,
+        status: 400, // Use 400 to avoid CSRF retry logic
+        headers: new Map([["content-type", "application/json"]]),
+        json: () => Promise.resolve(errorResponse),
+      });
+
+      try {
+        await api.post("/test", {});
+      } catch {
+        // Error is expected, but token should still be stored
+      }
+
+      // New CSRF token should be stored even on error
+      expect(getCSRFToken()).toBe(newCsrfToken);
+    });
+
+    it("should not overwrite existing CSRF token when response has no token", async () => {
+      // Set initial CSRF token
+      setCSRFToken(csrfToken);
+
+      const responseWithoutToken = { data: "test" };
+
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        headers: new Map([["content-type", "application/json"]]),
+        json: () => Promise.resolve(responseWithoutToken),
+      });
+
+      await api.post("/test", {});
+
+      // Original token should remain
+      expect(getCSRFToken()).toBe(csrfToken);
     });
   });
 });
