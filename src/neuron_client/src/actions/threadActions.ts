@@ -199,9 +199,9 @@ export const addUserByEmail = createAsyncThunk(
     thunkAPI
   ) => {
     try {
-      const response = await api.post<{ data: ThreadUserEmailResponse }>(`/threads/${threadId}/users/email`, { email });
+      const response = await api.post<ThreadUserEmailResponse>(`/threads/${threadId}/users/email`, { email });
       // The response now includes both thread_user and user
-      return response.data;
+      return response;
     } catch (error) {
       if (error instanceof Error) {
         return thunkAPI.rejectWithValue(error.message);
