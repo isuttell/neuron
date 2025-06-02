@@ -188,8 +188,8 @@ export default function Index() {
   const isDisabled = !activePersonalityId || isLoading;
 
   return (
-    <div className="flex flex-1 p-4 flex-col justify-center items-center flex-nowrap max-h-screen overflow-auto gap-2 relative">
-      <SidebarTrigger className="m-2 size-10 absolute top-2 left-2" />
+    <div className="flex flex-1 p-4 ipad-top-spacing flex-col justify-center items-center flex-nowrap max-h-screen overflow-auto gap-2 relative">
+      <SidebarTrigger className="m-2 size-10 absolute left-2 ipad-trigger-top" />
       <div className="flex flex-col w-full h-full justify-center items-center">
         <div className="flex justify-center items-center m-6">
           <img src={logo} alt="Neuron" className="w-[120px]" />

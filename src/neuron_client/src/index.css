@@ -87,3 +87,36 @@
 li {
   list-style-type: none;
 }
+
+/* iPad-specific padding for translucent menu bar */
+@layer utilities {
+  /* Use env() for safe area with fallback */
+  .safe-top {
+    padding-top: env(safe-area-inset-top, 0);
+  }
+
+  /* iPad and tablet specific adjustments */
+  @media screen and (min-width: 768px) and (hover: none) and (pointer: coarse),
+         screen and (min-width: 768px) and (max-width: 1366px) and (-webkit-min-device-pixel-ratio: 2) {
+    .ipad-top-spacing {
+      padding-top: calc(env(safe-area-inset-top, 0px) + 2rem);
+    }
+
+    .ipad-sidebar-spacing {
+      padding-top: calc(env(safe-area-inset-top, 0px) + 2rem);
+    }
+
+    .ipad-trigger-top {
+      top: calc(env(safe-area-inset-top, 0px) + 2.5rem);
+    }
+  }
+
+  /* macOS Safari in fullscreen */
+  @supports (-webkit-backdrop-filter: blur(1px)) {
+    @media (display-mode: fullscreen) {
+      .ipad-top-spacing {
+        padding-top: calc(env(safe-area-inset-top, 0px) + 2rem);
+      }
+    }
+  }
+}
