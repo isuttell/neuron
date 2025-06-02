@@ -132,7 +132,7 @@ async def fetch_sensor_states(
 
                 # Format value based on display type
                 value = state["state"]
-                if sensor_config.display_type == "value" and sensor_config.unit_suffix:
+                if sensor_config.unit_suffix:
                     unit = state.get("attributes", {}).get("unit_of_measurement", "")
                     if unit:
                         value = f"{value} {unit}"

@@ -13,16 +13,6 @@ sensors:
     icon_mapping:
       default: "thermometer"
 
-  # Living Room Lights
-  - entity_id: light.living_room
-    friendly_name: Living Room Lights
-    description: All lights in the living room
-    display_type: state_icon
-    icon_mapping:
-      "on": "lightbulb"
-      "off": "lightbulb-off"
-      default: "lightbulb-off"
-
   # Backyard Temperature
   - entity_id: sensor.weather_station_temperature_2
     friendly_name: Backyard Temperature
@@ -30,35 +20,7 @@ sensors:
     display_type: value
     unit_suffix: true
     icon_mapping:
-      default: "thermometer"
-
-  # Backyard Humidity
-  - entity_id: sensor.weather_station_humidity
-    friendly_name: Outdoor Humidity
-    description: Current humidity level outside
-    display_type: value
-    unit_suffix: true
-    icon_mapping:
-      default: "droplets"
-
-  # Wind Speed
-  - entity_id: sensor.weather_station_wind_average_10_min
-    friendly_name: Wind Speed
-    description: Average wind speed over 10 minutes
-    display_type: value
-    unit_suffix: true
-    icon_mapping:
-      default: "wind"
-
-  # Motion Detection - Master Bathroom
-  - entity_id: binary_sensor.motion_light_switch
-    friendly_name: Master Bath Motion
-    description: Motion detection in master bathroom
-    display_type: state_icon
-    icon_mapping:
-      "on": "user-check"
-      "off": "user-x"
-      default: "user-x"
+      default: "sun"
 
   # Feeder Bot Food Level
   - entity_id: sensor.feeder_bot_food_level
@@ -74,18 +36,9 @@ sensors:
     friendly_name: Litter Box Status
     description: Waste drawer status
     display_type: state_text
+    unit_suffix: true
     icon_mapping:
       default: "trash-2"
-
-  # Person Presence - Isaac
-  - entity_id: person.isaac_suttell
-    friendly_name: Isaac
-    description: Isaac's presence status
-    display_type: state_icon
-    icon_mapping:
-      "home": "home"
-      "not_home": "map-pin"
-      default: "user"
 
   # Thermostat
   - entity_id: climate.t6_pro_z_wave_programmable_therm

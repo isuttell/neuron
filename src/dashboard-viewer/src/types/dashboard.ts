@@ -26,7 +26,7 @@ export interface DashboardImageProps {
 }
 
 export interface WebSocketMessage {
-  type: 'connected' | 'image_changed' | 'error' | 'pong' | string
+  type: 'connected' | 'image_changed' | 'error' | 'pong' | 'sensors_state' | 'sensors_update' | string
   etag?: string
   current_etag?: string
   timestamp?: string
@@ -34,6 +34,17 @@ export interface WebSocketMessage {
   last_check?: string | null
   js_hash?: string
   hash_changed?: boolean
+  sensors?: Array<{
+    entity_id: string
+    friendly_name: string
+    description: string
+    value: string
+    state: string
+    icon: string
+    display_type: 'value' | 'state_icon' | 'state_text'
+    attributes: Record<string, unknown>
+    last_updated: string
+  }>
 }
 
 export interface ServerStatus {

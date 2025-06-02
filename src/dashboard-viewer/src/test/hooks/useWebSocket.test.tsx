@@ -1,6 +1,9 @@
 import { renderHook, act } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { useWebSocket } from '@/hooks/useWebSocket'
+import { createTestStore } from '../test-utils'
+import { Provider } from 'react-redux'
+import { ReactNode } from 'react'
 
 // Mock WebSocket message type for testing
 interface MockWebSocketMessage {
@@ -12,8 +15,15 @@ interface MockWebSocketMessage {
 }
 
 describe('useWebSocket', () => {
+  let store: ReturnType<typeof createTestStore>
+
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <Provider store={store}>{children}</Provider>
+  )
+
   beforeEach(() => {
     vi.clearAllMocks()
+    store = createTestStore()
     // Reset WebSocket instances
     const mockWebSocket = global.WebSocket as unknown as { mock: { instances: Array<unknown> } }
     mockWebSocket.mock.instances.length = 0
@@ -22,7 +32,8 @@ describe('useWebSocket', () => {
   it('should connect to WebSocket and update state', async () => {
     const mockOnMessage = vi.fn()
     const { result } = renderHook(() =>
-      useWebSocket('ws://localhost:8000/ws', { onMessage: mockOnMessage })
+      useWebSocket('ws://localhost:8000/ws', { onMessage: mockOnMessage }),
+      { wrapper }
     )
 
     // Initially not connected
@@ -41,7 +52,8 @@ describe('useWebSocket', () => {
   it('should handle incoming messages', async () => {
     const mockOnMessage = vi.fn()
     const { result } = renderHook(() =>
-      useWebSocket('ws://localhost:8000/ws', { onMessage: mockOnMessage })
+      useWebSocket('ws://localhost:8000/ws', { onMessage: mockOnMessage }),
+      { wrapper }
     )
 
     await act(async () => {
@@ -79,7 +91,8 @@ describe('useWebSocket', () => {
 
     const mockOnMessage = vi.fn()
     renderHook(() =>
-      useWebSocket('ws://localhost:8000/ws', { onMessage: mockOnMessage })
+      useWebSocket('ws://localhost:8000/ws', { onMessage: mockOnMessage }),
+      { wrapper }
     )
 
     await act(async () => {
@@ -109,7 +122,8 @@ describe('useWebSocket', () => {
   it('should not call onMessage for pong messages', async () => {
     const mockOnMessage = vi.fn()
     renderHook(() =>
-      useWebSocket('ws://localhost:8000/ws', { onMessage: mockOnMessage })
+      useWebSocket('ws://localhost:8000/ws', { onMessage: mockOnMessage }),
+      { wrapper }
     )
 
     await act(async () => {
