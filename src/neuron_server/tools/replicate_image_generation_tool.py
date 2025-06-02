@@ -255,14 +255,12 @@ class ReplicateImageGenerationTool(BaseTool):
         image_prompt: BufferedReader | None = None
         if image_url:
             tmp_upload_file = os.path.join(neuron_config.temp_folder, uuid4().hex)
-            # Generate a random session token
-            session_token = str(uuid4())
-
-            # Set the cookie in the session
-            cookies = (
-                {"neuron_session": session_token}
-                if neuron_config.static_require_auth else None
-            )
+            # Generate proper signed session cookie for internal tool access
+            cookies = None
+            if neuron_config.static_require_auth:
+                from neuron_server.controllers.csrf import create_session_cookie
+                session_cookie, _ = create_session_cookie("system", include_csrf=False)
+                cookies = {"neuron_session": session_cookie}
 
             async with (
                 aiohttp.ClientSession(cookies=cookies) as session,
