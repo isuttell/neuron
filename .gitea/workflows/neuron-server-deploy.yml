@@ -21,6 +21,7 @@ on:
       - 'package.json'
       - 'package-lock.json'
       - '.gitea/workflows/neuron-server-deploy.yml'
+  workflow_dispatch:
 
 jobs:
   build-and-deploy:
