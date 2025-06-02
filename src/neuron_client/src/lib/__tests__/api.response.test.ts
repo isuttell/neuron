@@ -37,7 +37,7 @@ describe("api client response handling", () => {
         json: async () => mockResponseData,
       });
 
-      const result = await api.get("/test");
+      const result = await api.get<typeof mockResponseData>("/test");
 
       expect(result).toEqual(mockResponseData);
       expect(result).not.toHaveProperty("data");
@@ -51,7 +51,7 @@ describe("api client response handling", () => {
         json: async () => mockArrayData,
       });
 
-      const result = await api.get("/test");
+      const result = await api.get<typeof mockArrayData>("/test");
 
       expect(result).toEqual(mockArrayData);
       expect(Array.isArray(result)).toBe(true);
@@ -68,7 +68,7 @@ describe("api client response handling", () => {
         json: async () => mockNestedData,
       });
 
-      const result = await api.get("/test");
+      const result = await api.get<typeof mockNestedData>("/test");
 
       expect(result).toEqual(mockNestedData);
       expect(result.personalities).toHaveLength(1);
