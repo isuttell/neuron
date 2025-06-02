@@ -209,12 +209,24 @@ class ApiClient {
     });
   }
 
-  async delete<T>(endpoint: string): Promise<T> {
-    const headers = await this.getHeaders(false, true); // Include CSRF
+  async delete<T>(endpoint: string, data?: RequestData): Promise<T> {
+    const isFormData = data instanceof FormData;
+    const headers = await this.getHeaders(isFormData, true); // Include CSRF
+    let body: string | FormData | undefined;
+
+    if (data) {
+      if (isFormData) {
+        // Add CSRF token to FormData
+        body = addCSRFToFormData(data);
+      } else {
+        body = JSON.stringify(data);
+      }
+    }
 
     return this.fetchWithCSRF<T>(`${this.baseUrl}${endpoint}`, {
       method: "DELETE",
       headers,
+      body,
       credentials: "include",
     });
   }

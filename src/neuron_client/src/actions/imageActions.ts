@@ -1,17 +1,11 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
-import { getAccessToken } from "./getToken";
+import { api } from "@/lib/api";
 
 export const fetchImages = createAsyncThunk(
   "images/fetchImages",
   async (_, thunkAPI) => {
     try {
-      const accessToken = await getAccessToken();
-      const response = await fetch(`/api/images/`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-      const data = await response.json();
+      const data = await api.get("/images/");
       return data;
     } catch (error) {
       if (error instanceof Error) {

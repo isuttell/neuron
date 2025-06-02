@@ -1,6 +1,6 @@
 import { createAsyncThunk, createSlice, createSelector, PayloadAction } from "@reduxjs/toolkit";
-import { getAccessToken } from "../actions/getToken";
 import { RootState } from "../store";
+import { api } from "@/lib/api";
 export interface Prompt {
   id: string;
   name: string;
@@ -31,18 +31,9 @@ export const fetchPrompts = createAsyncThunk(
   "prompts/fetchPrompts",
   async (personalityId?: string) => {
     const url = personalityId
-      ? `/api/prompts/?personality_id=${personalityId}`
-      : "/api/prompts/";
-    const accessToken = await getAccessToken();
-    const response = await fetch(url, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
-    if (!response.ok) {
-      throw new Error("Failed to fetch prompts");
-    }
-    const data = await response.json();
+      ? `/prompts/?personality_id=${personalityId}`
+      : "/prompts/";
+    const data = await api.get<{ prompts: Prompt[]; personalities: unknown[] }>(url);
     return {
       prompts: data.prompts,
       personalities: data.personalities,
@@ -53,19 +44,7 @@ export const fetchPrompts = createAsyncThunk(
 export const createPrompt = createAsyncThunk(
   "prompts/createPrompt",
   async (prompt: { name: string; text: string; personality_id?: string }) => {
-    const accessToken = await getAccessToken();
-    const response = await fetch("/api/prompts/", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
-      },
-      body: JSON.stringify(prompt),
-    });
-    if (!response.ok) {
-      throw new Error("Failed to create prompt");
-    }
-    const data = await response.json();
+    const data = await api.post<{ prompts: Prompt[] }>("/prompts/", prompt);
     return data.prompts[0];
   }
 );
@@ -73,19 +52,7 @@ export const createPrompt = createAsyncThunk(
 export const updatePrompt = createAsyncThunk(
   "prompts/updatePrompt",
   async ({ id, ...updates }: Partial<Prompt> & { id: string }) => {
-    const accessToken = await getAccessToken();
-    const response = await fetch(`/api/prompts/${id}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
-      },
-      body: JSON.stringify(updates),
-    });
-    if (!response.ok) {
-      throw new Error("Failed to update prompt");
-    }
-    const data = await response.json();
+    const data = await api.put<{ prompts: Prompt[] }>(`/prompts/${id}`, updates);
     return data.prompts[0];
   }
 );
@@ -93,16 +60,7 @@ export const updatePrompt = createAsyncThunk(
 export const deletePrompt = createAsyncThunk(
   "prompts/deletePrompt",
   async (id: string) => {
-    const accessToken = await getAccessToken();
-    const response = await fetch(`/api/prompts/${id}`, {
-      method: "DELETE",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
-    if (!response.ok) {
-      throw new Error("Failed to delete prompt");
-    }
+    await api.delete(`/prompts/${id}`);
     return id;
   }
 );

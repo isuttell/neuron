@@ -19,8 +19,8 @@ import {
   deletePersonality,
 } from "../actions/personalityActions";
 import EditPersonalityDialog from "../personalities/EditPersonalityDialog";
-import { getAccessToken } from "../actions/getToken";
 import { useToast } from "@/hooks/use-toast";
+import { api } from "@/lib/api";
 
 const selectPersonality = (state: RootState, personalityId?: string) =>
   state.personalities.personalities.find((per) => per.id === personalityId);
@@ -89,27 +89,13 @@ export default function Personality() {
 
     try {
       setIsLoading(true);
-      const accessToken = await getAccessToken();
-      const response = await fetch(
-        `/api/personalities/${personality.id}/context`,
+      const data = await api.post<{ context: string }>(
+        `/personalities/${personality.id}/context`,
         {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify({
-            context: updatedContext,
-            prompt,
-          }),
+          context: updatedContext,
+          prompt,
         }
       );
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
       setUpdatedContext(data.context);
       setPrompt("");
       toast({

@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk, createSelector, PayloadAction } from "@reduxjs/toolkit";
 import { RootState } from "../store";
-import { getAccessToken } from "../actions/getToken";
+import { api } from "@/lib/api";
 
 export interface Provider {
   id: string;
@@ -32,16 +32,10 @@ const initialState: ProvidersState = {
 export const fetchProviders = createAsyncThunk(
   "providers/fetchProviders",
   async () => {
-    const accessToken = await getAccessToken();
-    const response = await fetch("/api/providers/", {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
-    if (!response.ok) {
-      throw new Error("Failed to fetch providers");
-    }
-    const data = await response.json();
+    const data = await api.get<{
+      providers: Provider[];
+      active_provider_id: string | null;
+    }>("/providers/");
     return {
       providers: data.providers,
       activeProviderId: data.active_provider_id,
@@ -52,16 +46,7 @@ export const fetchProviders = createAsyncThunk(
 export const setupProvider = createAsyncThunk(
   "providers/setupProvider",
   async (providerId: string) => {
-    const accessToken = await getAccessToken();
-    const response = await fetch(`/api/providers/${providerId}/activate`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
-    if (!response.ok) {
-      throw new Error("Failed to setup provider");
-    }
+    await api.post(`/providers/${providerId}/activate`, {});
     return providerId;
   }
 );
