@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from quart import Blueprint, request
 
 from neuron_server.controllers.auth import requires_auth
+from neuron_server.decorators import rate_limit
 from neuron_server.event_router import EventRouter
 from neuron_server.models.media_item_model import MediaItemModel
 
@@ -19,6 +20,7 @@ class ImageRequest(BaseModel):
 
 @blueprint.get("/")
 @requires_auth
+@rate_limit()
 async def get_images() -> list[dict]:
     return [
         image.model_dump(exclude={"path"})
