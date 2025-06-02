@@ -72,6 +72,44 @@ class TestCookieSigning:
         verified = verify_cookie_data(tampered)
         assert verified is None
 
+    def test_verify_cookie_without_padding(self):
+        """Test that cookies without proper base64 padding are handled correctly."""
+        data = {
+            "user_id": "test123",
+            "csrf_token": "test_token",
+            "expires": (datetime.utcnow() + timedelta(hours=1)).isoformat()
+        }
+
+        # Sign the data
+        signed = sign_cookie_data(data)
+
+        # Remove padding from the base64 string
+        signed_no_padding = signed.rstrip('=')
+
+        # Verify that the cookie can still be decoded
+        verified = verify_cookie_data(signed_no_padding)
+        assert verified is not None
+        assert verified["user_id"] == data["user_id"]
+        assert verified["csrf_token"] == data["csrf_token"]
+
+    def test_verify_cookie_with_auth0_user_id(self):
+        """Test cookies with Auth0-style user IDs (containing pipes) work correctly."""
+        data = {
+            "user_id": "auth0|677842260dc433462eaf13a6",
+            "csrf_token": "test_token",
+            "expires": (datetime.utcnow() + timedelta(hours=1)).isoformat()
+        }
+
+        # Sign the data
+        signed = sign_cookie_data(data)
+        assert signed is not None
+
+        # Verify the signed data
+        verified = verify_cookie_data(signed)
+        assert verified is not None
+        assert verified["user_id"] == "auth0|677842260dc433462eaf13a6"
+        assert verified["csrf_token"] == data["csrf_token"]
+
 
 class TestSessionCookie:
     def test_create_session_cookie_with_csrf(self):

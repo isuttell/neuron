@@ -67,25 +67,33 @@ def sign_cookie_data(data: dict[str, Any]) -> str:
     ).hexdigest()
 
     # Return base64-encoded signed data
-    signed_data = f"{json_data}|{signature}"
+    # Simply concatenate - we know signature is always 64 chars
+    signed_data = f"{json_data}{signature}"
     return base64.urlsafe_b64encode(signed_data.encode()).decode()
 
 
 def verify_cookie_data(signed_data: str) -> dict[str, Any] | None:
     """Verify and extract data from signed cookie"""
     try:
+        # Add padding if missing - some systems strip the '=' padding
+        padding_needed = len(signed_data) % 4
+        if padding_needed:
+            signed_data += '=' * (4 - padding_needed)
+
         # Decode base64
         decoded = base64.urlsafe_b64decode(signed_data.encode()).decode()
 
-        # Split data and signature
-        parts = decoded.split("|")
-        expected_parts = 2
-        if len(parts) != expected_parts:
+        # HMAC-SHA256 signature is always 64 hex characters
+        signature_length = 64
+
+        # Extract signature from the end and JSON from the beginning
+        if len(decoded) < signature_length:
             if config.debug:
-                logger.warning("Cookie verification failed: Invalid format")
+                logger.warning("Cookie verification failed: Too short for signature")
             return None
 
-        json_data, signature = parts
+        signature = decoded[-signature_length:]
+        json_data = decoded[:-signature_length]
 
         # Verify signature
         expected_signature = hmac.new(
