@@ -6,8 +6,9 @@ type JsonValue =
   | number
   | boolean
   | null
+  | undefined
   | JsonValue[]
-  | { [key: string]: JsonValue };
+  | { [key: string]: JsonValue | undefined };
 type RequestData = Record<string, JsonValue> | FormData;
 
 interface ApiError {

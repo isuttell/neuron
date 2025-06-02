@@ -1,6 +1,7 @@
 import { createAsyncThunk, createSlice, createSelector, PayloadAction } from "@reduxjs/toolkit";
 import { RootState } from "../store";
 import { api } from "@/lib/api";
+import type { Personality } from "./personalitiesSlice.d";
 export interface Prompt {
   id: string;
   name: string;
@@ -33,7 +34,7 @@ export const fetchPrompts = createAsyncThunk(
     const url = personalityId
       ? `/prompts/?personality_id=${personalityId}`
       : "/prompts/";
-    const data = await api.get<{ prompts: Prompt[]; personalities: unknown[] }>(url);
+    const data = await api.get<{ prompts: Prompt[]; personalities: Personality[] }>(url);
     return {
       prompts: data.prompts,
       personalities: data.personalities,

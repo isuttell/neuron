@@ -7,8 +7,8 @@ export const fetchPersonality = createAsyncThunk(
   "personalities/fetchPersonality",
   async (personalityId: string, thunkAPI) => {
     try {
-      const data = await api.get(`/personalities/${personalityId}`);
-      return data;
+      const personality = await api.get<Personality>(`/personalities/${personalityId}`);
+      return { personality };
     } catch (error) {
       if (error instanceof Error) {
         return thunkAPI.rejectWithValue(error.message);
@@ -22,8 +22,8 @@ export const fetchPersonalities = createAsyncThunk(
   "personalities/fetchPersonalities",
   async (_, thunkAPI) => {
     try {
-      const data = await api.get(`/personalities/`);
-      return data;
+      const personalities = await api.get<Personality[]>(`/personalities/`);
+      return { personalities };
     } catch (error) {
       if (error instanceof Error) {
         return thunkAPI.rejectWithValue(error.message);
@@ -46,8 +46,8 @@ export const createPersonality = createAsyncThunk(
   "personalities/createPersonality",
   async (personality: CreatePersonality, thunkAPI) => {
     try {
-      const data = await api.post(`/personalities/`, personality);
-      return data;
+      const createdPersonality = await api.post<Personality>(`/personalities/`, personality as unknown as Record<string, string | undefined>);
+      return { personality: createdPersonality };
     } catch (error) {
       if (error instanceof Error) {
         return thunkAPI.rejectWithValue(error.message);
@@ -65,7 +65,7 @@ export const updatePersonality = createAsyncThunk(
   "personalities/updatePersonality",
   async (personality: UpdatePersonality, thunkAPI) => {
     try {
-      const data = await api.put(`/personalities/${personality.id}`, {
+      const updatedPersonality = await api.put<Personality>(`/personalities/${personality.id}`, {
         name: personality.name,
         context: personality.context,
         memory: personality.memory,
@@ -73,7 +73,7 @@ export const updatePersonality = createAsyncThunk(
         description: personality.description,
         logo: personality.logo,
       });
-      return data;
+      return { personality: updatedPersonality };
     } catch (error) {
       if (error instanceof Error) {
         return thunkAPI.rejectWithValue(error.message);
@@ -171,8 +171,8 @@ export const updatePersonalityLogo = createAsyncThunk(
   "personalities/updateLogo",
   async (personalityId: string, thunkAPI) => {
     try {
-      const data = await api.post(`/personalities/${personalityId}/logo`, {});
-      return data;
+      const personalities = await api.post<Personality[]>(`/personalities/${personalityId}/logo`, {});
+      return { personalities };
     } catch (error) {
       if (error instanceof Error) {
         return thunkAPI.rejectWithValue(error.message);
