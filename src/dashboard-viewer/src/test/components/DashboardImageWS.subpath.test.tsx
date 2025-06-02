@@ -12,19 +12,20 @@ mockWebSocket.prototype.addEventListener = vi.fn()
 global.WebSocket = mockWebSocket
 
 // Mock Image constructor
-global.Image = class {
-  onload: (() => void) | null = null
-  onerror: (() => void) | null = null
-  src = ''
-
-  constructor() {
-    setTimeout(() => {
-      if (this.onload) {
-        this.onload()
-      }
-    }, 0)
+const mockImageConstructor = vi.fn().mockImplementation(() => {
+  const img = {
+    onload: null as (() => void) | null,
+    onerror: null as (() => void) | null,
+    src: '',
   }
-} as unknown as typeof Image
+  setTimeout(() => {
+    if (img.onload) {
+      img.onload()
+    }
+  }, 0)
+  return img
+})
+global.Image = mockImageConstructor as unknown as typeof Image
 
 // Store original location
 const originalLocation = window.location
@@ -143,7 +144,7 @@ describe('DashboardImageWS subpath support', () => {
     )
 
     // Should append timestamp to image URL
-    expect(global.Image).toHaveBeenCalled()
+    expect(mockImageConstructor).toHaveBeenCalled()
 
     mockDateNow.mockRestore()
   })
