@@ -13,10 +13,8 @@
     "test:watch": "jest --watch",
     "prepare": "husky",
     "dev:client": "cd src/neuron_client && npm run dev",
-    "dev:dashboard": "cd src/dashboard-viewer && npm run dev",
     "build:client": "cd src/neuron_client && npm run build",
-    "build:dashboard": "cd src/dashboard-viewer && npm run build",
-    "install:all": "npm install && cd src/neuron_client && npm install && cd ../dashboard-viewer && npm install"
+    "install:all": "npm install && cd src/neuron_client && npm install"
   },
   "jest": {
     "testEnvironment": "jsdom",
