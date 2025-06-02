@@ -66,6 +66,9 @@ class ApiClient {
     } else if (data.new_csrf_token) {
       // Fallback to body for backward compatibility
       setCSRFToken(data.new_csrf_token);
+    } else if (data.csrf_token) {
+      // Handle CSRF token from login response
+      setCSRFToken(data.csrf_token);
     }
 
     return data;
