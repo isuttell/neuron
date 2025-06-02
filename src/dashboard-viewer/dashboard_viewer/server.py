@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from .config import (
+    BASE_PATH,
     CURRENT_DIR,
     DIST_DIR,
     HOMEASSISTANT_TOKEN,
@@ -45,7 +46,7 @@ polling_state = PollingState()
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI):  # type: ignore[misc]
     """Manage application lifespan."""
     # Startup
     logger.info("Dashboard Viewer starting...")
@@ -103,8 +104,12 @@ async def lifespan(app: FastAPI):
     await client.aclose()
 
 
-# Create FastAPI app
-app = FastAPI(title="Dashboard Viewer", lifespan=lifespan)
+# Create FastAPI app with optional root_path for subpath deployment
+app = FastAPI(
+    title="Dashboard Viewer",
+    lifespan=lifespan,
+    root_path=BASE_PATH if BASE_PATH else None
+)
 
 # Add CORS middleware for development
 app.add_middleware(
@@ -130,7 +135,20 @@ else:
             "error": "Frontend not built",
             "message": "Run 'npm run build' to build the dashboard viewer",
             "image_url": IMAGE_URL,
+            "vite_base_path": BASE_PATH,
         }
+
+    @app.head("/")
+    async def root_head_fallback():  # type: ignore[misc]
+        """HEAD endpoint for health checks when frontend is not built."""
+        from fastapi import Response
+        return Response(
+            status_code=200,
+            headers={
+                "content-type": "application/json",
+                "cache-control": "no-cache, no-store, must-revalidate",
+            }
+        )
 
 
 def main() -> None:

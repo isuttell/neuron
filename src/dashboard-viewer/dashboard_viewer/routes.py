@@ -17,6 +17,20 @@ def setup_routes(app: Any, client: Any, polling_state: PollingState,
                 manager: ConnectionManager, current_dir: Any) -> None:
     """Set up all API routes."""
 
+    @app.head("/")
+    async def root_head() -> Response:
+        """
+        Handle HEAD requests to root path for health checks.
+        Returns minimal headers to confirm service is running.
+        """
+        return Response(
+            status_code=200,
+            headers={
+                "content-type": "text/html",
+                "cache-control": "no-cache, no-store, must-revalidate",
+            }
+        )
+
     @app.head("/image")
     async def image_head() -> Response:
         """
