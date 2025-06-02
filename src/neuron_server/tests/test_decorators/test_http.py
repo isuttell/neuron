@@ -4,7 +4,12 @@ import pytest
 from quart import Quart, Response
 
 from neuron_server.config import config
-from neuron_server.decorators.http_decorators import cache_control, cors
+from neuron_server.decorators.http_decorators import (
+    RateLimitExceededError,
+    cache_control,
+    cors,
+    rate_limit,
+)
 
 
 @pytest.fixture
@@ -156,3 +161,51 @@ async def test_cache_control_multiple_directives(app: Quart) -> None:
     async with app.test_client() as client:
         response = await client.get("/test")
         assert response.headers["Cache-Control"] == "max-age=3600, public, immutable"
+
+
+@pytest.mark.asyncio
+async def test_rate_limit_disabled(app: Quart) -> None:
+    """Test rate limit decorator when disabled."""
+
+    @app.route("/test")
+    @rate_limit(enabled=False)
+    async def test_route() -> Response:
+        return Response("success")
+
+    async with app.test_client() as client:
+        response = await client.get("/test")
+        assert response.status_code == 200
+        assert await response.get_data() == b"success"
+
+
+@pytest.mark.asyncio
+async def test_rate_limit_decorator_types(app: Quart) -> None:
+    """Test that different rate limit types can be configured."""
+
+    @app.route("/api/test")
+    @rate_limit(limit_type="api")
+    async def api_route() -> Response:
+        return Response("api")
+
+    @app.route("/static/test")
+    @rate_limit(limit_type="static")
+    async def static_route() -> Response:
+        return Response("static")
+
+    # Test that decorators can be applied without error
+    assert hasattr(api_route, "__wrapped__")
+    assert hasattr(static_route, "__wrapped__")
+
+
+def test_rate_limit_exceeded_error() -> None:
+    """Test RateLimitExceededError has correct attributes."""
+    error = RateLimitExceededError(
+        retry_after=60,
+        limit_type="requests per minute",
+        limit_value=100
+    )
+
+    assert error.retry_after == 60
+    assert error.limit_type == "requests per minute"
+    assert error.limit_value == 100
+    assert str(error) == "Rate limit exceeded: 100 requests per minute"

@@ -4,6 +4,7 @@ from quart import Blueprint, request
 
 from neuron_server.controllers.auth import requires_auth
 from neuron_server.controllers.csrf import requires_csrf
+from neuron_server.decorators import rate_limit
 from neuron_server.models.media_item_model import MediaItemModel
 from neuron_server.models.media_list_item_model import MediaListItemModel
 from neuron_server.models.media_list_model import MediaListModel
@@ -13,6 +14,7 @@ blueprint = Blueprint("media", __name__)
 
 @blueprint.get("/recent")
 @requires_auth
+@rate_limit()
 async def get_recent_media() -> dict[str, list[dict]]:
     """
     Get the most recent media items for a user with pagination support.
@@ -61,6 +63,7 @@ async def create_media_list() -> dict:
 
 @blueprint.get("/lists")
 @requires_auth
+@rate_limit()
 async def get_media_lists() -> dict:
     """Get all media lists owned by or shared with the authenticated user"""
     assert isinstance(request.token.user_id, str)
@@ -155,6 +158,7 @@ async def delete_media_list(list_id: UUID) -> dict:
 @blueprint.post("/lists/<uuid:list_id>/media")
 @requires_auth
 @requires_csrf
+@rate_limit()
 async def add_media_to_list(list_id: UUID) -> dict:
     """Add a media item to a list"""
     data = await request.get_json()

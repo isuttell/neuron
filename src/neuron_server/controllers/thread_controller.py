@@ -8,6 +8,7 @@ from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 from neuron_server.controllers.auth import requires_auth
 from neuron_server.controllers.csrf import requires_csrf
 from neuron_server.controllers.message_controller import process_message_request
+from neuron_server.decorators import rate_limit
 from neuron_server.event_router import EventRouter
 from neuron_server.llms import agent
 from neuron_server.models.personality_model import PersonalityModel
@@ -118,6 +119,7 @@ async def get_recent_threads() -> dict[str, list[dict]]:
 @blueprint.post("/")
 @requires_auth
 @requires_csrf
+@rate_limit()
 async def post_create_thread() -> dict[str, dict]:
     files = await request.files
     form = await request.form

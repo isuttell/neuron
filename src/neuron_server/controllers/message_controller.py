@@ -13,6 +13,7 @@ from neuron_server.controllers.events.message_events import (
     PostMessage,
     ThreadMessage,
 )
+from neuron_server.decorators import rate_limit
 from neuron_server.event_router import EventRouter
 from neuron_server.llms import agent
 from neuron_server.llms.agent import aget_state
@@ -142,6 +143,7 @@ def format_ai_uploaded_file(filename: str, ext: str, url: str) -> str:
 @blueprint.post("/thread/<uuid:thread_id>")
 @requires_auth
 @requires_csrf
+@rate_limit()
 async def post_thread_message(thread_id: UUID) -> tuple[dict[str, str], int]:
     thread = await ThreadModel.get(thread_id=thread_id)
     if not thread:

@@ -11,6 +11,7 @@ from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 from neuron_server.controllers.auth import TokenPayload, requires_auth
 from neuron_server.controllers.csrf import requires_csrf
+from neuron_server.decorators import rate_limit
 from neuron_server.event_router import EventRouter
 from neuron_server.llms.llm import LLM
 from neuron_server.llms.prompts import (
@@ -517,6 +518,7 @@ class PostPersonalityContext(BaseModel):
 @blueprint.post("/<uuid:personality_id>/context")
 @requires_auth
 @requires_csrf
+@rate_limit()
 async def post_personality_context(personality_id: UUID) -> dict[str, str]:
     assert isinstance(request.token, TokenPayload)
     user_id = request.token.user_id
@@ -564,6 +566,7 @@ def _extract_message_content(message: BaseMessage) -> str:
 @blueprint.post("/<uuid:personality_id>/logo")
 @requires_auth
 @requires_csrf
+@rate_limit()
 async def update_personality_logo(personality_id: UUID) -> dict[str, dict]:
     assert isinstance(request.token, TokenPayload)
     user_id = request.token.user_id

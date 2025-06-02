@@ -61,7 +61,7 @@ from neuron_server.controllers.user_controller import (
 )
 from neuron_server.controllers.webhook_controller import blueprint as webhook_blueprint
 from neuron_server.database import pool
-from neuron_server.decorators.http_decorators import cache_control, cors
+from neuron_server.decorators.http_decorators import cache_control, cors, rate_limit
 from neuron_server.event_router import EventRouter
 from neuron_server.graph.connection import connection_manager
 from neuron_server.pubsub import client
@@ -125,6 +125,7 @@ async def get_logo() -> Response:
 @cors(allowed_methods=["GET", "OPTIONS"], allowed_headers=["Authorization"])
 @cache_control(max_age=31536000)
 @requires_cookie
+@rate_limit(limit_type="static")
 async def get_static(path: str) -> Response:
     match = re.match(r".*_(t|l|xl|xxl|o)\.(jpe?g|png|webp)$", path)
     if match and not os.path.exists(os.path.join(config.static_folder, path)):

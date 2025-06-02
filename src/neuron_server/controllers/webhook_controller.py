@@ -5,6 +5,7 @@ from quart import Blueprint, request
 from werkzeug.exceptions import BadRequest
 
 from neuron_server.controllers.auth import requires_api_key
+from neuron_server.decorators import rate_limit
 from neuron_server.llms.agent import execute_agent
 from neuron_server.logger import logger
 
@@ -20,6 +21,7 @@ class PromptRequest(BaseModel):
 @blueprint.post("/prompt")
 @blueprint.post("/home_prompt")
 @requires_api_key
+@rate_limit()
 async def prompt() -> dict[str, str]:
     body = await request.get_json()
     if not body:
