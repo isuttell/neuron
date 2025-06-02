@@ -2,7 +2,7 @@ import { DashboardImageWS } from '@/components/DashboardImageWS'
 import { SensorGrid } from '@/components/SensorGrid'
 import { useState, useEffect, useRef } from 'react'
 import type { ServerStatus } from '@/types/dashboard'
-import { Lock, LockOpen, AlertCircle, XCircle, RotateCw, Wifi, WifiOff, Settings } from 'lucide-react'
+import { Lock, Ban, AlertCircle, XCircle, RotateCw, Wifi, WifiOff, Settings, Hand, Bug } from 'lucide-react'
 import { useAppSelector } from '@/store/hooks'
 
 // Configuration can be passed via environment variables or window object
@@ -13,6 +13,9 @@ function App() {
   const [showDebug, setShowDebug] = useState(false)
   const [serverStatus, setServerStatus] = useState<ServerStatus | null>(null)
   const [wakeLockStatus, setWakeLockStatus] = useState<string>('not supported')
+  const [needsUserInteraction, setNeedsUserInteraction] = useState(false)
+  const [debugMessages, setDebugMessages] = useState<string[]>([])
+  const [showDebugPopup, setShowDebugPopup] = useState(false)
   const [wsConnected, setWsConnected] = useState(false)
   const [showSensors, setShowSensors] = useState(false)
   const wakeLockRef = useRef<WakeLockSentinel | null>(null)
@@ -20,62 +23,184 @@ function App() {
   // Get sensor count from Redux store
   const sensorCount = useAppSelector(state => Object.keys(state.sensors.sensors).length)
 
+  // Helper function to add debug messages
+  const addDebugMessage = (message: string) => {
+    const timestamp = new Date().toLocaleTimeString()
+    const fullMessage = `[${timestamp}] ${message}`
+    setDebugMessages(prev => [...prev, fullMessage])
+  }
+
+  // Handler for user interaction to enable wake lock
+  const handleUserInteraction = async () => {
+    if (!needsUserInteraction) return
+
+    try {
+      if ('wakeLock' in navigator) {
+        // Clear any existing wake lock first
+        if (wakeLockRef.current && !wakeLockRef.current.released) {
+          try {
+            await wakeLockRef.current.release()
+          } catch {
+            // Ignore errors when releasing
+          }
+        }
+
+        wakeLockRef.current = await navigator.wakeLock.request('screen')
+        setWakeLockStatus('active')
+        setNeedsUserInteraction(false)
+
+        // Add release handler to this specific wake lock
+        if (wakeLockRef.current && wakeLockRef.current.addEventListener) {
+          wakeLockRef.current.addEventListener('release', () => {
+            setWakeLockStatus('released')
+            wakeLockRef.current = null
+          })
+        }
+      }
+    } catch (err) {
+      console.error('Failed to acquire wake lock after user interaction:', err)
+      setWakeLockStatus('failed')
+    }
+  }
+
   // Request wake lock to prevent screen from sleeping
   useEffect(() => {
     let mounted = true
+    let retryTimeout: number | null = null
+
+    const requestWakeLock = async (): Promise<void> => {
+      if (!mounted) return
+
+      try {
+        // More detailed API detection
+        const hasWakeLock = 'wakeLock' in navigator
+        const wakeLockType = typeof navigator.wakeLock
+        const navigatorKeys = Object.getOwnPropertyNames(navigator).filter(key => key.includes('wake') || key.includes('Wake')).join(', ')
+
+        // Check if running as PWA
+        const isPWA = window.matchMedia('(display-mode: standalone)').matches ||
+                     (window.navigator as { standalone?: boolean }).standalone === true ||
+                     document.referrer.includes('android-app://');
+
+        addDebugMessage(`Wake Lock Check: hasWakeLock=${hasWakeLock}, type=${wakeLockType}, navigator keys with 'wake': [${navigatorKeys}], iOS version: ${navigator.userAgent.match(/OS (\d+_\d+)/)?.[1] || 'unknown'}, isPWA: ${isPWA}, isSecure: ${location.protocol === 'https:'}`)
+
+        if (hasWakeLock) {
+          addDebugMessage('Wake Lock API is available')
+          // Clear any existing wake lock first
+          if (wakeLockRef.current && !wakeLockRef.current.released) {
+            try {
+              await wakeLockRef.current.release()
+            } catch {
+              // Ignore errors when releasing
+            }
+          }
+
+          wakeLockRef.current = await navigator.wakeLock.request('screen')
+          setWakeLockStatus('active')
+          addDebugMessage('Wake lock acquired successfully!')
+
+          // Add release handler to this specific wake lock
+          if (wakeLockRef.current && wakeLockRef.current.addEventListener) {
+            wakeLockRef.current.addEventListener('release', handleRelease)
+          }
+        } else {
+          setWakeLockStatus('not supported')
+          // Keep the detailed debug message from above instead of overwriting it
+        }
+      } catch (err) {
+        const errorName = err instanceof Error ? err.name : 'unknown'
+        const errorMessage = err instanceof Error ? err.message : 'unknown'
+        const debugMsg = `Wake Lock Error - Name: ${errorName}, Message: ${errorMessage}`
+        addDebugMessage(debugMsg)
+
+        // Check if it's a permission/user interaction error
+        if (err instanceof Error && (
+          err.name === 'NotAllowedError' ||
+          err.message.includes('Permission was denied') ||
+          err.message.includes('user interaction') ||
+          err.message.includes('not allowed')
+        )) {
+          setWakeLockStatus('needs interaction')
+          setNeedsUserInteraction(true)
+          addDebugMessage(debugMsg + ' → Setting to needs interaction')
+        } else {
+          // Check if we're on a mobile device and API exists - assume user interaction needed
+          const isMobile = /iPad|iPhone|iPod|Android/i.test(navigator.userAgent)
+          const userAgent = navigator.userAgent
+          if (isMobile && 'wakeLock' in navigator) {
+            setWakeLockStatus('needs interaction')
+            setNeedsUserInteraction(true)
+            addDebugMessage(debugMsg + ` → Mobile detected (${userAgent.slice(0, 50)}), assuming needs interaction`)
+          } else {
+            setWakeLockStatus('failed')
+            addDebugMessage(debugMsg + ` → Not mobile or no API (${userAgent.slice(0, 50)})`)
+
+            // Retry after 5 seconds if the request failed
+            if (mounted) {
+              retryTimeout = window.setTimeout(() => {
+                if (mounted) {
+                  requestWakeLock()
+                }
+              }, 5000)
+            }
+          }
+        }
+      }
+    }
+
     const handleVisibilityChange = async () => {
       if (!mounted) return
 
-      if (document.visibilityState === 'visible' && !wakeLockRef.current) {
-        try {
-          wakeLockRef.current = await navigator.wakeLock.request('screen')
-          setWakeLockStatus('active')
-        } catch (err) {
-          console.error('Failed to re-acquire wake lock:', err)
-          setWakeLockStatus('failed')
-        }
+      // Request wake lock when page becomes visible and we don't have an active one
+      if (document.visibilityState === 'visible' &&
+          (!wakeLockRef.current || wakeLockRef.current.released)) {
+        await requestWakeLock()
       }
     }
 
     const handleRelease = () => {
       if (mounted) {
         setWakeLockStatus('released')
-      }
-    }
+        wakeLockRef.current = null
+        addDebugMessage('Wake lock was released by system')
 
-    const requestWakeLock = async () => {
-      try {
-        if ('wakeLock' in navigator) {
-          wakeLockRef.current = await navigator.wakeLock.request('screen')
-          setWakeLockStatus('active')
-
-          // Add event listeners
-          document.addEventListener('visibilitychange', handleVisibilityChange)
-          if (wakeLockRef.current && wakeLockRef.current.addEventListener) {
-            wakeLockRef.current.addEventListener('release', handleRelease)
+        // Automatically try to re-acquire wake lock after a brief delay
+        // This handles cases where the browser releases the lock due to system policies
+        retryTimeout = window.setTimeout(() => {
+          if (mounted && document.visibilityState === 'visible') {
+            addDebugMessage('Attempting to re-acquire wake lock after release')
+            requestWakeLock()
           }
-        } else {
-          setWakeLockStatus('not supported')
-        }
-      } catch (err) {
-        console.error('Failed to acquire wake lock:', err)
-        setWakeLockStatus('failed')
+        }, 1000)
       }
     }
 
+
+    // Set up visibility change listener
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    // Initial wake lock request
+    addDebugMessage('Starting wake lock initialization')
     requestWakeLock()
 
     // Cleanup
     return () => {
       mounted = false
+
+      if (retryTimeout) {
+        window.clearTimeout(retryTimeout)
+      }
+
       document.removeEventListener('visibilitychange', handleVisibilityChange)
 
       if (wakeLockRef.current) {
         if (wakeLockRef.current.removeEventListener) {
           wakeLockRef.current.removeEventListener('release', handleRelease)
         }
-        if (wakeLockRef.current.release) {
-          wakeLockRef.current.release()
+        if (!wakeLockRef.current.released && wakeLockRef.current.release) {
+          wakeLockRef.current.release().catch(() => {
+            // Ignore errors during cleanup
+          })
         }
         wakeLockRef.current = null
       }
@@ -167,14 +292,24 @@ function App() {
             <div className="flex items-center gap-2">
               <div className="min-w-12"></div>
               <div
-                className="p-2 bg-gray-900 bg-opacity-75 rounded-md w-10 h-10 flex items-center justify-center"
-                title={`Wake Lock: ${wakeLockStatus}`}
+                className={`p-2 bg-gray-900 bg-opacity-75 rounded-md w-10 h-10 flex items-center justify-center ${
+                  needsUserInteraction ? 'cursor-pointer hover:bg-opacity-90 transition-all' : ''
+                }`}
+                title={
+                  needsUserInteraction
+                    ? 'Wake Lock: Tap to enable'
+                    : `Wake Lock: ${wakeLockStatus}`
+                }
+                onClick={needsUserInteraction ? handleUserInteraction : undefined}
               >
                 {wakeLockStatus === 'active' && (
                   <Lock className="w-6 h-6 text-green-400" />
                 )}
                 {wakeLockStatus === 'not supported' && (
-                  <LockOpen className="w-6 h-6 text-yellow-400" />
+                  <Ban className="w-6 h-6 text-gray-400" />
+                )}
+                {wakeLockStatus === 'needs interaction' && (
+                  <Hand className="w-6 h-6 text-blue-400 animate-pulse" />
                 )}
                 {wakeLockStatus === 'failed' && (
                   <XCircle className="w-6 h-6 text-red-400" />
@@ -183,6 +318,19 @@ function App() {
                   <AlertCircle className="w-6 h-6 text-orange-400" />
                 )}
               </div>
+            </div>
+
+            {/* Debug log button */}
+            <div className="flex items-center gap-2">
+              <div className="min-w-12"></div>
+              <button
+                onClick={() => setShowDebugPopup(!showDebugPopup)}
+                className="p-2 bg-gray-900 bg-opacity-75 rounded-md hover:bg-opacity-90 transition-all cursor-pointer w-10 h-10 flex items-center justify-center"
+                title={`Debug Log (${debugMessages.length} messages)`}
+                type="button"
+              >
+                <Bug className={`w-6 h-6 ${debugMessages.length > 0 ? 'text-yellow-400' : 'text-gray-400'}`} />
+              </button>
             </div>
 
             {/* Sensors with divider */}
@@ -212,6 +360,38 @@ function App() {
         </button>
       )}
 
+      {/* Debug Log Popup */}
+      {showDebugPopup && (
+        <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 bg-black bg-opacity-95 text-white p-4 rounded-lg max-w-lg w-full mx-4 max-h-96 overflow-hidden flex flex-col">
+          <div className="flex justify-between items-start mb-3">
+            <h3 className="font-bold text-yellow-400">Debug Log ({debugMessages.length})</h3>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setDebugMessages([])}
+                className="text-gray-400 hover:text-white text-xs px-2 py-1 bg-gray-700 rounded"
+              >Clear</button>
+              <button
+                onClick={() => setShowDebugPopup(false)}
+                className="text-gray-400 hover:text-white ml-2 text-lg"
+              >×</button>
+            </div>
+          </div>
+          <div className="flex-1 overflow-y-auto space-y-1 text-xs">
+            {debugMessages.length === 0 ? (
+              <p className="text-gray-400 italic">No debug messages yet</p>
+            ) : (
+              debugMessages.map((msg, index) => (
+                <p key={index} className="text-green-400 font-mono break-words">{msg}</p>
+              ))
+            )}
+          </div>
+          <div className="mt-3 pt-2 border-t border-gray-700 text-xs">
+            <p><span className="text-gray-400">Wake Lock Status:</span> <span className="text-blue-400">{wakeLockStatus}</span></p>
+            <p><span className="text-gray-400">Needs Interaction:</span> <span className="text-blue-400">{needsUserInteraction ? 'Yes' : 'No'}</span></p>
+          </div>
+        </div>
+      )}
+
       {/* Debug info */}
       {showDebug && (
         <div className="absolute top-28 right-4 p-4 bg-gray-900 text-white rounded-md text-xs max-w-md">
@@ -223,7 +403,12 @@ function App() {
               Using WebSocket for real-time updates
             </p>
             <hr className="my-2 border-gray-700" />
-            <p><span className="text-gray-400">Wake Lock:</span> <span className={wakeLockStatus === 'active' ? 'text-green-400' : wakeLockStatus === 'failed' ? 'text-red-400' : 'text-yellow-400'}>{wakeLockStatus}</span></p>
+            <p><span className="text-gray-400">Wake Lock:</span> <span className={
+              wakeLockStatus === 'active' ? 'text-green-400' :
+              wakeLockStatus === 'failed' ? 'text-red-400' :
+              wakeLockStatus === 'needs interaction' ? 'text-blue-400' :
+              'text-yellow-400'
+            }>{wakeLockStatus}</span></p>
             {serverStatus && (
               <>
                 <hr className="my-2 border-gray-700" />
