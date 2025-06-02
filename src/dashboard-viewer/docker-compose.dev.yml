@@ -17,5 +17,4 @@ services:
       # Mount source files for development
       - ./dashboard_viewer:/app/dashboard_viewer:ro
       - ./dist:/app/dist:ro
-      - ./test-ws.html:/app/test-ws.html:ro
     command: ["poetry", "run", "dashboard-viewer"]

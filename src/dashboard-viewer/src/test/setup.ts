@@ -61,16 +61,52 @@ MockWebSocketWithMock.mock = {
 
 global.WebSocket = MockWebSocket as unknown as typeof WebSocket
 
+// Mock WakeLockSentinel
+class MockWakeLockSentinel implements WakeLockSentinel {
+  released = false
+  type: WakeLockType = 'screen'
+  onrelease: ((this: WakeLockSentinel, ev: Event) => void) | null = null
+  private listeners: Map<string, ((event: Event) => void)[]> = new Map()
+
+  addEventListener(type: string, listener: (event: Event) => void): void {
+    if (!this.listeners.has(type)) {
+      this.listeners.set(type, [])
+    }
+    this.listeners.get(type)!.push(listener)
+  }
+
+  removeEventListener(type: string, listener: (event: Event) => void): void {
+    const typeListeners = this.listeners.get(type)
+    if (typeListeners) {
+      const index = typeListeners.indexOf(listener)
+      if (index > -1) {
+        typeListeners.splice(index, 1)
+      }
+    }
+  }
+
+  dispatchEvent(event: Event): boolean {
+    const typeListeners = this.listeners.get(event.type)
+    if (typeListeners) {
+      typeListeners.forEach(listener => listener(event))
+    }
+    return true
+  }
+
+  async release(): Promise<void> {
+    this.released = true
+    this.dispatchEvent(new Event('release'))
+  }
+}
+
+// Create a mock wake lock instance
+const createMockWakeLock = () => new MockWakeLockSentinel()
+
 // Mock navigator.wakeLock
 Object.defineProperty(navigator, 'wakeLock', {
   value: {
-    request: vi.fn().mockResolvedValue({
-      released: false,
-      type: 'screen',
-      release: vi.fn().mockResolvedValue(undefined),
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-    }),
+    request: vi.fn().mockImplementation(() => Promise.resolve(createMockWakeLock())),
   },
   writable: true,
+  configurable: true,
 })
