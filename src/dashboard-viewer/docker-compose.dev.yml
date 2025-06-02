@@ -10,6 +10,7 @@ services:
       - PORT=8000
       - HOST=0.0.0.0
       - DEV_MODE=true  # Enable auto-reload
+      - HOMEASSISTANT_TOKEN=${HOMEASSISTANT_TOKEN}
     restart: unless-stopped
     extra_hosts:
       - "host.docker.internal:host-gateway"
