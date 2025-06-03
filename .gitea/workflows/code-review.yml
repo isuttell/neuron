@@ -63,7 +63,9 @@ jobs:
 
       # Install Poetry
       - name: Install Poetry
-        run: pipx install poetry==2.1.3
+        run: |
+          pipx install poetry==2.1.3
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
 
       # Setup Python with poetry cache
       - name: Set up Python 3.12
