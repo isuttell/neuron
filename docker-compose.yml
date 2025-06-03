@@ -6,8 +6,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.client
-    depends_on:
-      - server
 
   server:
     restart: unless-stopped
@@ -24,14 +22,6 @@ services:
     environment:
       - POSTGRES_DB=neuron
       - POSTGRES_USER=neuron
-
-  # riza:
-  #   restart: unless-stopped
-  #   image: rizaio/code-interpreter
-  #   environment:
-  #     - RIZA_API_KEY=${RIZA_API_KEY}
-  #     - RIZA_LICENSE_KEY=${RIZA_LICENSE_KEY}
-
   neo4j:
     restart: unless-stopped
     image: neo4j:5.26.0

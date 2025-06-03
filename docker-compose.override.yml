@@ -9,6 +9,8 @@ services:
   server:
     env_file:
       - .env-docker
+    environment:
+      - SERVE_CLIENT=true
     ports:
       - 5000:5000
     volumes:
