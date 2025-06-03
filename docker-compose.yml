@@ -1,8 +1,20 @@
 services:
+  # Optional: Remove or comment out the client service if you set SERVE_CLIENT=true on the server
+  client:
+    restart: unless-stopped
+    image: gitea.zaks.io/isuttell/neuron-client:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.client
+
   server:
     restart: unless-stopped
-    image: gitea.zaks.io/isuttell/neuron:latest
+    image: gitea.zaks.io/isuttell/neuron-server:latest
     build: .
+    depends_on:
+      - db
+      - neo4j
+      - redis
 
   db:
     restart: unless-stopped
@@ -10,14 +22,6 @@ services:
     environment:
       - POSTGRES_DB=neuron
       - POSTGRES_USER=neuron
-
-  # riza:
-  #   restart: unless-stopped
-  #   image: rizaio/code-interpreter
-  #   environment:
-  #     - RIZA_API_KEY=${RIZA_API_KEY}
-  #     - RIZA_LICENSE_KEY=${RIZA_LICENSE_KEY}
-
   neo4j:
     restart: unless-stopped
     image: neo4j:5.26.0

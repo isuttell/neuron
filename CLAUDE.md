@@ -27,6 +27,20 @@ Neuron consists of several key components:
 
 The application uses a WebSocket-based event system for real-time communication between the client and server, with REST endpoints for resource management.
 
+### Client Serving Options
+
+The application supports two deployment modes:
+
+1. **Separate Containers** (recommended for production): Client is served by nginx in a dedicated container
+2. **Single Container** (for development/simple deployments): Python server can optionally serve client files
+
+To enable client serving from the Python server, set the environment variable:
+```bash
+SERVE_CLIENT=true
+```
+
+When this is enabled, you can run just the server container without the separate client container.
+
 ## Important Notes
 
 - The project uses Vite for frontend development and building

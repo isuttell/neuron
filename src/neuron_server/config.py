@@ -239,6 +239,10 @@ class Config(BaseModel):
         default=os.environ.get("ENVIRONMENT", "development").lower() == "production",
         description="Whether the application is running in production",
     )
+    serve_client: bool = Field(
+        default=os.environ.get("SERVE_CLIENT", "False").lower() == "true",
+        description="Whether to serve client files from the Python server",
+    )
 
 
 config = Config()
