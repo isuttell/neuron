@@ -5,6 +5,7 @@ import random
 from typing import Any, Literal
 
 import aiofiles
+import aiohttp
 import replicate
 import replicate.helpers
 from langchain.tools import BaseTool
@@ -173,9 +174,29 @@ class ReplicatePlayDialogTool(BaseTool):
                 os.path.join(neuron_config.static_folder, filename)
             )
 
-            # Save the generated audio - PlayHT Dialog returns complete file content
-            async with aiofiles.open(file_path, "wb") as file:
-                await file.write(output)
+            # Handle different output types from Replicate
+            if hasattr(output, 'read'):
+                # If output is a file-like object, read its content
+                content = output.read()
+                if asyncio.iscoroutine(content):
+                    content = await content
+                async with aiofiles.open(file_path, "wb") as file:
+                    await file.write(content)
+            elif isinstance(output, str) and output.startswith(('http://', 'https://')):
+                # If output is a URL, download it
+                async with aiohttp.ClientSession() as session:  # noqa: SIM117
+                    async with session.get(output) as response:
+                        content = await response.read()
+                        async with aiofiles.open(file_path, "wb") as file:
+                            await file.write(content)
+            elif isinstance(output, bytes):
+                # If output is already bytes, write directly
+                async with aiofiles.open(file_path, "wb") as file:
+                    await file.write(output)
+            else:
+                raise ValueError(
+                    f"Unexpected output type from Replicate: {type(output)}"
+                )
 
             url = f"{neuron_config.static_content_url}/{filename}"
             create_params = MediaItemModel.CreateParams(
