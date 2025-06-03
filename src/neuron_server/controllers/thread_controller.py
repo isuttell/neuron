@@ -6,7 +6,9 @@ from quart import Blueprint, Response, request
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 from neuron_server.controllers.auth import requires_auth
+from neuron_server.controllers.csrf import requires_csrf
 from neuron_server.controllers.message_controller import process_message_request
+from neuron_server.decorators import rate_limit
 from neuron_server.event_router import EventRouter
 from neuron_server.llms import agent
 from neuron_server.models.personality_model import PersonalityModel
@@ -116,6 +118,8 @@ async def get_recent_threads() -> dict[str, list[dict]]:
 
 @blueprint.post("/")
 @requires_auth
+@requires_csrf
+@rate_limit()
 async def post_create_thread() -> dict[str, dict]:
     files = await request.files
     form = await request.form
@@ -178,6 +182,7 @@ async def post_create_thread() -> dict[str, dict]:
 
 @blueprint.delete("/<uuid:thread_id>")
 @requires_auth
+@requires_csrf
 async def delete_thread(thread_id: UUID) -> Response:
     thread = await ThreadModel.get(thread_id=thread_id)
     if not thread:
@@ -193,6 +198,7 @@ async def delete_thread(thread_id: UUID) -> Response:
 
 @blueprint.put("/<uuid:thread_id>")
 @requires_auth
+@requires_csrf
 async def update_thread(thread_id: UUID) -> dict[str, list[dict]]:
     body = await request.get_json()
     payload = UpdateThread(**body)
@@ -270,6 +276,7 @@ async def get_thread_users(thread_id: UUID) -> dict[str, list[dict]]:
 
 @blueprint.post("/<uuid:thread_id>/users")
 @requires_auth
+@requires_csrf
 async def add_thread_user(thread_id: UUID) -> dict[str, dict]:
     """Add a user to a thread.
 
@@ -316,6 +323,7 @@ async def add_thread_user(thread_id: UUID) -> dict[str, dict]:
 
 @blueprint.post("/<uuid:thread_id>/users/email")
 @requires_auth
+@requires_csrf
 async def add_thread_user_by_email(thread_id: UUID) -> dict[str, dict]:
     """Add a user to a thread by email.
 
@@ -367,6 +375,7 @@ async def add_thread_user_by_email(thread_id: UUID) -> dict[str, dict]:
 
 @blueprint.delete("/<uuid:thread_id>/users/<string:user_id>")
 @requires_auth
+@requires_csrf
 async def remove_thread_user(thread_id: UUID, user_id: str) -> Response:
     """Remove a user from a thread.
 
@@ -400,6 +409,7 @@ async def remove_thread_user(thread_id: UUID, user_id: str) -> Response:
 
 @blueprint.put("/<uuid:thread_id>/users/<string:user_id>")
 @requires_auth
+@requires_csrf
 async def update_thread_user(thread_id: UUID, user_id: str) -> dict[str, dict]:
     """Update a user's role in a thread.
 

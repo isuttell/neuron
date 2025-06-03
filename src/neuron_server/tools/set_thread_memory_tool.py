@@ -12,8 +12,11 @@ from neuron_server.models.thread_model import ThreadModel
 class SetThreadMemoryToolArgs(BaseModel):
     memory: str = Field(
         description=(
-            "The full and complete memory to overwrite the existing thread memory. "
-            "Do not paraphrase the memory."
+            "Your internal task tracking and planning notes. This is YOUR private "
+            "workspace for tracking what you need to do - not the user's tasks. "
+            "Format as markdown with checkboxes (e.g., '- [ ] Analyze code structure' "
+            "or '- [x] Updated function signatures'). This completely overwrites your "
+            "existing notes. Include ALL your tasks and observations, not just updates."
         )
     )
 
@@ -21,11 +24,12 @@ class SetThreadMemoryToolArgs(BaseModel):
 class SetThreadMemoryTool(BaseTool):
     name: str = "set_thread_memory"
     description: str = (
-        "This tool allows you to update the memory of the current thread. Use this "
-        "to store plans and other custom instructions that you do not want to get "
-        "lost. For example, on a complicated task you might put together a rational "
-        "plan to solve it, store it using this tool and then it will be included "
-        "in future requests to guide the agent."
+        "YOUR internal task tracker and memory - not visible to the user. Use this "
+        "to track YOUR work: what you need to analyze, implement, or remember. "
+        "Essential for complex requests to ensure you complete all steps. Store your "
+        "tasks as markdown checkboxes. This is YOUR private workspace that persists "
+        "in the thread. Update frequently as you work through problems and discover "
+        "subtasks. The user cannot see this - it's only for YOUR organization."
     )
 
     args_schema: type[SetThreadMemoryToolArgs] = SetThreadMemoryToolArgs
@@ -46,8 +50,27 @@ class SetThreadMemoryTool(BaseTool):
             thread_id = config["configurable"].get("thread_id")
             if thread_id is None:
                 raise ValueError("Thread ID is required but was not provided")
+
+            # Get the existing memory before overwriting
+            thread = await ThreadModel.get(thread_id)
+            if thread is None:
+                raise ValueError(f"Thread {thread_id} not found")
+
+            previous_memory = thread.memory or ""
+
+            # Update the memory
             await ThreadModel.set(thread_id, "memory", memory)
-            return "Successfully updated thread memory"
+
+            # Return success message with previous content
+            if previous_memory:
+                return (
+                    "Successfully updated your internal task tracker.\n\n"
+                    "Previous notes that were overwritten:\n"
+                    "```\n"
+                    f"{previous_memory}\n"
+                    "```"
+                )
+            return "Successfully updated your internal task tracker."
         except Exception as e:
             logger.error("Failed to update thread memory: %s", str(e), exc_info=True)
             raise RuntimeError("Failed to update thread memory") from e

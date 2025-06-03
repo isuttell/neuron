@@ -1,4 +1,5 @@
 repos:
+# Standard pre-commit hooks
 -   repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
     hooks:
@@ -6,30 +7,33 @@ repos:
     -   id: end-of-file-fixer
     -   id: check-yaml
     -   id: check-added-large-files
+    -   id: check-json
+        exclude: ^(tsconfig.*\.json|\.vscode/.*\.json)$
+    -   id: check-toml
+    -   id: check-merge-conflict
+    -   id: debug-statements
 
--   repo: https://github.com/charliermarsh/ruff-pre-commit
-    rev: v0.11.10
+# Python linting with Ruff
+-   repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.11.11
     hooks:
     -   id: ruff
         args: [--fix]
+        files: ^src/neuron_server/
 
+# Gitea Actions linting
 -   repo: https://github.com/rhysd/actionlint
-    rev: v1.6.26
+    rev: v1.7.7
     hooks:
     -   id: actionlint
         name: Lint Gitea Actions workflow files
         description: Lint Gitea Actions workflow YAML files using actionlint
         files: ^\.gitea/workflows/.*\.ya?ml$
 
+# Local hooks for project-specific checks
 -   repo: local
     hooks:
-    -   id: pytest-check
-        name: pytest-check
-        entry: poetry run pytest src/neuron_server/
-        language: system
-        pass_filenames: false
-        types: [python]
-
+    # Frontend linting with auto-fix
     -   id: frontend-lint
         name: Frontend Lint
         entry: npm run lint -- --fix
@@ -37,16 +41,10 @@ repos:
         files: ^src/neuron_client/src/.*\.(ts|tsx|js|jsx)$
         pass_filenames: false
 
+    # Frontend TypeScript type checking - lighter than full build
     -   id: frontend-typecheck
-        name: Frontend TypeCheck
-        entry: npm run build
+        name: Frontend Type Check
+        entry: npx tsc --noEmit
         language: system
-        files: ^src/neuron_client/src/.*\.(ts|tsx)$
-        pass_filenames: false
-
-    -   id: frontend-test
-        name: Frontend Test
-        entry: npm test
-        language: system
-        files: ^src/neuron_client/src/.*\.(ts|tsx)$
+        files: ^(src/neuron_client/src/.*\.(ts|tsx)|tsconfig.*\.json)$
         pass_filenames: false

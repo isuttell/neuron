@@ -73,11 +73,11 @@ output filename to the user as they can't directly access it.
         Returns:
             Optional dictionary of cookies for authentication
         """
-        session_token = str(uuid4())
-        return (
-            {"neuron_session": session_token}
-            if neuron_config.static_require_auth else None
-        )
+        if neuron_config.static_require_auth:
+            from neuron_server.controllers.csrf import create_session_cookie
+            session_cookie, _ = create_session_cookie("system", include_csrf=False)
+            return {"neuron_session": session_cookie}
+        return None
 
     @staticmethod
     async def download_file_with_auth(

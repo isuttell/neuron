@@ -10,6 +10,8 @@ from quart import Blueprint, Response, request
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 from neuron_server.controllers.auth import TokenPayload, requires_auth
+from neuron_server.controllers.csrf import requires_csrf
+from neuron_server.decorators import rate_limit
 from neuron_server.event_router import EventRouter
 from neuron_server.llms.llm import LLM
 from neuron_server.llms.prompts import (
@@ -131,6 +133,7 @@ async def get_personality_embeddings(personality_id: UUID) -> dict[str, list[dic
 
 @blueprint.delete("/<uuid:personality_id>/embeddings/<embedding_id>")
 @requires_auth
+@requires_csrf
 async def delete_personality_embedding(
     personality_id: UUID,
     embedding_id: str,
@@ -161,6 +164,7 @@ async def delete_personality_embedding(
 
 @blueprint.delete("/<uuid:personality_id>/embeddings")
 @requires_auth
+@requires_csrf
 async def delete_personality_embeddings(personality_id: UUID) -> Response:
     assert isinstance(request.token, TokenPayload)
     user_id = request.token.user_id
@@ -201,6 +205,7 @@ async def get_personalities() -> dict[str, list[dict]]:
 
 @blueprint.post("/")
 @requires_auth
+@requires_csrf
 async def create_personality() -> dict[str, dict]:
     assert isinstance(request.token, TokenPayload)
     user_id = request.token.user_id
@@ -222,6 +227,7 @@ async def create_personality() -> dict[str, dict]:
 
 @blueprint.put("/<uuid:personality_id>")
 @requires_auth
+@requires_csrf
 async def update_personality(personality_id: UUID) -> dict[str, dict]:
     assert isinstance(request.token, TokenPayload)
     user_id = request.token.user_id
@@ -260,6 +266,7 @@ async def update_personality(personality_id: UUID) -> dict[str, dict]:
 
 @blueprint.delete("/<uuid:personality_id>")
 @requires_auth
+@requires_csrf
 async def delete_personality(personality_id: UUID) -> Response:
     assert isinstance(request.token, TokenPayload)
     user_id = request.token.user_id
@@ -330,6 +337,7 @@ async def get_personality_users(personality_id: UUID) -> dict[str, list[dict]]:
 
 @blueprint.post("/<uuid:personality_id>/users")
 @requires_auth
+@requires_csrf
 async def add_personality_user(personality_id: UUID) -> dict[str, dict]:
     """Add a user to a personality.
 
@@ -393,6 +401,7 @@ async def add_personality_user(personality_id: UUID) -> dict[str, dict]:
 
 @blueprint.put("/<uuid:personality_id>/users/<string:user_id>")
 @requires_auth
+@requires_csrf
 async def update_personality_user(
     personality_id: UUID, user_id: str
 ) -> dict[str, dict]:
@@ -452,6 +461,7 @@ async def update_personality_user(
 
 @blueprint.delete("/<uuid:personality_id>/users/<string:user_id>")
 @requires_auth
+@requires_csrf
 async def remove_personality_user(personality_id: UUID, user_id: str) -> Response:
     """Remove a user from a personality.
 
@@ -507,6 +517,8 @@ class PostPersonalityContext(BaseModel):
 
 @blueprint.post("/<uuid:personality_id>/context")
 @requires_auth
+@requires_csrf
+@rate_limit()
 async def post_personality_context(personality_id: UUID) -> dict[str, str]:
     assert isinstance(request.token, TokenPayload)
     user_id = request.token.user_id
@@ -553,6 +565,8 @@ def _extract_message_content(message: BaseMessage) -> str:
 
 @blueprint.post("/<uuid:personality_id>/logo")
 @requires_auth
+@requires_csrf
+@rate_limit()
 async def update_personality_logo(personality_id: UUID) -> dict[str, dict]:
     assert isinstance(request.token, TokenPayload)
     user_id = request.token.user_id

@@ -23,6 +23,7 @@ venv.bak/
 node_modules/
 coverage/
 .coverage
+.testmondata
 
 # Secrets
 secrets/

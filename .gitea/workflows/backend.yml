@@ -1,13 +1,6 @@
 name: Backend CI
 
 on:
-  push:
-    branches: [ master ]
-    paths:
-      - 'src/neuron_server/**'
-      - 'pyproject.toml'
-      - 'poetry.lock'
-      - '.gitea/workflows/backend.yml'
   pull_request:
     branches: [ master ]
     paths:
@@ -44,3 +37,26 @@ jobs:
 
       - name: Run tests
         run: poetry run pytest src/neuron_server/ --cov
+
+  # Docker build verification
+  docker-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver: docker
+          install: true
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile
+          builder: ${{ steps.buildx.outputs.name }}
+          push: false
+          load: true
+          tags: gitea.zaks.io/isuttell/neuron:pr-${{ github.event.pull_request.number }}

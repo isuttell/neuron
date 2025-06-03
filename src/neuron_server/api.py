@@ -12,7 +12,8 @@ from neuron_server.config import config
 from neuron_server.controllers.app_controller import (
     blueprint as app_blueprint,
 )
-from neuron_server.controllers.auth import decode_token, requires_cookie
+from neuron_server.controllers.auth import decode_token, requires_auth, requires_cookie
+from neuron_server.controllers.csrf import create_session_cookie
 from neuron_server.controllers.embedding_controller import (
     blueprint as embedding_blueprint,
 )
@@ -59,7 +60,7 @@ from neuron_server.controllers.user_controller import (
 )
 from neuron_server.controllers.webhook_controller import blueprint as webhook_blueprint
 from neuron_server.database import pool
-from neuron_server.decorators.http_decorators import cache_control, cors
+from neuron_server.decorators.http_decorators import cache_control, cors, rate_limit
 from neuron_server.event_router import EventRouter
 from neuron_server.graph.connection import connection_manager
 from neuron_server.pubsub import client
@@ -98,6 +99,7 @@ blueprint = Blueprint(
 @cors(allowed_methods=["GET", "OPTIONS"], allowed_headers=["Authorization"])
 @cache_control(max_age=31536000)
 @requires_cookie
+@rate_limit(limit_type="static")
 async def get_static(path: str) -> Response:
     match = re.match(r".*_(t|l|xl|xxl|o)\.(jpe?g|png|webp)$", path)
     if match and not os.path.exists(os.path.join(config.static_folder, path)):
@@ -181,6 +183,40 @@ app.register_blueprint(media_blueprint, url_prefix="/api/media")
 app.register_blueprint(scheduler_blueprint, url_prefix="/api/scheduler")
 app.register_blueprint(provider_blueprint, url_prefix="/api/providers")
 app.register_blueprint(user_bp, url_prefix="/api/users")
+
+
+@app.route("/api/auth/refresh-csrf", methods=["POST"])
+@requires_auth
+async def refresh_csrf() -> tuple[dict[str, str], int]:
+    """
+    Refresh CSRF token endpoint.
+    Used by the frontend when CSRF token becomes invalid.
+    """
+    from quart import jsonify, request
+
+    # Create new session cookie with CSRF token
+    cookie_value, csrf_token = create_session_cookie(
+        request.token.user_id, include_csrf=True
+    )
+
+    # Create response with new CSRF token
+    response = jsonify({
+        "status": "success",
+        "csrf_token": csrf_token
+    })
+
+    # Set new session cookie
+    response.set_cookie(
+        "neuron_session",
+        value=cookie_value,
+        max_age=config.csrf_cookie_max_age,
+        httponly=True,
+        samesite="Lax",
+        secure=config.is_production,
+        path="/"  # Ensure cookie is sent with all requests
+    )
+
+    return response, 200
 
 
 @app.errorhandler(openai.APIError)

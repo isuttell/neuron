@@ -104,7 +104,7 @@ export default function Thread() {
   }, 100);
 
   return (
-    <div className="flex flex-1 p-4 flex-col flex-nowrap max-h-screen">
+    <div className="flex flex-1 p-4 ipad-top-spacing flex-col flex-nowrap max-h-screen">
       <div className="flex justify-between mb-2 border-b pb-2">
         <SidebarTrigger className="size-10 mr-2" />
         <h1 className="text-lg lg:text-2xl font-bold ">
@@ -165,7 +165,7 @@ export default function Thread() {
           )}
         >
           {widthMode !== "hidden" && threadId ? (
-            <MediaTimeline key={threadId} threadId={threadId} />
+            <MediaTimeline key={threadId} threadId={threadId} widthMode={widthMode} />
           ) : null}
         </div>
       </div>

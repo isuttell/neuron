@@ -1,20 +1,14 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
-import { getAccessToken } from "./getToken";
 import { Embedding } from "@/slices/embeddingsSlice";
 import type { Personality } from "../slices/personalitiesSlice.d";
+import { api } from "@/lib/api";
 
 export const fetchPersonality = createAsyncThunk(
   "personalities/fetchPersonality",
   async (personalityId: string, thunkAPI) => {
     try {
-      const accessToken = await getAccessToken();
-      const response = await fetch(`/api/personalities/${personalityId}`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-      const data = await response.json();
-      return data;
+      const personality = await api.get<Personality>(`/personalities/${personalityId}`);
+      return { personality };
     } catch (error) {
       if (error instanceof Error) {
         return thunkAPI.rejectWithValue(error.message);
@@ -28,14 +22,8 @@ export const fetchPersonalities = createAsyncThunk(
   "personalities/fetchPersonalities",
   async (_, thunkAPI) => {
     try {
-      const accessToken = await getAccessToken();
-      const response = await fetch(`/api/personalities/`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-      const data = await response.json();
-      return data;
+      const response = await api.get<{ personalities: Personality[] }>(`/personalities/`);
+      return response;
     } catch (error) {
       if (error instanceof Error) {
         return thunkAPI.rejectWithValue(error.message);
@@ -58,17 +46,8 @@ export const createPersonality = createAsyncThunk(
   "personalities/createPersonality",
   async (personality: CreatePersonality, thunkAPI) => {
     try {
-      const accessToken = await getAccessToken();
-      const response = await fetch(`/api/personalities/`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify(personality),
-      });
-      const data = await response.json();
-      return data;
+      const createdPersonality = await api.post<Personality>(`/personalities/`, personality as unknown as Record<string, string | undefined>);
+      return { personality: createdPersonality };
     } catch (error) {
       if (error instanceof Error) {
         return thunkAPI.rejectWithValue(error.message);
@@ -86,24 +65,15 @@ export const updatePersonality = createAsyncThunk(
   "personalities/updatePersonality",
   async (personality: UpdatePersonality, thunkAPI) => {
     try {
-      const accessToken = await getAccessToken();
-      const response = await fetch(`/api/personalities/${personality.id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({
-          name: personality.name,
-          context: personality.context,
-          memory: personality.memory,
-          tool_set: personality.tool_set,
-          description: personality.description,
-          logo: personality.logo,
-        }),
+      const updatedPersonality = await api.put<Personality>(`/personalities/${personality.id}`, {
+        name: personality.name,
+        context: personality.context,
+        memory: personality.memory,
+        tool_set: personality.tool_set,
+        description: personality.description,
+        logo: personality.logo,
       });
-      const data = await response.json();
-      return data;
+      return { personality: updatedPersonality };
     } catch (error) {
       if (error instanceof Error) {
         return thunkAPI.rejectWithValue(error.message);
@@ -117,13 +87,7 @@ export const deletePersonality = createAsyncThunk(
   "personalities/deletePersonality",
   async (personalityId: string, thunkAPI) => {
     try {
-      const accessToken = await getAccessToken();
-      await fetch(`/api/personalities/${personalityId}`, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
+      await api.delete(`/personalities/${personalityId}`);
       return personalityId;
     } catch (error) {
       if (error instanceof Error) {
@@ -143,17 +107,10 @@ export const fetchPersonalityEmbeddings = createAsyncThunk(
   "personalities/fetchEmbeddings",
   async (personalityId: string, thunkAPI) => {
     try {
-      const accessToken = await getAccessToken();
-      const response = await fetch(
-        `/api/personalities/${personalityId}/embeddings`,
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        }
+      const data = await api.get<EmbeddingsResponse>(
+        `/personalities/${personalityId}/embeddings`
       );
-      const data = await response.json();
-      return data as EmbeddingsResponse;
+      return data;
     } catch (error) {
       if (error instanceof Error) {
         return thunkAPI.rejectWithValue(error.message);
@@ -170,22 +127,13 @@ export const uploadEmbeddings = createAsyncThunk(
     thunkAPI
   ) => {
     try {
-      const accessToken = await getAccessToken();
       const formData = new FormData();
       formData.append("file", file);
 
-      const response = await fetch(
-        `/api/personalities/${personalityId}/embeddings`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-          body: formData,
-        }
+      const data = await api.post(
+        `/personalities/${personalityId}/embeddings`,
+        formData
       );
-
-      const data = await response.json();
       return data;
     } catch (error) {
       if (error instanceof Error) {
@@ -206,15 +154,8 @@ export const deleteEmbedding = createAsyncThunk(
     thunkAPI
   ) => {
     try {
-      const accessToken = await getAccessToken();
-      await fetch(
-        `/api/personalities/${personalityId}/embeddings/${embeddingId}`,
-        {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        }
+      await api.delete(
+        `/personalities/${personalityId}/embeddings/${embeddingId}`
       );
       return { personalityId, embeddingId };
     } catch (error) {
@@ -230,15 +171,8 @@ export const updatePersonalityLogo = createAsyncThunk(
   "personalities/updateLogo",
   async (personalityId: string, thunkAPI) => {
     try {
-      const accessToken = await getAccessToken();
-      const response = await fetch(`/api/personalities/${personalityId}/logo`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-      const data = await response.json();
-      return data;
+      const response = await api.post<{ personalities: Personality[]; logo: string; response: string }>(`/personalities/${personalityId}/logo`, {});
+      return { personalities: response.personalities };
     } catch (error) {
       if (error instanceof Error) {
         return thunkAPI.rejectWithValue(error.message);

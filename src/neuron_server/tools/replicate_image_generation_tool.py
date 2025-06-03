@@ -131,6 +131,7 @@ Prompt Tips:
             "recraft-ai/recraft-20b",
             "recraft-ai/recraft-v3",
             "ideogram-ai/ideogram-v2",
+            "google/imagen-4",
         ]
         | None
     ) = Field(
@@ -142,7 +143,9 @@ Prompt Tips:
             "Use recraft-20b when trying to replicate a specific style. ideogram-v2 "
             "excels at creating captivating designs, innovative logos and posters "
             "with unique text rendering capabilities. Use ideogram-v2 when you need "
-            "to create a logo or poster or need to generate clean looking text."
+            "to create a logo or poster or need to generate clean looking text. "
+            "google/imagen-4 excels at fine detail rendering, typography, and both "
+            "photorealistic and abstract styles with up to 2K resolution."
         ),
         default="black-forest-labs/flux-1.1-pro-ultra",
     )
@@ -238,9 +241,10 @@ class ReplicateImageGenerationTool(BaseTool):
         "It outputs very high resolution images and has the best consistency "
         "between images. The ultra variant outputs at a higher resolution at the "
         "cost of speed. flux-lora-isaac a fined tuned flux dev model for "
-        "generating images of Isaac. Use ideogram-v2 for logos and posters. When "
-        "generating personality logos they must use a square aspect ratio and work "
-        "well on a dark background."
+        "generating images of Isaac. Use ideogram-v2 for logos and posters. "
+        "google/imagen-4 excels at fine detail rendering and typography with "
+        "excellent photorealistic and abstract styles. When generating personality "
+        "logos they must use a square aspect ratio and work well on a dark background."
     )
 
     args_schema: type[ReplicateImageGenerationToolArgs] = (
@@ -255,14 +259,12 @@ class ReplicateImageGenerationTool(BaseTool):
         image_prompt: BufferedReader | None = None
         if image_url:
             tmp_upload_file = os.path.join(neuron_config.temp_folder, uuid4().hex)
-            # Generate a random session token
-            session_token = str(uuid4())
-
-            # Set the cookie in the session
-            cookies = (
-                {"neuron_session": session_token}
-                if neuron_config.static_require_auth else None
-            )
+            # Generate proper signed session cookie for internal tool access
+            cookies = None
+            if neuron_config.static_require_auth:
+                from neuron_server.controllers.csrf import create_session_cookie
+                session_cookie, _ = create_session_cookie("system", include_csrf=False)
+                cookies = {"neuron_session": session_cookie}
 
             async with (
                 aiohttp.ClientSession(cookies=cookies) as session,
@@ -284,6 +286,15 @@ class ReplicateImageGenerationTool(BaseTool):
         image_options: dict[str, Any],
     ) -> dict[str, Any]:
         """Prepare input arguments for the model."""
+        # Handle Google Imagen 4 specifically
+        if model == "google/imagen-4":
+            return {
+                "prompt": prompt,
+                "aspect_ratio": aspect_ratio,
+                "safety_filter_level": "block_only_high",
+            }
+
+        # Default arguments for other models
         input_args = {
             "prompt": prompt,
             "output_format": "png",

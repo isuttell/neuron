@@ -10,6 +10,7 @@ from neuron_server.llms.tools import (
     memory_tools,
     personality_tools,
     schedule_tools,
+    thread_memory_tools,
     tool_sets,
 )
 
@@ -55,7 +56,7 @@ class TestTools:
             assert any(isinstance(tool, BaseTool) for tool in tools)
             assert len(tools) == len(tool_sets["reasoning"]) + len(
                 personality_tools
-            ) + len(schedule_tools)
+            ) + len(schedule_tools) + len(thread_memory_tools)
 
     @pytest.mark.asyncio
     async def test_get_tools_multiple_categories(self) -> None:
@@ -68,6 +69,7 @@ class TestTools:
                 + len(tool_sets["inspect"])
                 + len(personality_tools)
                 + len(schedule_tools)
+                + len(thread_memory_tools)
             )
             assert len(tools) == expected_count
 
@@ -108,11 +110,13 @@ class TestTools:
             # Check for required tools
             personality_tool_names = {tool.name for tool in personality_tools}
             schedule_tool_names = {tool.name for tool in schedule_tools}
+            thread_memory_tool_names = {tool.name for tool in thread_memory_tools}
 
             tool_names = {tool.name for tool in tools}
 
             assert all(name in tool_names for name in personality_tool_names)
             assert all(name in tool_names for name in schedule_tool_names)
+            assert all(name in tool_names for name in thread_memory_tool_names)
 
     @pytest.mark.asyncio
     async def test_get_tools_empty_query(self) -> None:
@@ -121,7 +125,9 @@ class TestTools:
             mock_config.memory_enabled = False
             tools = await get_tools("")
             # Should only include required tools
-            expected_count = len(personality_tools) + len(schedule_tools)
+            expected_count = (
+                len(personality_tools) + len(schedule_tools) + len(thread_memory_tools)
+            )
             assert len(tools) == expected_count
 
     @pytest.mark.asyncio
@@ -132,7 +138,9 @@ class TestTools:
             # Should not raise exception, just ignore invalid category
             tools = await get_tools("invalid_category")
             # Should only include required tools
-            expected_count = len(personality_tools) + len(schedule_tools)
+            expected_count = (
+                len(personality_tools) + len(schedule_tools) + len(thread_memory_tools)
+            )
             assert len(tools) == expected_count
 
     @pytest.mark.asyncio

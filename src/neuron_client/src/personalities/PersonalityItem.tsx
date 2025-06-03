@@ -105,12 +105,12 @@ const PersonalityItem: React.FC<PersonalityItemProps> = ({
               onClick={async () => {
                 setIsUpdatingLogo(true);
                 try {
-                  const result = await dispatch(
+                  await dispatch(
                     updatePersonalityLogo(personality.id)
                   ).unwrap();
                   toast({
                     title: "Logo updated",
-                    description: result.response,
+                    description: "Logo updated successfully",
                   });
                 } catch (error) {
                   toast({

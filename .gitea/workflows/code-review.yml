@@ -26,13 +26,14 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ./.tools
-          key: ${{ runner.os }}-tools-v1-gitea-mcp-0.1.9-tea-0.9.2-jq-1.7.1
+          key: ${{ runner.os }}-tools-v1-gitea-mcp-0.1.9-tea-0.9.2-jq-1.7.1-actionlint-1.6.26
 
-      # Setup Node.js
+      # Setup Node.js with npm cache
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
 
       # Install tools if cache miss
       - name: Install tools
@@ -40,20 +41,50 @@ jobs:
         run: |
           mkdir -p .tools
           echo "Installing gitea-mcp..."
-          wget -q https://gitea.com/gitea/gitea-mcp/releases/download/v0.1.9/gitea-mcp_Linux_x86_64.tar.gz
+          curl -L -f -o gitea-mcp_Linux_x86_64.tar.gz https://gitea.com/gitea/gitea-mcp/releases/download/v0.1.9/gitea-mcp_Linux_x86_64.tar.gz
           tar -xzf gitea-mcp_Linux_x86_64.tar.gz -C .tools
           chmod +x .tools/gitea-mcp
           rm gitea-mcp_Linux_x86_64.tar.gz
           echo "Installing tea CLI..."
-          curl -sL https://dl.gitea.io/tea/0.9.2/tea-0.9.2-linux-amd64 > .tools/tea
+          curl -L -f -o .tools/tea https://dl.gitea.io/tea/0.9.2/tea-0.9.2-linux-amd64
           chmod +x .tools/tea
           echo "Installing jq..."
-          curl -sL https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-linux-amd64 > .tools/jq
+          curl -L -f -o .tools/jq https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-linux-amd64
           chmod +x .tools/jq
+          echo "Installing actionlint..."
+          curl -L -f -o actionlint.tar.gz https://github.com/rhysd/actionlint/releases/download/v1.6.26/actionlint_1.6.26_linux_amd64.tar.gz
+          tar -xzf actionlint.tar.gz -C .tools actionlint
+          chmod +x .tools/actionlint
+          rm actionlint.tar.gz
 
       # Add tools to PATH
       - name: Add tools to PATH
         run: echo "$PWD/.tools" >> $GITHUB_PATH
+
+      # Install Poetry
+      - name: Install Poetry
+        run: pipx install poetry==2.1.3
+
+      # Setup Python with poetry cache
+      - name: Set up Python 3.11
+        id: setup-python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'poetry'
+          cache-dependency-path: poetry.lock
+
+      # Set Poetry environment
+      - name: Set Poetry environment
+        run: poetry env use ${{ steps.setup-python.outputs.python-path }}
+
+      # Install npm dependencies
+      - name: Install npm dependencies
+        run: npm ci
+
+      # Install poetry dependencies
+      - name: Install poetry dependencies
+        run: poetry install --no-interaction
 
       # Authenticate tea
       - name: Authenticate tea
@@ -93,9 +124,8 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           model: "claude-sonnet-4-20250514"
-          max_turns: 25
           mcp_config: "mcp-config.json"
-          allowed_tools: "Read,View,Glob,GlobTool,Grep,GrepTool,Search,Bash(git:*),Bash(tea:*),Bash(find:*),Bash(ls:*),Bash(grep:*),Bash(jq:*),Bash(touch:*),WebFetch(domain:gitea.zaks.io),mcp__gitea__create_issue_comment,mcp__gitea__get_pull_request_by_index"
+          allowed_tools: "Read,View,Glob,GlobTool,Grep,GrepTool,Search,LS,Bash(git:*),Bash(tea:*),Bash(find:*),Bash(ls:*),Bash(grep:*),Bash(jq:*),Bash(touch:*),Bash(cat:*),Bash(head:*),Bash(tail:*),Bash(diff:*),Bash(npm run:*),Bash(npm test:*),Bash(poetry run:*),Bash(pytest:*),Bash(ruff:*),Bash(actionlint:*),Bash(pre-commit:*),WebFetch(gitea.zaks.io:*),mcp__gitea__create_issue_comment,mcp__gitea__get_pull_request_by_index,mcp__gitea__list_repo_issues,mcp__gitea__get_issue_by_index"
           prompt: |
             You are reviewing PR #${{ github.event.pull_request.number }} in this Gitea repository.
 
@@ -103,17 +133,17 @@ jobs:
             - Gitea MCP tools: Use `mcp__gitea__get_pull_request_by_index` to get PR details and `mcp__gitea__create_issue_comment` to post your review comments
             - Tea CLI: Use `tea pr --repo isuttell/neuron --comments ${{ github.event.pull_request.number }}` to read existing comments on the PR
             - WebFetch: Use to fetch the PR diff from https://gitea.zaks.io/isuttell/neuron/pulls/${{ github.event.pull_request.number }}.diff
+            - Testing tools available if needed: npm test, npm run lint, poetry run pytest, poetry run ruff, actionlint
 
             Steps to follow:
             1. Get PR details using: mcp__gitea__get_pull_request_by_index with index ${{ github.event.pull_request.number }}
             2. Read existing PR comments using: tea pr --repo isuttell/neuron --comments ${{ github.event.pull_request.number }}
             3. Fetch the PR diff using: WebFetch from https://gitea.zaks.io/isuttell/neuron/pulls/${{ github.event.pull_request.number }}.diff
             4. Read related files for additional context to understand the impact of changes
-            5. Analyze code style consistency by comparing with similar files in the repository
-            6. Determine potential impact on other parts of the codebase that depend on the changed code
-            7. Analyze code quality, potential bugs, and improvements in the diff
-            8. Use the Gitea MCP tools to leave a comment with your recommendations
-            9. If you approve of the PR with no critical issues, create a file named APPROVED by running: touch APPROVED
+            5. Analyze code quality, potential bugs, style consistency, and improvements
+            6. If you need to verify something specific or suspect an issue, you may run relevant tests
+            7. Use the Gitea MCP tools to leave a comment with your recommendations
+            8. If you approve of the PR with no critical issues, create a file named APPROVED by running: touch APPROVED
 
             Your review should be:
             - Concise, professional, and insightful
@@ -127,6 +157,8 @@ jobs:
             - Highlight potential impacts on other parts of the codebase
             - Avoid repeating feedback already given in previous reviews on this PR
             - Keep follow-up reviews brief if there are minimal changes since your last review
+
+            IMPORTANT: Do NOT comment on the status of Gitea Actions workflows or CI/CD checks. The review may complete before all actions finish, which is expected. Focus only on the code changes themselves.
 
             IMPORTANT: If you encounter any errors, permission issues, or need additional access during the review process, leave a comment on the PR explaining what went wrong and what additional access or fixes are needed.
 

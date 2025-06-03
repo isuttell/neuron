@@ -3,6 +3,7 @@ from quart import Blueprint, request
 from werkzeug.exceptions import BadRequest
 
 from neuron_server.controllers.auth import requires_auth
+from neuron_server.controllers.csrf import requires_csrf
 from neuron_server.tools.graph_arxiv_import_tool import GraphArxivImportTool
 from neuron_server.tools.graph_import_tool import GraphImportTool
 from neuron_server.tools.graph_question_tool import GraphQuestionTool
@@ -16,6 +17,7 @@ class QuestionRequest(BaseModel):
 
 @blueprint.post("/arxiv/<arxiv_id>")
 @requires_auth
+@requires_csrf
 async def post_arxiv_import(arxiv_id: str) -> dict[str, str]:
     tool = GraphArxivImportTool()
     results = await tool.ainvoke({"arxiv_id": arxiv_id})
@@ -24,6 +26,7 @@ async def post_arxiv_import(arxiv_id: str) -> dict[str, str]:
 
 @blueprint.post("/pdf")
 @requires_auth
+@requires_csrf
 async def post_upload_pdf() -> dict[str, str]:
     files = await request.files
     form = await request.form
@@ -53,6 +56,7 @@ async def post_upload_pdf() -> dict[str, str]:
 
 @blueprint.post("/doc")
 @requires_auth
+@requires_csrf
 async def post_upload_doc() -> dict[str, str]:
     files = await request.files
     form = await request.form
@@ -82,6 +86,7 @@ async def post_upload_doc() -> dict[str, str]:
 
 @blueprint.post("/question")
 @requires_auth
+@requires_csrf
 async def post_question() -> dict[str, str]:
     body = await request.get_json()
     payload = QuestionRequest(**body)

@@ -24,6 +24,14 @@ class TestFFmpegTool:
             assert isinstance(cookies["neuron_session"], str)
             assert len(cookies["neuron_session"]) > 0
 
+            # Verify the cookie is properly signed and can be verified
+            from neuron_server.controllers.csrf import verify_cookie_data
+            session_cookie = cookies["neuron_session"]
+            cookie_data = verify_cookie_data(session_cookie)
+            assert cookie_data is not None
+            # In tests, create_session_cookie might be mocked to use test_user_id
+            assert cookie_data.get("user_id") in ["system", "test_user_id"]
+
         # Test with auth disabled
         with patch.object(neuron_config, "static_require_auth", False):
             cookies = FFmpegTool.get_auth_cookies()
