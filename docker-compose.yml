@@ -1,4 +1,5 @@
 services:
+  # Optional: Remove or comment out the client service if you set SERVE_CLIENT=true on the server
   client:
     restart: unless-stopped
     image: gitea.zaks.io/isuttell/neuron-client:latest

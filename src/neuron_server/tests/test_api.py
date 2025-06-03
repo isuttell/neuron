@@ -73,7 +73,7 @@ async def test_startup(app: Quart, mock_scheduler: MagicMock) -> None:
 
 @pytest.mark.asyncio
 async def test_index_routes(app: Quart) -> None:
-    """Test that client routes are no longer served by the API."""
+    """Test that client routes behave correctly based on serve_client setting."""
     test_routes = [
         "/",
         "/thread/123",
@@ -92,14 +92,19 @@ async def test_index_routes(app: Quart) -> None:
     async with app.test_client() as client:
         for route in test_routes:
             response = await client.get(route)
-            # Routes now return 404 - handled by client container
-            assert response.status_code == HTTPStatus.NOT_FOUND
+            if config.serve_client:
+                # When client serving is enabled, routes should return index.html (200)
+                assert response.status_code == HTTPStatus.OK
+            else:
+                # When client serving is disabled, routes return 404
+                assert response.status_code == HTTPStatus.NOT_FOUND
 
 
-@pytest.mark.skip(reason="Static file handling changed after client/server separation")
 @pytest.mark.asyncio
 async def test_static_file_not_found(app: Quart) -> None:
     """Test that a non-existent static file returns 404."""
+    if not config.serve_client:
+        pytest.skip("Client serving is disabled")
     # Create a temporary directory for static files
     with patch("neuron_server.api.config.static_folder", "/tmp/test_static"):
         os.makedirs("/tmp/test_static", exist_ok=True)
@@ -119,10 +124,11 @@ async def test_static_file_not_found(app: Quart) -> None:
             os.rmdir("/tmp/test_static")
 
 
-@pytest.mark.skip(reason="Static file handling changed after client/server separation")
 @pytest.mark.asyncio
 async def test_static_file_unauthorized(app: Quart) -> None:
     """Test that accessing static files without a cookie returns 401 Unauthorized."""
+    if not config.serve_client:
+        pytest.skip("Client serving is disabled")
     # Save original value and temporarily set to True for this test
     original_value = config.static_require_auth
     config.static_require_auth = True
