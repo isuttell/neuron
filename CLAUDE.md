@@ -30,7 +30,7 @@ The application uses a WebSocket-based event system for real-time communication 
 ## Important Notes
 
 - The project uses Vite for frontend development and building
-- The backend is built with Python 3.11 and uses Poetry for dependency management
+- The backend is built with Python 3.12 and uses Poetry for dependency management
 - Neo4j is used for knowledge graph functionality
 - Redis is used for caching and pub/sub messaging
 - The system supports various LLM providers including OpenAI, Anthropic, Cohere, and Google

@@ -5,7 +5,7 @@ description = ""
 authors = ["Isaac Suttell <isaac@isaacsuttell.com>"]
 
 [tool.poetry.dependencies]
-python = ">=3.11,<3.13"
+python = ">=3.12,<3.13"
 python-dotenv = "*"
 huggingface_hub = "*"
 opencv-python-headless = "*"
@@ -73,8 +73,8 @@ requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 
-# Assume Python 3.11
-target-version = "py311"
+# Assume Python 3.12
+target-version = "py312"
 
 # Enable auto-fixes
 fix = true
