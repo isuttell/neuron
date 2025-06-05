@@ -272,7 +272,7 @@ export default function Index() {
                       </div>
                     ) : (
                       personalities
-                        .filter(p => p && p.name) // Filter out null/undefined personalities
+                        .filter((p): p is NonNullable<typeof p> => p !== null && p !== undefined && !!p.name)
                         .slice()
                         .sort((a, b) => {
                           // Add null checks for name property

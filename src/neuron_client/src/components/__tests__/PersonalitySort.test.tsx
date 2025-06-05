@@ -9,7 +9,7 @@ interface TestPersonality {
 
 const PersonalitySelector = ({ personalities }: { personalities: (TestPersonality | null | undefined)[] }) => {
   const sortedPersonalities = personalities
-    .filter(p => p && p.name) // Filter out null/undefined personalities
+    .filter((p): p is TestPersonality => p !== null && p !== undefined && !!p.name)
     .slice()
     .sort((a, b) => {
       // Add null checks for name property
@@ -117,5 +117,33 @@ describe("Personality Sorting", () => {
     expect(options).toHaveLength(2);
     expect(options[0]).toHaveTextContent("Alpha");
     expect(options[1]).toHaveTextContent("Beta");
+  });
+
+  it("handles completely undefined personality array", () => {
+    // Test with undefined passed as the array
+    const UndefinedTest = () => {
+      const personalities = undefined as (TestPersonality | null | undefined)[] | undefined;
+      return <PersonalitySelector personalities={personalities || []} />;
+    };
+
+    expect(() => render(<UndefinedTest />)).not.toThrow();
+    const options = screen.queryAllByTestId("personality-option");
+    expect(options).toHaveLength(0);
+  });
+
+  it("handles personalities that are entirely undefined", () => {
+    const personalities: (TestPersonality | null | undefined)[] = [
+      undefined,
+      undefined,
+      null,
+      { id: "1", name: "Valid" },
+      undefined,
+    ];
+
+    render(<PersonalitySelector personalities={personalities} />);
+
+    const options = screen.getAllByTestId("personality-option");
+    expect(options).toHaveLength(1);
+    expect(options[0]).toHaveTextContent("Valid");
   });
 });
