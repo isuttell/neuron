@@ -1,6 +1,10 @@
 import { configureStore } from "@reduxjs/toolkit";
 import personalitiesReducer, { setActivePersonality } from "../personalitiesSlice";
 
+interface TestState {
+  personalities: ReturnType<typeof personalitiesReducer>;
+}
+
 describe("personalitiesSlice - activePersonalityId localStorage handling", () => {
   beforeEach(() => {
     // Clear localStorage before each test
@@ -24,7 +28,7 @@ describe("personalitiesSlice - activePersonalityId localStorage handling", () =>
     expect(localStorage.getItem("activePersonalityId")).toBeNull();
 
     // Check that state was updated
-    const state = store.getState();
+    const state = store.getState() as TestState;
     expect(state.personalities.activePersonalityId).toBeUndefined();
   });
 
@@ -42,7 +46,7 @@ describe("personalitiesSlice - activePersonalityId localStorage handling", () =>
     expect(localStorage.getItem("activePersonalityId")).toBe("personality-123");
 
     // Check that state was updated
-    const state = store.getState();
+    const state = store.getState() as TestState;
     expect(state.personalities.activePersonalityId).toBe("personality-123");
   });
 
@@ -61,7 +65,7 @@ describe("personalitiesSlice - activePersonalityId localStorage handling", () =>
       },
     });
 
-    const state = store.getState();
+    const state = store.getState() as TestState;
     expect(state.personalities.activePersonalityId).toBeUndefined();
   });
 });
