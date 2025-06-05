@@ -73,6 +73,16 @@ export default function Index() {
     dispatch(fetchRecentThreads());
   }, [dispatch]);
 
+  // Clear activePersonalityId if it doesn't exist in the loaded personalities
+  useEffect(() => {
+    if (!personalitiesLoading && personalities.length > 0 && activePersonalityId) {
+      const personalityExists = personalities.some(p => p.id === activePersonalityId);
+      if (!personalityExists) {
+        dispatch(setActivePersonality(undefined));
+      }
+    }
+  }, [personalities, personalitiesLoading, activePersonalityId, dispatch]);
+
   useEffect(() => {
     if (activePersonalityId) {
       // Small delay to ensure DOM is updated after personality selection
