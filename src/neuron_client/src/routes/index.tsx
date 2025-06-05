@@ -32,6 +32,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { fetchPersonalities } from "../actions/personalityActions";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 const selectRecentThreads = (state: RootState) => {
   const oneDayAgo = Date.now() - 1000 * 60 * 60 * 24; // 24 hours ago in milliseconds
@@ -244,42 +245,50 @@ export default function Index() {
               )}
             </div>
             <div className="flex flex-row gap-2 pt-2">
-              <Select
-                value={activePersonalityId}
-                onValueChange={(value) => {
-                  dispatch(setActivePersonality(value));
-                }}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue
-                    placeholder={
-                      personalitiesLoading
-                        ? "Loading personalities..."
-                        : "Select a personality"
-                    }
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  {personalitiesLoading && personalities.length < 1 ? (
-                    <div className="flex items-center justify-center p-2">
-                      <Spinner className="size-4" />
-                    </div>
-                  ) : personalities.length === 0 ? (
-                    <div className="text-sm text-muted-foreground text-center p-2">
-                      No personalities found
-                    </div>
-                  ) : (
-                    personalities
-                      .slice()
-                      .sort((a, b) => a.name.localeCompare(b.name))
-                      .map((personality) => (
-                        <SelectItem key={personality.id} value={personality.id}>
-                          {personality.name}
-                        </SelectItem>
-                      ))
-                  )}
-                </SelectContent>
-              </Select>
+              <ErrorBoundary>
+                <Select
+                  value={activePersonalityId}
+                  onValueChange={(value) => {
+                    dispatch(setActivePersonality(value));
+                  }}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue
+                      placeholder={
+                        personalitiesLoading
+                          ? "Loading personalities..."
+                          : "Select a personality"
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {personalitiesLoading && personalities.length < 1 ? (
+                      <div className="flex items-center justify-center p-2">
+                        <Spinner className="size-4" />
+                      </div>
+                    ) : personalities.length === 0 ? (
+                      <div className="text-sm text-muted-foreground text-center p-2">
+                        No personalities found
+                      </div>
+                    ) : (
+                      personalities
+                        .filter(p => p && p.name) // Filter out null/undefined personalities
+                        .slice()
+                        .sort((a, b) => {
+                          // Add null checks for name property
+                          const nameA = a?.name || "";
+                          const nameB = b?.name || "";
+                          return nameA.localeCompare(nameB);
+                        })
+                        .map((personality) => (
+                          <SelectItem key={personality.id} value={personality.id}>
+                            {personality.name || "Unnamed"}
+                          </SelectItem>
+                        ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </ErrorBoundary>
               <div className="flex-1" />
               <div className="flex gap-2">
                 <Button
