@@ -73,6 +73,7 @@ from neuron_server.tools.replicate_audio_generation_tool import (
 from neuron_server.tools.replicate_image_generation_tool import (
     ReplicateImageGenerationTool,
 )
+from neuron_server.tools.replicate_kokoro_tts_tool import ReplicateKokoroTTSTool
 from neuron_server.tools.replicate_kontext_image_tool import (
     ReplicateKontextImageTool,
 )
@@ -147,6 +148,7 @@ tool_sets: dict[str, list[BaseTool]] = {
     "tts": [
         ElevenLabsTTSTool(),
         ReplicatePlayDialogTool(),
+        ReplicateKokoroTTSTool(),
         FFmpegTool(),
         WhisperSTTTool(),
     ],
