@@ -44,6 +44,7 @@ jobs:
               - '*.tsx'
               - '*.js'
               - '*.jsx'
+              - '.gitea/workflows/**'
             docs:
               - '**/*.md'
               - 'docs/**'
