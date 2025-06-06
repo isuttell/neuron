@@ -82,6 +82,33 @@ jobs:
       - name: Run tests
         run: poetry run pytest src/neuron_server/
 
+  # Docker build verification for backend
+  backend-docker-build:
+    needs: changes
+    if: needs.changes.outputs.backend == 'true' && github.base_ref == 'master'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver: docker-container
+          install: true
+
+      - name: Build Docker image (no push)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile
+          builder: ${{ steps.buildx.outputs.name }}
+          push: false
+          load: true
+          tags: gitea.zaks.io/isuttell/neuron-server:pr-${{ github.event.pull_request.number }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
   # Run frontend tests if frontend files changed
   frontend-tests:
     needs: changes
@@ -107,6 +134,33 @@ jobs:
 
       - name: Test
         run: npm test
+
+  # Docker build verification for frontend
+  frontend-docker-build:
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true' && github.base_ref == 'master'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver: docker-container
+          install: true
+
+      - name: Build Docker image (no push)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile.client
+          builder: ${{ steps.buildx.outputs.name }}
+          push: false
+          load: true
+          tags: gitea.zaks.io/isuttell/neuron-client:pr-${{ github.event.pull_request.number }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
 
   # Run workflow linting if workflows changed
@@ -148,7 +202,7 @@ jobs:
 
   # Check if all relevant tests passed
   tests-passed:
-    needs: [changes, backend-tests, frontend-tests, workflow-lint]
+    needs: [changes, backend-tests, backend-docker-build, frontend-tests, frontend-docker-build, workflow-lint]
     if: always()
     runs-on: ubuntu-latest
     outputs:
@@ -166,12 +220,22 @@ jobs:
               echo "Backend tests failed or were cancelled"
               ALL_PASSED=false
             fi
+            # Check Docker build only for PRs to master
+            if [[ "${{ github.base_ref }}" == "master" ]] && [[ "${{ needs.backend-docker-build.result }}" != "success" ]]; then
+              echo "Backend Docker build failed or was cancelled"
+              ALL_PASSED=false
+            fi
           fi
 
           # Check frontend tests if frontend changed
           if [[ "${{ needs.changes.outputs.frontend }}" == "true" ]]; then
             if [[ "${{ needs.frontend-tests.result }}" != "success" ]]; then
               echo "Frontend tests failed or were cancelled"
+              ALL_PASSED=false
+            fi
+            # Check Docker build only for PRs to master
+            if [[ "${{ github.base_ref }}" == "master" ]] && [[ "${{ needs.frontend-docker-build.result }}" != "success" ]]; then
+              echo "Frontend Docker build failed or was cancelled"
               ALL_PASSED=false
             fi
           fi
