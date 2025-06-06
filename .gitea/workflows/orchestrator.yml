@@ -398,7 +398,6 @@ jobs:
             5. Analyze code quality, potential bugs, style consistency, and improvements
             6. If you need to verify something specific or suspect an issue, you may run relevant tests
             7. Use the Gitea MCP tools to leave a comment with your recommendations
-            8. If you approve of the PR with no critical issues, create a file named APPROVED by running: touch APPROVED
 
             Your review should be:
             - To the point and professional
@@ -414,16 +413,3 @@ jobs:
             - Keep follow-up reviews brief if there are minimal changes since your last review
 
             IMPORTANT: If you encounter any errors, permission issues, or need additional access during the review process, leave a comment on the PR explaining what went wrong and what additional access or fixes are needed.
-
-      # Check if PR was approved
-      - name: Check PR Approval Status
-        id: check-approval
-        run: |
-          if [ -f "APPROVED" ]; then
-            echo "✅ PR has been approved by Claude"
-            echo "approved=true" >> $GITHUB_OUTPUT
-          else
-            echo "❌ PR has not been approved - review comments have been posted"
-            echo "approved=false" >> $GITHUB_OUTPUT
-            exit 1
-          fi
