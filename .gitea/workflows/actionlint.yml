@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - '.gitea/workflows/**'
+  workflow_call:
 
 jobs:
   actionlint:
