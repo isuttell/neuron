@@ -80,7 +80,7 @@ describe("MainSidebar", () => {
     } as Auth0ContextInterface<User>);
 
     // Mock hooks
-    (hooks.useAppSelector as jest.Mock).mockReturnValue(null); // Default no sidebar image
+    (hooks.useAppSelector as unknown as jest.Mock).mockReturnValue(null); // Default no sidebar image
     (useMobile.useIsMobile as jest.Mock).mockReturnValue(false); // Default to desktop
   });
 
@@ -180,7 +180,7 @@ describe("MainSidebar", () => {
 
   describe("Sidebar image", () => {
     it("shows custom sidebar image when available", () => {
-      (hooks.useAppSelector as jest.Mock).mockReturnValue("https://example.com/custom-image.png");
+      (hooks.useAppSelector as unknown as jest.Mock).mockReturnValue("https://example.com/custom-image.png");
 
       renderComponent();
 
