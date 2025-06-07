@@ -1,4 +1,4 @@
-name: CI Orchestrator
+name: Test Orchestrator
 
 on:
   pull_request:
@@ -129,8 +129,8 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Test Types
-        run: npx tsc --noEmit
+      - name: Build
+        run: npm run build
 
       - name: Test
         run: npm test
@@ -380,35 +380,25 @@ jobs:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           model: "claude-sonnet-4-20250514"
           mcp_config: "mcp-config.json"
-          allowed_tools: "Read,View,Glob,GlobTool,Grep,GrepTool,Search,LS,Bash(git:*),Bash(tea:*),Bash(find:*),Bash(ls:*),Bash(grep:*),Bash(jq:*),Bash(touch:*),Bash(cat:*),Bash(head:*),Bash(tail:*),Bash(diff:*),Bash(npm run:*),Bash(npm test:*),Bash(poetry run:*),Bash(pytest:*),Bash(ruff:*),Bash(actionlint:*),Bash(pre-commit:*),WebFetch(gitea.zaks.io:*),mcp__gitea__create_issue_comment,mcp__gitea__get_pull_request_by_index,mcp__gitea__list_repo_issues,mcp__gitea__get_issue_by_index"
+          allowed_tools: "Read,View,Glob,GlobTool,Grep,GrepTool,Search,LS,Bash(git:*),Bash(tea:*),Bash(find:*),Bash(ls:*),Bash(grep:*),Bash(jq:*),Bash(cat:*),Bash(head:*),Bash(tail:*),Bash(diff:*),Bash(sed:*),WebFetch(gitea.zaks.io:*),WebFetch(https://gitea.zaks.io:*),mcp__gitea__create_issue_comment,mcp__gitea__get_pull_request_by_index,mcp__gitea__list_repo_issues,mcp__gitea__get_issue_by_index"
           prompt: |
-            You are reviewing PR #${{ github.event.pull_request.number }} in this Gitea repository.
-
-            IMPORTANT: You have access to the following tools:
-            - Gitea MCP tools: Use `mcp__gitea__get_pull_request_by_index` to get PR details and `mcp__gitea__create_issue_comment` to post your review comments
-            - Tea CLI: Use `tea pr --repo isuttell/neuron --comments ${{ github.event.pull_request.number }}` to read existing comments on the PR
-            - WebFetch: Use to fetch the PR diff from https://gitea.zaks.io/isuttell/neuron/pulls/${{ github.event.pull_request.number }}.diff
-            - Testing tools available if needed: npm test, npm run lint, poetry run pytest, poetry run ruff, actionlint
+            You are reviewing PR #${{ github.event.pull_request.number }}. All tests and code quality checks have completed succesfully.
 
             Steps to follow:
             1. Get PR details using: mcp__gitea__get_pull_request_by_index with index ${{ github.event.pull_request.number }}
             2. Read existing PR comments using: tea pr --repo isuttell/neuron --comments ${{ github.event.pull_request.number }}
-            3. Fetch the PR diff using: WebFetch from https://gitea.zaks.io/isuttell/neuron/pulls/${{ github.event.pull_request.number }}.diff
-            4. Read related files for additional context to understand the impact of changes
-            5. Analyze code quality, potential bugs, style consistency, and improvements
-            6. If you need to verify something specific or suspect an issue, you may run relevant tests
-            7. Use the Gitea MCP tools to leave a comment with your recommendations
+            3. Use 'tea pr ${{ github.event.pull_request.number }} --fields diff | sed -n '0,5000p'` for a unified diff, use sed control large diffs
+            4. Analyze code quality, potential bugs, style consistency, and improvements
+            5. Use the Gitea MCP tools to leave a comment with your recommendations and a final Approved or Not Approved
 
-            Your review should be:
-            - To the point and professional
+            Your final report should be:
+            - Short, to the point and professional
             - Specific with line numbers when possible
             - Focused on problems and potential improvements
             - Free of unnecessary explanations
             - Build on previous conversations from existing comments
             - Address changes made since your last review (if any)
             - Acknowledge fixes to previously identified issues
-            - Include assessment of code style consistency with the repository
-            - Highlight potential impacts on other parts of the codebase
             - Avoid repeating feedback already given in previous reviews on this PR
             - Keep follow-up reviews brief if there are minimal changes since your last review
 
