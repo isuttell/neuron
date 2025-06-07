@@ -1,4 +1,6 @@
+import os
 from datetime import datetime, timedelta
+from unittest.mock import patch
 
 import pytest
 from quart import Quart
@@ -170,6 +172,7 @@ class TestCSRFDecorator:
             data = await response.get_json()
             assert data["status"] == "ok"
 
+    @patch.dict(os.environ, {"DISABLE_CSRF": ""}, clear=False)
     async def test_requires_csrf_missing_token(self):
         """Test CSRF decorator with missing token."""
         app = Quart(__name__)
@@ -195,6 +198,7 @@ class TestCSRFDecorator:
 
             assert response.status_code == 403
 
+    @patch.dict(os.environ, {"DISABLE_CSRF": ""}, clear=False)
     async def test_requires_csrf_invalid_token(self):
         """Test CSRF decorator with invalid token."""
         app = Quart(__name__)
