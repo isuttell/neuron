@@ -234,7 +234,7 @@ describe("ThreadMessageForm", () => {
   });
 
   it("does not submit when thread is missing", () => {
-    render(<ThreadMessageForm thread={undefined as ThreadModel} />);
+    render(<ThreadMessageForm thread={null as unknown as ThreadModel} />);
 
     expect(screen.getByTestId("message-form")).toBeInTheDocument();
     expect(screen.getByTestId("loading-state")).toHaveTextContent("idle");
