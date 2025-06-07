@@ -30,6 +30,7 @@ import { Link, NavLink, useLocation } from "react-router-dom";
 import { ThreadsUpdating } from "@/components/ThreadsUpdating";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { useAppSelector } from "@/hooks";
+import { usePermissions } from "@/hooks/usePermissions";
 import { getSidebarImage } from "@/slices/appSlice";
 import { useAuth0 } from "@auth0/auth0-react";
 import { LucideIcon } from "lucide-react";
@@ -46,6 +47,7 @@ export function MainSidebar() {
   const location = useLocation();
   const { logout, user } = useAuth0();
   const sidebarImage = useAppSelector(getSidebarImage);
+  const { canAccessPrompts, canAccessProviders } = usePermissions();
   const links: SidebarLink[] = [
     {
       to: "/",
@@ -154,15 +156,17 @@ export function MainSidebar() {
                     <div className="text-xs text-gray-500">{user?.email}</div>
                   </div>
                 </div>
-                <DropdownMenuItem asChild>
-                  <NavLink
-                    to="/prompts"
-                    className="text-gray-300 hover:text-accent-foreground flex items-center gap-2 block"
-                  >
-                    <FileText className="h-4 w-4" />
-                    <span>Prompts</span>
-                  </NavLink>
-                </DropdownMenuItem>
+                {canAccessPrompts && (
+                  <DropdownMenuItem asChild>
+                    <NavLink
+                      to="/prompts"
+                      className="text-gray-300 hover:text-accent-foreground flex items-center gap-2 block"
+                    >
+                      <FileText className="h-4 w-4" />
+                      <span>Prompts</span>
+                    </NavLink>
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem asChild>
                   <NavLink
                     to="/scheduled"
@@ -172,7 +176,9 @@ export function MainSidebar() {
                     <span>Scheduled</span>
                   </NavLink>
                 </DropdownMenuItem>
-                <ProvidersMenuItem className="text-gray-300 hover:text-accent-foreground flex items-center gap-2" />
+                {canAccessProviders && (
+                  <ProvidersMenuItem className="text-gray-300 hover:text-accent-foreground flex items-center gap-2" />
+                )}
                 <DropdownMenuItem
                   onClick={() => {
                     logout();
