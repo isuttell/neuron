@@ -65,7 +65,6 @@ describe("providerSlice", () => {
         active_provider_id: "provider-1",
       });
 
-      // @ts-expect-error Async thunk dispatch type mismatch
       await store.dispatch(fetchProviders());
 
       const state = store.getState();
@@ -82,7 +81,6 @@ describe("providerSlice", () => {
       const errorMessage = "Failed to fetch";
       (api.get as jest.Mock).mockRejectedValueOnce(new Error(errorMessage));
 
-      // @ts-expect-error Async thunk dispatch type mismatch
       await store.dispatch(fetchProviders());
 
       const state = store.getState();
@@ -96,7 +94,6 @@ describe("providerSlice", () => {
       const providerId = "provider-1";
       (api.post as jest.Mock).mockResolvedValueOnce({});
 
-      // @ts-expect-error Async thunk dispatch type mismatch
       await store.dispatch(setupProvider(providerId));
 
       const state = store.getState();
@@ -131,7 +128,6 @@ describe("providerSlice", () => {
         active_provider_id: "provider-1",
       });
 
-      // @ts-expect-error Async thunk dispatch type mismatch
       await store.dispatch(fetchProviders());
     });
 

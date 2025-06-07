@@ -57,7 +57,6 @@ describe("Provider Slice - Default Provider Integration", () => {
     });
 
     // Fetch providers
-    // @ts-expect-error Async thunk dispatch type mismatch
     await store.dispatch(fetchProviders());
 
     // Get state after fetch
@@ -78,7 +77,6 @@ describe("Provider Slice - Default Provider Integration", () => {
     (api.post as jest.Mock).mockResolvedValueOnce({});
 
     // Simulate setting up the default provider
-    // @ts-expect-error Async thunk dispatch type mismatch
     await store.dispatch(setupProvider(defaultProvider!.id));
 
     // Verify the active provider was set
@@ -116,7 +114,6 @@ describe("Provider Slice - Default Provider Integration", () => {
     });
 
     // Fetch providers
-    // @ts-expect-error Async thunk dispatch type mismatch
     await store.dispatch(fetchProviders());
 
     // Get state after fetch
