@@ -85,9 +85,7 @@ async def test_upsert_embedding(
             "neuron_server.controllers.embedding_controller.memories_store",
             new_callable=AsyncMock,
         ) as mock_memories_store,
-        patch.object(
-            EmbeddingModel, "get", new_callable=AsyncMock
-        ) as mock_get,
+        patch.object(EmbeddingModel, "get", new_callable=AsyncMock) as mock_get,
     ):
         # First call returns None (not found), second call returns the created embedding
         mock_get.side_effect = [None, mock_embedding]
@@ -155,9 +153,7 @@ async def test_upsert_embedding_existing(
             "neuron_server.controllers.embedding_controller.memories_store",
             new_callable=AsyncMock,
         ) as mock_memories_store,
-        patch.object(
-            EmbeddingModel, "get", new_callable=AsyncMock
-        ) as mock_get,
+        patch.object(EmbeddingModel, "get", new_callable=AsyncMock) as mock_get,
     ):
         # Both calls return the existing embedding
         mock_get.return_value = mock_embedding
@@ -204,12 +200,8 @@ async def test_delete_embedding(
     """Test deleting an embedding."""
     # Setup mocks
     with (
-        patch.object(
-            EmbeddingModel, "get", new_callable=AsyncMock
-        ) as mock_get,
-        patch.object(
-            EmbeddingModel, "delete", new_callable=AsyncMock
-        ) as mock_delete,
+        patch.object(EmbeddingModel, "get", new_callable=AsyncMock) as mock_get,
+        patch.object(EmbeddingModel, "delete", new_callable=AsyncMock) as mock_delete,
     ):
         mock_get.return_value = mock_embedding
         mock_delete.return_value = None
@@ -244,9 +236,7 @@ async def test_delete_embedding_not_found(
 ) -> None:
     """Test deleting a non-existent embedding."""
     # Setup mocks
-    with patch.object(
-        EmbeddingModel, "get", new_callable=AsyncMock
-    ) as mock_get:
+    with patch.object(EmbeddingModel, "get", new_callable=AsyncMock) as mock_get:
         mock_get.return_value = None
 
         # Create request context

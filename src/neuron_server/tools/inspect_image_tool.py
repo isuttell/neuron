@@ -35,12 +35,13 @@ async def get_image_bytes(image_url: str) -> bytes:
     cookies = None
     if config.static_require_auth:
         from neuron_server.controllers.csrf import create_session_cookie
+
         session_cookie, _ = create_session_cookie("system", include_csrf=False)
         cookies = {"neuron_session": session_cookie}
 
     async with (
         aiohttp.ClientSession(cookies=cookies) as session,
-        session.get(image_url) as response
+        session.get(image_url) as response,
     ):
         response.raise_for_status()
         return await response.content.read()

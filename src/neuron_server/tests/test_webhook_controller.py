@@ -48,9 +48,7 @@ def mock_execute_agent() -> AsyncMock:
 @pytest.fixture
 def mock_rate_limiter() -> AsyncMock:
     """Mock the rate limiter to allow all requests."""
-    with patch(
-        "neuron_server.decorators.http_decorators._rate_limiter"
-    ) as mock:
+    with patch("neuron_server.decorators.http_decorators._rate_limiter") as mock:
         mock._get_client_ip.return_value = "127.0.0.1"
         mock.check_limits = AsyncMock()
         yield mock
@@ -240,9 +238,7 @@ async def test_prompt_rate_limit_exceeded(
         mock_limiter._get_client_ip.return_value = "127.0.0.1"
         mock_limiter.check_limits = AsyncMock(
             side_effect=RateLimitExceededError(
-                retry_after=60,
-                limit_type="requests per minute",
-                limit_value=60
+                retry_after=60, limit_type="requests per minute", limit_value=60
             )
         )
 

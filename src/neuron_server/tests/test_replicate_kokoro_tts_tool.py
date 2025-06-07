@@ -22,10 +22,7 @@ class TestReplicateKokoroTTSTool:
         """Test that the args schema validates correctly."""
         # Valid args
         args = ReplicateKokoroTTSToolArgs(
-            name="test",
-            text="Hello world",
-            voice="af_bella",
-            speed=1.0
+            name="test", text="Hello world", voice="af_bella", speed=1.0
         )
         assert args.name == "test"
         assert args.text == "Hello world"
@@ -34,10 +31,7 @@ class TestReplicateKokoroTTSTool:
 
     def test_args_schema_defaults(self):
         """Test that default values are set correctly."""
-        args = ReplicateKokoroTTSToolArgs(
-            name="test",
-            text="Hello world"
-        )
+        args = ReplicateKokoroTTSToolArgs(name="test", text="Hello world")
         assert args.voice == "af_bella"
         assert args.speed == 1.0
 
@@ -46,9 +40,7 @@ class TestReplicateKokoroTTSTool:
         # Valid speeds
         for speed in [0.1, 1.0, 2.0, 5.0]:
             args = ReplicateKokoroTTSToolArgs(
-                name="test",
-                text="Hello world",
-                speed=speed
+                name="test", text="Hello world", speed=speed
             )
             assert args.speed == speed
 
@@ -57,14 +49,14 @@ class TestReplicateKokoroTTSTool:
             ReplicateKokoroTTSToolArgs(
                 name="test",
                 text="Hello world",
-                speed=0.05  # Below minimum
+                speed=0.05,  # Below minimum
             )
 
         with pytest.raises(ValueError):
             ReplicateKokoroTTSToolArgs(
                 name="test",
                 text="Hello world",
-                speed=6.0  # Above maximum
+                speed=6.0,  # Above maximum
             )
 
     def test_voice_validation(self):
@@ -73,15 +65,13 @@ class TestReplicateKokoroTTSTool:
         valid_voices = ["af_bella", "am_fenrir", "bf_emma", "af_nicole"]
         for voice in valid_voices:
             args = ReplicateKokoroTTSToolArgs(
-                name="test",
-                text="Hello world",
-                voice=voice
+                name="test", text="Hello world", voice=voice
             )
             assert args.voice == voice
 
-    @patch('neuron_server.tools.replicate_kokoro_tts_tool.replicate.async_run')
-    @patch('neuron_server.tools.replicate_kokoro_tts_tool.save_replicate_output')
-    @patch('neuron_server.models.media_item_model.MediaItemModel.create')
+    @patch("neuron_server.tools.replicate_kokoro_tts_tool.replicate.async_run")
+    @patch("neuron_server.tools.replicate_kokoro_tts_tool.save_replicate_output")
+    @patch("neuron_server.models.media_item_model.MediaItemModel.create")
     async def test_arun_bytes_output(
         self, mock_create, mock_save_output, mock_replicate
     ):
@@ -90,12 +80,7 @@ class TestReplicateKokoroTTSTool:
         mock_replicate.return_value = b"fake audio data"
 
         # Mock config
-        config = {
-            "configurable": {
-                "thread_id": "test-thread",
-                "user_id": "test-user"
-            }
-        }
+        config = {"configurable": {"thread_id": "test-thread", "user_id": "test-user"}}
 
         tool = ReplicateKokoroTTSTool()
 
@@ -104,7 +89,7 @@ class TestReplicateKokoroTTSTool:
             name="test audio",
             config=config,
             voice="af_bella",
-            speed=1.0
+            speed=1.0,
         )
 
         # Verify replicate was called with correct parameters

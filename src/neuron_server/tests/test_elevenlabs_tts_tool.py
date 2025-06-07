@@ -99,14 +99,15 @@ class TestElevenLabsTTSTool:
     ) -> None:
         """Test successful audio generation with new API."""
         base_path = "neuron_server.tools.elevenlabs_tts_tool"
-        with patch(f"{base_path}.AsyncElevenLabs") as mock_client_class, \
-             patch(f"{base_path}.os.makedirs"), \
-             patch(f"{base_path}.shutil.rmtree"), \
-             patch(f"{base_path}.shutil.copy"), \
-             patch(f"{base_path}.run_subprocess"), \
-             patch(f"{base_path}.MediaItemModel") as mock_media_model, \
-             patch(f"{base_path}.neuron_config") as mock_config_obj:
-
+        with (
+            patch(f"{base_path}.AsyncElevenLabs") as mock_client_class,
+            patch(f"{base_path}.os.makedirs"),
+            patch(f"{base_path}.shutil.rmtree"),
+            patch(f"{base_path}.shutil.copy"),
+            patch(f"{base_path}.run_subprocess"),
+            patch(f"{base_path}.MediaItemModel") as mock_media_model,
+            patch(f"{base_path}.neuron_config") as mock_config_obj,
+        ):
             # Setup mocks
             mock_client = AsyncMock()
             mock_client_class.return_value = mock_client
@@ -187,9 +188,10 @@ class TestElevenLabsTTSTool:
     ) -> None:
         """Test error when script is empty."""
         base_path = "neuron_server.tools.elevenlabs_tts_tool"
-        with patch(f"{base_path}.AsyncElevenLabs") as mock_client_class, \
-             patch(f"{base_path}.neuron_config") as mock_config_obj:
-
+        with (
+            patch(f"{base_path}.AsyncElevenLabs") as mock_client_class,
+            patch(f"{base_path}.neuron_config") as mock_config_obj,
+        ):
             # Setup mocks
             mock_client = AsyncMock()
             mock_client_class.return_value = mock_client
@@ -214,14 +216,15 @@ class TestElevenLabsTTSTool:
         script = [VoiceLine(voice="Aria", text="Test multilingual")]
 
         base_path = "neuron_server.tools.elevenlabs_tts_tool"
-        with patch(f"{base_path}.AsyncElevenLabs") as mock_client_class, \
-             patch(f"{base_path}.os.makedirs"), \
-             patch(f"{base_path}.shutil.rmtree"), \
-             patch(f"{base_path}.shutil.copy"), \
-             patch(f"{base_path}.run_subprocess"), \
-             patch(f"{base_path}.MediaItemModel") as mock_media_model, \
-             patch(f"{base_path}.neuron_config") as mock_config_obj:
-
+        with (
+            patch(f"{base_path}.AsyncElevenLabs") as mock_client_class,
+            patch(f"{base_path}.os.makedirs"),
+            patch(f"{base_path}.shutil.rmtree"),
+            patch(f"{base_path}.shutil.copy"),
+            patch(f"{base_path}.run_subprocess"),
+            patch(f"{base_path}.MediaItemModel") as mock_media_model,
+            patch(f"{base_path}.neuron_config") as mock_config_obj,
+        ):
             # Setup mocks
             mock_client = AsyncMock()
             mock_client_class.return_value = mock_client

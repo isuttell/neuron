@@ -27,7 +27,14 @@ def mock_config() -> Mock:
     """Create a mock config object."""
     config = Mock()
     config.allowed_file_types = [
-        ".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif", ".pdf", ".txt"
+        ".jpg",
+        ".jpeg",
+        ".png",
+        ".webp",
+        ".heic",
+        ".heif",
+        ".pdf",
+        ".txt",
     ]
     config.max_file_size = 10 * 1024 * 1024  # 10MB
     config.static_folder = "/tmp/test_static"
@@ -57,8 +64,9 @@ class TestProcessUploadedFile:
         """Test processing a valid JPG file."""
         with (
             patch("neuron_server.util.file_utilities.neuron_config", mock_config),
-            patch("neuron_server.util.file_utilities.create_thumbnails")
-            as mock_create_thumbnails,
+            patch(
+                "neuron_server.util.file_utilities.create_thumbnails"
+            ) as mock_create_thumbnails,
         ):
             file_path, ext, url = await process_uploaded_file(mock_file_storage)
 
@@ -129,10 +137,12 @@ class TestProcessUploadedFile:
 
         with (
             patch("neuron_server.util.file_utilities.neuron_config", mock_config),
-            patch("neuron_server.util.file_utilities.Image.open",
-                  return_value=mock_image),
-            patch("neuron_server.util.file_utilities.create_thumbnails")
-            as mock_create_thumbnails,
+            patch(
+                "neuron_server.util.file_utilities.Image.open", return_value=mock_image
+            ),
+            patch(
+                "neuron_server.util.file_utilities.create_thumbnails"
+            ) as mock_create_thumbnails,
         ):
             file_path, ext, url = await process_uploaded_file(mock_file_storage)
 
@@ -161,10 +171,12 @@ class TestProcessUploadedFile:
 
         with (
             patch("neuron_server.util.file_utilities.neuron_config", mock_config),
-            patch("neuron_server.util.file_utilities.Image.open",
-                  return_value=mock_image),
-            patch("neuron_server.util.file_utilities.create_thumbnails")
-            as mock_create_thumbnails,
+            patch(
+                "neuron_server.util.file_utilities.Image.open", return_value=mock_image
+            ),
+            patch(
+                "neuron_server.util.file_utilities.create_thumbnails"
+            ) as mock_create_thumbnails,
         ):
             file_path, ext, url = await process_uploaded_file(mock_file_storage)
 
@@ -187,8 +199,9 @@ class TestProcessUploadedFile:
         """Test processing a file that already exists (same hash)."""
         with (
             patch("neuron_server.util.file_utilities.neuron_config", mock_config),
-            patch("neuron_server.util.file_utilities.create_thumbnails")
-            as mock_create_thumbnails,
+            patch(
+                "neuron_server.util.file_utilities.create_thumbnails"
+            ) as mock_create_thumbnails,
         ):
             # First upload
             file_path1, ext1, url1 = await process_uploaded_file(mock_file_storage)
@@ -216,8 +229,9 @@ class TestProcessUploadedFile:
 
         with (
             patch("neuron_server.util.file_utilities.neuron_config", mock_config),
-            patch("neuron_server.util.file_utilities.create_thumbnails")
-            as mock_create_thumbnails,
+            patch(
+                "neuron_server.util.file_utilities.create_thumbnails"
+            ) as mock_create_thumbnails,
         ):
             file_path, ext, url = await process_uploaded_file(mock_file_storage)
 
@@ -236,8 +250,9 @@ class TestProcessUploadedFile:
 
         with (
             patch("neuron_server.util.file_utilities.neuron_config", mock_config),
-            patch("neuron_server.util.file_utilities.create_thumbnails")
-            as mock_create_thumbnails,
+            patch(
+                "neuron_server.util.file_utilities.create_thumbnails"
+            ) as mock_create_thumbnails,
         ):
             file_path, ext, url = await process_uploaded_file(mock_file_storage)
 
@@ -256,8 +271,9 @@ class TestProcessUploadedFile:
 
         with (
             patch("neuron_server.util.file_utilities.neuron_config", mock_config),
-            patch("neuron_server.util.file_utilities.create_thumbnails")
-            as mock_create_thumbnails,
+            patch(
+                "neuron_server.util.file_utilities.create_thumbnails"
+            ) as mock_create_thumbnails,
         ):
             file_path, ext, url = await process_uploaded_file(mock_file_storage)
 

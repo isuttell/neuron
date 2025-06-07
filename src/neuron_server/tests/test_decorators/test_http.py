@@ -30,11 +30,21 @@ async def test_cors_default_headers(app: Quart) -> None:
     async with app.test_client() as client:
         # Test with allowed origin in debug mode
         if config.debug:
-            response = await client.get("/test", headers={"Origin": "http://localhost:5173"})
-            assert response.headers["Access-Control-Allow-Origin"] == "http://localhost:5173"
+            response = await client.get(
+                "/test", headers={"Origin": "http://localhost:5173"}
+            )
+            assert (
+                response.headers["Access-Control-Allow-Origin"]
+                == "http://localhost:5173"
+            )
         else:
-            response = await client.get("/test", headers={"Origin": "https://neuron.zaks.io"})
-            assert response.headers["Access-Control-Allow-Origin"] == "https://neuron.zaks.io"
+            response = await client.get(
+                "/test", headers={"Origin": "https://neuron.zaks.io"}
+            )
+            assert (
+                response.headers["Access-Control-Allow-Origin"]
+                == "https://neuron.zaks.io"
+            )
         assert (
             response.headers["Access-Control-Allow-Methods"]
             == "GET, POST, PUT, DELETE, OPTIONS"
@@ -68,7 +78,9 @@ async def test_cors_custom_headers(app: Quart) -> None:
 
     async with app.test_client() as client:
         # Test with allowed origin
-        response = await client.get("/test", headers={"Origin": "http://localhost:3000"})
+        response = await client.get(
+            "/test", headers={"Origin": "http://localhost:3000"}
+        )
         assert response.headers["Access-Control-Allow-Origin"] == origins[0]
         assert response.headers["Access-Control-Allow-Methods"] == "GET, POST"
         assert response.headers["Access-Control-Allow-Headers"] == "X-Custom-Header"
@@ -200,9 +212,7 @@ async def test_rate_limit_decorator_types(app: Quart) -> None:
 def test_rate_limit_exceeded_error() -> None:
     """Test RateLimitExceededError has correct attributes."""
     error = RateLimitExceededError(
-        retry_after=60,
-        limit_type="requests per minute",
-        limit_value=100
+        retry_after=60, limit_type="requests per minute", limit_value=100
     )
 
     assert error.retry_after == 60

@@ -21,6 +21,7 @@ async def scheduler() -> AsyncGenerator[AbstractAsyncRedisEventScheduler, None]:
     """Create a test scheduler with mocked on_event method."""
     # Import the redis client mock from conftest
     import sys
+
     redis_mock = sys.modules["redis"]
     redis_client_mock = redis_mock.Redis()
 
@@ -70,6 +71,7 @@ TWO_WEEK_DAYS = 14  # Number of days in two weeks
 async def mock_redis() -> AsyncGenerator[AsyncMock, None]:
     """Use the global Redis mock from conftest instead of creating a new one."""
     import sys
+
     redis_mock = sys.modules["redis"]
     yield redis_mock
 

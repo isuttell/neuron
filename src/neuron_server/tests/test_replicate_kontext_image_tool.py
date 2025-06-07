@@ -111,9 +111,9 @@ class TestReplicateKontextImageTool:
     @pytest.fixture
     def sample_image_bytes(self) -> bytes:
         """Create sample image bytes for testing."""
-        img = Image.new('RGB', (100, 100), color='blue')
+        img = Image.new("RGB", (100, 100), color="blue")
         buffer = BytesIO()
-        img.save(buffer, format='PNG')
+        img.save(buffer, format="PNG")
         return buffer.getvalue()
 
     def test_tool_properties(self, tool: ReplicateKontextImageTool) -> None:
@@ -206,7 +206,7 @@ class TestReplicateKontextImageTool:
         mock_result = AsyncMock()
         mock_result.__aiter__.return_value = [
             sample_image_bytes[:50],
-            sample_image_bytes[50:]
+            sample_image_bytes[50:],
         ]
 
         # Mock image description
@@ -236,14 +236,18 @@ class TestReplicateKontextImageTool:
         with (
             patch("aiofiles.open", return_value=mock_aiofile),
             patch("neuron_server.config.config") as mock_config_module,
-            patch("neuron_server.tools.replicate_kontext_image_tool.safe_filename",
-                  return_value="test_edit.png"),
+            patch(
+                "neuron_server.tools.replicate_kontext_image_tool.safe_filename",
+                return_value="test_edit.png",
+            ),
             patch(
                 "neuron_server.tools.replicate_kontext_image_tool.MediaItemModel"
             ) as mock_media_model,
             patch("neuron_server.tools.replicate_kontext_image_tool.create_thumbnails"),
-            patch("neuron_server.tools.replicate_kontext_image_tool.describe_edited_image",
-                  return_value=mock_description),
+            patch(
+                "neuron_server.tools.replicate_kontext_image_tool.describe_edited_image",
+                return_value=mock_description,
+            ),
             patch("PIL.Image.open") as mock_image_open,
             patch("os.path.abspath", return_value="/tmp/test_edit.png"),
         ):
@@ -303,8 +307,10 @@ class TestReplicateKontextImageTool:
         with (
             patch("aiofiles.open", return_value=mock_aiofile),
             patch("neuron_server.config.config") as mock_config_module,
-            patch("neuron_server.tools.replicate_kontext_image_tool.safe_filename",
-                  return_value="simple_edit.png"),
+            patch(
+                "neuron_server.tools.replicate_kontext_image_tool.safe_filename",
+                return_value="simple_edit.png",
+            ),
             patch(
                 "neuron_server.tools.replicate_kontext_image_tool.MediaItemModel"
             ) as mock_media_model,
@@ -339,8 +345,11 @@ class TestReplicateKontextImageTool:
         with (
             patch("replicate.async_run", return_value=mock_output) as mock_replicate,
             patch.object(tool, "_download_input_image") as mock_download,
-            patch.object(tool, "_save_and_process_edited_image",
-                         return_value="<image>success</image>") as mock_save,
+            patch.object(
+                tool,
+                "_save_and_process_edited_image",
+                return_value="<image>success</image>",
+            ) as mock_save,
         ):
             # Mock download response
             mock_tmp_file = "/tmp/test_image"
@@ -415,9 +424,10 @@ class TestReplicateKontextImageTool:
             mock_input_file = MagicMock()
             mock_download.return_value = (mock_tmp_file, mock_input_file)
 
-            with patch("os.path.exists", return_value=True), \
-                 patch("os.remove") as mock_remove:
-
+            with (
+                patch("os.path.exists", return_value=True),
+                patch("os.remove") as mock_remove,
+            ):
                 with pytest.raises(Exception, match="API Error"):
                     await tool._arun(
                         input_image="https://example.com/input.jpg",
@@ -438,20 +448,21 @@ class TestReplicateKontextImageTool:
     ) -> None:
         """Test cleanup when image download fails."""
         with (
-            patch.object(tool, "_download_input_image",
-                        side_effect=Exception("Download failed")),
+            patch.object(
+                tool, "_download_input_image", side_effect=Exception("Download failed")
+            ),
             pytest.raises(Exception, match="Download failed"),
         ):
-                await tool._arun(
-                    input_image="https://example.com/bad_url.jpg",
-                    prompt="test prompt",
-                    name="test",
-                    config=mock_config,
-                )
+            await tool._arun(
+                input_image="https://example.com/bad_url.jpg",
+                prompt="test prompt",
+                name="test",
+                config=mock_config,
+            )
 
     def test_sync_run_method(self, tool: ReplicateKontextImageTool) -> None:
         """Test that the sync _run method calls the async _arun method."""
-        with patch.object(tool, '_arun', return_value="test_result") as mock_arun:
+        with patch.object(tool, "_arun", return_value="test_result") as mock_arun:
             result = tool._run(
                 input_image="https://example.com/test.jpg",
                 prompt="test prompt",

@@ -96,6 +96,7 @@ blueprint = Blueprint(
 
 # Client routes - conditionally served based on config
 if config.serve_client:
+
     @blueprint.get("/")
     @blueprint.get("/thread/<thread_id>")
     @blueprint.get("/personalities")
@@ -110,7 +111,6 @@ if config.serve_client:
     @blueprint.get("/share/<list_id>")
     async def index(**kwargs: Any) -> Response:
         return await blueprint.send_static_file("index.html")
-
 
     # Assets don't change so we can cache them for a long time
     # Public route for logo without authentication
@@ -227,10 +227,7 @@ async def refresh_csrf() -> tuple[dict[str, str], int]:
     )
 
     # Create response with new CSRF token
-    response = jsonify({
-        "status": "success",
-        "csrf_token": csrf_token
-    })
+    response = jsonify({"status": "success", "csrf_token": csrf_token})
 
     # Set new session cookie
     response.set_cookie(
@@ -240,7 +237,7 @@ async def refresh_csrf() -> tuple[dict[str, str], int]:
         httponly=True,
         samesite="Lax",
         secure=config.is_production,
-        path="/"  # Ensure cookie is sent with all requests
+        path="/",  # Ensure cookie is sent with all requests
     )
 
     return response, 200

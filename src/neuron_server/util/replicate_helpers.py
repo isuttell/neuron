@@ -7,7 +7,8 @@ import aiohttp
 
 
 async def save_replicate_output(
-    output: Union[str, bytes, BinaryIO, Any], file_path: str  # noqa: ANN401
+    output: Union[str, bytes, BinaryIO, Any],  # noqa: ANN401
+    file_path: str,
 ) -> None:
     """
     Save Replicate output to a file, handling different output types.
@@ -23,14 +24,14 @@ async def save_replicate_output(
     os.makedirs(os.path.dirname(file_path), exist_ok=True)
 
     # Handle different output types from Replicate
-    if hasattr(output, 'read'):
+    if hasattr(output, "read"):
         # If output is a file-like object, read its content
         content = output.read()
         if asyncio.iscoroutine(content):
             content = await content
         async with aiofiles.open(file_path, "wb") as file:
             await file.write(content)
-    elif isinstance(output, str) and output.startswith(('http://', 'https://')):
+    elif isinstance(output, str) and output.startswith(("http://", "https://")):
         # If output is a URL, download it
         async with aiohttp.ClientSession() as session:  # noqa: SIM117
             async with session.get(output) as response:
@@ -42,6 +43,4 @@ async def save_replicate_output(
         async with aiofiles.open(file_path, "wb") as file:
             await file.write(output)
     else:
-        raise ValueError(
-            f"Unexpected output type from Replicate: {type(output)}"
-        )
+        raise ValueError(f"Unexpected output type from Replicate: {type(output)}")

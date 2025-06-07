@@ -55,9 +55,7 @@ async def test_replicate_play_dialog_with_bytes_output(
     with (
         patch("replicate.async_run", new_callable=AsyncMock) as mock_run,
         patch("aiofiles.open", new_callable=MagicMock) as mock_aiofiles,
-        patch(
-            "neuron_server.models.media_item_model.MediaItemModel.create"
-        ),
+        patch("neuron_server.models.media_item_model.MediaItemModel.create"),
         patch("os.path.exists", return_value=True),
         patch("os.makedirs"),
     ):
@@ -96,9 +94,7 @@ async def test_replicate_play_dialog_with_file_object(
     with (
         patch("replicate.async_run", new_callable=AsyncMock) as mock_run,
         patch("aiofiles.open", new_callable=MagicMock) as mock_aiofiles,
-        patch(
-            "neuron_server.models.media_item_model.MediaItemModel.create"
-        ),
+        patch("neuron_server.models.media_item_model.MediaItemModel.create"),
         patch("os.path.exists", return_value=True),
         patch("os.makedirs"),
     ):
@@ -131,9 +127,7 @@ async def test_replicate_play_dialog_with_async_file_object(
     with (
         patch("replicate.async_run", new_callable=AsyncMock) as mock_run,
         patch("aiofiles.open", new_callable=MagicMock) as mock_aiofiles,
-        patch(
-            "neuron_server.models.media_item_model.MediaItemModel.create"
-        ),
+        patch("neuron_server.models.media_item_model.MediaItemModel.create"),
         patch("os.path.exists", return_value=True),
         patch("os.makedirs"),
     ):
@@ -167,12 +161,9 @@ async def test_replicate_play_dialog_with_url_output(
         patch("replicate.async_run", new_callable=AsyncMock) as mock_run,
         patch("aiofiles.open", new_callable=MagicMock) as mock_aiofiles,
         patch(
-            "neuron_server.tools.replicate_play_dialog_tts_tool"
-            ".aiohttp.ClientSession"
+            "neuron_server.tools.replicate_play_dialog_tts_tool.aiohttp.ClientSession"
         ) as mock_session_class,
-        patch(
-            "neuron_server.models.media_item_model.MediaItemModel.create"
-        ),
+        patch("neuron_server.models.media_item_model.MediaItemModel.create"),
         patch("os.path.exists", return_value=True),
         patch("os.makedirs"),
     ):
@@ -247,9 +238,7 @@ async def test_replicate_play_dialog_with_custom_parameters(
     with (
         patch("replicate.async_run", new_callable=AsyncMock) as mock_run,
         patch("aiofiles.open", new_callable=MagicMock) as mock_aiofiles,
-        patch(
-            "neuron_server.models.media_item_model.MediaItemModel.create"
-        ),
+        patch("neuron_server.models.media_item_model.MediaItemModel.create"),
         patch("os.path.exists", return_value=True),
         patch("os.makedirs"),
     ):

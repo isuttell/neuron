@@ -104,9 +104,9 @@ async def load_youtube_transcript(
         # Convert dictionary items to objects with attributes if needed
         class TranscriptItem:
             def __init__(self, item_dict: dict[str, Any]) -> None:
-                self.text = item_dict.get('text', '')
-                self.start = item_dict.get('start', 0.0)
-                self.duration = item_dict.get('duration', 0.0)
+                self.text = item_dict.get("text", "")
+                self.start = item_dict.get("start", 0.0)
+                self.duration = item_dict.get("duration", 0.0)
 
         # Convert if transcript items are dictionaries
         if transcript and isinstance(transcript[0], dict):
@@ -155,6 +155,7 @@ async def load_pdf_from_url(
             cookies = None
             if neuron_config.static_require_auth:
                 from neuron_server.controllers.csrf import create_session_cookie
+
                 session_cookie, _ = create_session_cookie("system", include_csrf=False)
                 cookies = {"neuron_session": session_cookie}
 
@@ -212,6 +213,7 @@ async def load_text_from_url(
         cookies = None
         if neuron_config.static_require_auth:
             from neuron_server.controllers.csrf import create_session_cookie
+
             session_cookie, _ = create_session_cookie("system", include_csrf=False)
             cookies = {"neuron_session": session_cookie}
 

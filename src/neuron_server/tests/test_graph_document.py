@@ -175,9 +175,7 @@ class TestProcessChunk:
             ],
         )
 
-        with patch(
-            "neuron_server.graph.document.construction_chain"
-        ) as mock_chain:
+        with patch("neuron_server.graph.document.construction_chain") as mock_chain:
             mock_chain.ainvoke = AsyncMock(return_value=mock_extraction)
 
             # Create semaphore
@@ -193,9 +191,7 @@ class TestProcessChunk:
 
             # Verify
             assert result == mock_extraction
-            mock_chain.ainvoke.assert_called_once_with(
-                "test chunk", config=None
-            )
+            mock_chain.ainvoke.assert_called_once_with("test chunk", config=None)
 
     @pytest.mark.asyncio
     async def test_process_chunk_with_retry(self) -> None:
@@ -205,9 +201,7 @@ class TestProcessChunk:
             atomic_facts=[],
         )
 
-        with patch(
-            "neuron_server.graph.document.construction_chain"
-        ) as mock_chain:
+        with patch("neuron_server.graph.document.construction_chain") as mock_chain:
             # First call fails, second succeeds
             mock_chain.ainvoke = AsyncMock(
                 side_effect=[Exception("Test error"), mock_extraction]
@@ -232,17 +226,11 @@ class TestProcessChunk:
     @pytest.mark.asyncio
     async def test_process_chunk_max_retries_exceeded(self) -> None:
         """Test chunk processing when max retries are exceeded."""
-        with patch(
-            "neuron_server.graph.document.construction_chain"
-        ) as mock_chain:
-            mock_chain.ainvoke = AsyncMock(
-                side_effect=Exception("Persistent error")
-            )
+        with patch("neuron_server.graph.document.construction_chain") as mock_chain:
+            mock_chain.ainvoke = AsyncMock(side_effect=Exception("Persistent error"))
 
             semaphore = asyncio.Semaphore(1)
-            chunk_config = ChunkConfig(
-                max_attempts=2, retry_delay_seconds=0
-            )
+            chunk_config = ChunkConfig(max_attempts=2, retry_delay_seconds=0)
 
             # Execute and expect exception
             with pytest.raises(Exception, match="Persistent error"):
@@ -371,9 +359,7 @@ class TestProcessDocument:
     @pytest.mark.asyncio
     async def test_process_document_missing_user_id(self) -> None:
         """Test process_document with missing user_id."""
-        config = RunnableConfig(
-            configurable={"personality_id": "pers123"}
-        )
+        config = RunnableConfig(configurable={"personality_id": "pers123"})
         metadata = DocumentMetadata(document_id="doc789")
 
         with pytest.raises(AssertionError):
@@ -468,9 +454,7 @@ class TestIntegration:
                 )
             ],
         )
-        mock_construction_chain.ainvoke = AsyncMock(
-            return_value=mock_extraction
-        )
+        mock_construction_chain.ainvoke = AsyncMock(return_value=mock_extraction)
 
         # Mock summary chain
         mock_summary = SummaryResponse(
