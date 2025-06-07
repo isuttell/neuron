@@ -19,6 +19,7 @@ HTTP_NOT_FOUND = 404
 @dataclass
 class ScheduleTestContext:
     """Context for scheduler controller tests."""
+
     token: TokenPayload
     auth_mock: dict[str, AsyncMock | Mock]
     event_id: str
@@ -199,6 +200,7 @@ async def test_create_event_missing_body(
     mock_auth_decorators: None,
 ) -> None:
     """Test creating a new scheduled event with missing request body."""
+
     # Add handler for BadRequest exceptions
     @app.errorhandler(BadRequest)
     async def handle_bad_request(error: BadRequest) -> tuple[dict[str, str], int]:

@@ -75,14 +75,14 @@ output filename to the user as they can't directly access it.
         """
         if neuron_config.static_require_auth:
             from neuron_server.controllers.csrf import create_session_cookie
+
             session_cookie, _ = create_session_cookie("system", include_csrf=False)
             return {"neuron_session": session_cookie}
         return None
 
     @staticmethod
     async def download_file_with_auth(
-        url: str,
-        cookies: dict[str, str] | None = None
+        url: str, cookies: dict[str, str] | None = None
     ) -> tuple[str, bool]:
         """Download a file with authentication and return the local path.
 
@@ -120,8 +120,7 @@ output filename to the user as they can't directly access it.
 
     @staticmethod
     async def process_url_argument(
-        arg: str,
-        cookies: dict[str, str] | None = None
+        arg: str, cookies: dict[str, str] | None = None
     ) -> tuple[str, list[str]]:
         """Process a URL argument and download it if needed.
 
@@ -145,8 +144,7 @@ output filename to the user as they can't directly access it.
 
     @staticmethod
     async def process_concat_argument(
-        arg: str,
-        cookies: dict[str, str] | None = None
+        arg: str, cookies: dict[str, str] | None = None
     ) -> tuple[str, list[str]]:
         """Process a concat argument and download any URLs.
 
@@ -180,8 +178,7 @@ output filename to the user as they can't directly access it.
 
     @staticmethod
     async def preprocess_arguments(
-        args: list[str],
-        cookies: dict[str, str] | None = None
+        args: list[str], cookies: dict[str, str] | None = None
     ) -> tuple[list[str], list[str]]:
         """Process all arguments and download files as needed.
 
@@ -241,8 +238,7 @@ output filename to the user as they can't directly access it.
 
     @staticmethod
     async def run_ffmpeg_command(
-        command: list[str],
-        cwd: str | None = None
+        command: list[str], cwd: str | None = None
     ) -> subprocess.CompletedProcess[str]:
         """Run a ffmpeg command.
 
@@ -324,8 +320,7 @@ output filename to the user as they can't directly access it.
 
             # Run the ffmpeg command
             process = await self.run_ffmpeg_command(
-                command,
-                cwd=neuron_config.static_folder
+                command, cwd=neuron_config.static_folder
             )
 
             # Check that output file exists

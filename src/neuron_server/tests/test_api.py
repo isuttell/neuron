@@ -118,7 +118,7 @@ async def test_index_routes_with_client_serving_enabled(app: Quart) -> None:
     with (
         patch("neuron_server.api.config.serve_client", True),
         patch("neuron_server.api.config.client_assets_folder", "/tmp/test_client"),
-        patch("neuron_server.api.blueprint.send_static_file") as mock_send_static
+        patch("neuron_server.api.blueprint.send_static_file") as mock_send_static,
     ):
         mock_send_static.return_value = Response("<html>Test</html>", status=200)
 
@@ -146,7 +146,7 @@ async def test_static_file_not_found(app: Quart) -> None:
             # Include a session cookie to pass the requires_cookie check
             response = await client.get(
                 "/static/nonexistent.jpg",
-                headers={"Cookie": "neuron_session=test_user_id"}
+                headers={"Cookie": "neuron_session=test_user_id"},
             )
             assert response.status_code == HTTPStatus.NOT_FOUND
             data = await response.get_data()
@@ -203,7 +203,7 @@ async def test_logo_endpoint_with_client_serving(app: Quart) -> None:
     with (
         patch("neuron_server.api.config.serve_client", True),
         patch("neuron_server.api.config.client_assets_folder", "/tmp/test_client"),
-        patch("neuron_server.api.send_from_directory") as mock_send
+        patch("neuron_server.api.send_from_directory") as mock_send,
     ):
         mock_send.return_value = Response(b"<svg>Logo</svg>", status=200)
         # Due to blueprint registration at import time, this might still return 404
@@ -269,10 +269,7 @@ async def test_webhook_prompt_api_key_auth(app: Quart) -> None:
         mock_execute.return_value = "Test response"
 
         # Test data
-        test_data = {
-            "prompt": "Test prompt",
-            "personality_id": str(uuid4())
-        }
+        test_data = {"prompt": "Test prompt", "personality_id": str(uuid4())}
 
         async with app.test_client() as client:
             # Test with no API key
@@ -283,7 +280,7 @@ async def test_webhook_prompt_api_key_auth(app: Quart) -> None:
             response = await client.post(
                 "/api/webhooks/prompt",
                 json=test_data,
-                headers={"X-API-Key": "invalid_key"}
+                headers={"X-API-Key": "invalid_key"},
             )
             assert response.status_code == HTTPStatus.UNAUTHORIZED
 
@@ -291,7 +288,7 @@ async def test_webhook_prompt_api_key_auth(app: Quart) -> None:
             response = await client.post(
                 "/api/webhooks/prompt",
                 json=test_data,
-                headers={"X-API-Key": test_api_key}
+                headers={"X-API-Key": test_api_key},
             )
             assert response.status_code == HTTPStatus.OK
             data = await response.get_json()
@@ -302,7 +299,7 @@ async def test_webhook_prompt_api_key_auth(app: Quart) -> None:
             response = await client.post(
                 "/api/webhooks/home_prompt",
                 json=test_data,
-                headers={"X-API-Key": test_api_key}
+                headers={"X-API-Key": test_api_key},
             )
             assert response.status_code == HTTPStatus.OK
 

@@ -175,14 +175,14 @@ class ReplicatePlayDialogTool(BaseTool):
             )
 
             # Handle different output types from Replicate
-            if hasattr(output, 'read'):
+            if hasattr(output, "read"):
                 # If output is a file-like object, read its content
                 content = output.read()
                 if asyncio.iscoroutine(content):
                     content = await content
                 async with aiofiles.open(file_path, "wb") as file:
                     await file.write(content)
-            elif isinstance(output, str) and output.startswith(('http://', 'https://')):
+            elif isinstance(output, str) and output.startswith(("http://", "https://")):
                 # If output is a URL, download it
                 async with aiohttp.ClientSession() as session:  # noqa: SIM117
                     async with session.get(output) as response:

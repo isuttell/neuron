@@ -324,9 +324,7 @@ class TestThreadMemoryToolsIntegration:
 
         with (
             patch.object(ThreadModel, "set", new_callable=AsyncMock) as mock_set,
-            patch.object(
-                ThreadModel, "get", new_callable=AsyncMock
-            ) as mock_get,
+            patch.object(ThreadModel, "get", new_callable=AsyncMock) as mock_get,
         ):
             # First get returns empty memory, then returns updated memory
             mock_get.side_effect = [initial_thread, updated_thread]
@@ -347,9 +345,7 @@ class TestThreadMemoryToolsIntegration:
             assert sample_planning_board in read_result
 
     @pytest.mark.asyncio
-    async def test_progressive_task_updates(
-        self, mock_config: RunnableConfig
-    ) -> None:
+    async def test_progressive_task_updates(self, mock_config: RunnableConfig) -> None:
         """Test progressive updates to task list."""
         # Initial task list
         initial_tasks = """# Task List

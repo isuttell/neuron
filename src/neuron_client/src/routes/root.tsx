@@ -5,6 +5,7 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { Spinner } from "@/components/ui/spinner";
 import { fetchConfig } from "@/slices/appSlice";
 import { fetchMediaLists } from "@/slices/mediaListsSlice";
+import { fetchProviders, setupProvider, selectProviders, selectActiveProviderId } from "@/slices/providerSlice";
 import { useAuth0, withAuthenticationRequired } from "@auth0/auth0-react";
 import { useEffect, useState } from "react"; // Import useState
 import { Outlet } from "react-router-dom";
@@ -26,6 +27,8 @@ export function RootComponent() {
   const isConnected = useAppSelector(getConnectionStatus);
   const dispatch = useAppDispatch();
   const [userSynced, setUserSynced] = useState(false); // Add state variable
+  const providers = useAppSelector(selectProviders);
+  const activeProviderId = useAppSelector(selectActiveProviderId);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated && !error) {
@@ -40,6 +43,7 @@ export function RootComponent() {
       dispatch({ type: "socket/connect" });
       dispatch(fetchConfig());
       dispatch(fetchMediaLists());
+      dispatch(fetchProviders());
 
       // --- Add the user sync logic here ---
       // Only sync if authenticated and not already synced
@@ -73,6 +77,16 @@ export function RootComponent() {
       setGetAccessTokenSilently(getAccessTokenSilently);
     }
   }, [getAccessTokenSilently]);
+
+  // Set default provider if no active provider is set
+  useEffect(() => {
+    if (providers.length > 0 && !activeProviderId) {
+      const defaultProvider = providers.find(p => p.default);
+      if (defaultProvider) {
+        dispatch(setupProvider(defaultProvider.id));
+      }
+    }
+  }, [providers, activeProviderId, dispatch]);
 
   useEffect(() => {
     if (error && error.message === "Invalid state") {

@@ -343,6 +343,7 @@ class TestCreateImageUrl:
     @patch("neuron_server.util.image_utilities.apply_exif_rotation")
     def test_exif_rotation_applied(self, mock_apply_exif: Mock) -> None:
         """Test that EXIF rotation is called."""
+
         # Set up the mock to return a rotated image
         def rotate_image(img: Image.Image) -> Image.Image:
             # Simulate 90-degree rotation

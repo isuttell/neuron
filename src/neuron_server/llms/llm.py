@@ -262,7 +262,7 @@ class LLM:
         messages = state.get("messages", [])
 
         # Apply caching if enabled
-        if getattr(self, 'caching_enabled', False):
+        if getattr(self, "caching_enabled", False):
             messages = self._apply_caching_to_messages(messages)
 
         chain = chat_prompt | model

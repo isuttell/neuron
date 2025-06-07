@@ -1,4 +1,5 @@
 """Helper functions for CSRF testing"""
+
 from neuron_server.controllers.csrf import create_session_cookie
 
 
@@ -11,10 +12,7 @@ def get_csrf_headers(user_id: str = "test_user_id") -> tuple[dict[str, str], str
     """
     cookie_value, csrf_token = create_session_cookie(user_id, include_csrf=True)
 
-    headers = {
-        "X-CSRF-Token": csrf_token,
-        "Cookie": f"neuron_session={cookie_value}"
-    }
+    headers = {"X-CSRF-Token": csrf_token, "Cookie": f"neuron_session={cookie_value}"}
 
     return headers, cookie_value
 

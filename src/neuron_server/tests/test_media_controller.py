@@ -149,9 +149,7 @@ async def test_get_recent_media(
             assert result["media_items"][0]["id"] == str(mock_media_item.id)
 
         # Verify mocks were called correctly
-        mock_get_recent.assert_called_once_with(
-            mock_token.user_id, limit=10, offset=0
-        )
+        mock_get_recent.assert_called_once_with(mock_token.user_id, limit=10, offset=0)
 
 
 @pytest.mark.asyncio
@@ -185,9 +183,7 @@ async def test_get_recent_media_empty(
             assert len(result["media_items"]) == 0
 
         # Verify mocks were called correctly
-        mock_get_recent.assert_called_once_with(
-            mock_token.user_id, limit=10, offset=0
-        )
+        mock_get_recent.assert_called_once_with(mock_token.user_id, limit=10, offset=0)
 
 
 @pytest.mark.asyncio
@@ -208,9 +204,7 @@ async def test_create_media_list(
     }
 
     # Setup mocks
-    with patch.object(
-        MediaListModel, "create", new_callable=AsyncMock
-    ) as mock_create:
+    with patch.object(MediaListModel, "create", new_callable=AsyncMock) as mock_create:
         mock_create.return_value = mock_media_list
 
         # Create request context
@@ -335,9 +329,7 @@ async def test_get_media_list(
 
     # Setup mocks
     with (
-        patch.object(
-            MediaListModel, "get", new_callable=AsyncMock
-        ) as mock_get,
+        patch.object(MediaListModel, "get", new_callable=AsyncMock) as mock_get,
         patch.object(
             MediaListItemModel, "get_by_list", new_callable=AsyncMock
         ) as mock_get_by_list,
@@ -475,9 +467,7 @@ async def test_get_media_list_public_visibility(
 
     # Setup mocks
     with (
-        patch.object(
-            MediaListModel, "get", new_callable=AsyncMock
-        ) as mock_get,
+        patch.object(MediaListModel, "get", new_callable=AsyncMock) as mock_get,
         patch.object(
             MediaListItemModel, "get_by_list", new_callable=AsyncMock
         ) as mock_get_by_list,
@@ -535,9 +525,7 @@ async def test_get_media_list_shared_with_user(
 
     # Setup mocks
     with (
-        patch.object(
-            MediaListModel, "get", new_callable=AsyncMock
-        ) as mock_get,
+        patch.object(MediaListModel, "get", new_callable=AsyncMock) as mock_get,
         patch.object(
             MediaListItemModel, "get_by_list", new_callable=AsyncMock
         ) as mock_get_by_list,
@@ -596,12 +584,8 @@ async def test_update_media_list(
 
     # Setup mocks
     with (
-        patch.object(
-            MediaListModel, "get", new_callable=AsyncMock
-        ) as mock_get,
-        patch.object(
-            MediaListModel, "update", new_callable=AsyncMock
-        ) as mock_update,
+        patch.object(MediaListModel, "get", new_callable=AsyncMock) as mock_get,
+        patch.object(MediaListModel, "update", new_callable=AsyncMock) as mock_update,
     ):
         mock_get.return_value = mock_media_list
         mock_update.return_value = mock_media_list
@@ -745,12 +729,8 @@ async def test_delete_media_list(
 
     # Setup mocks
     with (
-        patch.object(
-            MediaListModel, "get", new_callable=AsyncMock
-        ) as mock_get,
-        patch.object(
-            MediaListModel, "delete", new_callable=AsyncMock
-        ) as mock_delete,
+        patch.object(MediaListModel, "get", new_callable=AsyncMock) as mock_get,
+        patch.object(MediaListModel, "delete", new_callable=AsyncMock) as mock_delete,
     ):
         mock_get.return_value = mock_media_list
         mock_delete.return_value = None
@@ -870,18 +850,12 @@ async def test_add_media_to_list(
     media_item_id = mock_media_item.id
 
     # Setup test data
-    test_data = {
-        "media_item_id": str(media_item_id)
-    }
+    test_data = {"media_item_id": str(media_item_id)}
 
     # Setup mocks
     with (
-        patch.object(
-            MediaListModel, "get", new_callable=AsyncMock
-        ) as mock_get,
-        patch.object(
-            MediaItemModel, "get", new_callable=AsyncMock
-        ) as mock_get_item,
+        patch.object(MediaListModel, "get", new_callable=AsyncMock) as mock_get,
+        patch.object(MediaItemModel, "get", new_callable=AsyncMock) as mock_get_item,
         patch.object(
             MediaListModel, "get_max_index", new_callable=AsyncMock
         ) as mock_get_max_index,
@@ -936,9 +910,7 @@ async def test_add_media_to_list_not_found(
     list_id = uuid4()
 
     # Setup test data
-    test_data = {
-        "media_item_id": str(uuid4())
-    }
+    test_data = {"media_item_id": str(uuid4())}
 
     # Setup mocks
     with patch.object(MediaListModel, "get", new_callable=AsyncMock) as mock_get:
@@ -982,9 +954,7 @@ async def test_add_media_to_list_unauthorized(
     mock_media_list.user_id = "different_user_id"
 
     # Setup test data
-    test_data = {
-        "media_item_id": str(uuid4())
-    }
+    test_data = {"media_item_id": str(uuid4())}
 
     # Setup mocks
     with patch.object(MediaListModel, "get", new_callable=AsyncMock) as mock_get:
@@ -1026,18 +996,12 @@ async def test_add_media_to_list_media_not_found(
     media_item_id = uuid4()
 
     # Setup test data
-    test_data = {
-        "media_item_id": str(media_item_id)
-    }
+    test_data = {"media_item_id": str(media_item_id)}
 
     # Setup mocks
     with (
-        patch.object(
-            MediaListModel, "get", new_callable=AsyncMock
-        ) as mock_get,
-        patch.object(
-            MediaItemModel, "get", new_callable=AsyncMock
-        ) as mock_get_item,
+        patch.object(MediaListModel, "get", new_callable=AsyncMock) as mock_get,
+        patch.object(MediaItemModel, "get", new_callable=AsyncMock) as mock_get_item,
     ):
         mock_get.return_value = mock_media_list
         mock_get_item.return_value = None

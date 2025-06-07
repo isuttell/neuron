@@ -12,10 +12,12 @@ blueprint = Mock()
 mock_controller = Mock(blueprint=blueprint)
 sys.modules["neuron_server.controllers.scheduler_controller"] = mock_controller
 
+
 # Mock auth
 @dataclass
 class TokenPayload:
     """Mock token payload for testing."""
+
     sub: str
     user_id: str
     nickname: str
@@ -23,6 +25,7 @@ class TokenPayload:
     picture: Optional[str]
     roles: list[str]
     permissions: list[str]
+
 
 # HTTP status codes
 HTTP_OK = 200

@@ -8,7 +8,7 @@ from neuron_server.util.replicate_helpers import save_replicate_output
 
 
 class TestReplicateHelpers:
-    @patch('neuron_server.util.replicate_helpers.aiofiles')
+    @patch("neuron_server.util.replicate_helpers.aiofiles")
     async def test_save_bytes_output(self, mock_aiofiles):
         """Test saving bytes output."""
         mock_file = AsyncMock()
@@ -20,7 +20,7 @@ class TestReplicateHelpers:
 
             mock_file.write.assert_called_once_with(b"fake audio data")
 
-    @patch('neuron_server.util.replicate_helpers.aiofiles')
+    @patch("neuron_server.util.replicate_helpers.aiofiles")
     async def test_save_url_output(self, mock_aiofiles):
         """Test saving URL output - this is more of an integration test."""
         mock_file = AsyncMock()
@@ -35,7 +35,7 @@ class TestReplicateHelpers:
 
             mock_file.write.assert_called_once_with(b"direct bytes")
 
-    @patch('neuron_server.util.replicate_helpers.aiofiles')
+    @patch("neuron_server.util.replicate_helpers.aiofiles")
     async def test_save_file_like_output(self, mock_aiofiles):
         """Test saving file-like object output."""
         mock_file = AsyncMock()

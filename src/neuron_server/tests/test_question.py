@@ -278,8 +278,7 @@ class TestGraphNodes:
     async def test_rational_plan_node(self, mock_rational_chain: Mock) -> None:
         """Test rational plan node execution."""
         mock_response = RationalPlanOutput(
-            rational_plan="Test plan",
-            chosen_action="search_more"
+            rational_plan="Test plan", chosen_action="search_more"
         )
         mock_rational_chain.ainvoke = AsyncMock(return_value=mock_response)
 
@@ -345,7 +344,7 @@ class TestGraphNodes:
         mock_response = AtomicFactOutput(
             updated_notebook="Updated notebook",
             rational_next_action="Read neighbor",
-            chosen_action="stop_and_read_neighbor"
+            chosen_action="stop_and_read_neighbor",
         )
         mock_atomic_fact_chain.ainvoke = AsyncMock(return_value=mock_response)
 
@@ -383,7 +382,7 @@ class TestGraphNodes:
         mock_response = ChunkOutput(
             updated_notebook="Updated notebook",
             rational_next_move="Read next chunk",
-            chosen_action="read_subsequent_chunk"
+            chosen_action="read_subsequent_chunk",
         )
         mock_chunk_read_chain.ainvoke = AsyncMock(return_value=mock_response)
 
@@ -408,7 +407,7 @@ class TestGraphNodes:
         """Test neighbor selection."""
         mock_response = NeighborOutput(
             rational_next_move="Select neighbor node",
-            chosen_action="read_neighbor_node('neighbor1')"
+            chosen_action="read_neighbor_node('neighbor1')",
         )
         mock_neighbor_select_chain.ainvoke = AsyncMock(return_value=mock_response)
 
@@ -431,10 +430,7 @@ class TestGraphNodes:
     @patch("neuron_server.graph.question.answer_reasoning_chain")
     async def test_answer_reasoning(self, mock_answer_reasoning_chain: Mock) -> None:
         """Test answer reasoning node."""
-        mock_response = Mock(
-            final_answer="Final answer text",
-            analyze="Analysis text"
-        )
+        mock_response = Mock(final_answer="Final answer text", analyze="Analysis text")
         mock_answer_reasoning_chain.ainvoke = AsyncMock(return_value=mock_response)
 
         state = {
@@ -543,7 +539,7 @@ class TestEdgeCases:
         mock_response = ChunkOutput(
             updated_notebook="Updated notebook",
             rational_next_move="Search for more",
-            chosen_action="search_more"
+            chosen_action="search_more",
         )
         mock_chunk_read_chain.ainvoke = AsyncMock(return_value=mock_response)
 

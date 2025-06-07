@@ -52,10 +52,12 @@ class TestAnthropicCaching:
         messages = [
             HumanMessage(content="Hello, world!"),
             AIMessage(content="Hi there!"),
-            HumanMessage(content=[
-                {"type": "text", "text": "How are you today?"},
-                {"type": "text", "text": "I hope you're doing well."},
-            ]),
+            HumanMessage(
+                content=[
+                    {"type": "text", "text": "How are you today?"},
+                    {"type": "text", "text": "I hope you're doing well."},
+                ]
+            ),
         ]
 
         result = llm._apply_caching_to_messages(messages)
@@ -158,11 +160,13 @@ class TestAnthropicCaching:
         """Test handling of mixed content types in list."""
         llm = AnthropicLLM(caching_enabled=True)
         messages = [
-            HumanMessage(content=[
-                {"type": "text", "text": "Here's some text"},
-                "string content",  # Non-dict content
-                {"type": "image_url", "image_url": {"url": "https://example.com"}},
-            ]),
+            HumanMessage(
+                content=[
+                    {"type": "text", "text": "Here's some text"},
+                    "string content",  # Non-dict content
+                    {"type": "image_url", "image_url": {"url": "https://example.com"}},
+                ]
+            ),
         ]
 
         result = llm._apply_caching_to_messages(messages)

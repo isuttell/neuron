@@ -68,6 +68,7 @@ async def get_war_status() -> dict[str, Any]:
             response.raise_for_status()
             return await response.json()
 
+
 class HD2GalacticWarReportTool(BaseTool):
     name: str = "hd2_galactic_war_report"
     args_schema: type[HD2GalacticWarReportToolArgs] = HD2GalacticWarReportToolArgs
@@ -103,7 +104,7 @@ API data and focuses only on relevant information for strategic decision making.
                 "planets": planets,
                 "campaigns": campaigns,
                 "major_orders": major_orders,
-                "news": news
+                "news": news,
             }
 
             # Create prompt template for generating focused markdown report
@@ -139,12 +140,12 @@ Data interpretation notes:
             # Add custom instructions to human prompt if provided
             if custom_instructions.strip():
                 human_prompt = (
-                    f"SPECIAL REQUEST: {custom_instructions.strip()}\n\n"
-                    + human_prompt
+                    f"SPECIAL REQUEST: {custom_instructions.strip()}\n\n" + human_prompt
                 )
 
             # Get LLM instance
             from neuron_server.models.provider_model import ProviderModelModel
+
             llm = await ProviderModelModel.get_active_llm()
 
             # Generate the report using LLM chain
@@ -158,9 +159,9 @@ Data interpretation notes:
             return await chain.ainvoke(
                 [
                     SystemMessage(content=system_prompt),
-                    HumanMessage(content=formatted_human_prompt)
+                    HumanMessage(content=formatted_human_prompt),
                 ],
-                config
+                config,
             )
 
         except Exception as e:
