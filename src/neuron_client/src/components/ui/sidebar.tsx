@@ -203,6 +203,7 @@ const Sidebar = React.forwardRef<
               } as React.CSSProperties
             }
             side={side}
+            onInteractOutside={() => setOpenMobile(false)}
           >
             <div className="flex h-full w-full flex-col">{children}</div>
           </SheetContent>
