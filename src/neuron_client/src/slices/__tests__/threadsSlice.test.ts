@@ -51,6 +51,7 @@ describe("threadsSlice", () => {
         loading: false,
         error: null,
         personalities: [],
+        hasInitiallyFetched: false,
       }),
       images: () => ({
         loading: false,
