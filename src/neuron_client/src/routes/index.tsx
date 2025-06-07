@@ -24,15 +24,7 @@ import { StatusMessage } from "../messages/StatusMessage";
 import { PromptDropdown } from "@/components/PromptDropdown";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { cn } from "../lib/utils";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { fetchPersonalities } from "../actions/personalityActions";
-import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 const selectRecentThreads = (state: RootState) => {
   const oneDayAgo = Date.now() - 1000 * 60 * 60 * 24; // 24 hours ago in milliseconds
@@ -127,33 +119,6 @@ export default function Index() {
       });
   };
 
-  const handleGreeting = () => {
-    if (!activePersonalityId) return;
-
-    setLoading(true);
-    dispatch(
-      createThread({
-        personalityId: activePersonalityId,
-        prompt,
-        greeting: true,
-        file,
-      })
-    )
-      .unwrap()
-      .then(({ thread }) => {
-        navigate(`/thread/${thread.id}`);
-      })
-      .catch((error) => {
-        toast({
-          variant: "destructive",
-          title: "Failed to create thread",
-          description: error?.message || "An unexpected error occurred",
-        });
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  };
 
   const handleAutoSend = (blob: Blob) => {
     if (!activePersonalityId) return;
@@ -199,11 +164,11 @@ export default function Index() {
   const isDisabled = !activePersonalityId || isLoading;
 
   return (
-    <div className="flex flex-1 p-4 ipad-top-spacing flex-col justify-center items-center flex-nowrap max-h-screen overflow-auto gap-2 relative">
-      <SidebarTrigger className="m-2 size-10 absolute left-2 ipad-trigger-top" />
+    <div className="flex flex-1 p-2 sm:p-4 ipad-top-spacing flex-col justify-center items-center flex-nowrap min-h-screen overflow-auto gap-2 relative">
+      <SidebarTrigger className="m-2 size-10 absolute left-2 top-2" />
       <div className="flex flex-col w-full h-full justify-center items-center">
-        <div className="flex justify-center items-center m-6">
-          <img src={logo} alt="Neuron" className="w-[120px]" />
+        <div className="flex justify-center items-center m-4 sm:m-6">
+          <img src={logo} alt="Neuron" className="w-20 sm:w-[120px]" />
         </div>
         <div className="flex flex-col gap-2 max-w-[768px] mx-auto w-full">
           <form className="" onSubmit={handleSubmit}>
@@ -244,87 +209,40 @@ export default function Index() {
                 />
               )}
             </div>
-            <div className="flex flex-row gap-2 pt-2">
-              <ErrorBoundary>
-                <Select
-                  value={activePersonalityId}
-                  onValueChange={(value) => {
-                    dispatch(setActivePersonality(value));
-                  }}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue
-                      placeholder={
-                        personalitiesLoading
-                          ? "Loading personalities..."
-                          : "Select a personality"
-                      }
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {personalitiesLoading && personalities.length < 1 ? (
-                      <div className="flex items-center justify-center p-2">
-                        <Spinner className="size-4" />
-                      </div>
-                    ) : personalities.length === 0 ? (
-                      <div className="text-sm text-muted-foreground text-center p-2">
-                        No personalities found
-                      </div>
-                    ) : (
-                      personalities
-                        .filter((p): p is NonNullable<typeof p> => p !== null && p !== undefined && !!p.name)
-                        .slice()
-                        .sort((a, b) => {
-                          // Add null checks for name property
-                          const nameA = a?.name || "";
-                          const nameB = b?.name || "";
-                          return nameA.localeCompare(nameB);
-                        })
-                        .map((personality) => (
-                          <SelectItem key={personality.id} value={personality.id}>
-                            {personality.name || "Unnamed"}
-                          </SelectItem>
-                        ))
-                    )}
-                  </SelectContent>
-                </Select>
-              </ErrorBoundary>
-              <div className="flex-1" />
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={file ? "default" : "outline"}
-                  className="size-10 gap-1.5"
-                  disabled={isDisabled}
-                  onClick={() => {
-                    if (file) {
-                      setFile(undefined);
-                      setIsAudioRecording(false);
-                      toast({
-                        title: "Attachment removed",
-                      });
-                    } else {
-                      document.getElementById("file-upload")?.click();
-                    }
-                  }}
-                >
-                  <Upload className="size-3.5" />
-                </Button>
-                <AudioRecorder
-                  className="size-10"
-                  disabled={isDisabled || !!file}
-                  onRecordingComplete={(blob) => {
-                    setFile(blob);
-                    setIsAudioRecording(true);
+            <div className="flex flex-row flex-nowrap items-center gap-2 pt-2">
+              <Button
+                type="button"
+                size="sm"
+                variant={file ? "default" : "outline"}
+                className="size-10 gap-1.5 flex-shrink-0"
+                disabled={isDisabled}
+                onClick={() => {
+                  if (file) {
+                    setFile(undefined);
+                    setIsAudioRecording(false);
                     toast({
-                      title: "Recording sent",
-                      description: "Starting new conversation",
+                      title: "Attachment removed",
                     });
-                  }}
-                  onAutoSend={handleAutoSend}
-                />
-              </div>
+                  } else {
+                    document.getElementById("file-upload")?.click();
+                  }
+                }}
+              >
+                <Upload className="size-3.5" />
+              </Button>
+              <AudioRecorder
+                className="size-10 flex-shrink-0"
+                disabled={isDisabled || !!file}
+                onRecordingComplete={(blob) => {
+                  setFile(blob);
+                  setIsAudioRecording(true);
+                  toast({
+                    title: "Recording sent",
+                    description: "Starting new conversation",
+                  });
+                }}
+                onAutoSend={handleAutoSend}
+              />
               <PromptDropdown
                 disabled={isDisabled}
                 onSelectPrompt={(promptText) => setPrompt(promptText)}
@@ -336,22 +254,14 @@ export default function Index() {
                 onChange={handleFileUpload}
                 accept=".png,.jpg,.jpeg,.gif,.webp,.pdf,.md,.txt,.csv,.srt,.vtt,.mp3,.wav,.mp4,.heic,.heif"
               />
-              {!isLoading ? (
-                <Button
-                  onClick={handleGreeting}
-                  type="button"
-                  className="gap-1.5"
-                  disabled={isDisabled}
-                >
-                  Get Started
-                </Button>
-              ) : null}
+              <div className="flex-1" />
               <Button
                 onClick={() => handleSubmit()}
                 type="submit"
+                size="sm"
                 disabled={isSubmitDisabled}
                 className={cn(
-                  "gap-1.5",
+                  "size-10 flex-shrink-0",
                   isLoading && "cursor-progress",
                   isSubmitDisabled
                     ? "bg-muted text-muted-foreground cursor-not-allowed"
@@ -359,14 +269,9 @@ export default function Index() {
                 )}
               >
                 {isLoading ? (
-                  <>
-                    <Spinner className="size-3.5" />
-                  </>
+                  <Spinner className="size-3.5" />
                 ) : (
-                  <>
-                    Send
-                    <CornerDownLeft className="size-3.5" />
-                  </>
+                  <CornerDownLeft className="size-3.5" />
                 )}
               </Button>
             </div>
@@ -389,7 +294,7 @@ export default function Index() {
                         dispatch(setActivePersonality(thread.personality?.id));
                       }}
                     >
-                      <div className="flex flex-row gap-2 text-sm">
+                      <div className="flex flex-col sm:flex-row gap-1 sm:gap-2 text-sm">
                         <div className="font-bold">
                           {thread.name || "Untitled"}
                         </div>
