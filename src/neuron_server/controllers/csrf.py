@@ -5,6 +5,7 @@ import hashlib
 import hmac
 import json
 import logging
+import os
 import secrets
 import sys
 from datetime import datetime, timedelta
@@ -303,6 +304,15 @@ def requires_csrf(func: Callable[..., T]) -> Callable[..., T]:
     """
     @wraps(func)
     async def decorated(*args: object, **kwargs: object) -> T:
+        # Skip CSRF check in debug mode if DISABLE_CSRF is set
+        if config.debug and os.environ.get("DISABLE_CSRF", "").lower() == "true":
+            if request.method not in ["GET", "HEAD", "OPTIONS"]:
+                logger.warning(
+                    f"CSRF check bypassed in debug mode for "
+                    f"{request.method} {request.path}"
+                )
+            return await func(*args, **kwargs)
+
         # Skip CSRF check for safe methods
         if request.method in ["GET", "HEAD", "OPTIONS"]:
             return await func(*args, **kwargs)
