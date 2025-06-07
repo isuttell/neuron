@@ -108,8 +108,8 @@ def fake_model() -> FakeRunnable:
 
 
 @pytest.fixture
-def fake_title_model() -> FakeRunnable:
-    """Create a fake title model that returns a title string."""
+def fake_fast_model() -> FakeRunnable:
+    """Create a fake fast model that returns a title string."""
     return FakeRunnable('"Test Title"')
 
 
@@ -132,13 +132,13 @@ def fake_memory_model() -> FakeRunnable:
 @pytest.fixture
 def llm(
     fake_model: FakeRunnable,
-    fake_title_model: FakeRunnable,
+    fake_fast_model: FakeRunnable,
     fake_memory_model: FakeRunnable,
 ) -> LLM:
     """Create an LLM instance with fake models."""
     return LLM(
         model=fake_model,
-        title_model=fake_title_model,
+        fast_model=fake_fast_model,
         memory_model=fake_memory_model,
         provider_model_id="test-model",
     )
@@ -148,7 +148,7 @@ def llm(
 async def test_init(llm: LLM) -> None:
     """Test LLM initialization."""
     assert llm.model is not None
-    assert llm.title_model is not None
+    assert llm.fast_model is not None
     assert llm.memory_model is not None
     assert llm.provider_model_id == "test-model"
 
@@ -316,7 +316,7 @@ def test_should_call_tools() -> None:
     fake_model = FakeRunnable(AIMessage(content="test"))
     llm_instance = LLM(
         model=fake_model,
-        title_model=fake_model,
+        fast_model=fake_model,
         memory_model=fake_model,
     )
 
@@ -335,7 +335,7 @@ def test_should_call_update_memory() -> None:
     fake_model = FakeRunnable(AIMessage(content="test"))
     llm_instance = LLM(
         model=fake_model,
-        title_model=fake_model,
+        fast_model=fake_model,
         memory_model=fake_model,
     )
 

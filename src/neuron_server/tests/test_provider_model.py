@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import pytest
@@ -39,7 +39,7 @@ async def test_provider_model_default_field():
 
 
 @pytest.mark.asyncio
-async def test_provider_model_save_with_default(mock_database):
+async def test_provider_model_save_with_default():
     """Test that the default field is saved correctly to the database"""
     provider_id = uuid4()
 
@@ -52,29 +52,34 @@ async def test_provider_model_save_with_default(mock_database):
     mock_db_model.default = False
     mock_db_model.caching_enabled = False
 
-    # Mock the session that's already patched by mock_database fixture
-    from neuron_server.database import get_session
-
-    mock_session = get_session()
+    # Create mock session
+    mock_session = AsyncMock()
+    mock_session.__aenter__.return_value = mock_session
+    mock_session.__aexit__.return_value = None
     mock_session.get = AsyncMock(return_value=mock_db_model)
     mock_session.execute = AsyncMock()
+    mock_session.commit = AsyncMock()
 
-    # Create provider model
-    provider = ProviderModelModel(
-        id=provider_id,
-        provider="openai",
-        model_id="gpt-4",
-        enabled=False,
-        default=True,
-        caching_enabled=False,
-    )
+    # Mock get_session to return our mock session
+    with patch("neuron_server.models.provider_model.get_session") as mock_get_session:
+        mock_get_session.return_value = mock_session
 
-    # Save it
-    await provider.save()
+        # Create provider model
+        provider = ProviderModelModel(
+            id=provider_id,
+            provider="openai",
+            model_id="gpt-4",
+            enabled=False,
+            default=True,
+            caching_enabled=False,
+        )
 
-    # Verify the default field was set on the database model
-    assert mock_db_model.default is True
-    assert mock_session.commit.called
+        # Save it
+        await provider.save()
+
+        # Verify the default field was set on the database model
+        assert mock_db_model.default is True
+        assert mock_session.commit.called
 
 
 @pytest.mark.asyncio
@@ -119,24 +124,26 @@ async def test_get_default_provider_when_no_active(mock_database):
         "updated_at": "2024-01-01T00:00:00",
     }
 
-    # Mock the session that's already patched by mock_database fixture
-    from neuron_server.database import get_session
-
-    mock_session = get_session()
-
     # Mock query result
     mock_result = MagicMock()
     mock_result.scalars.return_value.all.return_value = [mock_provider1, mock_provider2]
-    mock_session.execute = AsyncMock(return_value=mock_result)
 
-    # List all providers
-    providers = await ProviderModelModel.list()
+    # Mock the session - use the mock_session from conftest
+    with patch("neuron_server.models.provider_model.get_session") as mock_get_session:
+        mock_session = AsyncMock()
+        mock_session.__aenter__.return_value = mock_session
+        mock_session.__aexit__.return_value = None
+        mock_session.execute = AsyncMock(return_value=mock_result)
+        mock_get_session.return_value = mock_session
 
-    # Find the default provider
-    default_providers = [p for p in providers if p.default]
-    assert len(default_providers) == 1
-    assert default_providers[0].id == provider_id
-    assert default_providers[0].default is True
+        # List all providers
+        providers = await ProviderModelModel.list()
+
+        # Find the default provider
+        default_providers = [p for p in providers if p.default]
+        assert len(default_providers) == 1
+        assert default_providers[0].id == provider_id
+        assert default_providers[0].default is True
 
 
 @pytest.mark.asyncio
@@ -157,16 +164,18 @@ async def test_get_provider_returns_default_field(mock_database):
         "updated_at": "2024-01-01T00:00:00",
     }
 
-    # Mock the session that's already patched by mock_database fixture
-    from neuron_server.database import get_session
+    # Mock the session directly
+    with patch("neuron_server.models.provider_model.get_session") as mock_get_session:
+        mock_session = AsyncMock()
+        mock_session.__aenter__.return_value = mock_session
+        mock_session.__aexit__.return_value = None
+        mock_session.get = AsyncMock(return_value=mock_db_model)
+        mock_get_session.return_value = mock_session
 
-    mock_session = get_session()
-    mock_session.get = AsyncMock(return_value=mock_db_model)
+        # Get provider
+        provider = await ProviderModelModel.get(provider_id)
 
-    # Get provider
-    provider = await ProviderModelModel.get(provider_id)
-
-    # Verify the default field is included
-    assert provider is not None
-    assert provider.default is True
-    assert provider.id == provider_id
+        # Verify the default field is included
+        assert provider is not None
+        assert provider.default is True
+        assert provider.id == provider_id

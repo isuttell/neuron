@@ -1,13 +1,13 @@
 import asyncio
 import os
-from typing import Any, BinaryIO, Union
+from typing import BinaryIO, Union
 
 import aiofiles
 import aiohttp
 
 
 async def save_replicate_output(
-    output: Union[str, bytes, BinaryIO, Any],  # noqa: ANN401
+    output: Union[str, bytes, BinaryIO, object],
     file_path: str,
 ) -> None:
     """
