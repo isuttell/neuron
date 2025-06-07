@@ -387,7 +387,7 @@ jobs:
             Steps to follow:
             1. Get PR details using: mcp__gitea__get_pull_request_by_index with index ${{ github.event.pull_request.number }}
             2. Read existing PR comments using: tea pr --repo isuttell/neuron --comments ${{ github.event.pull_request.number }}
-            3. Use 'tea pr ${{ github.event.pull_request.number }} --fields diff | sed -n '0,5000p'` for a unified diff, use sed control large diffs
+            3. Use 'git diff origin/${{ github.base_ref }}...HEAD' to see all changes in this PR
             4. Analyze code quality, potential bugs, style consistency, and improvements
             5. Use the Gitea MCP tools to leave a comment with your recommendations and a final Approved or Not Approved
 

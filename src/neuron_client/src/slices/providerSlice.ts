@@ -6,6 +6,7 @@ export interface Provider {
   id: string;
   model_id: string;
   provider: string;
+  default: boolean;
   created_at: string;
   updated_at: string;
 }

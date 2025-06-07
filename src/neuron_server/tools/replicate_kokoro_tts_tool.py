@@ -81,7 +81,8 @@ class ReplicateKokoroTTSTool(BaseTool):
     args_schema: type[ReplicateKokoroTTSToolArgs] = ReplicateKokoroTTSToolArgs
 
     ref: str = (
-        "jaaari/kokoro-82m:f559560eb822dc509045f3921a1921234918b91739db4bf3daab2169b71c7a13"
+        "jaaari/kokoro-82m:"
+        "f559560eb822dc509045f3921a1921234918b91739db4bf3daab2169b71c7a13"
     )
 
     def _run(self, **kwargs: Any) -> str:

@@ -16,7 +16,7 @@ Create a task list and verify each item passes before creating a PR using the Gi
 ### For Any Backend Changes
 
 - [ ] `poetry run ruff check src/neuron_server/ --fix` - Backend linting errors
-- [ ] `poetry run ruff format src/neuron_server/ --fix` - Backend code formatting
+- [ ] `poetry run ruff format src/neuron_server/` - Backend code formatting
 - [ ] `poetry run pytest` - Backend tests
 
 ## Final Steps
