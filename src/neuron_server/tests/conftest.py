@@ -14,13 +14,15 @@ from neuron_server.controllers.auth import TokenPayload
 # Mock tiktoken to prevent network requests during tests
 mock_tiktoken = Mock()
 
+
 class MockEncoding:
     """Mock tiktoken encoding class."""
+
     def encode(
         self,
         text: str,
         allowed_special: set[str] | str | None = None,
-        disallowed_special: str = "all"
+        disallowed_special: str = "all",
     ) -> list[int]:
         """Return mock tokens proportional to text length."""
         if not text:
@@ -31,6 +33,7 @@ class MockEncoding:
     def decode(self, tokens: list[int]) -> str:
         """Return mock decoded text."""
         return "decoded_text"
+
 
 mock_tiktoken.encoding_for_model = Mock(return_value=MockEncoding())
 mock_tiktoken.get_encoding = Mock(return_value=MockEncoding())
@@ -49,9 +52,11 @@ mock_pubsub.publish = AsyncMock()
 mock_pubsub.subscribe = AsyncMock()
 sys.modules["neuron_server.pubsub"] = mock_pubsub
 
+
 # Mock Redis
 class AsyncContextManagerMock(AsyncMock):
     """Mock that supports async context manager protocol."""
+
     async def __aenter__(self) -> "AsyncContextManagerMock":
         return self
 
@@ -62,6 +67,7 @@ class AsyncContextManagerMock(AsyncMock):
         exc_tb: object | None,
     ) -> None:
         return None
+
 
 redis_mock = Mock()
 
@@ -129,13 +135,13 @@ redis_mock.ConnectionError = redis.ConnectionError
 redis_mock.TimeoutError = redis.TimeoutError
 redis_mock.RedisError = redis.RedisError
 redis_mock.asyncio.ConnectionPool = Mock
-redis_mock.exceptions.ConnectionError = type('ConnectionError', (BaseException,), {})
-redis_mock.exceptions.RedisError = type('RedisError', (BaseException,), {})
-redis_mock.RedisError = type('RedisError', (BaseException,), {})
+redis_mock.exceptions.ConnectionError = type("ConnectionError", (BaseException,), {})
+redis_mock.exceptions.RedisError = type("RedisError", (BaseException,), {})
+redis_mock.RedisError = type("RedisError", (BaseException,), {})
 # Add more specific Redis exceptions
 redis_error = redis_mock.exceptions.RedisError
-redis_mock.exceptions.LockError = type('LockError', (redis_error,), {})
-redis_mock.exceptions.WatchError = type('WatchError', (redis_error,), {})
+redis_mock.exceptions.LockError = type("LockError", (redis_error,), {})
+redis_mock.exceptions.WatchError = type("WatchError", (redis_error,), {})
 
 sys.modules["redis"] = redis_mock
 
@@ -168,9 +174,9 @@ mock_neo4j.GraphDatabase.driver = Mock(return_value=mock_driver)
 
 # Mock Neo4j exceptions
 mock_neo4j.exceptions = Mock()
-mock_neo4j.exceptions.CypherSyntaxError = type('CypherSyntaxError', (Exception,), {})
-mock_neo4j.exceptions.DriverError = type('DriverError', (Exception,), {})
-mock_neo4j.exceptions.Neo4jError = type('Neo4jError', (Exception,), {})
+mock_neo4j.exceptions.CypherSyntaxError = type("CypherSyntaxError", (Exception,), {})
+mock_neo4j.exceptions.DriverError = type("DriverError", (Exception,), {})
+mock_neo4j.exceptions.Neo4jError = type("Neo4jError", (Exception,), {})
 
 # Mock neo4j Record
 mock_neo4j.Record = Mock()
@@ -209,12 +215,14 @@ sys.modules["neo4j_graphrag.retrievers.text2cypher"].Text2CypherRetriever = Mock
 # Mock Tavily
 mock_tavily = Mock()
 
+
 # Create a mock TavilySearchResults that inherits from BaseTool
 class MockTavilySearchResults(Mock):
     def __init__(self, *args: object, **kwargs: object) -> None:
         super().__init__()
         self.name = "tavily_search_results"
         self.description = "Search Tavily for recent results"
+
 
 mock_tavily.TavilySearchResults = MockTavilySearchResults
 mock_tavily.TavilySearchAPIWrapper = Mock
@@ -231,6 +239,7 @@ mock_chat.create.return_value = {
     "choices": [{"message": {"content": "Test response", "tool_calls": []}}]
 }
 
+
 # Define a custom client class that doesn't check for API key
 class MockOpenAI:
     def __init__(self, api_key: str = None, **kwargs: dict) -> None:
@@ -238,16 +247,18 @@ class MockOpenAI:
         self.chat = MagicMock()
         self.chat.completions = mock_chat
 
+
 class MockAsyncOpenAI:
     def __init__(self, api_key: str = None, **kwargs: dict) -> None:
         self.embeddings = mock_embeddings
         self.chat = MagicMock()
         self.chat.completions = mock_chat
 
+
 # Patch OpenAI
 openai.OpenAI = MockOpenAI
 openai.AsyncOpenAI = MockAsyncOpenAI
-openai.OpenAIError = type('OpenAIError', (Exception,), {})
+openai.OpenAIError = type("OpenAIError", (Exception,), {})
 
 # Mock langchain OpenAI classes
 OpenAIEmbeddings.validate_environment = MagicMock()
@@ -368,7 +379,7 @@ def mock_token() -> TokenPayload:
         email="test@example.com",
         picture=None,
         roles=["user"],
-        permissions=["read:events", "write:events"]
+        permissions=["read:events", "write:events"],
     )
 
 
@@ -401,6 +412,7 @@ def mock_openai_modules() -> None:
     """Mock OpenAI modules in various places they might be imported."""
     yield
 
+
 @pytest.fixture(autouse=True)
 def mock_quart_app() -> None:
     """Make Quart app mocks work with async context manager protocol."""
@@ -418,9 +430,7 @@ def mock_quart_app() -> None:
         return client
 
     def patched_test_request_context(
-        self: Quart,
-        *args: object,
-        **kwargs: object
+        self: Quart, *args: object, **kwargs: object
     ) -> object:
         ctx = original_test_request_context(self, *args, **kwargs)
         if not hasattr(ctx, "__aenter__"):
@@ -446,18 +456,15 @@ def csrf_headers() -> dict[str, str]:
 
     cookie_value, csrf_token = create_session_cookie("test_user_id", include_csrf=True)
 
-    return {
-        "X-CSRF-Token": csrf_token,
-        "Cookie": f"neuron_session={cookie_value}"
-    }
+    return {"X-CSRF-Token": csrf_token, "Cookie": f"neuron_session={cookie_value}"}
 
 
 @pytest.fixture(autouse=True)
 def bypass_csrf_in_tests(request) -> None:
     """Bypass CSRF checks in all tests except CSRF-specific tests."""
     # Skip bypass for CSRF-specific tests
-    test_file = request.node.fspath.basename if hasattr(request.node, 'fspath') else ''
-    if 'test_csrf' in test_file:
+    test_file = request.node.fspath.basename if hasattr(request.node, "fspath") else ""
+    if "test_csrf" in test_file:
         yield
         return
 
@@ -513,7 +520,8 @@ def bypass_csrf_in_tests(request) -> None:
                 # Set session data attributes
                 quart_request.user_id = "test_user_id"
                 quart_request.session_data = {
-                    "user_id": "test_user_id", "csrf_token": csrf_token
+                    "user_id": "test_user_id",
+                    "csrf_token": csrf_token,
                 }
 
         ctx.push = patched_push
@@ -534,48 +542,48 @@ def bypass_csrf_in_tests(request) -> None:
 
         # Create wrapper functions that add CSRF headers
         async def wrapped_post(path, **kwargs):
-            headers = kwargs.get('headers', {})
+            headers = kwargs.get("headers", {})
             # Add CSRF headers if not present
-            if 'X-CSRF-Token' not in headers and 'Cookie' not in headers:
+            if "X-CSRF-Token" not in headers and "Cookie" not in headers:
                 cookie_value, csrf_token = create_session_cookie(
                     "test_user_id", include_csrf=True
                 )
-                headers['X-CSRF-Token'] = csrf_token
-                headers['Cookie'] = f"neuron_session={cookie_value}"
-                kwargs['headers'] = headers
+                headers["X-CSRF-Token"] = csrf_token
+                headers["Cookie"] = f"neuron_session={cookie_value}"
+                kwargs["headers"] = headers
             return await original_post(path, **kwargs)
 
         async def wrapped_put(path, **kwargs):
-            headers = kwargs.get('headers', {})
-            if 'X-CSRF-Token' not in headers and 'Cookie' not in headers:
+            headers = kwargs.get("headers", {})
+            if "X-CSRF-Token" not in headers and "Cookie" not in headers:
                 cookie_value, csrf_token = create_session_cookie(
                     "test_user_id", include_csrf=True
                 )
-                headers['X-CSRF-Token'] = csrf_token
-                headers['Cookie'] = f"neuron_session={cookie_value}"
-                kwargs['headers'] = headers
+                headers["X-CSRF-Token"] = csrf_token
+                headers["Cookie"] = f"neuron_session={cookie_value}"
+                kwargs["headers"] = headers
             return await original_put(path, **kwargs)
 
         async def wrapped_patch(path, **kwargs):
-            headers = kwargs.get('headers', {})
-            if 'X-CSRF-Token' not in headers and 'Cookie' not in headers:
+            headers = kwargs.get("headers", {})
+            if "X-CSRF-Token" not in headers and "Cookie" not in headers:
                 cookie_value, csrf_token = create_session_cookie(
                     "test_user_id", include_csrf=True
                 )
-                headers['X-CSRF-Token'] = csrf_token
-                headers['Cookie'] = f"neuron_session={cookie_value}"
-                kwargs['headers'] = headers
+                headers["X-CSRF-Token"] = csrf_token
+                headers["Cookie"] = f"neuron_session={cookie_value}"
+                kwargs["headers"] = headers
             return await original_patch(path, **kwargs)
 
         async def wrapped_delete(path, **kwargs):
-            headers = kwargs.get('headers', {})
-            if 'X-CSRF-Token' not in headers and 'Cookie' not in headers:
+            headers = kwargs.get("headers", {})
+            if "X-CSRF-Token" not in headers and "Cookie" not in headers:
                 cookie_value, csrf_token = create_session_cookie(
                     "test_user_id", include_csrf=True
                 )
-                headers['X-CSRF-Token'] = csrf_token
-                headers['Cookie'] = f"neuron_session={cookie_value}"
-                kwargs['headers'] = headers
+                headers["X-CSRF-Token"] = csrf_token
+                headers["Cookie"] = f"neuron_session={cookie_value}"
+                kwargs["headers"] = headers
             return await original_delete(path, **kwargs)
 
         # Replace methods
@@ -603,6 +611,7 @@ def bypass_csrf_in_tests(request) -> None:
                 from neuron_server.controllers.csrf import (
                     verify_cookie_data as original_verify,
                 )
+
                 try:
                     # Try to use the real verify function
                     cookie_data = original_verify(cookie)

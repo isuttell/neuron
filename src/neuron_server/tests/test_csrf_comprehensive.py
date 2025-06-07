@@ -1,4 +1,5 @@
 """Comprehensive CSRF test coverage"""
+
 import pytest
 from quart import Quart
 
@@ -26,8 +27,7 @@ class TestCSRFEdgeCases:
 
         async with app.test_client() as client:
             response = await client.post(
-                "/test",
-                headers={"X-CSRF-Token": "some_token"}
+                "/test", headers={"X-CSRF-Token": "some_token"}
             )
             assert response.status_code == 403
 
@@ -44,13 +44,10 @@ class TestCSRFEdgeCases:
             client.set_cookie(
                 server_name="localhost",
                 key="neuron_session",
-                value="invalid_base64_cookie!"
+                value="invalid_base64_cookie!",
             )
 
-            response = await client.post(
-                "/test",
-                headers={"X-CSRF-Token": "token"}
-            )
+            response = await client.post("/test", headers={"X-CSRF-Token": "token"})
             assert response.status_code == 403
 
     async def test_csrf_cookie_without_csrf_token(self):
@@ -68,15 +65,10 @@ class TestCSRFEdgeCases:
 
         async with app.test_client() as client:
             client.set_cookie(
-                server_name="localhost",
-                key="neuron_session",
-                value=cookie
+                server_name="localhost", key="neuron_session", value=cookie
             )
 
-            response = await client.post(
-                "/test",
-                headers={"X-CSRF-Token": "token"}
-            )
+            response = await client.post("/test", headers={"X-CSRF-Token": "token"})
             assert response.status_code == 403
 
 
@@ -132,9 +124,7 @@ class TestCSRFMethods:
 
         async with app.test_client() as client:
             client.set_cookie(
-                server_name="localhost",
-                key="neuron_session",
-                value=cookie_value
+                server_name="localhost", key="neuron_session", value=cookie_value
             )
 
             # Without CSRF
@@ -142,10 +132,7 @@ class TestCSRFMethods:
             assert response.status_code == 403
 
             # With CSRF
-            response = await client.put(
-                "/test",
-                headers={"X-CSRF-Token": csrf_token}
-            )
+            response = await client.put("/test", headers={"X-CSRF-Token": csrf_token})
             assert response.status_code == 200
 
     async def test_csrf_on_delete(self):
@@ -161,9 +148,7 @@ class TestCSRFMethods:
 
         async with app.test_client() as client:
             client.set_cookie(
-                server_name="localhost",
-                key="neuron_session",
-                value=cookie_value
+                server_name="localhost", key="neuron_session", value=cookie_value
             )
 
             # Without CSRF
@@ -172,8 +157,7 @@ class TestCSRFMethods:
 
             # With CSRF
             response = await client.delete(
-                "/test",
-                headers={"X-CSRF-Token": csrf_token}
+                "/test", headers={"X-CSRF-Token": csrf_token}
             )
             assert response.status_code == 200
 
@@ -190,9 +174,7 @@ class TestCSRFMethods:
 
         async with app.test_client() as client:
             client.set_cookie(
-                server_name="localhost",
-                key="neuron_session",
-                value=cookie_value
+                server_name="localhost", key="neuron_session", value=cookie_value
             )
 
             # Without CSRF
@@ -200,10 +182,7 @@ class TestCSRFMethods:
             assert response.status_code == 403
 
             # With CSRF
-            response = await client.patch(
-                "/test",
-                headers={"X-CSRF-Token": csrf_token}
-            )
+            response = await client.patch("/test", headers={"X-CSRF-Token": csrf_token})
             assert response.status_code == 200
 
     async def test_csrf_skips_head_options(self):
@@ -239,6 +218,7 @@ class TestRequestAttributes:
         @requires_csrf
         async def test_endpoint():
             from quart import request
+
             captured_attrs["user_id"] = getattr(request, "user_id", None)
             captured_attrs["session_data"] = getattr(request, "session_data", None)
             return {"status": "ok"}
@@ -247,15 +227,10 @@ class TestRequestAttributes:
 
         async with app.test_client() as client:
             client.set_cookie(
-                server_name="localhost",
-                key="neuron_session",
-                value=cookie_value
+                server_name="localhost", key="neuron_session", value=cookie_value
             )
 
-            response = await client.post(
-                "/test",
-                headers={"X-CSRF-Token": csrf_token}
-            )
+            response = await client.post("/test", headers={"X-CSRF-Token": csrf_token})
 
             assert response.status_code == 200
             assert captured_attrs["user_id"] == "user123"

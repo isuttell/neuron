@@ -51,15 +51,17 @@ def test_get_message_content_empty() -> None:
 
 def test_get_message_content_with_tool_use() -> None:
     """Test handling of tool_use content type."""
-    msg = DummyMessage([
-        {"type": "text", "text": "Let me check the weather"},
-        {
-            "type": "tool_use",
-            "id": "tool_123",
-            "name": "get_weather",
-            "input": {"location": "San Francisco"}
-        }
-    ])
+    msg = DummyMessage(
+        [
+            {"type": "text", "text": "Let me check the weather"},
+            {
+                "type": "tool_use",
+                "id": "tool_123",
+                "name": "get_weather",
+                "input": {"location": "San Francisco"},
+            },
+        ]
+    )
 
     # Test structured format
     result = get_message_content(msg, format_as_string=False)
@@ -77,13 +79,15 @@ def test_get_message_content_with_tool_use() -> None:
 
 def test_get_message_content_with_unknown_type() -> None:
     """Test handling of unknown content types."""
-    msg = DummyMessage([
-        {
-            "type": "custom_type",
-            "custom_field": "custom_value",
-            "data": {"key": "value"}
-        }
-    ])
+    msg = DummyMessage(
+        [
+            {
+                "type": "custom_type",
+                "custom_field": "custom_value",
+                "data": {"key": "value"},
+            }
+        ]
+    )
 
     # Test structured format - should pass through all fields
     result = get_message_content(msg, format_as_string=False)
@@ -294,7 +298,7 @@ async def test_message_id_consistency_during_streaming() -> None:
         "personality_id": uuid4(),
         "user_id": uuid4(),
         "username": "TestUser",
-        "location": "Test Location"
+        "location": "Test Location",
     }
 
     human_message = HumanMessage(content="Test message")
@@ -313,7 +317,7 @@ async def test_message_id_consistency_during_streaming() -> None:
             "name": "test_model",
             "data": {"chunk": AIMessage(content="Hello")},
             "run_id": test_run_id,
-            "metadata": {"langgraph_node": "agent"}
+            "metadata": {"langgraph_node": "agent"},
         }
         # Yield final message
         yield {
@@ -321,7 +325,7 @@ async def test_message_id_consistency_during_streaming() -> None:
             "name": "test_model",
             "data": {"output": AIMessage(content="Hello world")},
             "run_id": test_run_id,
-            "metadata": {"langgraph_node": "agent"}
+            "metadata": {"langgraph_node": "agent"},
         }
 
     mock_graph.astream_events = mock_stream_events
@@ -337,16 +341,17 @@ async def test_message_id_consistency_during_streaming() -> None:
     mock_state.values = {"messages": []}
 
     aget_state_mock = AsyncMock(return_value=mock_state)
-    with patch('neuron_server.llms.agent.pubsub.publish', mock_publish), \
-         patch('neuron_server.llms.agent.aget_state', aget_state_mock):
-
+    with (
+        patch("neuron_server.llms.agent.pubsub.publish", mock_publish),
+        patch("neuron_server.llms.agent.aget_state", aget_state_mock),
+    ):
         ctx = StreamEventContext(
             thread=thread,
             graph=mock_graph,
             human_message=human_message,
             personality=personality,
             config=config,
-            start_time=datetime.now()
+            start_time=datetime.now(),
         )
 
         await _process_stream_events(ctx)
@@ -356,10 +361,10 @@ async def test_message_id_consistency_during_streaming() -> None:
     complete_msg_id = None
 
     for event in published_events:
-        if hasattr(event, 'message'):
-            if hasattr(event.message, 'status') and event.message.status == 'streaming':
+        if hasattr(event, "message"):
+            if hasattr(event.message, "status") and event.message.status == "streaming":
                 partial_msg_id = event.message.id
-            elif event.message.type == 'ai' and not hasattr(event.message, 'status'):
+            elif event.message.type == "ai" and not hasattr(event.message, "status"):
                 complete_msg_id = event.message.id
 
     assert partial_msg_id is not None, "Should have published a partial message"
@@ -379,7 +384,7 @@ async def test_tool_message_id_gets_set_to_run_id() -> None:
     tool_message = ToolMessage(
         content="Tool result",
         tool_call_id="tool-call-123",
-        id="original-tool-id"  # This should be overridden
+        id="original-tool-id",  # This should be overridden
     )
 
     # Simulate our fix: override the ID with run_id

@@ -37,15 +37,15 @@ def create_text_preview(
 
 
 VOICE_OPTIONS = Literal[
-    "af_aoede",    # American English female, C+
-    "af_bella",    # American English female, A- (high quality)
-    "af_kore",     # American English female, C+
-    "af_nicole",   # American English female, B-
-    "af_sarah",    # American English female, C+
-    "am_fenrir",   # American English male, C+
+    "af_aoede",  # American English female, C+
+    "af_bella",  # American English female, A- (high quality)
+    "af_kore",  # American English female, C+
+    "af_nicole",  # American English female, B-
+    "af_sarah",  # American English female, C+
+    "am_fenrir",  # American English male, C+
     "am_michael",  # American English male, C+
-    "am_puck",     # American English male, C+
-    "bf_emma",     # British English female, B-
+    "am_puck",  # American English male, C+
+    "bf_emma",  # British English female, B-
 ]
 
 
@@ -53,9 +53,7 @@ class ReplicateKokoroTTSToolArgs(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     name: str = Field(description="Display title for the generated audio")
-    text: str = Field(
-        description="Text input (long text is automatically split)"
-    )
+    text: str = Field(description="Text input (long text is automatically split)")
     voice: VOICE_OPTIONS = Field(
         description="""Voice to use for synthesis. Prefixes: 'af_' = American Female,
         'am_' = American Male, 'bf_' = British Female. Highest quality voices:

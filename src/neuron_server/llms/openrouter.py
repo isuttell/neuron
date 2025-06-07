@@ -25,10 +25,9 @@ class OpenRouterLLM(LLM):
             api_key=config.openrouter_api_key,
             base_url=self.base_url,
         )
-        title_model = ChatOpenAI(
+        fast_model = ChatOpenAI(
             model=model_id,
             temperature=1,
-            max_tokens=42,
             api_key=config.openrouter_api_key,
             base_url=self.base_url,
         )
@@ -41,7 +40,7 @@ class OpenRouterLLM(LLM):
         )
         super().__init__(
             model,
-            title_model,
+            fast_model,
             memory_model,
             provider_model_id=provider_model_id,
         )

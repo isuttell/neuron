@@ -114,6 +114,7 @@ class TestReplicateImageGenerationTool:
         mock_replicate_run: AsyncMock,
     ) -> None:
         """Test running the tool with Google Imagen 4."""
+
         # Create a proper mock for FileOutput that acts as an async iterator
         class MockFileOutput(replicate.helpers.FileOutput):
             def __init__(self) -> None:

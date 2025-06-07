@@ -20,10 +20,9 @@ class OpenAILLM(LLM):
             stream_usage=True,
             max_tokens=None,
         )
-        title_model = ChatOpenAI(
+        fast_model = ChatOpenAI(
             model="gpt-4o-mini",
             temperature=1,
-            max_tokens=42,
         )
         memory_model = ChatOpenAI(
             model=model_id,
@@ -31,7 +30,7 @@ class OpenAILLM(LLM):
         )
         super().__init__(
             model,
-            title_model,
+            fast_model,
             memory_model,
             provider_model_id=provider_model_id,
         )

@@ -18,7 +18,7 @@ class GoogleLLM(LLM):
             temperature=1,
             max_tokens=None,
         )
-        title_model = ChatGoogleGenerativeAI(
+        fast_model = ChatGoogleGenerativeAI(
             model=model_id,
             temperature=1,
         )
@@ -28,7 +28,7 @@ class GoogleLLM(LLM):
         )
         super().__init__(
             model,
-            title_model,
+            fast_model,
             memory_model,
             provider_model_id=provider_model_id,
         )

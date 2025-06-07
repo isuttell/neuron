@@ -56,9 +56,7 @@ class TestTaskScheduler:
     @pytest.mark.asyncio
     async def test_init(self) -> None:
         """Test TaskScheduler initialization."""
-        scheduler = TaskScheduler(
-            host="test-host", port=1234, db=5, password="secret"
-        )
+        scheduler = TaskScheduler(host="test-host", port=1234, db=5, password="secret")
         assert scheduler._active_streams == {}
         # Parent class stores connection info internally
         assert isinstance(scheduler, TaskScheduler)

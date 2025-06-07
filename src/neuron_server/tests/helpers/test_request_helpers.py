@@ -1,4 +1,5 @@
 """Helper functions for creating test requests with CSRF tokens"""
+
 from quart import Quart
 
 from neuron_server.controllers.csrf import create_session_cookie
@@ -51,6 +52,7 @@ async def setup_csrf_request_context(
     # Set session data on request
     async with ctx:
         from quart import request
+
         request.user_id = user_id
         request.session_data = {"user_id": user_id, "csrf_token": csrf_token}
 

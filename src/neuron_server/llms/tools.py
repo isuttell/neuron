@@ -263,7 +263,6 @@ async def get_tools(query: str) -> list[BaseTool]:
         categories = [name for name in query.strip("+").split("+") if name in tool_sets]
         ts = [tool for name in categories for tool in tool_sets[name]]
 
-
     # Required Tools
     if config.memory_enabled:
         ts.extend(memory_tools)

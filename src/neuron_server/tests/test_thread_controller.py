@@ -209,9 +209,7 @@ async def test_get_thread(
     thread_id = mock_thread.id
 
     with (
-        patch.object(
-            ThreadModel, "get", new_callable=AsyncMock
-        ) as mock_get,
+        patch.object(ThreadModel, "get", new_callable=AsyncMock) as mock_get,
     ):
         # Setup mocks
         mock_get.return_value = mock_thread
@@ -415,9 +413,7 @@ async def test_get_recent_threads(thread_test_context: dict) -> None:
             assert len(result["personalities"]) == 1
 
         # Verify mocks were called correctly
-        mock_get_recent.assert_called_once_with(
-            hours=24, user_id=mock_token.user_id
-        )
+        mock_get_recent.assert_called_once_with(hours=24, user_id=mock_token.user_id)
         mock_get_many.assert_called_once_with({mock_thread.personality_id})
 
 
@@ -491,7 +487,9 @@ async def test_create_thread(thread_test_context: dict) -> None:
                 assert result["thread"]["id"] == str(mock_thread.id)
 
                 # Verify mocks were called correctly
-                mock_get_personality.assert_called_once_with(personality_id=personality_id)
+                mock_get_personality.assert_called_once_with(
+                    personality_id=personality_id
+                )
                 mock_create_thread.assert_called_once()
                 mock_create_thread_user.assert_called_once()
                 # In greeting=false mode, process_message_request should be called
@@ -596,12 +594,8 @@ async def test_delete_thread(
     thread_id = mock_thread.id
 
     with (
-        patch.object(
-            ThreadModel, "get", new_callable=AsyncMock
-        ) as mock_get,
-        patch.object(
-            ThreadModel, "delete", new_callable=AsyncMock
-        ) as mock_delete,
+        patch.object(ThreadModel, "get", new_callable=AsyncMock) as mock_get,
+        patch.object(ThreadModel, "delete", new_callable=AsyncMock) as mock_delete,
     ):
         # Setup mocks
         mock_get.return_value = mock_thread
@@ -803,7 +797,7 @@ async def test_update_thread_not_owner(
                 await update_thread(thread_id)
 
             # Verify error message
-            assert "You don\'t have access to this thread" in str(excinfo.value)
+            assert "You don't have access to this thread" in str(excinfo.value)
 
         # Verify mocks were called correctly
         mock_get.assert_called_once_with(thread_id=thread_id)
@@ -820,7 +814,7 @@ def thread_test_context(
     mock_token: TokenPayload,
     mock_thread: MagicMock,
     mock_redis: AsyncMock,
-    mock_decode_token: AsyncMock
+    mock_decode_token: AsyncMock,
 ) -> dict:
     """Fixture that combines common test objects to reduce function arguments."""
     # Create additional mocks needed for tests
@@ -851,7 +845,7 @@ def thread_test_context(
     auth_path = "neuron_server.controllers.auth"
     with (
         patch(f"{auth_path}.get_jwks", new_callable=AsyncMock) as mock_jwks,
-        patch(f"{cache_path}.get_redis_client", return_value=mock_redis)
+        patch(f"{cache_path}.get_redis_client", return_value=mock_redis),
     ):
         mock_jwks.return_value = {"keys": []}
 
@@ -969,7 +963,7 @@ async def test_add_thread_user(thread_test_context: dict) -> None:
             assert result["thread_user"] == mock_thread_user.model_dump()
 
         # Verify mocks were called correctly
-        assert mock_get_thread.call_count >= 1 # Called multiple times
+        assert mock_get_thread.call_count >= 1  # Called multiple times
         mock_get_by_ids.assert_called_once_with(user_ids=[user_id])
         mock_create_thread_user.assert_called_once()
 
@@ -1021,7 +1015,7 @@ async def test_add_thread_user_already_exists(thread_test_context: dict) -> None
             assert "already in the thread" in str(excinfo.value)
 
         # Verify mocks were called correctly
-        assert mock_get_thread.call_count >= 1 # Called multiple times
+        assert mock_get_thread.call_count >= 1  # Called multiple times
         mock_get_by_ids.assert_called_once_with(user_ids=[user_id])
 
 
@@ -1080,7 +1074,7 @@ async def test_add_thread_user_by_email(thread_test_context: dict) -> None:
             assert result["user"] == mock_user.model_dump()
 
         # Verify mocks were called correctly
-        assert mock_get_thread.call_count >= 1 # Called multiple times
+        assert mock_get_thread.call_count >= 1  # Called multiple times
         mock_get_by_email.assert_called_once_with(email=email)
         mock_create_thread_user.assert_called_once()
 
@@ -1132,7 +1126,7 @@ async def test_update_thread_user(thread_test_context: dict) -> None:
             assert result["thread_user"] == mock_thread_user.model_dump()
 
         # Verify mocks were called correctly
-        assert mock_get_thread.call_count >= 1 # Called multiple times
+        assert mock_get_thread.call_count >= 1  # Called multiple times
         mock_update_role.assert_called_once_with(
             thread_id=thread_id, user_id=user_id, role=new_role
         )
@@ -1236,7 +1230,7 @@ async def test_remove_thread_user_self(
             assert response.status_code == HTTPStatus.NO_CONTENT
 
         # Verify mocks were called correctly
-        assert mock_get_thread.call_count >= 1 # Called multiple times
+        assert mock_get_thread.call_count >= 1  # Called multiple times
         mock_delete_thread_user.assert_called_once_with(
             thread_id=thread_id, user_id=user_id
         )

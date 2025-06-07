@@ -67,36 +67,42 @@ async def scheduler() -> AsyncGenerator[AbstractAsyncRedisEventScheduler, None]:
 
         def _setup_basic_operations(self, client: MagicMock) -> None:
             """Set up basic Redis operations."""
+
             async def mock_get(key: str) -> Optional[str]:
                 return self.data.get(key)
+
             client.get = AsyncMock(side_effect=mock_get)
 
             async def mock_set(
                 key: str,
                 value: str,
                 ex: Optional[int] = None,
-                nx: Optional[bool] = None
+                nx: Optional[bool] = None,
             ) -> bool:
                 if nx and key in self.data:
                     return False
                 self.data[key] = value
                 return True
+
             client.set = AsyncMock(side_effect=mock_set)
 
             async def mock_setex(key: str, ttl: int, value: str) -> bool:
                 self.data[key] = value
                 return True
+
             client.setex = AsyncMock(side_effect=mock_setex)
 
             async def mock_delete(key: str) -> bool:
                 if key in self.data:
                     del self.data[key]
                 return True
+
             client.delete = AsyncMock(side_effect=mock_delete)
 
             # Mock Redis exists method
             async def mock_exists(key: str) -> bool:
                 return key in self.data
+
             client.exists = AsyncMock(side_effect=mock_exists)
 
             # Mock Redis config_set method
@@ -104,11 +110,13 @@ async def scheduler() -> AsyncGenerator[AbstractAsyncRedisEventScheduler, None]:
 
         def _setup_set_operations(self, client: MagicMock) -> None:
             """Set up Redis set operations."""
+
             async def mock_sadd(set_name: str, *values: str) -> int:
                 if set_name not in self.sets:
                     self.sets[set_name] = set()
                 self.sets[set_name].update(values)
                 return len(values)
+
             client.sadd = AsyncMock(side_effect=mock_sadd)
 
             async def mock_srem(set_name: str, *values: str) -> int:
@@ -120,14 +128,17 @@ async def scheduler() -> AsyncGenerator[AbstractAsyncRedisEventScheduler, None]:
                         self.sets[set_name].remove(value)
                         removed += 1
                 return removed
+
             client.srem = AsyncMock(side_effect=mock_srem)
 
             async def mock_smembers(set_name: str) -> set[str]:
                 return self.sets.get(set_name, set())
+
             client.smembers = AsyncMock(side_effect=mock_smembers)
 
             async def mock_mget(keys: list[str]) -> list[Optional[str]]:
                 return [self.data.get(key) for key in keys]
+
             client.mget = AsyncMock(side_effect=mock_mget)
 
             # Mock PubSub
@@ -151,6 +162,7 @@ async def scheduler() -> AsyncGenerator[AbstractAsyncRedisEventScheduler, None]:
                 def command_adder(*args: Any, **kwargs: Any) -> AsyncMock:
                     commands.append((cmd_type, args, kwargs))
                     return pipeline
+
                 return command_adder
 
             # Add pipeline methods
@@ -185,7 +197,7 @@ async def scheduler() -> AsyncGenerator[AbstractAsyncRedisEventScheduler, None]:
 
 @pytest.mark.asyncio
 async def test_schedule_event_basic(
-    scheduler: AbstractAsyncRedisEventScheduler
+    scheduler: AbstractAsyncRedisEventScheduler,
 ) -> None:
     """Test basic event scheduling."""
     event_id = "test_event_1"
@@ -255,7 +267,7 @@ async def test_delete_event(scheduler: AbstractAsyncRedisEventScheduler) -> None
 
 @pytest.mark.asyncio
 async def test_recurring_event_schedule(
-    scheduler: AbstractAsyncRedisEventScheduler
+    scheduler: AbstractAsyncRedisEventScheduler,
 ) -> None:
     """Test scheduling recurring event."""
     event_id = "test_recurring_1"
@@ -281,7 +293,7 @@ async def test_recurring_event_schedule(
 
 @pytest.mark.asyncio
 async def test_process_expired_event(
-    scheduler: AbstractAsyncRedisEventScheduler
+    scheduler: AbstractAsyncRedisEventScheduler,
 ) -> None:
     """Test processing of expired events."""
     event_id = "test_event_5"
@@ -309,7 +321,7 @@ async def test_process_expired_event(
 
 @pytest.mark.asyncio
 async def test_process_expired_event_locked(
-    scheduler: AbstractAsyncRedisEventScheduler
+    scheduler: AbstractAsyncRedisEventScheduler,
 ) -> None:
     """Test handling of already locked events."""
     event_id = "test_event_6"
@@ -327,7 +339,7 @@ async def test_process_expired_event_locked(
 
 @pytest.mark.asyncio
 async def test_recurring_event_next_occurrence(
-    scheduler: AbstractAsyncRedisEventScheduler
+    scheduler: AbstractAsyncRedisEventScheduler,
 ) -> None:
     """Test scheduling next occurrence of recurring event."""
     event_id = "test_recurring_2"
@@ -429,6 +441,7 @@ async def test_list_events(scheduler: AbstractAsyncRedisEventScheduler) -> None:
 @pytest.mark.asyncio
 async def test_calculate_next_occurrence() -> None:
     """Test calculation of next occurrence for different patterns."""
+
     class SimpleScheduler(AbstractAsyncRedisEventScheduler):
         async def on_event(self, event_id: str, event_data: dict) -> None:
             pass

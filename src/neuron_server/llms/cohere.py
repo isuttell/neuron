@@ -19,9 +19,8 @@ class CohereLLM(LLM):
             streaming=True,
             model=model_id,
         )
-        title_model = ChatCohere(
+        fast_model = ChatCohere(
             temperature=0.6,
-            max_tokens=42,
         )
         memory_model = ChatOpenAI(
             model="gpt-4o",
@@ -29,7 +28,7 @@ class CohereLLM(LLM):
         )
         super().__init__(
             model=model,
-            title_model=title_model,
+            fast_model=fast_model,
             memory_model=memory_model,
             provider_model_id=provider_model_id,
         )

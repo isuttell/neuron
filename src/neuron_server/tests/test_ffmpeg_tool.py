@@ -26,6 +26,7 @@ class TestFFmpegTool:
 
             # Verify the cookie is properly signed and can be verified
             from neuron_server.controllers.csrf import verify_cookie_data
+
             session_cookie = cookies["neuron_session"]
             cookie_data = verify_cookie_data(session_cookie)
             assert cookie_data is not None
@@ -43,13 +44,16 @@ class TestFFmpegTool:
         # Mock config
         mock_config = {
             "static_content_url": "https://example.com/static",
-            "temp_folder": "/tmp"
+            "temp_folder": "/tmp",
         }
 
         # Test with non-matching URL
-        with patch.object(
-            neuron_config, "static_content_url", mock_config["static_content_url"]
-        ), patch.object(neuron_config, "temp_folder", mock_config["temp_folder"]):
+        with (
+            patch.object(
+                neuron_config, "static_content_url", mock_config["static_content_url"]
+            ),
+            patch.object(neuron_config, "temp_folder", mock_config["temp_folder"]),
+        ):
             url = "https://other-domain.com/file.mp4"
             path, is_temp = await FFmpegTool.download_file_with_auth(url)
             assert path == url
@@ -57,9 +61,12 @@ class TestFFmpegTool:
 
         # For the more complex test case, we'll use a simpler approach to avoid
         # issues with mocking multiple async context managers
-        with patch.object(
-            neuron_config, "static_content_url", mock_config["static_content_url"]
-        ), patch.object(neuron_config, "temp_folder", mock_config["temp_folder"]):
+        with (
+            patch.object(
+                neuron_config, "static_content_url", mock_config["static_content_url"]
+            ),
+            patch.object(neuron_config, "temp_folder", mock_config["temp_folder"]),
+        ):
             url = "https://example.com/static/file.mp4"
 
             # Create a temporary test path
@@ -74,9 +81,7 @@ class TestFFmpegTool:
 
             # Patch the nested async context managers with our simplified function
             with patch.object(
-                FFmpegTool,
-                "download_file_with_auth",
-                side_effect=mock_download
+                FFmpegTool, "download_file_with_auth", side_effect=mock_download
             ):
                 # This will call our mock function directly
                 path, is_temp = await mock_download(url)
@@ -106,7 +111,7 @@ class TestFFmpegTool:
         with patch.object(
             FFmpegTool,
             "download_file_with_auth",
-            AsyncMock(return_value=(mock_path, True))
+            AsyncMock(return_value=(mock_path, True)),
         ):
             result, tmp_files = await FFmpegTool.process_url_argument(arg)
 
@@ -165,7 +170,7 @@ class TestFFmpegTool:
         with patch.object(
             FFmpegTool,
             "download_file_with_auth",
-            AsyncMock(return_value=(mock_path2, True))
+            AsyncMock(return_value=(mock_path2, True)),
         ):
             result, tmp_files = await FFmpegTool.process_concat_argument(arg)
 
@@ -182,8 +187,10 @@ class TestFFmpegTool:
 
         # Test with simple arguments that don't need processing
         args = ["-c:v", "copy", "-c:a", "aac"]
-        with patch.object(FFmpegTool, "process_url_argument", AsyncMock()), \
-             patch.object(FFmpegTool, "process_concat_argument", AsyncMock()):
+        with (
+            patch.object(FFmpegTool, "process_url_argument", AsyncMock()),
+            patch.object(FFmpegTool, "process_concat_argument", AsyncMock()),
+        ):
             modified_args, tmp_files = await FFmpegTool.preprocess_arguments(args)
 
             # No processing should happen
@@ -194,12 +201,14 @@ class TestFFmpegTool:
 
         # Test with input URL argument
         args = ["-i", "https://example.com/video.mp4", "-c:v", "copy"]
-        with patch.object(
-            FFmpegTool,
-            "process_url_argument",
-            AsyncMock(return_value=(mock_path1, [mock_path1]))
-        ), \
-        patch.object(FFmpegTool, "process_concat_argument", AsyncMock()):
+        with (
+            patch.object(
+                FFmpegTool,
+                "process_url_argument",
+                AsyncMock(return_value=(mock_path1, [mock_path1])),
+            ),
+            patch.object(FFmpegTool, "process_concat_argument", AsyncMock()),
+        ):
             modified_args, tmp_files = await FFmpegTool.preprocess_arguments(args)
 
             # URL argument should be processed
@@ -211,11 +220,13 @@ class TestFFmpegTool:
         args = ["concat:file1.mp4|https://example.com/file2.mp4", "-c", "copy"]
         concat_result = f"concat:file1.mp4|{mock_path2}"
 
-        with patch.object(FFmpegTool, "process_url_argument", AsyncMock()), \
-        patch.object(
-            FFmpegTool,
-            "process_concat_argument",
-            AsyncMock(return_value=(concat_result, [mock_path2]))
+        with (
+            patch.object(FFmpegTool, "process_url_argument", AsyncMock()),
+            patch.object(
+                FFmpegTool,
+                "process_concat_argument",
+                AsyncMock(return_value=(concat_result, [mock_path2])),
+            ),
         ):
             modified_args, tmp_files = await FFmpegTool.preprocess_arguments(args)
 
@@ -226,20 +237,24 @@ class TestFFmpegTool:
 
         # Test with both input URL and concat argument
         args = [
-            "-i", "https://example.com/video.mp4",
+            "-i",
+            "https://example.com/video.mp4",
             "concat:file1.mp4|https://example.com/file2.mp4",
-            "-c", "copy"
+            "-c",
+            "copy",
         ]
 
-        with patch.object(
-            FFmpegTool,
-            "process_url_argument",
-            AsyncMock(return_value=(mock_path1, [mock_path1]))
-        ), \
-        patch.object(
-            FFmpegTool,
-            "process_concat_argument",
-            AsyncMock(return_value=(concat_result, [mock_path2]))
+        with (
+            patch.object(
+                FFmpegTool,
+                "process_url_argument",
+                AsyncMock(return_value=(mock_path1, [mock_path1])),
+            ),
+            patch.object(
+                FFmpegTool,
+                "process_concat_argument",
+                AsyncMock(return_value=(concat_result, [mock_path2])),
+            ),
         ):
             modified_args, tmp_files = await FFmpegTool.preprocess_arguments(args)
 
@@ -271,18 +286,16 @@ class TestFFmpegTool:
     def test_cleanup_temp_files(self) -> None:
         """Test cleanup of temporary files."""
         # Create test file paths
-        tmp_files = [
-            "/tmp/file1.mp4",
-            "/tmp/file2.mp3",
-            "/tmp/nonexistent.mp4"
-        ]
+        tmp_files = ["/tmp/file1.mp4", "/tmp/file2.mp3", "/tmp/nonexistent.mp4"]
 
         # Mock os.path.exists and os.remove
         def exists_fn(path: str) -> bool:
             return "nonexistent" not in path
 
-        with patch("os.path.exists", side_effect=exists_fn), \
-             patch("os.remove") as mock_remove:
+        with (
+            patch("os.path.exists", side_effect=exists_fn),
+            patch("os.remove") as mock_remove,
+        ):
             FFmpegTool.cleanup_temp_files(tmp_files)
 
             # Only existing files should be removed
@@ -296,10 +309,7 @@ class TestFFmpegTool:
         """Test successful execution of _arun method."""
         # Setup mocks
         mock_config = RunnableConfig(
-            configurable={
-                "thread_id": "test-thread",
-                "user_id": "test-user"
-            }
+            configurable={"thread_id": "test-thread", "user_id": "test-user"}
         )
         mock_args = ["-i", "input.mp4", "-c:v", "copy"]
         mock_modified_args = ["-i", "/tmp/input.mp4", "-c:v", "copy"]
@@ -310,34 +320,28 @@ class TestFFmpegTool:
         tool = FFmpegTool()
 
         # Mock methods
-        with patch.object(
-            FFmpegTool,
-            "preprocess_arguments",
-            AsyncMock(return_value=(mock_modified_args, mock_tmp_files))
-        ), \
-        patch(
-            "neuron_server.util.slug.safe_filename",
-            return_value="ffmpeg_output.mp4"
-        ), \
-        patch("os.path.abspath", return_value=mock_output_path), \
-        patch.object(
-            FFmpegTool,
-            "run_ffmpeg_command",
-            AsyncMock()
-        ), \
-        patch("os.path.exists", return_value=True), \
-        patch.object(
-            neuron_config, "static_content_url", "https://example.com/static"
-        ), \
-        patch.object(MediaItemModel, "create", AsyncMock()), \
-        patch.object(FFmpegTool, "cleanup_temp_files"):
-
+        with (
+            patch.object(
+                FFmpegTool,
+                "preprocess_arguments",
+                AsyncMock(return_value=(mock_modified_args, mock_tmp_files)),
+            ),
+            patch(
+                "neuron_server.util.slug.safe_filename",
+                return_value="ffmpeg_output.mp4",
+            ),
+            patch("os.path.abspath", return_value=mock_output_path),
+            patch.object(FFmpegTool, "run_ffmpeg_command", AsyncMock()),
+            patch("os.path.exists", return_value=True),
+            patch.object(
+                neuron_config, "static_content_url", "https://example.com/static"
+            ),
+            patch.object(MediaItemModel, "create", AsyncMock()),
+            patch.object(FFmpegTool, "cleanup_temp_files"),
+        ):
             # Run the tool
             result = await tool._arun(
-                name="Test Output",
-                args=mock_args,
-                extension="mp4",
-                config=mock_config
+                name="Test Output", args=mock_args, extension="mp4", config=mock_config
             )
 
             # Verify the expected method calls
@@ -349,7 +353,7 @@ class TestFFmpegTool:
             # Check that the response contains a video tag with the correct URL pattern
             # We use 'in' instead of exact match because the URL can vary slightly
             assert '<video src="https://example.com/static/' in result
-            assert 'controls></video>' in result
+            assert "controls></video>" in result
             assert mock_output_path in result
 
     @pytest.mark.asyncio
@@ -357,10 +361,7 @@ class TestFFmpegTool:
         """Test _arun method when output file is not found."""
         # Setup mocks
         mock_config = RunnableConfig(
-            configurable={
-                "thread_id": "test-thread",
-                "user_id": "test-user"
-            }
+            configurable={"thread_id": "test-thread", "user_id": "test-user"}
         )
         mock_args = ["-i", "input.mp4", "-c:v", "copy"]
         mock_modified_args = ["-i", "/tmp/input.mp4", "-c:v", "copy"]
@@ -374,31 +375,30 @@ class TestFFmpegTool:
         mock_process = Mock()
         mock_process.stderr = "Error: no such file"
 
-        with patch.object(
-            FFmpegTool,
-            "preprocess_arguments",
-            AsyncMock(return_value=(mock_modified_args, mock_tmp_files))
-        ), \
-        patch(
-            "neuron_server.util.slug.safe_filename",
-            return_value="ffmpeg_output.mp4"
-        ), \
-        patch("os.path.abspath", return_value=mock_output_path), \
-        patch.object(
-            FFmpegTool,
-            "run_ffmpeg_command",
-            AsyncMock(return_value=mock_process)
-        ), \
-        patch("os.path.exists", return_value=False), \
-        patch.object(FFmpegTool, "cleanup_temp_files"):
-
+        with (
+            patch.object(
+                FFmpegTool,
+                "preprocess_arguments",
+                AsyncMock(return_value=(mock_modified_args, mock_tmp_files)),
+            ),
+            patch(
+                "neuron_server.util.slug.safe_filename",
+                return_value="ffmpeg_output.mp4",
+            ),
+            patch("os.path.abspath", return_value=mock_output_path),
+            patch.object(
+                FFmpegTool, "run_ffmpeg_command", AsyncMock(return_value=mock_process)
+            ),
+            patch("os.path.exists", return_value=False),
+            patch.object(FFmpegTool, "cleanup_temp_files"),
+        ):
             # Run the tool and expect an error
             with pytest.raises(FFmpegToolError) as excinfo:
                 await tool._arun(
                     name="Test Output",
                     args=mock_args,
                     extension="mp4",
-                    config=mock_config
+                    config=mock_config,
                 )
 
             # Verify the error message

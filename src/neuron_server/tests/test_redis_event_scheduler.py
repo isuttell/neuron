@@ -105,9 +105,12 @@ class MockRedisScheduler(AbstractAsyncRedisEventScheduler):
     async def _mock_get(self, key: str) -> Optional[str]:
         """Simulate Redis GET command."""
         if key.startswith(self.metadata_prefix):
-            event_id = key[len(self.metadata_prefix):]
-            return (json.dumps(self.metadata.get(event_id))
-                    if event_id in self.metadata else None)
+            event_id = key[len(self.metadata_prefix) :]
+            return (
+                json.dumps(self.metadata.get(event_id))
+                if event_id in self.metadata
+                else None
+            )
         return self.events.get(key)
 
     async def _mock_set(
@@ -118,7 +121,7 @@ class MockRedisScheduler(AbstractAsyncRedisEventScheduler):
             return False
 
         if key.startswith(self.metadata_prefix):
-            event_id = key[len(self.metadata_prefix):]
+            event_id = key[len(self.metadata_prefix) :]
             try:
                 self.metadata[event_id] = json.loads(value)
             except json.JSONDecodeError:
@@ -151,7 +154,7 @@ class MockRedisScheduler(AbstractAsyncRedisEventScheduler):
             del self.events[key]
 
             if key.startswith("event:"):
-                event_id = key[len("event:"):]
+                event_id = key[len("event:") :]
                 asyncio.create_task(self._process_expired_event(event_id))
 
     async def _mock_delete(self, key: str) -> int:
@@ -160,7 +163,7 @@ class MockRedisScheduler(AbstractAsyncRedisEventScheduler):
             del self.events[key]
             return 1
         if key.startswith(self.metadata_prefix):
-            event_id = key[len(self.metadata_prefix):]
+            event_id = key[len(self.metadata_prefix) :]
             if event_id in self.metadata:
                 del self.metadata[event_id]
                 return 1
@@ -169,7 +172,7 @@ class MockRedisScheduler(AbstractAsyncRedisEventScheduler):
     async def _mock_exists(self, key: str) -> bool:
         """Simulate Redis EXISTS command."""
         if key.startswith(self.metadata_prefix):
-            event_id = key[len(self.metadata_prefix):]
+            event_id = key[len(self.metadata_prefix) :]
             return event_id in self.metadata
         return key in self.events
 
@@ -266,8 +269,9 @@ class MockRedisScheduler(AbstractAsyncRedisEventScheduler):
             "event_data": event_data,
             "scheduled_time": trigger_time.isoformat(timespec="seconds"),
             "created_at": now.isoformat(timespec="seconds"),
-            "recurring_pattern": (recurring_pattern.__dict__
-                                 if recurring_pattern else None),
+            "recurring_pattern": (
+                recurring_pattern.__dict__ if recurring_pattern else None
+            ),
             "time_remaining_seconds": ttl,
         }
 
@@ -330,17 +334,11 @@ async def test_schedule_recurring_event(scheduler: MockRedisScheduler) -> None:
     # Arrange
     event_id = "test_recurring_1"
     event_data = {"message": "Test recurring event"}
-    recurring_pattern = RecurringPattern(
-        interval=1,
-        unit="days",
-        time_of_day="12:00"
-    )
+    recurring_pattern = RecurringPattern(interval=1, unit="days", time_of_day="12:00")
 
     # Act
     await scheduler.schedule_event(
-        event_id,
-        event_data,
-        recurring_pattern=recurring_pattern
+        event_id, event_data, recurring_pattern=recurring_pattern
     )
 
     # Assert
@@ -378,7 +376,7 @@ async def test_delete_event(scheduler: MockRedisScheduler) -> None:
         return True
 
     # Use the patched method
-    with patch.object(scheduler, 'delete_event', patched_delete_event):
+    with patch.object(scheduler, "delete_event", patched_delete_event):
         success = await scheduler.delete_event(event_id)
 
     # Assert
@@ -406,7 +404,7 @@ async def test_get_event(scheduler: MockRedisScheduler) -> None:
         return scheduler.metadata.get(event_id)
 
     # Use the patched method
-    with patch.object(scheduler, 'get_event', patched_get_event):
+    with patch.object(scheduler, "get_event", patched_get_event):
         result = await scheduler.get_event(event_id)
 
     # Assert
@@ -423,22 +421,28 @@ async def test_list_events_no_filters(scheduler: MockRedisScheduler) -> None:
     # Arrange - Schedule multiple events
     events = [
         {"id": "event1", "data": {"user_id": "123", "message": "Test 1"}, "minutes": 5},
-        {"id": "event2", "data": {"user_id": "456", "message": "Test 2"},
-         "minutes": 10},
-        {"id": "event3", "data": {"user_id": "123", "message": "Test 3"},
-         "minutes": 15},
+        {
+            "id": "event2",
+            "data": {"user_id": "456", "message": "Test 2"},
+            "minutes": 10,
+        },
+        {
+            "id": "event3",
+            "data": {"user_id": "123", "message": "Test 3"},
+            "minutes": 15,
+        },
     ]
 
     for event in events:
         await scheduler.schedule_event(
             event["id"],
             event["data"],
-            datetime.now(pytz.UTC) + timedelta(minutes=event["minutes"])
+            datetime.now(pytz.UTC) + timedelta(minutes=event["minutes"]),
         )
 
     # Act - Override list_events for testing
     async def patched_list_events(
-        filters: Optional[dict[str, Any]] = None
+        filters: Optional[dict[str, Any]] = None,
     ) -> list[dict[str, Any]]:
         """Patched version for testing."""
         all_events = list(scheduler.metadata.values())
@@ -446,12 +450,11 @@ async def test_list_events_no_filters(scheduler: MockRedisScheduler) -> None:
             return all_events
 
         return [
-            event for event in all_events
-            if scheduler._matches_filters(event, filters)
+            event for event in all_events if scheduler._matches_filters(event, filters)
         ]
 
     # Use the patched method
-    with patch.object(scheduler, 'list_events', patched_list_events):
+    with patch.object(scheduler, "list_events", patched_list_events):
         result = await scheduler.list_events()
 
     # Assert
@@ -468,22 +471,28 @@ async def test_list_events_with_filters(scheduler: MockRedisScheduler) -> None:
     # Arrange - Schedule multiple events with different properties
     events = [
         {"id": "event1", "data": {"user_id": "123", "message": "Test 1"}, "minutes": 5},
-        {"id": "event2", "data": {"user_id": "456", "message": "Test 2"},
-         "minutes": 10},
-        {"id": "event3", "data": {"user_id": "123", "message": "Test 3"},
-         "minutes": 15},
+        {
+            "id": "event2",
+            "data": {"user_id": "456", "message": "Test 2"},
+            "minutes": 10,
+        },
+        {
+            "id": "event3",
+            "data": {"user_id": "123", "message": "Test 3"},
+            "minutes": 15,
+        },
     ]
 
     for event in events:
         await scheduler.schedule_event(
             event["id"],
             event["data"],
-            datetime.now(pytz.UTC) + timedelta(minutes=event["minutes"])
+            datetime.now(pytz.UTC) + timedelta(minutes=event["minutes"]),
         )
 
     # Act - Override list_events for testing with filters
     async def patched_list_events(
-        filters: Optional[dict[str, Any]] = None
+        filters: Optional[dict[str, Any]] = None,
     ) -> list[dict[str, Any]]:
         """Patched version for testing."""
         all_events = list(scheduler.metadata.values())
@@ -491,12 +500,11 @@ async def test_list_events_with_filters(scheduler: MockRedisScheduler) -> None:
             return all_events
 
         return [
-            event for event in all_events
-            if scheduler._matches_filters(event, filters)
+            event for event in all_events if scheduler._matches_filters(event, filters)
         ]
 
     # Use the patched method to filter by user_id in event_data
-    with patch.object(scheduler, 'list_events', patched_list_events):
+    with patch.object(scheduler, "list_events", patched_list_events):
         result = await scheduler.list_events(filters={"user_id": "123"})
 
     # Assert
@@ -548,12 +556,12 @@ async def test_recurring_event_rescheduling(scheduler: MockRedisScheduler) -> No
             if event_metadata.get("recurring_pattern"):
                 # This allows the test to pass by simulating rescheduling
                 next_time = datetime.now(pytz.UTC) + timedelta(days=1)
-                event_metadata["scheduled_time"] = (
-                    next_time.isoformat(timespec="seconds")
+                event_metadata["scheduled_time"] = next_time.isoformat(
+                    timespec="seconds"
                 )
 
     with patch.object(
-        scheduler, '_process_expired_event', patched_process_expired_event
+        scheduler, "_process_expired_event", patched_process_expired_event
     ):
         # Act
         await scheduler.schedule_event(event_id, event_data, recurring_pattern=pattern)
@@ -619,7 +627,7 @@ async def test_matches_filters() -> None:
         (
             {"event_data": {"user_id": "123", "type": "notification"}},
             {"user_id": "123"},
-            True
+            True,
         ),
         ({"event_data": {"user_id": "123"}}, {"type": "notification"}, False),
         ({"event_id": "test1", "event_data": {}}, {"event_id": "test1"}, True),
@@ -633,7 +641,7 @@ async def test_matches_filters() -> None:
 
 @pytest.mark.asyncio
 async def test_reconcile_events_cleans_orphaned_events(
-    scheduler: MockRedisScheduler
+    scheduler: MockRedisScheduler,
 ) -> None:
     """Test that _reconcile_events cleans up orphaned events."""
     # This is a complex test that would need full integration with the scheduler
@@ -645,13 +653,14 @@ async def test_reconcile_events_cleans_orphaned_events(
 
     # Patch the delete_event method to track calls
     delete_calls = []
+
     async def mock_delete_event(event_id: str) -> bool:
         delete_calls.append(event_id)
         scheduler.sets[scheduler.active_events_set].discard(event_id)
         return True
 
     # Act - Directly test the relevant part of the reconciliation logic
-    with patch.object(scheduler, 'delete_event', mock_delete_event):
+    with patch.object(scheduler, "delete_event", mock_delete_event):
         # Get orphaned events (those without metadata)
         for event_id in scheduler.sets[scheduler.active_events_set].copy():
             if event_id not in scheduler.metadata:

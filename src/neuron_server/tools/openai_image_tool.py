@@ -121,6 +121,7 @@ class OpenAIImageGenerationTool(BaseTool):
             cookies = None
             if neuron_config.static_require_auth:
                 from neuron_server.controllers.csrf import create_session_cookie
+
                 session_cookie, _ = create_session_cookie("system", include_csrf=False)
                 cookies = {"neuron_session": session_cookie}
 
@@ -272,7 +273,7 @@ class OpenAIImageGenerationTool(BaseTool):
                 if output_format == "png":
                     pnginfo = PngImagePlugin.PngInfo()
                     pnginfo.add_text("Description", prompt)
-                    if hasattr(call, 'revised_prompt'):
+                    if hasattr(call, "revised_prompt"):
                         pnginfo.add_text("RevisedPrompt", call.revised_prompt)
                     pnginfo.add_text("Model", "gpt-image-1")
                     pnginfo.add_text(
@@ -301,7 +302,7 @@ class OpenAIImageGenerationTool(BaseTool):
                 url = f"{neuron_config.static_content_url}/{filename}"
 
                 # Create media item record
-                description = getattr(call, 'revised_prompt', prompt)
+                description = getattr(call, "revised_prompt", prompt)
                 create_params = MediaItemModel.CreateParams(
                     thread_id=config["configurable"].get("thread_id"),
                     user_id=config["configurable"].get("user_id"),

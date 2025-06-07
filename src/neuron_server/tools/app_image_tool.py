@@ -72,6 +72,7 @@ class AppImageTool(BaseTool):
                     cookies = None
                     if neuron_config.static_require_auth:
                         from neuron_server.controllers.csrf import create_session_cookie
+
                         session_cookie, _ = create_session_cookie(
                             "system", include_csrf=False
                         )

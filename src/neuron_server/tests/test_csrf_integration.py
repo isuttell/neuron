@@ -31,8 +31,8 @@ async def test_csrf_with_actual_request():
             "/test",
             headers={
                 "X-CSRF-Token": csrf_token,
-                "Cookie": f"neuron_session={cookie_value}"
-            }
+                "Cookie": f"neuron_session={cookie_value}",
+            },
         )
 
         assert response.status_code == 200
@@ -49,10 +49,12 @@ async def test_csrf_with_api_key():
 
     # Mock config for API key
     import neuron_server.config
+
     original_api_key = getattr(neuron_server.config.config, "api_key", None)
     neuron_server.config.config.api_key = "test-api-key"
 
     try:
+
         @app.route("/test", methods=["POST"])
         @requires_csrf_or_api_key
         async def test_endpoint():
@@ -60,17 +62,11 @@ async def test_csrf_with_api_key():
 
         async with app.test_client() as client:
             # Test with API key (no CSRF needed)
-            response = await client.post(
-                "/test",
-                headers={"X-API-Key": "test-api-key"}
-            )
+            response = await client.post("/test", headers={"X-API-Key": "test-api-key"})
             assert response.status_code == 200
 
             # Test with invalid API key
-            response = await client.post(
-                "/test",
-                headers={"X-API-Key": "wrong-key"}
-            )
+            response = await client.post("/test", headers={"X-API-Key": "wrong-key"})
             assert response.status_code == 403
     finally:
         # Restore original config
