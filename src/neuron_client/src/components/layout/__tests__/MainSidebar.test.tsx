@@ -7,6 +7,8 @@ import { MainSidebar } from "../MainSidebar";
 import * as auth0React from "@auth0/auth0-react";
 import { Auth0ContextInterface, User } from "@auth0/auth0-react";
 import userEvent from "@testing-library/user-event";
+import * as hooks from "@/hooks";
+import * as useMobile from "@/hooks/use-mobile";
 
 // Mock the logo SVG
 jest.mock("@/assets/logo.svg", () => "logo.svg");
@@ -17,16 +19,13 @@ jest.mock("@auth0/auth0-react", () => ({
 }));
 
 // Mock the hooks
-const mockUseAppSelector = jest.fn();
-const mockUseIsMobile = jest.fn();
-
 jest.mock("@/hooks", () => ({
-  useAppSelector: mockUseAppSelector,
+  useAppSelector: jest.fn(),
 }));
 
 // Mock use-mobile hook
 jest.mock("@/hooks/use-mobile", () => ({
-  useIsMobile: mockUseIsMobile,
+  useIsMobile: jest.fn(),
 }));
 
 // Mock components
@@ -81,14 +80,14 @@ describe("MainSidebar", () => {
     } as Auth0ContextInterface<User>);
 
     // Mock hooks
-    mockUseAppSelector.mockReturnValue(null); // Default no sidebar image
-    mockUseIsMobile.mockReturnValue(false); // Default to desktop
+    (hooks.useAppSelector as jest.Mock).mockReturnValue(null); // Default no sidebar image
+    (useMobile.useIsMobile as jest.Mock).mockReturnValue(false); // Default to desktop
   });
 
   const renderComponent = (isMobile = false) => {
     // Update mobile mock if needed
     if (isMobile) {
-      mockUseIsMobile.mockReturnValue(true);
+      (useMobile.useIsMobile as jest.Mock).mockReturnValue(true);
     }
 
     const store = configureStore({
@@ -181,7 +180,7 @@ describe("MainSidebar", () => {
 
   describe("Sidebar image", () => {
     it("shows custom sidebar image when available", () => {
-      mockUseAppSelector.mockReturnValue("https://example.com/custom-image.png");
+      (hooks.useAppSelector as jest.Mock).mockReturnValue("https://example.com/custom-image.png");
 
       renderComponent();
 
