@@ -1,6 +1,7 @@
 import logging
 from collections.abc import Sequence
 from typing import Literal
+from uuid import UUID
 
 from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import BaseMessage, HumanMessage
@@ -18,7 +19,7 @@ class AnthropicLLM(LLM):
     def __init__(
         self,
         model_id: str | None = "claude-3-5-sonnet-20241022",
-        provider_model_id: str | None = None,
+        provider_model_id: UUID | None = None,
         caching_enabled: bool = False,
     ) -> None:
         self.caching_enabled = caching_enabled
@@ -48,6 +49,7 @@ class AnthropicLLM(LLM):
         )
         super().__init__(
             model=model,
+            model_id=model_id,
             fast_model=fast_model,
             memory_model=memory_model,
             provider_model_id=provider_model_id,

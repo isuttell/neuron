@@ -8,6 +8,7 @@ from typing import (
     Literal,
     TypedDict,
 )
+from uuid import UUID
 
 import tiktoken
 from langchain_core.messages import AIMessage, BaseMessage, ToolMessage
@@ -129,19 +130,22 @@ class LLM:
     def __init__(
         self,
         model: Runnable,
+        model_id: str,
         fast_model: Runnable | None = None,
         memory_model: Runnable | None = None,
-        provider_model_id: str | None = None,
+        provider_model_id: UUID | None = None,
     ) -> None:
         """Initialize the LLM wrapper.
 
         Args:
             model: The base language model
+            model_id: Model ID string (e.g., "claude-3-5-sonnet-20241022")
             fast_model: Optional fast model for quick operations
             memory_model: Optional model for memory operations
-            provider_model_id: Optional provider model identifier
+            provider_model_id: Optional provider model identifier (UUID)
         """
         self.model = model
+        self.model_id = model_id
         self.fast_model = fast_model
         self.title = title_prompt | self.fast_model | StrOutputParser()
         self.memory_model = memory_model
@@ -155,8 +159,7 @@ class LLM:
         """Analyze complexity only if model supports thinking."""
 
         # Check if the specific model supports thinking
-        model_id = self.provider_model_id or ""
-        if not THINKING_SUPPORTED_MODELS.get(model_id, False):
+        if not THINKING_SUPPORTED_MODELS.get(self.model_id, False):
             return {"thinking_level": "off"}
 
         # Check if fast model is available
@@ -171,7 +174,22 @@ class LLM:
         # Handle None content safely
         latest_message = ""
         if messages and messages[-1].content:
-            latest_message = messages[-1].content
+            content = messages[-1].content
+            # Handle both string and list content types
+            if isinstance(content, str):
+                latest_message = content
+            elif isinstance(content, list):
+                # Extract text from list content (e.g., multimodal messages)
+                text_parts = []
+                for item in content:
+                    if isinstance(item, str):
+                        text_parts.append(item)
+                    elif isinstance(item, dict) and item.get("type") == "text":
+                        text_parts.append(item.get("text", ""))
+                latest_message = " ".join(text_parts)
+            else:
+                # Fallback for other types
+                latest_message = str(content)
 
         # Quick prompt for thinking level
         analysis_prompt = ChatPromptTemplate.from_messages(
@@ -199,11 +217,6 @@ lean towards "low" or "medium".""",
                 ComplexityAnalysis
             )
             analysis = await chain.ainvoke({"message": latest_message}, config)
-
-            logger.debug(
-                f"Thinking analysis: {analysis.thinking_level} "
-                f"(confidence: {analysis.confidence}, reason: {analysis.reason})"
-            )
 
             return {
                 "thinking_level": analysis.thinking_level,
@@ -250,7 +263,7 @@ lean towards "low" or "medium".""",
         active_tools = tools or default_tools
 
         # Store tools for dynamic configuration
-        self._active_tools = active_tools
+        self._active_tools = active_tools or []
 
         # Add tools to ToolNode
         workflow.add_node("tools", ToolNode(active_tools))

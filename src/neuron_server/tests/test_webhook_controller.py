@@ -73,6 +73,8 @@ async def test_prompt_success(
             "prompt": prompt_text,
             "personality_id": str(personality_id),
             "run_name": "test_run",
+            "user_id": "test-user",
+            "username": "TestUser",
         },
         headers={"X-API-Key": valid_api_key},
     ):
@@ -126,6 +128,8 @@ async def test_prompt_invalid_body(
         json={
             "prompt": "Test prompt",
             # Missing personality_id
+            "user_id": "test-user",
+            "username": "TestUser",
         },
         headers={"X-API-Key": valid_api_key},
     ):
@@ -152,6 +156,8 @@ async def test_prompt_missing_api_key(
         json={
             "prompt": "Test prompt",
             "personality_id": str(personality_id),
+            "user_id": "test-user",
+            "username": "TestUser",
         },
         # No X-API-Key header
     ):
@@ -180,6 +186,8 @@ async def test_prompt_invalid_api_key(
         json={
             "prompt": "Test prompt",
             "personality_id": str(personality_id),
+            "user_id": "test-user",
+            "username": "TestUser",
         },
         headers={"X-API-Key": "invalid-key"},
     ):
@@ -280,6 +288,8 @@ async def test_prompt_with_optional_run_name(
             "prompt": "Test prompt",
             "personality_id": str(personality_id),
             # run_name is optional, not provided here
+            "user_id": "test-user",
+            "username": "TestUser",
         },
         headers={"X-API-Key": valid_api_key},
     ):
@@ -308,6 +318,8 @@ async def test_home_prompt_endpoint(
         json={
             "prompt": "Test prompt",
             "personality_id": str(personality_id),
+            "user_id": "test-user",
+            "username": "TestUser",
         },
         headers={"X-API-Key": valid_api_key},
     ):
@@ -343,7 +355,11 @@ async def test_prompt_request_model_validation() -> None:
 
     # Invalid request - missing required fields
     with pytest.raises(ValidationError):
-        PromptRequest(prompt="Test prompt")  # Missing personality_id
+        PromptRequest(
+            prompt="Test prompt",
+        )  # Missing personality_id
 
     with pytest.raises(ValidationError):
-        PromptRequest(personality_id=personality_id)  # Missing prompt
+        PromptRequest(
+            personality_id=personality_id,
+        )  # Missing prompt

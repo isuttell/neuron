@@ -140,6 +140,7 @@ def llm(
     """Create an LLM instance with fake models."""
     return LLM(
         model=fake_model,
+        model_id="test-model-id",
         fast_model=fake_fast_model,
         memory_model=fake_memory_model,
         provider_model_id="test-model",
@@ -318,6 +319,7 @@ def test_should_call_tools() -> None:
     fake_model = FakeRunnable(AIMessage(content="test"))
     llm_instance = LLM(
         model=fake_model,
+        model_id="test-model-id",
         fast_model=fake_model,
         memory_model=fake_model,
     )
@@ -337,6 +339,7 @@ def test_should_call_update_memory() -> None:
     fake_model = FakeRunnable(AIMessage(content="test"))
     llm_instance = LLM(
         model=fake_model,
+        model_id="test-model-id",
         fast_model=fake_model,
         memory_model=fake_model,
     )
@@ -387,7 +390,7 @@ async def test_aget_state(llm: LLM) -> None:
 async def test_analyze_complexity_unsupported_model(llm: LLM) -> None:
     """Test complexity analysis with unsupported model."""
     # Use a model that doesn't support thinking
-    llm.provider_model_id = "gpt-4"
+    llm.model_id = "gpt-4"
 
     state = {"messages": [AIMessage(content="What is 2+2?")]}
     result = await llm.analyze_complexity(state, {})
@@ -407,9 +410,10 @@ async def test_analyze_complexity_supported_model_simple() -> None:
 
     llm = LLM(
         model=FakeRunnable(AIMessage(content="test")),
+        model_id="claude-sonnet-4-20250514",  # Supported model
         fast_model=fake_fast_model,
         memory_model=FakeRunnable(MemoryResponse(memory_recall_rankings=[])),
-        provider_model_id="claude-sonnet-4-20250514",  # Supported model
+        provider_model_id="test-provider-model",
     )
 
     state = {"messages": [AIMessage(content="What is 2+2?")]}
@@ -430,9 +434,10 @@ async def test_analyze_complexity_supported_model_complex() -> None:
 
     llm = LLM(
         model=FakeRunnable(AIMessage(content="test")),
+        model_id="claude-opus-4-20250514",  # Supported model
         fast_model=fake_fast_model,
         memory_model=FakeRunnable(MemoryResponse(memory_recall_rankings=[])),
-        provider_model_id="claude-opus-4-20250514",  # Supported model
+        provider_model_id="test-provider-model",
     )
 
     state = {
@@ -462,7 +467,7 @@ async def test_analyze_complexity_empty_messages(llm: LLM) -> None:
 @pytest.mark.asyncio
 async def test_analyze_complexity_empty_content(llm: LLM) -> None:
     """Test complexity analysis with empty message content."""
-    llm.provider_model_id = "claude-sonnet-4-20250514"
+    llm.model_id = "claude-sonnet-4-20250514"
 
     # Create a message with empty content
     message = AIMessage(content="")
@@ -487,9 +492,10 @@ async def test_analyze_complexity_fast_model_failure() -> None:
 
     llm = LLM(
         model=FakeRunnable(AIMessage(content="test")),
+        model_id="claude-sonnet-4-20250514",
         fast_model=FailingRunnable(None),  # Will fail when invoked
         memory_model=FakeRunnable(MemoryResponse(memory_recall_rankings=[])),
-        provider_model_id="claude-sonnet-4-20250514",
+        provider_model_id="test-provider-model",
     )
 
     state = {"messages": [AIMessage(content="Test message")]}
@@ -503,6 +509,35 @@ async def test_analyze_complexity_fast_model_failure() -> None:
 
 
 @pytest.mark.asyncio
+async def test_analyze_complexity_list_content() -> None:
+    """Test complexity analysis with list content (multimodal messages)."""
+    analysis = ComplexityAnalysis(
+        thinking_level="low", confidence=0.8, reason="Question with image"
+    )
+    fake_fast_model = FakeRunnable(analysis)
+
+    llm = LLM(
+        model=FakeRunnable(AIMessage(content="test")),
+        model_id="claude-sonnet-4-20250514",
+        fast_model=fake_fast_model,
+        memory_model=FakeRunnable(MemoryResponse(memory_recall_rankings=[])),
+        provider_model_id="test-provider-model",
+    )
+
+    # Create a message with list content (simulating multimodal)
+    list_content = [
+        {"type": "text", "text": "What is in this image?"},
+        {"type": "image", "source": {"data": "base64data"}},
+    ]
+    state = {"messages": [AIMessage(content=list_content)]}
+    result = await llm.analyze_complexity(state, {})
+
+    # Should extract the text and analyze it
+    assert result.get("thinking_level") == "low"
+    assert result.get("complexity_analysis") == analysis
+
+
+@pytest.mark.asyncio
 async def test_dynamic_agent_node() -> None:
     """Test dynamic agent node with different thinking levels."""
     # Create a mock model
@@ -512,9 +547,10 @@ async def test_dynamic_agent_node() -> None:
     # Create LLM with mock _create_model_with_thinking
     llm = LLM(
         model=mock_model,
+        model_id="claude-sonnet-4-20250514",
         fast_model=FakeRunnable("test"),
         memory_model=FakeRunnable(MemoryResponse(memory_recall_rankings=[])),
-        provider_model_id="claude-sonnet-4-20250514",
+        provider_model_id="test-provider-model",
     )
     llm._active_tools = []
 
@@ -541,9 +577,10 @@ async def test_dynamic_agent_node_with_analysis() -> None:
 
     llm = LLM(
         model=FakeRunnable(AIMessage(content="test")),
+        model_id="claude-sonnet-4-20250514",
         fast_model=FakeRunnable("test"),
         memory_model=FakeRunnable(MemoryResponse(memory_recall_rankings=[])),
-        provider_model_id="claude-sonnet-4-20250514",
+        provider_model_id="test-provider-model",
     )
     llm._active_tools = []
     llm.call_model = AsyncMock(
@@ -565,6 +602,7 @@ def test_create_model_with_thinking_base_implementation() -> None:
 
     llm = LLM(
         model=mock_model,
+        model_id="test-model-id",
         fast_model=FakeRunnable("test"),
         memory_model=FakeRunnable(MemoryResponse(memory_recall_rankings=[])),
     )
@@ -584,6 +622,7 @@ def test_create_model_with_thinking_none_tools() -> None:
 
     llm = LLM(
         model=mock_model,
+        model_id="test-model-id",
         fast_model=FakeRunnable("test"),
         memory_model=FakeRunnable(MemoryResponse(memory_recall_rankings=[])),
     )
@@ -603,9 +642,10 @@ async def test_workflow_with_thinking_analysis() -> None:
     ):
         llm = LLM(
             model=FakeRunnable(AIMessage(content="test")),
+            model_id="claude-sonnet-4-20250514",
             fast_model=FakeRunnable("test"),
             memory_model=FakeRunnable(MemoryResponse(memory_recall_rankings=[])),
-            provider_model_id="claude-sonnet-4-20250514",
+            provider_model_id="test-provider-model",
         )
 
         workflow = llm.create_workflow()

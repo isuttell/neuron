@@ -1,4 +1,5 @@
 from typing import Literal
+from uuid import UUID
 
 from langchain_openai import ChatOpenAI
 
@@ -14,7 +15,7 @@ class OpenRouterLLM(LLM):
     def __init__(
         self,
         model_id: str | None = "openai/gpt-4o",
-        provider_model_id: str | None = None,
+        provider_model_id: UUID | None = None,
     ) -> None:
         model = ChatOpenAI(
             model=model_id,
@@ -40,7 +41,8 @@ class OpenRouterLLM(LLM):
         )
         super().__init__(
             model,
-            fast_model,
-            memory_model,
+            model_id=model_id,
+            fast_model=fast_model,
+            memory_model=memory_model,
             provider_model_id=provider_model_id,
         )

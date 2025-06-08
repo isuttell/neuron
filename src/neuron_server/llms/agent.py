@@ -281,8 +281,8 @@ DEFAULT_LOCATION = "San Diego, California at -117.1860 W and 32.84 N."
 async def execute_agent(
     prompt: str,
     personality_id: UUID,
-    user_id: str = "auth0|677842260dc433462eaf13a6",
-    username: str = "Isaac",
+    user_id: str,
+    username: str,
     location: str = DEFAULT_LOCATION,
 ) -> str:
     """Execute a one-off agent interaction without streaming.
@@ -290,8 +290,8 @@ async def execute_agent(
     Args:
         prompt: User's input text
         personality_id: ID of personality to use
-        user_id: ID of user making request (default: test user)
-        username: Name of user (default: Isaac)
+        user_id: ID of user making request
+        username: Name of user
         location: Location string (default: San Diego)
 
     Returns:
