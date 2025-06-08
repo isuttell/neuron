@@ -8,36 +8,20 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { createThread } from "../actions/threadActions";
 import { Spinner } from "@/components/ui/spinner";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
   getActivePersonalityId,
   getActivePersonality,
   setActivePersonality,
+  getPersonalities,
 } from "../slices/personalitiesSlice";
 import logo from "@/assets/logo.svg";
 import { useToast } from "@/hooks/use-toast";
-import { RootState } from "../store";
-import FuzzyTimeAgo from "@/components/FuzzyTimeAgo";
-import { fetchRecentThreads } from "../actions/threadActions";
-import { StatusMessage } from "../messages/StatusMessage";
 import { PromptDropdown } from "@/components/PromptDropdown";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { cn } from "../lib/utils";
 import { fetchPersonalities } from "../actions/personalityActions";
 
-const selectRecentThreads = (state: RootState) => {
-  const oneDayAgo = Date.now() - 1000 * 60 * 60 * 24; // 24 hours ago in milliseconds
-  return Object.values(state.threads.threads)
-    .sort((a, b) => Number(b.updated_at) - Number(a.updated_at))
-    .filter((thread) => Number(thread.updated_at) > oneDayAgo) // Only show threads from last day
-    .slice(0, 5)
-    .map((thread) => ({
-      ...thread,
-      personality: state.personalities.personalities.find(
-        (personality) => personality.id === thread.personality_id
-      ),
-    }));
-};
 
 export default function Index() {
   const [prompt, setPrompt] = useState("");
@@ -50,16 +34,28 @@ export default function Index() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const activePersonalityId = useAppSelector(getActivePersonalityId);
   const activePersonality = useAppSelector(getActivePersonality);
-  const recentThreads = useAppSelector(selectRecentThreads);
+  const personalities = useAppSelector(getPersonalities);
 
   const isSubmitDisabled =
     !activePersonalityId || (prompt.trim().length === 0 && !file);
 
+  const personalitiesLoading = useAppSelector(
+    (state) => state.personalities.loading
+  );
+
   useEffect(() => {
     dispatch(fetchPersonalities());
-    dispatch(fetchRecentThreads());
   }, [dispatch]);
 
+  // Clear activePersonalityId if it doesn't exist in the loaded personalities
+  useEffect(() => {
+    if (!personalitiesLoading && personalities.length > 0 && activePersonalityId) {
+      const personalityExists = personalities.some(p => p.id === activePersonalityId);
+      if (!personalityExists) {
+        dispatch(setActivePersonality(undefined));
+      }
+    }
+  }, [personalities, personalitiesLoading, activePersonalityId, dispatch]);
 
   useEffect(() => {
     if (activePersonalityId) {
@@ -261,49 +257,6 @@ export default function Index() {
               </Button>
             </div>
           </form>
-          {recentThreads.length > 0 ? (
-            <>
-              <div className="text-sm font-bold text-muted-foreground mt-6">
-                Recent updates
-              </div>
-              <div className="flex flex-col gap-2 mt-2">
-                {recentThreads.map((thread) => {
-                  return (
-                    <Link
-                      key={thread.id}
-                      to={`/thread/${thread.id}`}
-                      className={cn(
-                        "border-b border-border pb-2 last:pb-0 last:border-b-0"
-                      )}
-                      onClick={() => {
-                        dispatch(setActivePersonality(thread.personality?.id));
-                      }}
-                    >
-                      <div className="flex flex-col sm:flex-row gap-1 sm:gap-2 text-sm">
-                        <div className="font-bold">
-                          {thread.name || "Untitled"}
-                        </div>
-                        <div className="italic text-muted-foreground sentence-case">
-                          from {thread.personality?.name || "Unknown"}
-                        </div>
-                        {thread.status !== "idle" ? (
-                          <div className="text-muted-foreground font-bold">
-                            <StatusMessage
-                              status={thread.status}
-                              tagClassName="border-b mb-[-1px]"
-                            />
-                          </div>
-                        ) : null}
-                        <div className="text-muted-foreground lowercase">
-                          <FuzzyTimeAgo ago timestamp={thread.updated_at} />
-                        </div>
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
-            </>
-          ) : null}
         </div>
       </div>
     </div>

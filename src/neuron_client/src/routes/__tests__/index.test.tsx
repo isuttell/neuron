@@ -63,10 +63,6 @@ jest.mock("@/components/ui/spinner", () => ({
   Spinner: () => <div data-testid="spinner">Loading...</div>,
 }));
 
-jest.mock("@/components/FuzzyTimeAgo", () => ({
-  __esModule: true,
-  default: ({ date }: { date: Date }) => <span>{date.toString()}</span>,
-}));
 
 // Mock action creators
 const mockCreateThread = jest.fn();
@@ -75,7 +71,6 @@ const mockSetActivePersonality = jest.fn();
 
 jest.mock("../../actions/threadActions", () => ({
   createThread: mockCreateThread,
-  fetchRecentThreads: jest.fn(),
 }));
 
 jest.mock("../../actions/personalityActions", () => ({
