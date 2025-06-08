@@ -6,6 +6,7 @@ export interface Personality {
   memory: string;
   tool_set: string;
   logo?: string;
+  default?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -24,4 +25,5 @@ export interface PersonalityState {
   personalities: Personality[];
   loading: boolean;
   error: string | null;
+  hasInitiallyFetched: boolean;
 }

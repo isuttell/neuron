@@ -18,6 +18,7 @@ const initialState: PersonalityState = {
   personalities: [],
   loading: false,
   error: null,
+  hasInitiallyFetched: false,
 };
 
 function upsert(state: PersonalityState, personality: Personality) {
@@ -93,6 +94,33 @@ export const personalitiesSlice = createSlice({
         (state, action: PayloadAction<IncomingPersonalitiesEvent>) => {
           state.loading = false;
           state.personalities = action.payload.personalities;
+          state.hasInitiallyFetched = true;
+
+          // Validate activePersonalityId after fetching personalities
+          if (state.activePersonalityId) {
+            const personalityExists = state.personalities.some(
+              p => p.id === state.activePersonalityId
+            );
+            if (!personalityExists) {
+              // Look for a default personality
+              const defaultPersonality = state.personalities.find(p => p.default);
+              if (defaultPersonality) {
+                state.activePersonalityId = defaultPersonality.id;
+                localStorage.setItem("activePersonalityId", defaultPersonality.id);
+              } else {
+                // Clear the invalid personality ID if no default exists
+                state.activePersonalityId = undefined;
+                localStorage.removeItem("activePersonalityId");
+              }
+            }
+          } else {
+            // No active personality, check for a default
+            const defaultPersonality = state.personalities.find(p => p.default);
+            if (defaultPersonality) {
+              state.activePersonalityId = defaultPersonality.id;
+              localStorage.setItem("activePersonalityId", defaultPersonality.id);
+            }
+          }
         }
       )
       .addCase(actions.fetchPersonalities.rejected, (state, action) => {

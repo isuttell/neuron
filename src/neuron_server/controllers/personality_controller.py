@@ -619,3 +619,38 @@ async def update_personality_logo(personality_id: UUID) -> dict[str, dict]:
         "logo": updated_personality.logo,
         "response": _extract_message_content(response["messages"][-1]),
     }
+
+
+@blueprint.post("/<uuid:personality_id>/set-default")
+@requires_auth
+@requires_csrf
+async def set_default_personality(personality_id: UUID) -> dict[str, dict]:
+    """Set a personality as the default.
+
+    Args:
+        personality_id: The ID of the personality to set as default
+
+    Returns:
+        A dictionary with the updated personality
+
+    Raises:
+        Forbidden: If the user doesn't have admin access
+        NotFound: If the personality doesn't exist
+    """
+    assert isinstance(request.token, TokenPayload)
+
+    # Check if user is a system admin
+    if "admin" not in request.token.roles:
+        raise Forbidden("Admin access required to set default personality")
+
+    # Check if personality exists
+    personality = await PersonalityModel.get(personality_id=personality_id)
+    if not personality:
+        raise NotFound(f"Personality with id {personality_id} not found")
+
+    # Set the personality as default using the set method
+    updated_personality = await PersonalityModel.set(
+        personality_id=personality_id, key="default", value=True
+    )
+
+    return {"personality": updated_personality.model_dump()}

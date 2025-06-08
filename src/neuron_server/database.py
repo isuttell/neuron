@@ -65,6 +65,7 @@ class Personality(Base):
     logo = Column(Text, nullable=True)
     tool_set = Column(Text, nullable=True, default=None)
     description = Column(Text, nullable=False, default="")
+    default = Column(Boolean, nullable=False, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

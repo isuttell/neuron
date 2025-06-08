@@ -9,6 +9,7 @@ import { Auth0ContextInterface, User } from "@auth0/auth0-react";
 import userEvent from "@testing-library/user-event";
 import * as hooks from "@/hooks";
 import * as useMobile from "@/hooks/use-mobile";
+import * as usePermissions from "@/hooks/usePermissions";
 
 // Mock the logo SVG
 jest.mock("@/assets/logo.svg", () => "logo.svg");
@@ -26,6 +27,11 @@ jest.mock("@/hooks", () => ({
 // Mock use-mobile hook
 jest.mock("@/hooks/use-mobile", () => ({
   useIsMobile: jest.fn(),
+}));
+
+// Mock usePermissions hook
+jest.mock("@/hooks/usePermissions", () => ({
+  usePermissions: jest.fn(),
 }));
 
 // Mock components
@@ -82,6 +88,25 @@ describe("MainSidebar", () => {
     // Mock hooks
     (hooks.useAppSelector as unknown as jest.Mock).mockReturnValue(null); // Default no sidebar image
     (useMobile.useIsMobile as jest.Mock).mockReturnValue(false); // Default to desktop
+
+    // Mock permissions hook to allow access to all features by default
+    (usePermissions.usePermissions as jest.Mock).mockReturnValue({
+      canAccessPrompts: true,
+      canAccessProviders: true,
+      hasPermission: jest.fn(),
+      hasRole: jest.fn(),
+      isAdmin: true,
+      permissions: ["admin-prompts", "admin-providers"],
+      roles: ["admin"],
+      PERMISSIONS: {
+        ADMIN_PROMPTS: "admin-prompts",
+        ADMIN_PROVIDERS: "admin-providers",
+        ADMIN: "admin",
+      },
+      ROLES: {
+        ADMIN: "admin",
+      },
+    });
   });
 
   const renderComponent = (isMobile = false) => {
@@ -204,6 +229,159 @@ describe("MainSidebar", () => {
       const homeLink = screen.getByText("Home");
       const menuButton = homeLink.closest('[data-sidebar="menu-button"]');
       expect(menuButton).toHaveAttribute("data-active", "true");
+    });
+  });
+
+  describe("Permission-based menu items", () => {
+    it("shows prompts menu when user has admin-prompts permission", async () => {
+      renderComponent();
+      const user = userEvent.setup();
+
+      const userButton = screen.getByRole("button", { name: /testuser/i });
+      await user.click(userButton);
+
+      await waitFor(() => {
+        expect(screen.getByText("Prompts")).toBeInTheDocument();
+      });
+    });
+
+    it("hides prompts menu when user lacks admin-prompts permission", async () => {
+      // Mock permissions hook to deny prompts access
+      (usePermissions.usePermissions as jest.Mock).mockReturnValue({
+        canAccessPrompts: false,
+        canAccessProviders: true,
+        hasPermission: jest.fn(),
+        hasRole: jest.fn(),
+        isAdmin: false,
+        permissions: ["admin-providers"],
+        roles: [],
+        PERMISSIONS: {
+          ADMIN_PROMPTS: "admin-prompts",
+          ADMIN_PROVIDERS: "admin-providers",
+          ADMIN: "admin",
+        },
+        ROLES: {
+          ADMIN: "admin",
+        },
+      });
+
+      renderComponent();
+      const user = userEvent.setup();
+
+      const userButton = screen.getByRole("button", { name: /testuser/i });
+      await user.click(userButton);
+
+      await waitFor(() => {
+        expect(screen.queryByText("Prompts")).not.toBeInTheDocument();
+      });
+    });
+
+    it("shows providers menu when user has admin-providers permission", async () => {
+      renderComponent();
+      const user = userEvent.setup();
+
+      const userButton = screen.getByRole("button", { name: /testuser/i });
+      await user.click(userButton);
+
+      await waitFor(() => {
+        expect(screen.getByTestId("providers-menu-item")).toBeInTheDocument();
+      });
+    });
+
+    it("hides providers menu when user lacks admin-providers permission", async () => {
+      // Mock permissions hook to deny providers access
+      (usePermissions.usePermissions as jest.Mock).mockReturnValue({
+        canAccessPrompts: true,
+        canAccessProviders: false,
+        hasPermission: jest.fn(),
+        hasRole: jest.fn(),
+        isAdmin: false,
+        permissions: ["admin-prompts"],
+        roles: [],
+        PERMISSIONS: {
+          ADMIN_PROMPTS: "admin-prompts",
+          ADMIN_PROVIDERS: "admin-providers",
+          ADMIN: "admin",
+        },
+        ROLES: {
+          ADMIN: "admin",
+        },
+      });
+
+      renderComponent();
+      const user = userEvent.setup();
+
+      const userButton = screen.getByRole("button", { name: /testuser/i });
+      await user.click(userButton);
+
+      await waitFor(() => {
+        expect(screen.queryByTestId("providers-menu-item")).not.toBeInTheDocument();
+      });
+    });
+
+    it("hides both prompts and providers when user has no admin permissions", async () => {
+      // Mock permissions hook to deny all access
+      (usePermissions.usePermissions as jest.Mock).mockReturnValue({
+        canAccessPrompts: false,
+        canAccessProviders: false,
+        hasPermission: jest.fn(),
+        hasRole: jest.fn(),
+        isAdmin: false,
+        permissions: [],
+        roles: [],
+        PERMISSIONS: {
+          ADMIN_PROMPTS: "admin-prompts",
+          ADMIN_PROVIDERS: "admin-providers",
+          ADMIN: "admin",
+        },
+        ROLES: {
+          ADMIN: "admin",
+        },
+      });
+
+      renderComponent();
+      const user = userEvent.setup();
+
+      const userButton = screen.getByRole("button", { name: /testuser/i });
+      await user.click(userButton);
+
+      await waitFor(() => {
+        expect(screen.queryByText("Prompts")).not.toBeInTheDocument();
+        expect(screen.queryByTestId("providers-menu-item")).not.toBeInTheDocument();
+        // But scheduled should still be visible
+        expect(screen.getByText("Scheduled")).toBeInTheDocument();
+      });
+    });
+
+    it("always shows scheduled menu regardless of permissions", async () => {
+      // Mock permissions hook to deny all admin access
+      (usePermissions.usePermissions as jest.Mock).mockReturnValue({
+        canAccessPrompts: false,
+        canAccessProviders: false,
+        hasPermission: jest.fn(),
+        hasRole: jest.fn(),
+        isAdmin: false,
+        permissions: [],
+        roles: [],
+        PERMISSIONS: {
+          ADMIN_PROMPTS: "admin-prompts",
+          ADMIN_PROVIDERS: "admin-providers",
+          ADMIN: "admin",
+        },
+        ROLES: {
+          ADMIN: "admin",
+        },
+      });
+
+      renderComponent();
+      const user = userEvent.setup();
+
+      const userButton = screen.getByRole("button", { name: /testuser/i });
+      await user.click(userButton);
+
+      await waitFor(() => {
+        expect(screen.getByText("Scheduled")).toBeInTheDocument();
+      });
     });
   });
 });
