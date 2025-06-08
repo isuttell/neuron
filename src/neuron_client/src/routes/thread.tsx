@@ -15,7 +15,7 @@ import {
   postMessageByThread,
 } from "../actions/messageActions";
 import { useAppDispatch, useAppSelector } from "../hooks";
-import MessageForm from "../messages/MessageForm";
+import ThreadMessageForm from "../messages/ThreadMessageForm";
 import MessageItem from "../messages/MessageItem";
 import {
   getMessagesLoading,
@@ -149,7 +149,7 @@ export default function Thread() {
             </div>
           </div>
           <div className="bottom-0">
-            <MessageForm
+            <ThreadMessageForm
               thread={thread}
               className="max-w-[1170px] w-full mx-auto mt-2"
             />

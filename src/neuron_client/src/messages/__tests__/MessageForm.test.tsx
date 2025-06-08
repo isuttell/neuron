@@ -1,48 +1,18 @@
-import type { ToastProps } from "@/components/ui/toast";
-import { MessageResponse } from "@/types/message";
 import {
   act,
   fireEvent,
   render,
   screen,
-  waitFor,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Mock } from "jest-mock";
 import { useParams } from "react-router-dom";
-import { postMessageByThread } from "../../actions/messageActions";
-import { useAppDispatch } from "../../hooks";
-import { useToast } from "../../hooks/use-toast";
-import { AppDispatch } from "../../store";
 import MessageForm from "../MessageForm";
 
-type ToastReturnType = {
-  id: string;
-  dismiss: () => void;
-  update: (props: ToastProps) => void;
-};
 
 // Mock dependencies
-jest.mock("../../hooks", () => ({
-  useAppDispatch: jest.fn() as Mock<() => AppDispatch>,
-}));
-
 jest.mock("react-router-dom", () => ({
   useParams: jest.fn() as Mock<() => { threadId: string }>,
-}));
-
-jest.mock("../../hooks/use-toast", () => ({
-  useToast: jest.fn() as Mock<
-    () => {
-      toast: (props: ToastProps) => ToastReturnType;
-      dismiss: (toastId?: string) => void;
-      toasts: ToastProps[];
-    }
-  >,
-}));
-
-jest.mock("../../actions/messageActions", () => ({
-  postMessageByThread: jest.fn(),
 }));
 
 const mockAudioRecorderProps = {
@@ -72,54 +42,29 @@ jest.mock("@/components/PromptDropdown", () => ({
 }));
 
 describe("MessageForm", () => {
-  const mockDispatch = jest.fn();
-  const mockToast = jest.fn();
   const mockOnSubmit = jest.fn();
   const mockThreadId = "123";
-  const mockThread = {
-    id: mockThreadId,
-    name: "Test Thread",
-    context: "Test context",
-    memory: "Test memory",
-    personality_id: "456",
-    status: "idle" as const,
-    message_count: 0,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  };
 
   beforeEach(() => {
     jest.clearAllMocks();
-    (
-      useAppDispatch as jest.MockedFunction<typeof useAppDispatch>
-    ).mockReturnValue(mockDispatch);
     (useParams as jest.MockedFunction<typeof useParams>).mockReturnValue({
       threadId: mockThreadId,
     });
-    (useToast as jest.MockedFunction<typeof useToast>).mockReturnValue({
-      toast: mockToast,
-      dismiss: jest.fn(),
-      toasts: [],
-    });
-    mockDispatch.mockResolvedValue({
-      messages: [],
-      media: [],
-    } as MessageResponse);
   });
 
   it("renders form elements correctly", () => {
-    render(<MessageForm thread={mockThread} />);
+    render(<MessageForm onSubmit={mockOnSubmit} />);
 
     expect(
       screen.getByPlaceholderText("Type your message here...")
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /send/i })).toBeInTheDocument();
+    expect(screen.getByTestId("submit-button")).toBeInTheDocument();
     expect(screen.getByTestId("audio-recorder")).toBeInTheDocument();
     expect(screen.getByTestId("prompt-dropdown")).toBeInTheDocument();
   });
 
   it("handles text input correctly", async () => {
-    render(<MessageForm thread={mockThread} onSubmit={mockOnSubmit} />);
+    render(<MessageForm onSubmit={mockOnSubmit} />);
 
     const input = screen.getByPlaceholderText("Type your message here...");
     await userEvent.type(input, "Test message");
@@ -128,38 +73,31 @@ describe("MessageForm", () => {
   });
 
   it("handles form submission with text", async () => {
-    render(<MessageForm thread={mockThread} onSubmit={mockOnSubmit} />);
+    render(<MessageForm onSubmit={mockOnSubmit} />);
 
     const input = screen.getByPlaceholderText("Type your message here...");
-    const submitButton = screen.getByRole("button", { name: /send/i });
+    const submitButton = screen.getByTestId("submit-button");
 
     await userEvent.type(input, "Test message");
     fireEvent.click(submitButton);
 
-    expect(mockDispatch).toHaveBeenCalledWith(
-      postMessageByThread({
-        threadId: mockThreadId,
-        prompt: "Test message",
-        personalityId: mockThread.personality_id,
-        file: undefined,
-      })
-    );
-    expect(mockOnSubmit).toHaveBeenCalledWith("Test message");
+    // When onSubmit is provided, it should only call onSubmit
+    expect(mockOnSubmit).toHaveBeenCalledWith("Test message", undefined);
     expect(input).toHaveValue("");
   });
 
   it("prevents submission with empty message and no file", async () => {
-    render(<MessageForm thread={mockThread} onSubmit={mockOnSubmit} />);
+    render(<MessageForm onSubmit={mockOnSubmit} />);
 
-    const submitButton = screen.getByRole("button", { name: /send/i });
+    const submitButton = screen.getByTestId("submit-button");
     fireEvent.click(submitButton);
 
-    expect(mockDispatch).not.toHaveBeenCalled();
     expect(mockOnSubmit).not.toHaveBeenCalled();
   });
 
   it("handles file upload correctly", async () => {
-    render(<MessageForm thread={mockThread} />);
+    const mockOnFileAdd = jest.fn();
+    render(<MessageForm onSubmit={mockOnSubmit} onFileAdd={mockOnFileAdd} />);
 
     const file = new File(["test"], "test.txt", { type: "text/plain" });
     const input = document.getElementById("file-upload") as HTMLInputElement;
@@ -167,14 +105,11 @@ describe("MessageForm", () => {
 
     const attachmentIndicator = screen.getByText(/file attached: test\.txt/i);
     expect(attachmentIndicator).toBeInTheDocument();
-    expect(mockToast).toHaveBeenCalledWith({
-      title: "Attachment added",
-      description: "test.txt has been added to the message",
-    });
+    expect(mockOnFileAdd).toHaveBeenCalledWith(file, false);
   });
 
   it("handles empty file selection", async () => {
-    render(<MessageForm thread={mockThread} />);
+    render(<MessageForm onSubmit={mockOnSubmit} />);
 
     const input = document.getElementById("file-upload") as HTMLInputElement;
     const event = {
@@ -183,11 +118,11 @@ describe("MessageForm", () => {
     fireEvent.change(input, event);
 
     expect(screen.queryByText(/file attached:/i)).not.toBeInTheDocument();
-    expect(mockToast).not.toHaveBeenCalled();
   });
 
   it("handles file removal", async () => {
-    render(<MessageForm thread={mockThread} />);
+    const mockOnFileRemove = jest.fn();
+    render(<MessageForm onSubmit={mockOnSubmit} onFileRemove={mockOnFileRemove} />);
 
     const file = new File(["test"], "test.txt", { type: "text/plain" });
     const fileInput = document.getElementById(
@@ -199,85 +134,79 @@ describe("MessageForm", () => {
     fireEvent.click(removeButton);
 
     expect(screen.queryByText(/file attached:/i)).not.toBeInTheDocument();
-    expect(mockToast).toHaveBeenCalledWith({
-      title: "Attachment removed",
-    });
+    expect(mockOnFileRemove).toHaveBeenCalled();
   });
 
   it("handles Enter key submission", async () => {
-    render(<MessageForm thread={mockThread} onSubmit={mockOnSubmit} />);
+    render(<MessageForm onSubmit={mockOnSubmit} />);
 
     const input = screen.getByPlaceholderText("Type your message here...");
     await userEvent.type(input, "Test message{enter}");
 
-    expect(mockDispatch).toHaveBeenCalledWith(
-      postMessageByThread({
-        threadId: mockThreadId,
-        prompt: "Test message",
-        personalityId: mockThread.personality_id,
-        file: undefined,
-      })
-    );
-    expect(mockOnSubmit).toHaveBeenCalledWith("Test message");
+    // When onSubmit is provided, it should only call onSubmit
+    expect(mockOnSubmit).toHaveBeenCalledWith("Test message", undefined);
   });
 
-  it("shows loading state when thread status is not idle", () => {
-    const loadingThread = { ...mockThread, status: "processing" as const };
-    render(<MessageForm thread={loadingThread} />);
+  it("shows loading state when isLoading is true", () => {
+    render(<MessageForm onSubmit={mockOnSubmit} isLoading={true} />);
 
     const submitButton = screen.getByTestId("submit-button");
     expect(submitButton.querySelector("svg")).toHaveClass("animate-spin");
-    expect(screen.queryByText(/send/i)).not.toBeInTheDocument();
   });
 
-  it("handles submission error correctly", async () => {
-    const error = new Error("Network error");
-    mockDispatch.mockRejectedValueOnce(error);
-
-    render(<MessageForm thread={mockThread} />);
+  it("calls onSubmit with correct parameters", async () => {
+    render(<MessageForm onSubmit={mockOnSubmit} />);
 
     const input = screen.getByPlaceholderText("Type your message here...");
     await userEvent.type(input, "Test message");
-    fireEvent.click(screen.getByRole("button", { name: /send/i }));
+    fireEvent.click(screen.getByTestId("submit-button"));
 
-    await waitFor(() => {
-      expect(mockToast).toHaveBeenCalledWith({
-        variant: "destructive",
-        title: "Failed to send message",
-        description: "Network error",
-      });
-    });
+    expect(mockOnSubmit).toHaveBeenCalledWith("Test message", undefined);
+    expect(input).toHaveValue("");
   });
 
   it("respects disabled prop", () => {
-    render(<MessageForm thread={mockThread} disabled={true} />);
+    render(<MessageForm onSubmit={mockOnSubmit} disabled={true} />);
 
     expect(
       screen.getByPlaceholderText("Type your message here...")
     ).toBeDisabled();
-    expect(screen.getByRole("button", { name: /send/i })).toBeDisabled();
+    expect(screen.getByTestId("submit-button")).toBeDisabled();
   });
 
   it("applies custom className", () => {
-    render(<MessageForm thread={mockThread} className="custom-class" />);
+    render(<MessageForm onSubmit={mockOnSubmit} className="custom-class" />);
 
     expect(document.querySelector("form")).toHaveClass("custom-class");
   });
 
-  it("prevents submission when threadId is missing", async () => {
+  it("calls onSubmit regardless of threadId", async () => {
     (useParams as jest.Mock).mockReturnValue({ threadId: undefined });
-    render(<MessageForm thread={mockThread} onSubmit={mockOnSubmit} />);
+    render(<MessageForm onSubmit={mockOnSubmit} />);
 
     const input = screen.getByPlaceholderText("Type your message here...");
     await userEvent.type(input, "Test message");
-    fireEvent.click(screen.getByRole("button", { name: /send/i }));
+    fireEvent.click(screen.getByTestId("submit-button"));
 
-    expect(mockDispatch).not.toHaveBeenCalled();
-    expect(mockOnSubmit).not.toHaveBeenCalled();
+    expect(mockOnSubmit).toHaveBeenCalledWith("Test message", undefined);
+  });
+
+  it("calls onSubmit when form is submitted", async () => {
+    render(<MessageForm onSubmit={mockOnSubmit} />);
+
+    const input = screen.getByPlaceholderText("Type your message here...");
+    const submitButton = screen.getByTestId("submit-button");
+
+    await userEvent.type(input, "Test message");
+    fireEvent.click(submitButton);
+
+    expect(mockOnSubmit).toHaveBeenCalledWith("Test message", undefined);
+    expect(input).toHaveValue("");
   });
 
   it("handles audio recording completion", async () => {
-    render(<MessageForm thread={mockThread} />);
+    const mockOnFileAdd = jest.fn();
+    render(<MessageForm onSubmit={mockOnSubmit} onFileAdd={mockOnFileAdd} />);
 
     const blob = new Blob(["test"], { type: "audio/wav" });
     await act(async () => {
@@ -286,74 +215,59 @@ describe("MessageForm", () => {
 
     const attachmentIndicator = screen.getByText(/audio recording attached/i);
     expect(attachmentIndicator).toBeInTheDocument();
-    expect(mockToast).toHaveBeenCalledWith({
-      title: "Recording sent",
-      description: "Message added to conversation",
-    });
+    expect(mockOnFileAdd).toHaveBeenCalledWith(blob, true);
   });
 
   it("handles auto-send of audio recording", async () => {
-    render(<MessageForm thread={mockThread} />);
+    render(<MessageForm onSubmit={mockOnSubmit} />);
 
     const blob = new Blob(["test"], { type: "audio/wav" });
     await act(async () => {
       mockAudioRecorderProps.onAutoSend(blob);
     });
 
-    expect(mockDispatch).toHaveBeenCalledWith(
-      postMessageByThread({
-        threadId: mockThreadId,
-        prompt: "",
-        personalityId: mockThread.personality_id,
-        file: blob,
-      })
-    );
+    expect(mockOnSubmit).toHaveBeenCalledWith("", blob);
   });
 
-  it("handles auto-send error", async () => {
-    const error = new Error("Network error");
-    mockDispatch.mockRejectedValueOnce(error);
-    render(<MessageForm thread={mockThread} />);
+  it("clears form state after auto-send", async () => {
+    render(<MessageForm onSubmit={mockOnSubmit} />);
+
+    const input = screen.getByPlaceholderText("Type your message here...");
+    await userEvent.type(input, "Test message");
 
     const blob = new Blob(["test"], { type: "audio/wav" });
     await act(async () => {
       mockAudioRecorderProps.onAutoSend(blob);
     });
 
-    await waitFor(() => {
-      expect(mockToast).toHaveBeenCalledWith({
-        variant: "destructive",
-        title: "Failed to send message",
-        description: "Network error",
-      });
-    });
+    expect(mockOnSubmit).toHaveBeenCalledWith("Test message", blob);
+    expect(input).toHaveValue("");
   });
 
-  it("prevents auto-send when threadId is missing", async () => {
+  it("auto-send works regardless of threadId", async () => {
     (useParams as jest.Mock).mockReturnValue({ threadId: undefined });
-    render(<MessageForm thread={mockThread} />);
+    render(<MessageForm onSubmit={mockOnSubmit} />);
 
     const blob = new Blob(["test"], { type: "audio/wav" });
     await act(async () => {
       mockAudioRecorderProps.onAutoSend(blob);
     });
 
-    expect(mockDispatch).not.toHaveBeenCalled();
+    expect(mockOnSubmit).toHaveBeenCalledWith("", blob);
   });
 
   it("allows shift+enter for newlines", async () => {
-    render(<MessageForm thread={mockThread} onSubmit={mockOnSubmit} />);
+    render(<MessageForm onSubmit={mockOnSubmit} />);
 
     const input = screen.getByPlaceholderText("Type your message here...");
     await userEvent.type(input, "Test{Shift>}{Enter}{/Shift}message");
 
     expect(input).toHaveValue("Test\nmessage");
-    expect(mockDispatch).not.toHaveBeenCalled();
     expect(mockOnSubmit).not.toHaveBeenCalled();
   });
 
   it("handles prompt selection", async () => {
-    render(<MessageForm thread={mockThread} />);
+    render(<MessageForm onSubmit={mockOnSubmit} />);
 
     await act(async () => {
       mockPromptDropdownProps.onSelectPrompt("Selected prompt");
@@ -364,7 +278,7 @@ describe("MessageForm", () => {
   });
 
   it("disables prompt dropdown when form is disabled", () => {
-    render(<MessageForm thread={mockThread} disabled={true} />);
+    render(<MessageForm onSubmit={mockOnSubmit} disabled={true} />);
     expect(mockPromptDropdownProps.disabled).toBe(true);
   });
 });
