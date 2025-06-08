@@ -115,7 +115,7 @@ export const personalitiesSlice = createSlice({
             }
           } else {
             // No active personality, check for a default
-            const defaultPersonality = state.personalities.find(p => p.default);
+            const defaultPersonality = state.personalities?.find(p => p.default);
             if (defaultPersonality) {
               state.activePersonalityId = defaultPersonality.id;
               localStorage.setItem("activePersonalityId", defaultPersonality.id);

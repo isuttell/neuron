@@ -6,6 +6,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { fetchConfig } from "@/slices/appSlice";
 import { fetchMediaLists } from "@/slices/mediaListsSlice";
 import { fetchProviders, setupProvider, selectProviders, selectActiveProviderId } from "@/slices/providerSlice";
+import { fetchPersonalities } from "@/actions/personalityActions";
 import { useAuth0, withAuthenticationRequired } from "@auth0/auth0-react";
 import { useEffect, useState } from "react"; // Import useState
 import { Outlet } from "react-router-dom";
@@ -44,6 +45,7 @@ export function RootComponent() {
       dispatch(fetchConfig());
       dispatch(fetchMediaLists());
       dispatch(fetchProviders());
+      dispatch(fetchPersonalities());
 
       // --- Add the user sync logic here ---
       // Only sync if authenticated and not already synced
