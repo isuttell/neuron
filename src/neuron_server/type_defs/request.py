@@ -1,4 +1,5 @@
 """Request type definitions."""
+
 from typing import TYPE_CHECKING, Any, Optional
 
 from quart import Request as QuartRequest

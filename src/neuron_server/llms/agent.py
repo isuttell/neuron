@@ -600,7 +600,9 @@ async def _handle_tool_event(ctx: ToolEventContext) -> None:
             thread_id=ctx["thread"].id,
             node=ctx["node"],
         )
-        await pubsub.publish("app", MessageEvent(message=message))
+        # Filter out hidden messages
+        if not output.additional_kwargs.get("hidden", False):
+            await pubsub.publish("app", MessageEvent(message=message))
 
     values = list(set(ctx["active_runs"].values()))
     await update_thread_status(
@@ -648,9 +650,19 @@ async def _process_stream_events(ctx: StreamEventContext) -> str | None:
     active_runs: dict[str, str] = {}
     state_result: str | None = None
 
+    # Create prefilled assistant message with metadata
+    prefilled_message = AIMessage(
+        id=str(uuid4()),
+        content=(
+            f"[{ctx['start_time'].strftime('%Y-%m-%d %H:%M:%S %Z')}] "
+            f"[{ctx['personality'].name}] "
+        ),
+        additional_kwargs={"hidden": True, "prefill": True},
+    )
+
     async for body in ctx["graph"].astream_events(
         {
-            "messages": [ctx["human_message"]],
+            "messages": [ctx["human_message"], prefilled_message],
             "personality": ctx["personality"].context,
             "title": ctx["thread"].name,
             "location": ctx["config"]["location"],
@@ -707,7 +719,7 @@ async def _process_stream_events(ctx: StreamEventContext) -> str | None:
             content = get_message_content(chunk)
 
             # Handle content which can now be a list of Content objects or a string
-            if content:
+            if content and not chunk.additional_kwargs.get("hidden", False):
                 await update_thread_status(ctx["thread"], "streaming")
                 index += 1
 
@@ -733,7 +745,10 @@ async def _process_stream_events(ctx: StreamEventContext) -> str | None:
                 )
         elif kind == "on_chat_model_end":
             output: AIMessage = data["output"]
-            if "update_title" not in active_runs.values():
+            if (
+                "update_title" not in active_runs.values()
+                and not output.additional_kwargs.get("hidden", False)
+            ):
                 # Use the run_id as the message ID to match streaming messages
                 message_data = output.model_dump()
                 message_data["id"] = run_id

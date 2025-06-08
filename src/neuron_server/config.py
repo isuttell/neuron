@@ -13,7 +13,7 @@ load_dotenv()
 class PushoverConfig(BaseModel):
     token: str = Field(
         default=os.environ.get("PUSHOVER_API_TOKEN", ""),
-        description="Pushover API token"
+        description="Pushover API token",
     )
     user: str = Field(
         default=os.environ.get("PUSHOVER_USER_KEY", ""), description="Pushover user key"
@@ -105,14 +105,14 @@ class Config(BaseModel):
     )
     openrouter_api_key: str = Field(
         default=os.environ.get("OPENROUTER_API_KEY", ""),
-        description="OpenRouter API key"
+        description="OpenRouter API key",
     )
     anthropic_api_key: str = Field(
         default=os.environ.get("ANTHROPIC_API_KEY", ""), description="Anthropic API key"
     )
     elevenlabs_api_key: str = Field(
         default=os.environ.get("ELEVENLABS_API_KEY", ""),
-        description="ElevenLabs API key"
+        description="ElevenLabs API key",
     )
     openweather_api_key: str = Field(
         default=os.environ.get("OPENWEATHER_API_KEY", ""),

@@ -1,4 +1,5 @@
 """Request proxy for typed access."""
+
 from typing import TYPE_CHECKING, cast
 
 from quart import request as _quart_request

@@ -117,6 +117,7 @@ async def test_get_thread_messages_success(
             content="Hello",
             thread_id=mock_thread.id,
             created_at="2024-01-01T00:00:00Z",
+            additional_kwargs={},
             model_dump=lambda: {
                 "type": "human",
                 "content": "Hello",
@@ -165,6 +166,105 @@ async def test_get_thread_messages_success(
                         assert "media" in result
                         assert len(result["messages"]) == 1
                         assert result["messages"][0]["content"] == "Hello"
+
+
+@pytest.mark.asyncio
+async def test_get_thread_messages_filters_hidden(
+    app: Quart,
+    mock_thread: MagicMock,
+    mock_token: MagicMock,
+    mock_decode_token: AsyncMock,
+    mock_thread_model: AsyncMock,
+) -> None:
+    """Test that hidden messages are filtered out."""
+    messages: list[MagicMock] = [
+        MagicMock(
+            spec=MessageModel,
+            type="human",
+            content="Hello",
+            thread_id=mock_thread.id,
+            created_at="2024-01-01T00:00:00Z",
+            additional_kwargs={},
+            model_dump=lambda: {
+                "type": "human",
+                "content": "Hello",
+                "created_at": "2024-01-01T00:00:00Z",
+            },
+        ),
+        MagicMock(
+            spec=MessageModel,
+            type="ai",
+            content="[2024-01-01 00:00:00 UTC] [Test Assistant] ",
+            thread_id=mock_thread.id,
+            created_at="2024-01-01T00:00:01Z",
+            additional_kwargs={"hidden": True},
+            model_dump=lambda: {
+                "type": "ai",
+                "content": "[2024-01-01 00:00:00 UTC] [Test Assistant] ",
+                "created_at": "2024-01-01T00:00:01Z",
+                "additional_kwargs": {"hidden": True},
+            },
+        ),
+        MagicMock(
+            spec=MessageModel,
+            type="ai",
+            content="Hello! How can I help you?",
+            thread_id=mock_thread.id,
+            created_at="2024-01-01T00:00:02Z",
+            additional_kwargs={},
+            model_dump=lambda: {
+                "type": "ai",
+                "content": "Hello! How can I help you?",
+                "created_at": "2024-01-01T00:00:02Z",
+            },
+        ),
+    ]
+    state = MagicMock(values={"messages": messages})
+
+    mock_thread_model.get.return_value = mock_thread
+    with patch(
+        "neuron_server.controllers.message_controller.aget_state"
+    ) as mock_get_state:
+        mock_get_state.return_value = state
+        with patch(
+            "neuron_server.controllers.message_controller.MediaItemModel"
+        ) as mock_media:
+            mock_media.get_thread_media = AsyncMock(return_value=[])
+            with patch(
+                "neuron_server.controllers.message_controller.ThreadUserModel"
+            ) as mock_thread_user:
+                mock_thread_user.get_thread_users = AsyncMock(return_value=[])
+                with patch(
+                    "neuron_server.controllers.message_controller.UserModel"
+                ) as mock_user_model:
+                    mock_user_model.get_by_ids = AsyncMock(return_value=[])
+
+                    async with app.test_request_context(
+                        "/thread/123",
+                        headers={
+                            "Authorization": (
+                                "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9"
+                                ".eyJzdWIiOiJ0ZXN0In0.abc"
+                            )
+                        },
+                    ):
+                        # Mock auth token
+                        app.request_class.token = mock_token
+
+                        result = await message_controller.get_thread_messages(
+                            mock_thread.id
+                        )
+
+                        # Should only have 2 messages (human and visible AI)
+                        assert len(result["messages"]) == 2
+                        assert result["messages"][0]["content"] == "Hello"
+                        expected_msg = "Hello! How can I help you?"
+                        assert result["messages"][1]["content"] == expected_msg
+                        # Hidden message should not be in the results
+                        assert not any(
+                            "[Test Assistant]" in msg["content"]
+                            for msg in result["messages"]
+                        )
 
 
 @pytest.mark.asyncio
