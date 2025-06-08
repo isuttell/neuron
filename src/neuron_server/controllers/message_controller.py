@@ -46,6 +46,7 @@ async def get_thread_messages(thread_id: UUID) -> dict[str, list[dict]]:
         ThreadMessage(**message.model_dump(), thread_id=thread.id)
         for message in (state.values.get("messages", []))
         if message.type != "system"
+        and not message.additional_kwargs.get("hidden", False)
     ]
 
     # Get media items for this thread

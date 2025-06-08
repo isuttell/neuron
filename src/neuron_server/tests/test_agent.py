@@ -294,6 +294,7 @@ async def test_message_id_consistency_during_streaming() -> None:
 
     personality = MagicMock(spec=PersonalityModel)
     personality.context = "Test personality"
+    personality.name = "Test Assistant"
 
     config = {
         "thread_id": thread.id,
