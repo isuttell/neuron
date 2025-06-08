@@ -30,10 +30,9 @@ class AnthropicLLM(LLM):
             thinking={"type": "enabled", "budget_tokens": 1024},
             verbose=True,
         )
-        title_model = ChatAnthropic(
+        fast_model = ChatAnthropic(
             model="claude-3-5-haiku-20241022",
             temperature=1,
-            max_tokens=42,
         )
         memory_model = ChatAnthropic(
             model=model_id,
@@ -42,7 +41,7 @@ class AnthropicLLM(LLM):
         )
         super().__init__(
             model=model,
-            title_model=title_model,
+            fast_model=fast_model,
             memory_model=memory_model,
             provider_model_id=provider_model_id,
         )

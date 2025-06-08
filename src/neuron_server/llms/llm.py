@@ -84,19 +84,19 @@ class LLM:
         title: The title generation pipeline
         memory: The memory generation pipeline
         memory_model: The memory model for ranking
-        title_model: The model for generating titles
+        fast_model: The fast model for quick operations
     """
 
     model: Runnable
     title: Runnable
     memory: Runnable
     memory_model: Runnable
-    title_model: Runnable | None
+    fast_model: Runnable | None
 
     def __init__(
         self,
         model: Runnable,
-        title_model: Runnable | None = None,
+        fast_model: Runnable | None = None,
         memory_model: Runnable | None = None,
         provider_model_id: str | None = None,
     ) -> None:
@@ -104,13 +104,13 @@ class LLM:
 
         Args:
             model: The base language model
-            title_model: Optional model for generating titles
+            fast_model: Optional fast model for quick operations
             memory_model: Optional model for memory operations
             provider_model_id: Optional provider model identifier
         """
         self.model = model
-        self.title_model = title_model
-        self.title = title_prompt | self.title_model | StrOutputParser()
+        self.fast_model = fast_model
+        self.title = title_prompt | self.fast_model | StrOutputParser()
         self.memory_model = memory_model
         self.memory = memory_prompt | self.memory_model | StrOutputParser()
         self.provider_model_id = provider_model_id
