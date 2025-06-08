@@ -29,6 +29,9 @@ class PersonalityModel(BaseModel):
     tool_set: str | None = Field(
         description="The tool set to use for the personality", default=None
     )
+    default: bool = Field(
+        description="Whether this is the default personality", default=False
+    )
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC).astimezone())
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC).astimezone())
 
@@ -42,6 +45,18 @@ class PersonalityModel(BaseModel):
         logo: str | None = None
         tool_set: str | None = None
         personality_id: UUID | None = None
+
+    @staticmethod
+    async def _ensure_single_default() -> None:
+        """Ensure only one personality is marked as default."""
+        async with get_session() as session:
+            # Clear all existing defaults
+            stmt = select(Personality).where(Personality.default.is_(True))
+            result = await session.execute(stmt)
+            personalities = result.scalars().all()
+            for personality in personalities:
+                personality.default = False
+            await session.commit()
 
     @classmethod
     async def create(cls, params: CreateParams) -> Self:
@@ -62,6 +77,7 @@ class PersonalityModel(BaseModel):
                 memory=params.memory,
                 tool_set=params.tool_set,
                 logo=params.logo,
+                default=False,  # New personalities are never default
             )
             session.add(personality)
             await session.commit()
@@ -103,6 +119,7 @@ class PersonalityModel(BaseModel):
             personality.memory = params.memory
             personality.tool_set = params.tool_set
             personality.logo = params.logo
+            # Don't update default field in regular update
             session.add(personality)
             await session.commit()
             return cls(**personality.__dict__)
@@ -115,6 +132,10 @@ class PersonalityModel(BaseModel):
         value: str | int | float | bool | dict | list | None,
     ) -> Self:
         async with get_session() as session:
+            # If setting default to True, clear other defaults
+            if key == "default" and value is True:
+                await cls._ensure_single_default()
+
             personality = await session.get(Personality, personality_id)
             if not personality:
                 raise ValueError(f"Personality with ID {str(personality_id)} not found")
@@ -274,6 +295,7 @@ class PersonalityModel(BaseModel):
             personality.memory = self.memory
             personality.tool_set = self.tool_set
             personality.logo = self.logo
+            # Don't update default field in save
             await session.commit()
 
     @classmethod

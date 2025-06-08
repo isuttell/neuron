@@ -13,7 +13,6 @@ import {
   getActivePersonalityId,
   getActivePersonality,
   setActivePersonality,
-  getPersonalities,
 } from "../slices/personalitiesSlice";
 import logo from "@/assets/logo.svg";
 import { useToast } from "@/hooks/use-toast";
@@ -52,29 +51,15 @@ export default function Index() {
   const activePersonalityId = useAppSelector(getActivePersonalityId);
   const activePersonality = useAppSelector(getActivePersonality);
   const recentThreads = useAppSelector(selectRecentThreads);
-  const personalities = useAppSelector(getPersonalities);
 
   const isSubmitDisabled =
     !activePersonalityId || (prompt.trim().length === 0 && !file);
-
-  const personalitiesLoading = useAppSelector(
-    (state) => state.personalities.loading
-  );
 
   useEffect(() => {
     dispatch(fetchPersonalities());
     dispatch(fetchRecentThreads());
   }, [dispatch]);
 
-  // Clear activePersonalityId if it doesn't exist in the loaded personalities
-  useEffect(() => {
-    if (!personalitiesLoading && personalities.length > 0 && activePersonalityId) {
-      const personalityExists = personalities.some(p => p.id === activePersonalityId);
-      if (!personalityExists) {
-        dispatch(setActivePersonality(undefined));
-      }
-    }
-  }, [personalities, personalitiesLoading, activePersonalityId, dispatch]);
 
   useEffect(() => {
     if (activePersonalityId) {

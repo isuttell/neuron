@@ -83,7 +83,7 @@ async def test_provider_model_save_with_default():
 
 
 @pytest.mark.asyncio
-async def test_get_default_provider_when_no_active(mock_database):
+async def test_get_default_provider_when_no_active():
     """Test finding default provider when no active provider exists"""
     provider_id = uuid4()
 
@@ -147,7 +147,7 @@ async def test_get_default_provider_when_no_active(mock_database):
 
 
 @pytest.mark.asyncio
-async def test_get_provider_returns_default_field(mock_database):
+async def test_get_provider_returns_default_field():
     """Test that get() method returns provider with default field"""
     provider_id = uuid4()
 
