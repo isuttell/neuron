@@ -612,6 +612,8 @@ async def update_personality_logo(personality_id: UUID) -> dict[str, dict]:
         },
     )
     updated_personality = await PersonalityModel.get(personality.id)
+    if updated_personality is None:
+        raise NotFound("Personality not found after update")
     if personality.logo == updated_personality.logo:
         raise BadRequest("Logo not updated")
 

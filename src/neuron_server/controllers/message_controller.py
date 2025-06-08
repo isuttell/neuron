@@ -179,7 +179,7 @@ async def apost_message(event: PostMessage) -> None:
     await agent.astream(
         {
             "thread_id": event.thread_id,
-            "personality_id": UUID(event.personality_id),  # Convert string to UUID
+            "personality_id": event.personality_id,
             "user_id": None,
             "prompt": event.prompt,
         }

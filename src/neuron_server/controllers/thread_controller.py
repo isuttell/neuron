@@ -110,7 +110,7 @@ async def get_recent_threads() -> dict[str, list[dict]]:
         hours=24, user_id=request.token.user_id
     )
     personality_ids = {thread.personality_id for thread in threads}
-    personalities = await PersonalityModel.get_many(personality_ids)
+    personalities = await PersonalityModel.get_many(list(personality_ids))
     return {
         "threads": [thread.model_dump() for thread in threads],
         "personalities": [personality.model_dump() for personality in personalities],

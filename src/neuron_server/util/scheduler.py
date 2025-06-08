@@ -148,8 +148,8 @@ class AbstractAsyncRedisEventScheduler(ABC):
 
         # Internal state
         self._running = False
-        self._listener_task = None
-        self._reconciliation_task = None
+        self._listener_task: asyncio.Task[None] | None = None
+        self._reconciliation_task: asyncio.Task[None] | None = None
 
     @abstractmethod
     async def on_event(
@@ -354,7 +354,7 @@ class AbstractAsyncRedisEventScheduler(ABC):
         """Stop the scheduler and cleanup resources."""
         self._running = False
 
-        tasks = []
+        tasks: list[asyncio.Task[None]] = []
         if self._listener_task:
             self._listener_task.cancel()
             tasks.append(self._listener_task)
@@ -537,7 +537,8 @@ class AbstractAsyncRedisEventScheduler(ABC):
         min_future_time = now + timedelta(seconds=MIN_FUTURE_SECONDS)
         if next_time < min_future_time:
             if pattern.unit in ["seconds", "minutes", "hours"]:
-                next_time = now + timedelta(**{pattern.unit: pattern.interval})
+                kwargs = {pattern.unit: pattern.interval}
+                next_time = now + timedelta(**kwargs)
             else:
                 next_time = self._calculate_next_occurrence(
                     pattern, now + timedelta(days=1)
