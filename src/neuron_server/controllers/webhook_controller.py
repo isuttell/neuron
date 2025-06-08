@@ -36,6 +36,8 @@ async def prompt() -> dict[str, str]:
             "follow questions. This is an automated request."
         ),
         personality_id=payload.personality_id,
+        user_id="auth0|677842260dc433462eaf13a6",
+        username="Isaac",
     )
     logger.info(f"prompt.response={content}")
     return {"status": "success", "content": content}

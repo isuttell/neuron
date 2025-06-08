@@ -20,8 +20,10 @@ class TestCSRFEdgeCases:
 
     async def test_csrf_no_cookie(self):
         """Test CSRF without any session cookie"""
-        with patch("neuron_server.controllers.csrf.config") as mock_config, \
-             patch("neuron_server.controllers.csrf.os.environ.get") as mock_env:
+        with (
+            patch("neuron_server.controllers.csrf.config") as mock_config,
+            patch("neuron_server.controllers.csrf.os.environ.get") as mock_env,
+        ):
             # Ensure debug mode is disabled and DISABLE_CSRF is not set
             mock_config.debug = False
             mock_env.return_value = ""
@@ -41,8 +43,10 @@ class TestCSRFEdgeCases:
 
     async def test_csrf_invalid_cookie_format(self):
         """Test CSRF with malformed cookie"""
-        with patch("neuron_server.controllers.csrf.config") as mock_config, \
-             patch("neuron_server.controllers.csrf.os.environ.get") as mock_env:
+        with (
+            patch("neuron_server.controllers.csrf.config") as mock_config,
+            patch("neuron_server.controllers.csrf.os.environ.get") as mock_env,
+        ):
             # Ensure debug mode is disabled and DISABLE_CSRF is not set
             mock_config.debug = False
             mock_env.return_value = ""
@@ -66,8 +70,10 @@ class TestCSRFEdgeCases:
 
     async def test_csrf_cookie_without_csrf_token(self):
         """Test cookie that doesn't contain CSRF token"""
-        with patch("neuron_server.controllers.csrf.config") as mock_config, \
-             patch("neuron_server.controllers.csrf.os.environ.get") as mock_env:
+        with (
+            patch("neuron_server.controllers.csrf.config") as mock_config,
+            patch("neuron_server.controllers.csrf.os.environ.get") as mock_env,
+        ):
             # Ensure debug mode is disabled and DISABLE_CSRF is not set
             mock_config.debug = False
             mock_env.return_value = ""
@@ -115,8 +121,10 @@ class TestCSRFWithConfig:
 
     async def test_requires_csrf_or_api_key_missing_both(self):
         """Test endpoint that requires either CSRF or API key with neither provided"""
-        with patch("neuron_server.controllers.csrf.config") as mock_config, \
-             patch("neuron_server.controllers.csrf.os.environ.get") as mock_env:
+        with (
+            patch("neuron_server.controllers.csrf.config") as mock_config,
+            patch("neuron_server.controllers.csrf.os.environ.get") as mock_env,
+        ):
             # Ensure debug mode is disabled and DISABLE_CSRF is not set
             mock_config.debug = False
             mock_env.return_value = ""
@@ -139,8 +147,10 @@ class TestCSRFMethods:
 
     async def test_csrf_on_put(self):
         """Test CSRF on PUT requests"""
-        with patch("neuron_server.controllers.csrf.config") as mock_config, \
-             patch("neuron_server.controllers.csrf.os.environ.get") as mock_env:
+        with (
+            patch("neuron_server.controllers.csrf.config") as mock_config,
+            patch("neuron_server.controllers.csrf.os.environ.get") as mock_env,
+        ):
             # Ensure debug mode is disabled and DISABLE_CSRF is not set
             mock_config.debug = False
             mock_env.return_value = ""
@@ -171,8 +181,10 @@ class TestCSRFMethods:
 
     async def test_csrf_on_delete(self):
         """Test CSRF on DELETE requests"""
-        with patch("neuron_server.controllers.csrf.config") as mock_config, \
-             patch("neuron_server.controllers.csrf.os.environ.get") as mock_env:
+        with (
+            patch("neuron_server.controllers.csrf.config") as mock_config,
+            patch("neuron_server.controllers.csrf.os.environ.get") as mock_env,
+        ):
             # Ensure debug mode is disabled and DISABLE_CSRF is not set
             mock_config.debug = False
             mock_env.return_value = ""
@@ -203,8 +215,10 @@ class TestCSRFMethods:
 
     async def test_csrf_on_patch(self):
         """Test CSRF on PATCH requests"""
-        with patch("neuron_server.controllers.csrf.config") as mock_config, \
-             patch("neuron_server.controllers.csrf.os.environ.get") as mock_env:
+        with (
+            patch("neuron_server.controllers.csrf.config") as mock_config,
+            patch("neuron_server.controllers.csrf.os.environ.get") as mock_env,
+        ):
             # Ensure debug mode is disabled and DISABLE_CSRF is not set
             mock_config.debug = False
             mock_env.return_value = ""
@@ -258,8 +272,10 @@ class TestRequestAttributes:
 
     async def test_request_attributes_set(self):
         """Test that user_id and session_data are attached to request"""
-        with patch("neuron_server.controllers.csrf.config") as mock_config, \
-             patch("neuron_server.controllers.csrf.os.environ.get") as mock_env:
+        with (
+            patch("neuron_server.controllers.csrf.config") as mock_config,
+            patch("neuron_server.controllers.csrf.os.environ.get") as mock_env,
+        ):
             # Ensure debug mode is disabled and DISABLE_CSRF is not set
             mock_config.debug = False
             mock_env.return_value = ""
