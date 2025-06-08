@@ -1,5 +1,7 @@
 """Comprehensive CSRF test coverage"""
 
+from unittest.mock import patch
+
 import pytest
 from quart import Quart
 
@@ -18,58 +20,76 @@ class TestCSRFEdgeCases:
 
     async def test_csrf_no_cookie(self):
         """Test CSRF without any session cookie"""
-        app = Quart(__name__)
+        with patch("neuron_server.controllers.csrf.config") as mock_config, \
+             patch("neuron_server.controllers.csrf.os.environ.get") as mock_env:
+            # Ensure debug mode is disabled and DISABLE_CSRF is not set
+            mock_config.debug = False
+            mock_env.return_value = ""
 
-        @app.route("/test", methods=["POST"])
-        @requires_csrf
-        async def test_endpoint():
-            return {"status": "ok"}
+            app = Quart(__name__)
 
-        async with app.test_client() as client:
-            response = await client.post(
-                "/test", headers={"X-CSRF-Token": "some_token"}
-            )
-            assert response.status_code == 403
+            @app.route("/test", methods=["POST"])
+            @requires_csrf
+            async def test_endpoint():
+                return {"status": "ok"}
+
+            async with app.test_client() as client:
+                response = await client.post(
+                    "/test", headers={"X-CSRF-Token": "some_token"}
+                )
+                assert response.status_code == 403
 
     async def test_csrf_invalid_cookie_format(self):
         """Test CSRF with malformed cookie"""
-        app = Quart(__name__)
+        with patch("neuron_server.controllers.csrf.config") as mock_config, \
+             patch("neuron_server.controllers.csrf.os.environ.get") as mock_env:
+            # Ensure debug mode is disabled and DISABLE_CSRF is not set
+            mock_config.debug = False
+            mock_env.return_value = ""
 
-        @app.route("/test", methods=["POST"])
-        @requires_csrf
-        async def test_endpoint():
-            return {"status": "ok"}
+            app = Quart(__name__)
 
-        async with app.test_client() as client:
-            client.set_cookie(
-                server_name="localhost",
-                key="neuron_session",
-                value="invalid_base64_cookie!",
-            )
+            @app.route("/test", methods=["POST"])
+            @requires_csrf
+            async def test_endpoint():
+                return {"status": "ok"}
 
-            response = await client.post("/test", headers={"X-CSRF-Token": "token"})
-            assert response.status_code == 403
+            async with app.test_client() as client:
+                client.set_cookie(
+                    server_name="localhost",
+                    key="neuron_session",
+                    value="invalid_base64_cookie!",
+                )
+
+                response = await client.post("/test", headers={"X-CSRF-Token": "token"})
+                assert response.status_code == 403
 
     async def test_csrf_cookie_without_csrf_token(self):
         """Test cookie that doesn't contain CSRF token"""
-        # Create cookie without CSRF
-        data = {"user_id": "test123"}
-        cookie = sign_cookie_data(data)
+        with patch("neuron_server.controllers.csrf.config") as mock_config, \
+             patch("neuron_server.controllers.csrf.os.environ.get") as mock_env:
+            # Ensure debug mode is disabled and DISABLE_CSRF is not set
+            mock_config.debug = False
+            mock_env.return_value = ""
 
-        app = Quart(__name__)
+            # Create cookie without CSRF
+            data = {"user_id": "test123"}
+            cookie = sign_cookie_data(data)
 
-        @app.route("/test", methods=["POST"])
-        @requires_csrf
-        async def test_endpoint():
-            return {"status": "ok"}
+            app = Quart(__name__)
 
-        async with app.test_client() as client:
-            client.set_cookie(
-                server_name="localhost", key="neuron_session", value=cookie
-            )
+            @app.route("/test", methods=["POST"])
+            @requires_csrf
+            async def test_endpoint():
+                return {"status": "ok"}
 
-            response = await client.post("/test", headers={"X-CSRF-Token": "token"})
-            assert response.status_code == 403
+            async with app.test_client() as client:
+                client.set_cookie(
+                    server_name="localhost", key="neuron_session", value=cookie
+                )
+
+                response = await client.post("/test", headers={"X-CSRF-Token": "token"})
+                assert response.status_code == 403
 
 
 @pytest.mark.asyncio
@@ -95,16 +115,22 @@ class TestCSRFWithConfig:
 
     async def test_requires_csrf_or_api_key_missing_both(self):
         """Test endpoint that requires either CSRF or API key with neither provided"""
-        app = Quart(__name__)
+        with patch("neuron_server.controllers.csrf.config") as mock_config, \
+             patch("neuron_server.controllers.csrf.os.environ.get") as mock_env:
+            # Ensure debug mode is disabled and DISABLE_CSRF is not set
+            mock_config.debug = False
+            mock_env.return_value = ""
 
-        @app.route("/test", methods=["POST"])
-        @requires_csrf_or_api_key
-        async def test_endpoint():
-            return {"status": "ok"}
+            app = Quart(__name__)
 
-        async with app.test_client() as client:
-            response = await client.post("/test")
-            assert response.status_code == 403
+            @app.route("/test", methods=["POST"])
+            @requires_csrf_or_api_key
+            async def test_endpoint():
+                return {"status": "ok"}
+
+            async with app.test_client() as client:
+                response = await client.post("/test")
+                assert response.status_code == 403
 
 
 @pytest.mark.asyncio
@@ -113,77 +139,99 @@ class TestCSRFMethods:
 
     async def test_csrf_on_put(self):
         """Test CSRF on PUT requests"""
-        app = Quart(__name__)
+        with patch("neuron_server.controllers.csrf.config") as mock_config, \
+             patch("neuron_server.controllers.csrf.os.environ.get") as mock_env:
+            # Ensure debug mode is disabled and DISABLE_CSRF is not set
+            mock_config.debug = False
+            mock_env.return_value = ""
 
-        @app.route("/test", methods=["PUT"])
-        @requires_csrf
-        async def test_endpoint():
-            return {"status": "ok"}
+            app = Quart(__name__)
 
-        cookie_value, csrf_token = create_session_cookie("user123")
+            @app.route("/test", methods=["PUT"])
+            @requires_csrf
+            async def test_endpoint():
+                return {"status": "ok"}
 
-        async with app.test_client() as client:
-            client.set_cookie(
-                server_name="localhost", key="neuron_session", value=cookie_value
-            )
+            cookie_value, csrf_token = create_session_cookie("user123")
 
-            # Without CSRF
-            response = await client.put("/test")
-            assert response.status_code == 403
+            async with app.test_client() as client:
+                client.set_cookie(
+                    server_name="localhost", key="neuron_session", value=cookie_value
+                )
 
-            # With CSRF
-            response = await client.put("/test", headers={"X-CSRF-Token": csrf_token})
-            assert response.status_code == 200
+                # Without CSRF
+                response = await client.put("/test")
+                assert response.status_code == 403
+
+                # With CSRF
+                response = await client.put(
+                    "/test", headers={"X-CSRF-Token": csrf_token}
+                )
+                assert response.status_code == 200
 
     async def test_csrf_on_delete(self):
         """Test CSRF on DELETE requests"""
-        app = Quart(__name__)
+        with patch("neuron_server.controllers.csrf.config") as mock_config, \
+             patch("neuron_server.controllers.csrf.os.environ.get") as mock_env:
+            # Ensure debug mode is disabled and DISABLE_CSRF is not set
+            mock_config.debug = False
+            mock_env.return_value = ""
 
-        @app.route("/test", methods=["DELETE"])
-        @requires_csrf
-        async def test_endpoint():
-            return {"status": "ok"}
+            app = Quart(__name__)
 
-        cookie_value, csrf_token = create_session_cookie("user123")
+            @app.route("/test", methods=["DELETE"])
+            @requires_csrf
+            async def test_endpoint():
+                return {"status": "ok"}
 
-        async with app.test_client() as client:
-            client.set_cookie(
-                server_name="localhost", key="neuron_session", value=cookie_value
-            )
+            cookie_value, csrf_token = create_session_cookie("user123")
 
-            # Without CSRF
-            response = await client.delete("/test")
-            assert response.status_code == 403
+            async with app.test_client() as client:
+                client.set_cookie(
+                    server_name="localhost", key="neuron_session", value=cookie_value
+                )
 
-            # With CSRF
-            response = await client.delete(
-                "/test", headers={"X-CSRF-Token": csrf_token}
-            )
-            assert response.status_code == 200
+                # Without CSRF
+                response = await client.delete("/test")
+                assert response.status_code == 403
+
+                # With CSRF
+                response = await client.delete(
+                    "/test", headers={"X-CSRF-Token": csrf_token}
+                )
+                assert response.status_code == 200
 
     async def test_csrf_on_patch(self):
         """Test CSRF on PATCH requests"""
-        app = Quart(__name__)
+        with patch("neuron_server.controllers.csrf.config") as mock_config, \
+             patch("neuron_server.controllers.csrf.os.environ.get") as mock_env:
+            # Ensure debug mode is disabled and DISABLE_CSRF is not set
+            mock_config.debug = False
+            mock_env.return_value = ""
 
-        @app.route("/test", methods=["PATCH"])
-        @requires_csrf
-        async def test_endpoint():
-            return {"status": "ok"}
+            app = Quart(__name__)
 
-        cookie_value, csrf_token = create_session_cookie("user123")
+            @app.route("/test", methods=["PATCH"])
+            @requires_csrf
+            async def test_endpoint():
+                return {"status": "ok"}
 
-        async with app.test_client() as client:
-            client.set_cookie(
-                server_name="localhost", key="neuron_session", value=cookie_value
-            )
+            cookie_value, csrf_token = create_session_cookie("user123")
 
-            # Without CSRF
-            response = await client.patch("/test")
-            assert response.status_code == 403
+            async with app.test_client() as client:
+                client.set_cookie(
+                    server_name="localhost", key="neuron_session", value=cookie_value
+                )
 
-            # With CSRF
-            response = await client.patch("/test", headers={"X-CSRF-Token": csrf_token})
-            assert response.status_code == 200
+                # Without CSRF
+                response = await client.patch("/test")
+                assert response.status_code == 403
+
+                # With CSRF
+                response = await client.patch(
+                    "/test", headers={"X-CSRF-Token": csrf_token}
+                )
+                assert response.status_code == 200
 
     async def test_csrf_skips_head_options(self):
         """Test that CSRF is skipped for HEAD and OPTIONS"""
@@ -210,29 +258,37 @@ class TestRequestAttributes:
 
     async def test_request_attributes_set(self):
         """Test that user_id and session_data are attached to request"""
-        app = Quart(__name__)
+        with patch("neuron_server.controllers.csrf.config") as mock_config, \
+             patch("neuron_server.controllers.csrf.os.environ.get") as mock_env:
+            # Ensure debug mode is disabled and DISABLE_CSRF is not set
+            mock_config.debug = False
+            mock_env.return_value = ""
 
-        captured_attrs = {}
+            app = Quart(__name__)
 
-        @app.route("/test", methods=["POST"])
-        @requires_csrf
-        async def test_endpoint():
-            from quart import request
+            captured_attrs = {}
 
-            captured_attrs["user_id"] = getattr(request, "user_id", None)
-            captured_attrs["session_data"] = getattr(request, "session_data", None)
-            return {"status": "ok"}
+            @app.route("/test", methods=["POST"])
+            @requires_csrf
+            async def test_endpoint():
+                from quart import request
 
-        cookie_value, csrf_token = create_session_cookie("user123")
+                captured_attrs["user_id"] = getattr(request, "user_id", None)
+                captured_attrs["session_data"] = getattr(request, "session_data", None)
+                return {"status": "ok"}
 
-        async with app.test_client() as client:
-            client.set_cookie(
-                server_name="localhost", key="neuron_session", value=cookie_value
-            )
+            cookie_value, csrf_token = create_session_cookie("user123")
 
-            response = await client.post("/test", headers={"X-CSRF-Token": csrf_token})
+            async with app.test_client() as client:
+                client.set_cookie(
+                    server_name="localhost", key="neuron_session", value=cookie_value
+                )
 
-            assert response.status_code == 200
-            assert captured_attrs["user_id"] == "user123"
-            assert captured_attrs["session_data"]["user_id"] == "user123"
-            assert captured_attrs["session_data"]["csrf_token"] == csrf_token
+                response = await client.post(
+                    "/test", headers={"X-CSRF-Token": csrf_token}
+                )
+
+                assert response.status_code == 200
+                assert captured_attrs["user_id"] == "user123"
+                assert captured_attrs["session_data"]["user_id"] == "user123"
+                assert captured_attrs["session_data"]["csrf_token"] == csrf_token

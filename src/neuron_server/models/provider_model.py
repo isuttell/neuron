@@ -59,11 +59,25 @@ class ProviderModelModel(BaseModel):
     ) -> None:
         async with get_session() as session:
             provider_model = await session.get(ProviderModel, self.id)
-            provider_model.provider = self.provider
-            provider_model.model_id = self.model_id
-            provider_model.enabled = self.enabled
-            provider_model.default = self.default
-            provider_model.caching_enabled = self.caching_enabled
+
+            # If provider doesn't exist, create it
+            if provider_model is None:
+                provider_model = ProviderModel(
+                    id=self.id,
+                    provider=self.provider,
+                    model_id=self.model_id,
+                    enabled=self.enabled,
+                    default=self.default,
+                    caching_enabled=self.caching_enabled,
+                )
+                session.add(provider_model)
+            else:
+                # Update existing provider
+                provider_model.provider = self.provider
+                provider_model.model_id = self.model_id
+                provider_model.enabled = self.enabled
+                provider_model.default = self.default
+                provider_model.caching_enabled = self.caching_enabled
 
             # If enabling this provider, disable all others
             if self.enabled:
