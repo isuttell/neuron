@@ -13,8 +13,10 @@ from neuron_server.controllers.csrf import (
 @pytest.mark.asyncio
 async def test_csrf_with_actual_request():
     """Test CSRF protection with actual request object."""
-    with patch("neuron_server.controllers.csrf.config") as mock_config, \
-         patch("neuron_server.controllers.csrf.os.environ.get") as mock_env:
+    with (
+        patch("neuron_server.controllers.csrf.config") as mock_config,
+        patch("neuron_server.controllers.csrf.os.environ.get") as mock_env,
+    ):
         # Ensure debug mode is disabled and DISABLE_CSRF is not set
         mock_config.debug = False
         mock_env.return_value = ""
@@ -53,8 +55,10 @@ async def test_csrf_with_actual_request():
 @pytest.mark.asyncio
 async def test_csrf_with_api_key():
     """Test CSRF or API key protection."""
-    with patch("neuron_server.controllers.csrf.config") as mock_config, \
-         patch("neuron_server.controllers.csrf.os.environ.get") as mock_env:
+    with (
+        patch("neuron_server.controllers.csrf.config") as mock_config,
+        patch("neuron_server.controllers.csrf.os.environ.get") as mock_env,
+    ):
         # Ensure debug mode is disabled and DISABLE_CSRF is not set
         mock_config.debug = False
         mock_config.api_key = "test-api-key"

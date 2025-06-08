@@ -4,8 +4,10 @@ from typing import Literal
 
 from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import BaseMessage, HumanMessage
+from langchain_core.runnables import Runnable
+from langchain_core.tools import BaseTool
 
-from neuron_server.llms.llm import LLM
+from neuron_server.llms.llm import LLM, THINKING_TOKEN_BUDGETS, ThinkingLevel
 
 logger = logging.getLogger(__name__)
 
@@ -20,16 +22,21 @@ class AnthropicLLM(LLM):
         caching_enabled: bool = False,
     ) -> None:
         self.caching_enabled = caching_enabled
+        self.model_id = model_id
         max_tokens = 32_000 if "opus" in (model_id or "").lower() else 64_000
 
-        model = ChatAnthropic(
-            model=model_id,
-            temperature=1,
-            streaming=True,
-            max_tokens=max_tokens,
-            thinking={"type": "enabled", "budget_tokens": 1024},
-            verbose=True,
-        )
+        # Store model creation params for dynamic instantiation
+        self.model_params = {
+            "model": model_id,
+            "temperature": 1,
+            "streaming": True,
+            "max_tokens": max_tokens,
+            "verbose": True,
+        }
+
+        # Create default model without thinking for initial setup
+        model = ChatAnthropic(**self.model_params)
+
         fast_model = ChatAnthropic(
             model="claude-3-5-haiku-20241022",
             temperature=1,
@@ -93,3 +100,25 @@ class AnthropicLLM(LLM):
                 break
 
         return messages_list
+
+    def _create_model_with_thinking(
+        self, thinking_level: ThinkingLevel, tools: list[BaseTool]
+    ) -> Runnable:
+        """Create Anthropic model with dynamic thinking configuration."""
+
+        if thinking_level == "off":
+            # Use base model without thinking
+            if tools:
+                return self.model.bind_tools(tools)
+            return self.model
+
+        # Create new model instance with thinking enabled
+        token_budget = THINKING_TOKEN_BUDGETS.get(thinking_level, 1024)
+
+        model_params = self.model_params.copy()
+        model_params["thinking"] = {"type": "enabled", "budget_tokens": token_budget}
+
+        thinking_model = ChatAnthropic(**model_params)
+        if tools:
+            return thinking_model.bind_tools(tools)
+        return thinking_model
