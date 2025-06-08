@@ -52,7 +52,7 @@ class MemoryStoreTool(BaseTool):
                     useful=0,
                     total=0,
                     last_useful_at=None,
-                    last_recall_at=None,
+                    last_recall_at=0,
                     scores=[],
                 ),
             }

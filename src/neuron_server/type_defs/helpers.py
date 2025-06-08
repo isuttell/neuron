@@ -1,4 +1,5 @@
 """Helper functions for type casting."""
+
 from typing import TYPE_CHECKING, cast
 
 from quart import request as quart_request

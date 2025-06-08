@@ -246,9 +246,7 @@ async def test_execute_agent_no_personality(monkeypatch: pytest.MonkeyPatch) -> 
         agent.PersonalityModel, "get", staticmethod(fake_personality_get_fail)
     )
     with pytest.raises(agent.BadRequest):
-        await execute_agent(
-            "test prompt", test_personality_id, "test-user", "TestUser"
-        )
+        await execute_agent("test prompt", test_personality_id, "test-user", "TestUser")
 
 
 # --- Tests for Message ID Consistency ---

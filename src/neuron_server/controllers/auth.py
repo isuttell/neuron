@@ -144,8 +144,8 @@ def requires_cookie(func: Callable[..., T]) -> Callable[..., T]:
 
             # Attach user info to request if valid
             if cookie_data:
-                request.user_id = cookie_data.get("user_id")
-                request.session_data = cookie_data
+                request.user_id = cookie_data.get("user_id")  # type: ignore[attr-defined]
+                request.session_data = cookie_data  # type: ignore[attr-defined]
 
         return await func(*args, **kwargs)
 

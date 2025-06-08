@@ -6,7 +6,7 @@ from collections.abc import Awaitable
 from typing import Callable, ParamSpec, TypeVar
 
 import redis.asyncio as redis
-from redis.typing import ExpiryT, ResponseT
+from redis.typing import ExpiryT
 
 from neuron_server.config import config
 
@@ -48,7 +48,7 @@ async def get_cache_key(
     Returns:
         The cached value if found and valid, None otherwise
     """
-    cached_result: ResponseT | None = await client.get(key)
+    cached_result = await client.get(key)
     if cached_result is not None:
         return pickle.loads(cached_result)
     return None
@@ -78,7 +78,7 @@ def cache_response(
             ]
             key = ":".join(cache_key_parts)
 
-            cached_result: ResponseT = await client.get(key)
+            cached_result = await client.get(key)
 
             if cached_result is not None:
                 try:
