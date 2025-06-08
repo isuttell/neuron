@@ -2,7 +2,7 @@ import logging
 from uuid import UUID
 
 from openai import AsyncOpenAI
-from quart import Blueprint, request
+from quart import Blueprint
 from werkzeug.exceptions import BadRequest, NotFound
 
 from neuron_server.config import config as neuron_config
@@ -22,6 +22,7 @@ from neuron_server.models.media_item_model import MediaItemModel
 from neuron_server.models.thread_user_model import ThreadUserModel
 from neuron_server.models.user_model import UserModel
 from neuron_server.pubsub import pubsub
+from neuron_server.type_defs.request_proxy import request
 from neuron_server.util.file_utilities import process_uploaded_file
 
 logger = logging.getLogger(__name__)

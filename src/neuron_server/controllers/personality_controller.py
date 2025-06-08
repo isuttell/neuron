@@ -6,7 +6,7 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import Runnable
 from langgraph.prebuilt import create_react_agent
 from pydantic import BaseModel
-from quart import Blueprint, Response, request
+from quart import Blueprint, Response
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 from neuron_server.controllers.auth import TokenPayload, requires_auth
@@ -30,6 +30,7 @@ from neuron_server.models.embedding_model import EmbeddingModel
 from neuron_server.models.personality_user_model import PersonalityUserModel
 from neuron_server.models.provider_model import ProviderModelModel
 from neuron_server.models.user_model import UserModel
+from neuron_server.type_defs.request_proxy import request
 
 router = EventRouter()
 

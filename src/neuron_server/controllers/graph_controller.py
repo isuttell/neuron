@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from quart import Blueprint, request
+from quart import Blueprint
 from werkzeug.exceptions import BadRequest
 
 from neuron_server.controllers.auth import requires_auth
@@ -7,6 +7,7 @@ from neuron_server.controllers.csrf import requires_csrf
 from neuron_server.tools.graph_arxiv_import_tool import GraphArxivImportTool
 from neuron_server.tools.graph_import_tool import GraphImportTool
 from neuron_server.tools.graph_question_tool import GraphQuestionTool
+from neuron_server.type_defs.request_proxy import request
 
 blueprint = Blueprint("graph", __name__)
 

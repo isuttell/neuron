@@ -1,11 +1,12 @@
 from uuid import UUID
 
-from quart import Blueprint, request
+from quart import Blueprint
 from werkzeug.exceptions import Forbidden
 
 from neuron_server.controllers.auth import requires_auth
 from neuron_server.controllers.csrf import requires_csrf
 from neuron_server.models.provider_model import ProviderModelModel
+from neuron_server.type_defs.request_proxy import request
 
 provider_blueprint = Blueprint("provider", __name__)
 

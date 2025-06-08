@@ -2,7 +2,7 @@ import asyncio
 from uuid import UUID
 
 from pydantic import BaseModel
-from quart import Blueprint, Response, request
+from quart import Blueprint, Response
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 from neuron_server.controllers.auth import requires_auth
@@ -15,6 +15,7 @@ from neuron_server.models.personality_model import PersonalityModel
 from neuron_server.models.thread_model import ThreadModel
 from neuron_server.models.thread_user_model import ThreadUserModel
 from neuron_server.models.user_model import UserModel
+from neuron_server.type_defs.request_proxy import request
 
 blueprint = Blueprint("thread", __name__)
 router = EventRouter()
