@@ -345,6 +345,8 @@ async def atomic_fact_check(
     notebook = atomic_facts_results.updated_notebook
     logger.debug(f"Next Action: {atomic_facts_results.rational_next_action}")
     chosen_action = parse_function(atomic_facts_results.chosen_action)
+    if chosen_action is None:
+        raise ValueError("Failed to parse chosen action")
     logger.debug(f"Chosen action: {chosen_action.get('function_name')}")
     response = {
         "notebook": notebook,

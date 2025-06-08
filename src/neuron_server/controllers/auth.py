@@ -1,7 +1,7 @@
 import logging
 from collections.abc import Callable
 from functools import wraps
-from typing import TYPE_CHECKING, TypeVar, cast
+from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 import aiohttp
 import jwt
@@ -71,7 +71,7 @@ async def get_jwks() -> dict[str, dict]:
 async def decode_token(token: str) -> TokenPayload:
     jwks = await get_jwks()
     unverified_header = jwt.get_unverified_header(token)
-    rsa_key: dict[str, str | dict] | None = None
+    rsa_key: dict[str, Any] | None = None
     for key in jwks["keys"]:
         if key["kid"] == unverified_header["kid"]:
             rsa_key = {

@@ -44,7 +44,7 @@ async def get_recent_media() -> dict[str, list[dict]]:
 @blueprint.post("/lists")
 @requires_auth
 @requires_csrf
-async def create_media_list() -> dict:
+async def create_media_list() -> dict | tuple[dict, int]:
     """Create a new media list"""
     data = await request.get_json()
     assert isinstance(request.token.user_id, str)
@@ -85,7 +85,7 @@ async def get_media_lists() -> dict:
 
 @blueprint.get("/lists/<uuid:list_id>")
 @requires_auth
-async def get_media_list(list_id: UUID) -> dict:
+async def get_media_list(list_id: UUID) -> dict | tuple[dict, int]:
     """Get a specific media list by ID with its media items"""
     assert isinstance(request.token.user_id, str)
     media_list = await MediaListModel.get(list_id=list_id)
@@ -115,7 +115,7 @@ async def get_media_list(list_id: UUID) -> dict:
 @blueprint.put("/lists/<uuid:list_id>")
 @requires_auth
 @requires_csrf
-async def update_media_list(list_id: UUID) -> dict:
+async def update_media_list(list_id: UUID) -> dict | tuple[dict, int]:
     """Update a media list"""
     data = await request.get_json()
     media_list = await MediaListModel.get(list_id=list_id)
@@ -142,7 +142,7 @@ async def update_media_list(list_id: UUID) -> dict:
 @blueprint.delete("/lists/<uuid:list_id>")
 @requires_auth
 @requires_csrf
-async def delete_media_list(list_id: UUID) -> dict:
+async def delete_media_list(list_id: UUID) -> dict | tuple[dict, int]:
     """Delete a media list"""
     media_list = await MediaListModel.get(list_id=list_id)
 
@@ -160,7 +160,7 @@ async def delete_media_list(list_id: UUID) -> dict:
 @requires_auth
 @requires_csrf
 @rate_limit()
-async def add_media_to_list(list_id: UUID) -> dict:
+async def add_media_to_list(list_id: UUID) -> dict | tuple[dict, int]:
     """Add a media item to a list"""
     data = await request.get_json()
     assert isinstance(request.token.user_id, str)
