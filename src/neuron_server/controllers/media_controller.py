@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from quart import Blueprint, request
+from quart import Blueprint
 
 from neuron_server.controllers.auth import requires_auth
 from neuron_server.controllers.csrf import requires_csrf
@@ -8,6 +8,7 @@ from neuron_server.decorators import rate_limit
 from neuron_server.models.media_item_model import MediaItemModel
 from neuron_server.models.media_list_item_model import MediaListItemModel
 from neuron_server.models.media_list_model import MediaListModel
+from neuron_server.type_defs.request_proxy import request
 
 blueprint = Blueprint("media", __name__)
 

@@ -66,6 +66,7 @@ from neuron_server.event_router import EventRouter
 from neuron_server.graph.connection import connection_manager
 from neuron_server.pubsub import client
 from neuron_server.task_scheduler import TaskScheduler
+from neuron_server.type_defs.request import NeuronRequest
 from neuron_server.util.image_utilities import create_thumbnails
 
 logger = logging.getLogger(__name__)
@@ -84,6 +85,7 @@ app = Quart(
     static_folder=config.client_assets_folder if config.serve_client else None,
     root_path="/",
 )
+app.request_class = NeuronRequest
 
 
 blueprint = Blueprint(
@@ -219,7 +221,9 @@ async def refresh_csrf() -> tuple[dict[str, str], int]:
     Refresh CSRF token endpoint.
     Used by the frontend when CSRF token becomes invalid.
     """
-    from quart import jsonify, request
+    from quart import jsonify
+
+    from neuron_server.type_defs.request_proxy import request
 
     # Create new session cookie with CSRF token
     cookie_value, csrf_token = create_session_cookie(

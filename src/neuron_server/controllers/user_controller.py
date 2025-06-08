@@ -1,4 +1,4 @@
-from quart import Blueprint, Response, jsonify, request
+from quart import Blueprint, Response, jsonify
 
 from neuron_server.controllers.auth import TokenPayload, requires_auth
 from neuron_server.controllers.csrf import (
@@ -7,6 +7,7 @@ from neuron_server.controllers.csrf import (
     create_session_cookie,
 )
 from neuron_server.models import UserModel  # Import UserModel
+from neuron_server.type_defs.request_proxy import request
 
 user_bp = Blueprint("user", __name__)
 

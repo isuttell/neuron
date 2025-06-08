@@ -1,7 +1,7 @@
 import logging
 from collections.abc import Callable
 from functools import wraps
-from typing import TypeVar
+from typing import TYPE_CHECKING, TypeVar, cast
 
 import aiohttp
 import jwt
@@ -11,6 +11,9 @@ from werkzeug.exceptions import Unauthorized
 
 from neuron_server.cache import cache_response
 from neuron_server.config import config
+
+if TYPE_CHECKING:
+    from neuron_server.type_defs.request import NeuronRequest
 
 logger = logging.getLogger(__name__)
 
@@ -111,7 +114,12 @@ def requires_auth(func: Callable[..., T]) -> Callable[..., T]:
     @wraps(func)
     async def decorated(*args: object, **kwargs: object) -> T:
         token = get_token_auth_header()
-        request.token = await decode_token(token)
+        token_payload = await decode_token(token)
+
+        # Cast request to our custom type and set the token
+        typed_request = cast("NeuronRequest", request)
+        typed_request.token = token_payload
+
         return await func(*args, **kwargs)
 
     return decorated
