@@ -131,7 +131,7 @@ text prompts with the stackadoc/stable-audio-open-1.0 model. Ideal for:
     ) -> str:
         logger.debug(f"Generating audio with prompt: {prompt}")
 
-        tmp_files = []
+        tmp_files: list[str] = []
         try:
             tmp_video_file = os.path.abspath(
                 os.path.join(neuron_config.temp_folder, f"{uuid4().hex}.mp4")
