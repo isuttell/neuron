@@ -57,6 +57,8 @@ def _process_list_content_as_string(content: list) -> str:
     return "\n".join(text_parts)
 
 
+
+
 def _process_list_content_as_structured(content: list) -> list[dict[str, Any]] | None:
     """Process list content and return as structured content."""
     contents = []
@@ -594,6 +596,9 @@ async def _handle_tool_event(ctx: ToolEventContext) -> None:
         # Use the tool's run_id as the message ID for consistency
         message_data = output.model_dump()
         message_data["id"] = ctx["run_id"]
+
+        # The tool message artifact (if present) will be preserved automatically
+        # due to ThreadMessage's extra="allow" configuration
 
         message = ThreadMessage(
             **message_data,

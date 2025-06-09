@@ -33,8 +33,46 @@ interface ThinkingContent extends BaseContent {
   thinking: string;
 }
 
+// Image content from tool artifacts
+export interface ImageContent extends BaseContent {
+  type: "image";
+  id: string;
+  url: string;
+  caption: string;
+  description?: string;
+  metadata: Record<string, unknown>;
+}
+
+// Audio content from tool artifacts
+export interface AudioContent extends BaseContent {
+  type: "audio";
+  id: string;
+  url: string;
+  caption: string;
+  description?: string;
+  duration?: number;
+  metadata: Record<string, unknown>;
+}
+
+// Video content from tool artifacts
+export interface VideoContent extends BaseContent {
+  type: "video";
+  id: string;
+  url: string;
+  caption: string;
+  description?: string;
+  duration?: number;
+  metadata: Record<string, unknown>;
+}
+
 // Union type for all content types
-type Content = TextContent | ThinkingContent | BaseContent;
+export type Content =
+  | TextContent
+  | ThinkingContent
+  | ImageContent
+  | AudioContent
+  | VideoContent
+  | BaseContent;
 
 type MessageRole = "ai" | "human" | "tool" | "system";
 
@@ -79,6 +117,18 @@ export interface IncomingMessage {
   created_at: string;
   node?: string;
   user_id?: string;
+  artifact?: {
+    type: string;
+    media_type?: string;
+    items?: Array<{
+      id: string;
+      url: string;
+      caption: string;
+      description?: string;
+      duration?: number;
+      metadata?: Record<string, unknown>;
+    }>;
+  };
 }
 
 export interface Message extends Omit<IncomingMessage, "created_at"> {
@@ -160,6 +210,39 @@ export function getCitations(content: Content[] | string): Citation[] {
     }
   });
   return citations;
+}
+
+export function getMediaContent(
+  content: Content[] | string
+): (ImageContent | AudioContent | VideoContent)[] {
+  if (typeof content === "string") {
+    return [];
+  }
+  return content.filter(
+    (item): item is ImageContent | AudioContent | VideoContent =>
+      item.type === "image" || item.type === "audio" || item.type === "video"
+  );
+}
+
+export function getImageContent(content: Content[] | string): ImageContent[] {
+  if (typeof content === "string") {
+    return [];
+  }
+  return content.filter((item): item is ImageContent => item.type === "image");
+}
+
+export function getAudioContent(content: Content[] | string): AudioContent[] {
+  if (typeof content === "string") {
+    return [];
+  }
+  return content.filter((item): item is AudioContent => item.type === "audio");
+}
+
+export function getVideoContent(content: Content[] | string): VideoContent[] {
+  if (typeof content === "string") {
+    return [];
+  }
+  return content.filter((item): item is VideoContent => item.type === "video");
 }
 
 /**
@@ -252,12 +335,10 @@ export const messagesSlice = createSlice({
         (state, action: PayloadAction<MessageResponse>) => {
           state.loading = false;
           for (const message of action.payload.messages) {
-            if (message.created_at) {
-              upsert(state, {
-                ...message,
-                created_at: message.created_at,
-              } as IncomingMessage);
-            }
+            upsert(state, {
+              ...message,
+              created_at: message.created_at,
+            } as IncomingMessage);
           }
         }
       );
@@ -296,7 +377,8 @@ export const getMessage = createSelector(
 
 export const selectThreadMessages = createSelector(
   [getMessages, (_, threadId?: string) => threadId],
-  (messages, threadId) => messages.filter((message) => message.thread_id === threadId)
+  (messages, threadId) =>
+    messages.filter((message) => message.thread_id === threadId)
 );
 
 export default messagesSlice.reducer;

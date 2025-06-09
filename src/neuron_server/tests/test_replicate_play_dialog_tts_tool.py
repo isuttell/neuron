@@ -55,12 +55,24 @@ async def test_replicate_play_dialog_with_bytes_output(
     with (
         patch("replicate.async_run", new_callable=AsyncMock) as mock_run,
         patch("aiofiles.open", new_callable=MagicMock) as mock_aiofiles,
-        patch("neuron_server.models.media_item_model.MediaItemModel.create"),
+        patch(
+            "neuron_server.models.media_item_model.MediaItemModel.create"
+        ) as mock_create,
         patch("os.path.exists", return_value=True),
         patch("os.makedirs"),
+        patch(
+            "neuron_server.util.media_utilities.get_media_duration",
+            new_callable=AsyncMock,
+            return_value=7.8
+        ),
     ):
         # Configure the mocks
         mock_run.return_value = test_audio_bytes
+
+        # Mock media item
+        mock_media_item = MagicMock()
+        mock_media_item.id = "media_123"
+        mock_create.return_value = mock_media_item
 
         # Mock the async file context manager
         mock_file = AsyncMock()
@@ -71,16 +83,32 @@ async def test_replicate_play_dialog_with_bytes_output(
             text="Hello, this is a test",
             name="test_audio",
             config=mock_config,
-            voice="male",
-            emotion="neutral",
+            voice="Angelo (Young male US conversational voice)",
+            language="english",
         )
 
         # Verify the audio was written correctly
         mock_file.write.assert_called_once_with(test_audio_bytes)
 
-        # Verify the result contains expected URL
-        assert "test_audio" in result
-        assert ".mp3" in result
+        # Verify result format - should be tuple of (xml, artifact)
+        assert isinstance(result, tuple)
+        assert len(result) == 2
+        xml_content, artifact = result
+
+        # Check XML content
+        assert '<audio>' in xml_content
+        assert '<id>media_123</id>' in xml_content
+        assert '<caption>test_audio</caption>' in xml_content
+
+        # Check artifact
+        assert isinstance(artifact, dict)
+        assert artifact["type"] == "media"
+        assert artifact["media_type"] == "audio"
+        assert len(artifact["items"]) == 1
+        assert artifact["items"][0]["id"] == "media_123"
+        assert artifact["items"][0]["caption"] == "test_audio"
+        # Check that duration is from ffprobe
+        assert artifact["items"][0]["metadata"]["duration"] == 7.8
 
 
 @pytest.mark.asyncio
@@ -94,19 +122,31 @@ async def test_replicate_play_dialog_with_file_object(
     with (
         patch("replicate.async_run", new_callable=AsyncMock) as mock_run,
         patch("aiofiles.open", new_callable=MagicMock) as mock_aiofiles,
-        patch("neuron_server.models.media_item_model.MediaItemModel.create"),
+        patch(
+            "neuron_server.models.media_item_model.MediaItemModel.create"
+        ) as mock_create,
         patch("os.path.exists", return_value=True),
         patch("os.makedirs"),
+        patch(
+            "neuron_server.util.media_utilities.get_media_duration",
+            new_callable=AsyncMock,
+            return_value=7.8
+        ),
     ):
         # Configure the mocks
         mock_run.return_value = mock_file_obj
+
+        # Mock media item
+        mock_media_item = MagicMock()
+        mock_media_item.id = "media_456"
+        mock_create.return_value = mock_media_item
 
         # Mock the async file context manager
         mock_file = AsyncMock()
         mock_aiofiles.return_value.__aenter__.return_value = mock_file
 
         # Run the tool
-        await tool._arun(
+        result = await tool._arun(
             text="Hello from file object",
             name="test_file_audio",
             config=mock_config,
@@ -114,6 +154,10 @@ async def test_replicate_play_dialog_with_file_object(
 
         # Verify the audio was written correctly
         mock_file.write.assert_called_once_with(test_audio_bytes)
+
+        # Verify result is tuple
+        assert isinstance(result, tuple)
+        assert len(result) == 2
 
 
 @pytest.mark.asyncio
@@ -127,19 +171,31 @@ async def test_replicate_play_dialog_with_async_file_object(
     with (
         patch("replicate.async_run", new_callable=AsyncMock) as mock_run,
         patch("aiofiles.open", new_callable=MagicMock) as mock_aiofiles,
-        patch("neuron_server.models.media_item_model.MediaItemModel.create"),
+        patch(
+            "neuron_server.models.media_item_model.MediaItemModel.create"
+        ) as mock_create,
         patch("os.path.exists", return_value=True),
         patch("os.makedirs"),
+        patch(
+            "neuron_server.util.media_utilities.get_media_duration",
+            new_callable=AsyncMock,
+            return_value=7.8
+        ),
     ):
         # Configure the mocks
         mock_run.return_value = mock_file_obj
+
+        # Mock media item
+        mock_media_item = MagicMock()
+        mock_media_item.id = "media_789"
+        mock_create.return_value = mock_media_item
 
         # Mock the async file context manager
         mock_file = AsyncMock()
         mock_aiofiles.return_value.__aenter__.return_value = mock_file
 
         # Run the tool
-        await tool._arun(
+        result = await tool._arun(
             text="Hello from async file object",
             name="test_async_file_audio",
             config=mock_config,
@@ -147,6 +203,10 @@ async def test_replicate_play_dialog_with_async_file_object(
 
         # Verify the audio was written correctly
         mock_file.write.assert_called_once_with(test_audio_bytes)
+
+        # Verify result is tuple
+        assert isinstance(result, tuple)
+        assert len(result) == 2
 
 
 @pytest.mark.asyncio
@@ -163,9 +223,16 @@ async def test_replicate_play_dialog_with_url_output(
         patch(
             "neuron_server.tools.replicate_play_dialog_tts_tool.aiohttp.ClientSession"
         ) as mock_session_class,
-        patch("neuron_server.models.media_item_model.MediaItemModel.create"),
+        patch(
+            "neuron_server.models.media_item_model.MediaItemModel.create"
+        ) as mock_create,
         patch("os.path.exists", return_value=True),
         patch("os.makedirs"),
+        patch(
+            "neuron_server.util.media_utilities.get_media_duration",
+            new_callable=AsyncMock,
+            return_value=7.8
+        ),
     ):
         # Configure the mocks
         mock_run.return_value = test_url
@@ -187,8 +254,13 @@ async def test_replicate_play_dialog_with_url_output(
 
         mock_session_class.return_value = mock_session
 
+        # Mock media item
+        mock_media_item = MagicMock()
+        mock_media_item.id = "media_url_123"
+        mock_create.return_value = mock_media_item
+
         # Run the tool
-        await tool._arun(
+        result = await tool._arun(
             text="Hello from URL",
             name="test_url_audio",
             config=mock_config,
@@ -199,6 +271,10 @@ async def test_replicate_play_dialog_with_url_output(
 
         # Verify the audio was written correctly
         mock_file.write.assert_called_once_with(test_audio_bytes)
+
+        # Verify result is tuple
+        assert isinstance(result, tuple)
+        assert len(result) == 2
 
 
 @pytest.mark.asyncio
@@ -238,25 +314,37 @@ async def test_replicate_play_dialog_with_custom_parameters(
     with (
         patch("replicate.async_run", new_callable=AsyncMock) as mock_run,
         patch("aiofiles.open", new_callable=MagicMock) as mock_aiofiles,
-        patch("neuron_server.models.media_item_model.MediaItemModel.create"),
+        patch(
+            "neuron_server.models.media_item_model.MediaItemModel.create"
+        ) as mock_create,
         patch("os.path.exists", return_value=True),
         patch("os.makedirs"),
+        patch(
+            "neuron_server.util.media_utilities.get_media_duration",
+            new_callable=AsyncMock,
+            return_value=7.8
+        ),
     ):
         # Configure the mocks
         mock_run.return_value = test_audio_bytes
+
+        # Mock media item
+        mock_media_item = MagicMock()
+        mock_media_item.id = "media_custom_123"
+        mock_create.return_value = mock_media_item
 
         # Mock the async file context manager
         mock_file = AsyncMock()
         mock_aiofiles.return_value.__aenter__.return_value = mock_file
 
         # Run the tool with custom parameters
-        await tool._arun(
+        result = await tool._arun(
             text="Hello with custom voice",
             name="test_custom",
             config=mock_config,
-            voice="female",
-            emotion="happy",
-            speed=1.2,
+            voice="Angelo (Young male US conversational voice)",
+            language="english",
+            temperature=1.2,
             seed=12345,
         )
 
@@ -264,10 +352,14 @@ async def test_replicate_play_dialog_with_custom_parameters(
         mock_run.assert_called_once()
         call_args = mock_run.call_args[1]["input"]
         assert call_args["text"] == "Hello with custom voice"
-        assert call_args["voice"] == "female"
-        assert call_args["emotion"] == "happy"
-        assert call_args["speed"] == 1.2
+        assert call_args["voice"] == "Angelo (Young male US conversational voice)"
+        assert call_args["language"] == "english"
+        assert call_args["temperature"] == 1.2
         assert call_args["seed"] == 12345
+
+        # Verify result is tuple
+        assert isinstance(result, tuple)
+        assert len(result) == 2
 
 
 @pytest.mark.asyncio

@@ -20,10 +20,10 @@ from langchain_core.tools import BaseTool
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from langgraph.graph import END, StateGraph
 from langgraph.graph.message import add_messages
-from langgraph.prebuilt import ToolNode
 from pydantic import BaseModel, Field
 
 from neuron_server.config import config
+from neuron_server.llms.artifact_aware_tool_node import ArtifactAwareToolNode
 from neuron_server.llms.prompts import (
     chat_prompt,
     memory_prompt,
@@ -265,8 +265,8 @@ lean towards "low" or "medium".""",
         # Store tools for dynamic configuration
         self._active_tools = active_tools or []
 
-        # Add tools to ToolNode
-        workflow.add_node("tools", ToolNode(active_tools))
+        # Add tools to our custom ToolNode that handles artifacts
+        workflow.add_node("tools", ArtifactAwareToolNode(active_tools))
         workflow.add_node("analyze_complexity", self.analyze_complexity)
         workflow.add_node("agent", self._dynamic_agent_node)
         workflow.add_node("update_title", self.call_title)

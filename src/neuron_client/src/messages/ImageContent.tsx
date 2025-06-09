@@ -24,6 +24,7 @@ interface ImageContentProps {
   className?: string;
   url: string;
   alt?: string;
+  caption?: string;
   description?: string;
   width?: number;
   height?: number;
@@ -33,6 +34,7 @@ interface ImageContentProps {
   showControls?: boolean;
   mediaItem?: MediaItem;
   objectFit?: "cover" | "contain";
+  metadata?: Record<string, unknown>;
 }
 
 const ImageContent: React.FC<ImageContentProps> = ({
@@ -82,7 +84,7 @@ const ImageContent: React.FC<ImageContentProps> = ({
       <DialogTrigger asChild>
         <div
           className={cn(
-            "relative max-h-[1024px] max-w-[1024px] w-full h-full overflow-hidden",
+            "relative max-h-[400px] max-w-[500px] w-fit overflow-hidden",
             className
           )}
         >

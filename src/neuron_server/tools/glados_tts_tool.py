@@ -108,6 +108,7 @@ This tool converts text to speech in the style of GLaDOS from Portal.
 Returns an audio tag to be shown to the user so they can play it.
 """.strip()
     args_schema: type[GladosTTSToolArgs] = GladosTTSToolArgs
+    response_format: str = "content_and_artifact"
 
     def _run(
         self,
@@ -132,7 +133,7 @@ Returns an audio tag to be shown to the user so they can play it.
         intonation_scale: float | None = 1.2,
         split_interval: float | None = 0.6,
         output_format: str = "wav",
-    ) -> str:
+    ) -> tuple[str, dict]:
         output_path = None
         try:
             logger.debug("Generating GLaDOS TTS audio...")
@@ -213,10 +214,38 @@ Returns an audio tag to be shown to the user so they can play it.
                     f"Generated GLaDOS audio file saved to {output_path} <{url}>"
                 )
 
-                return f"""\
-<audio id="{media_item.id}">
-    <display><audio src="{url}"></audio></display>
-</audio>"""
+                # Prepare artifact for UI using typed models
+                from neuron_server.tools.artifact_types import (
+                    ToolArtifactMetadata,
+                    ToolMediaArtifact,
+                    ToolMediaItem,
+                )
+                from neuron_server.util.media_utilities import get_media_duration
+
+                # Get actual duration from the generated file
+                duration = await get_media_duration(output_path)
+
+                metadata = ToolArtifactMetadata(
+                    model="glados-tts",
+                    prompt=name,
+                    duration=duration,
+                    output_format=output_format,
+                )
+
+                artifact_item = ToolMediaItem(
+                    id=str(media_item.id),
+                    url=url,
+                    caption=name,
+                    description=content,
+                    metadata=metadata,
+                )
+
+                artifact = ToolMediaArtifact(
+                    media_type="audio",
+                    items=[artifact_item]
+                )
+
+                return artifact.to_xml(), artifact.model_dump()
             # Handle case where audio URL was not present or download failed silently
             # before file creation but after API call succeeded
             raise Exception("Failed to generate or download GLaDOS audio file.")

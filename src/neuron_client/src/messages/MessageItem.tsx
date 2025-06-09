@@ -1,27 +1,21 @@
+import React, { memo } from "react";
+import { useAppSelector } from "@/hooks";
+import { getMessage } from "@/slices/messagesSlice";
+import { getUser } from "@/slices/usersSlice";
+import { RootState } from "@/store";
+import { cn } from "@/lib/utils";
 import FuzzyTimeAgo from "@/components/FuzzyTimeAgo";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useAppSelector } from "@/hooks";
-import { cn } from "@/lib/utils";
-import { getMessage } from "@/slices/messagesSlice";
-import { getUser } from "@/slices/usersSlice";
-import { RootState } from "@/store";
-import { Bot, ChevronDown, ChevronUp, Hammer, User } from "lucide-react";
-import React, { memo, useState } from "react";
 import { formatNumber } from "../utils/numberFormat";
-import Content from "./Content";
 import TokenMetadataTable from "./TokenMetadataTable";
-import Citations from "./Citations";
+import ToolMessage from "./ToolMessage";
+import AssistantMessage from "./AssistantMessage";
+import HumanMessage from "./HumanMessage";
+import SystemMessage from "./SystemMessage";
 interface MessageItemProps {
   messageId: string;
   onPromptClick?: (prompt: string) => void;
@@ -35,7 +29,6 @@ const MessageItem: React.FC<MessageItemProps> = ({
   showTools = false,
   toolOutput = ["deepseek_reasoning"],
 }) => {
-  const [isThinkingOpen, setIsThinkingOpen] = useState(false);
   const message = useAppSelector((state: RootState) =>
     getMessage(state, messageId)
   );
@@ -43,12 +36,13 @@ const MessageItem: React.FC<MessageItemProps> = ({
   const {
     type: role,
     node,
-    status = undefined,
+    status,
     name,
     textContent,
     thinkingContent,
     user_id,
     citations,
+    content,
   } = message;
 
   // Get the message user from the users slice if available
@@ -57,26 +51,68 @@ const MessageItem: React.FC<MessageItemProps> = ({
   );
 
   const isTool = role === "tool" || node === "tools";
-  const showToolOutput =
-    isTool && toolOutput && toolOutput.includes(name ?? "");
+  const showToolOutput = isTool && toolOutput && toolOutput.includes(name ?? "");
+  const hasMediaArtifact = role === 'tool' && message.artifact?.type === 'media';
 
-  let body = textContent;
-
-  const isThinking = status === "streaming" && body.trim().length === 0;
-  const hasThinking = thinkingContent && thinkingContent.trim().length > 0;
-
-  if (!showTools) {
-    body = body.replace(/<\|AI\|>[\s\S]*?<\|AI\|>/g, "").trim();
-  }
-
+  // Skip rendering tool messages based on conditions
   if (
     !showTools &&
-    ((isTool && !showToolOutput) || (body.length === 0 && !hasThinking))
+    isTool &&
+    !showToolOutput &&
+    !hasMediaArtifact
   ) {
-    // If there are no media items or content, don't show anything
     return <div />;
   }
-  const elements = [
+  // Render the appropriate message component based on role
+  const renderMessageContent = () => {
+    switch (role) {
+      case "tool":
+        return (
+          <ToolMessage
+            name={name}
+            textContent={textContent}
+            artifact={message.artifact}
+            showTools={showTools}
+            status={status}
+          />
+        );
+      case "human":
+        return (
+          <HumanMessage
+            textContent={textContent}
+            content={content}
+            showTools={showTools}
+            status={status}
+            onPromptClick={onPromptClick}
+            user={messageUser || undefined}
+          />
+        );
+      case "system":
+        return (
+          <SystemMessage
+            textContent={textContent}
+            showTools={showTools}
+            status={status}
+            onPromptClick={onPromptClick}
+          />
+        );
+      case "ai":
+      default:
+        return (
+          <AssistantMessage
+            textContent={textContent}
+            thinkingContent={thinkingContent}
+            citations={citations}
+            content={content}
+            showTools={showTools}
+            status={status}
+            onPromptClick={onPromptClick}
+          />
+        );
+    }
+  };
+
+  return (
     <div
       key={message.id}
       className={cn(
@@ -85,133 +121,48 @@ const MessageItem: React.FC<MessageItemProps> = ({
         role === "human" ? "border" : ""
       )}
     >
-      <div className="px-6 py-4 text-small text-default-400 flex items-start space-x-2">
-        <Tooltip delayDuration={0}>
-          <TooltipTrigger asChild>
-            <div
-              className={`w-10 h-10 mr-4 ${
-                role === "human" ? "bg-muted" : "bg-primary"
-              } rounded-full flex items-center justify-center min-w-[40px]`}
-            >
-              {role === "human" ? (
-                <Avatar>
-                  <AvatarImage src={messageUser?.picture || ""} />
-                  <AvatarFallback>
-                    <User className="text-muted-foreground" size={20} />
-                  </AvatarFallback>
-                </Avatar>
-              ) : null}
-              {role === "ai" || role === "system" ? (
-                <Bot className="text-primary-foreground" size={20} />
-              ) : null}
-              {role === "tool" ? (
-                <Hammer className="text-primary-foreground" size={20} />
-              ) : null}
-            </div>
-          </TooltipTrigger>
-          <TooltipContent side="right">
-            {role === "human" ? messageUser?.nickname || "Human" : "AI"}
-          </TooltipContent>
-        </Tooltip>
-        <div className="flex flex-col flex-1 ">
-          {hasThinking && (
-            <Collapsible
-              open={isThinkingOpen}
-              onOpenChange={setIsThinkingOpen}
-              className="mb-4 border bg-zinc-900 px-4 py-2 rounded-md"
-            >
-              <CollapsibleTrigger asChild>
-                <div className="flex items-center justify-between cursor-pointer">
-                  <div className="text-sm font-medium italic flex items-center">
-                    {isThinking ? "Thinking..." : "Thoughts"}
-                  </div>
+      <div className="px-6 py-4 text-small text-default-400">
+        {renderMessageContent()}
 
-                  <button className="rounded-full p-1 hover:bg-muted">
-                    {isThinkingOpen ? (
-                      <ChevronUp className="h-4 w-4" />
-                    ) : (
-                      <ChevronDown className="h-4 w-4" />
-                    )}
-                  </button>
-                </div>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <div className="mt-4 mb-2 text-sm text-muted-foreground whitespace-pre-wrap">
-                  {thinkingContent}
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
-          )}
-
-          {body && body.trim().length > 0 ? (
-            !showTools ? (
-              <>
-                <Content
-                  content={body}
-                  preload={status === "streaming" ? "none" : "auto"}
-                  onPromptClick={onPromptClick}
-                />
-                {citations && citations.length > 0 && (
-                  <Citations citations={citations} />
-                )}
-              </>
-            ) : (
-              <div className="whitespace-pre-wrap">{body}</div>
-            )
-          ) : isThinking ? (
-            <div className="space-y-2 flex-1">
-              <Skeleton className="h-4 w-[250px]" />
-              <Skeleton className="h-4 w-[200px]" />
-            </div>
-          ) : null}
-          <div className="flex justify-end flex-shrink-0 space-x-2">
-            {typeof node === "string" && node !== "agent" && (
+        {/* Message metadata footer */}
+        <div className="flex justify-end mt-2 space-x-2">
+          {message.usage_metadata?.total_tokens &&
+            message.usage_metadata.total_tokens > 0 && (
               <Tooltip delayDuration={0}>
                 <TooltipTrigger>
-                  <span className="text-xs text-gray-500">{node}</span>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">Node</TooltipContent>
-              </Tooltip>
-            )}
-            {message.usage_metadata?.total_tokens &&
-              message.usage_metadata.total_tokens > 0 && (
-                <Tooltip delayDuration={0}>
-                  <TooltipTrigger>
-                    <span className="text-xs text-gray-500">
-                      {formatNumber(message.usage_metadata.total_tokens)}
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom">
-                    <TokenMetadataTable
-                      input_tokens={message.usage_metadata.input_tokens ?? 0}
-                      output_tokens={message.usage_metadata.output_tokens ?? 0}
-                      total_tokens={message.usage_metadata.total_tokens ?? 0}
-                      input_token_details={message.usage_metadata.input_token_details as { cache_creation?: number; cache_read?: number } | undefined}
-                    />
-                  </TooltipContent>
-                </Tooltip>
-              )}
-            {message.created_at && (
-              <Tooltip delayDuration={0}>
-                <TooltipTrigger>
-                  <FuzzyTimeAgo
-                    className="text-xs text-gray-500"
-                    timestamp={message.created_at}
-                  />
+                  <span className="text-xs text-gray-500">
+                    {formatNumber(message.usage_metadata.total_tokens)}
+                  </span>
                 </TooltipTrigger>
                 <TooltipContent side="bottom">
-                  <span className="p-4">
-                    {new Date(message.created_at).toLocaleString()}
-                  </span>
+                  <TokenMetadataTable
+                    input_tokens={message.usage_metadata.input_tokens ?? 0}
+                    output_tokens={message.usage_metadata.output_tokens ?? 0}
+                    total_tokens={message.usage_metadata.total_tokens ?? 0}
+                    input_token_details={message.usage_metadata.input_token_details as { cache_creation?: number; cache_read?: number } | undefined}
+                  />
                 </TooltipContent>
               </Tooltip>
             )}
-          </div>
+          {message.created_at && (
+            <Tooltip delayDuration={0}>
+              <TooltipTrigger>
+                <FuzzyTimeAgo
+                  className="text-xs text-gray-500"
+                  timestamp={message.created_at}
+                />
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                <span className="p-4">
+                  {new Date(message.created_at).toLocaleString()}
+                </span>
+              </TooltipContent>
+            </Tooltip>
+          )}
         </div>
       </div>
-    </div>,
-  ];
-  return elements;
+    </div>
+  );
 };
 
 export default memo(MessageItem);

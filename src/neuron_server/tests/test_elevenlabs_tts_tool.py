@@ -107,6 +107,11 @@ class TestElevenLabsTTSTool:
             patch(f"{base_path}.run_subprocess"),
             patch(f"{base_path}.MediaItemModel") as mock_media_model,
             patch(f"{base_path}.neuron_config") as mock_config_obj,
+            patch(
+                "neuron_server.util.media_utilities.get_media_duration",
+                new_callable=AsyncMock,
+                return_value=10.5
+            ),
         ):
             # Setup mocks
             mock_client = AsyncMock()
@@ -178,9 +183,24 @@ class TestElevenLabsTTSTool:
             assert second_call.kwargs["text"] == "Testing the ElevenLabs API."
             assert second_call.kwargs["voice_id"] == "callum_id_456"
 
-            # Verify result format
-            assert '<audio id="media_123">' in result
-            assert '<audio src="http://localhost/static/' in result
+            # Verify result format - should be tuple of (xml, artifact)
+            assert isinstance(result, tuple)
+            assert len(result) == 2
+            xml_content, artifact = result
+
+            # Check XML content
+            assert '<audio>' in xml_content
+            assert '<id>media_123</id>' in xml_content
+            assert '<url>http://localhost/static/' in xml_content
+
+            # Check artifact
+            assert isinstance(artifact, dict)
+            assert artifact["type"] == "media"
+            assert artifact["media_type"] == "audio"
+            assert len(artifact["items"]) == 1
+            assert artifact["items"][0]["id"] == "media_123"
+            # Check that duration is from ffprobe, not estimated
+            assert artifact["items"][0]["metadata"]["duration"] == 10.5
 
     @pytest.mark.asyncio
     async def test_arun_empty_script(
@@ -224,6 +244,11 @@ class TestElevenLabsTTSTool:
             patch(f"{base_path}.run_subprocess"),
             patch(f"{base_path}.MediaItemModel") as mock_media_model,
             patch(f"{base_path}.neuron_config") as mock_config_obj,
+            patch(
+                "neuron_server.util.media_utilities.get_media_duration",
+                new_callable=AsyncMock,
+                return_value=8.3
+            ),
         ):
             # Setup mocks
             mock_client = AsyncMock()

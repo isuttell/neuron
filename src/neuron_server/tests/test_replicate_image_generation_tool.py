@@ -170,7 +170,20 @@ class TestReplicateImageGenerationTool:
             },
         )
 
-        # Verify result format
-        assert "<image" in result
-        assert "test-media-id" in result
+        # Verify result format - should be tuple of (content, artifact)
+        assert isinstance(result, tuple)
+        assert len(result) == 2
+        content, artifact = result
+
+        # Check content (XML for LLM)
+        assert "<image" in content
+        assert "test-media-id" in content
+
+        # Check artifact (for UI)
+        assert isinstance(artifact, dict)
+        assert artifact["type"] == "media"
+        assert artifact["media_type"] == "image"
+        assert len(artifact["items"]) == 1
+        assert artifact["items"][0]["id"] == "test-media-id"
+
         assert mock_file_handle.write.called
