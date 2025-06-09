@@ -175,7 +175,7 @@ class Config(BaseModel):
         description="Automatic1111 API URL",
     )
     glados_endpoint: str = Field(
-        default=os.environ.get("GLADOS_ENDPOINT", "http://192.168.1.211:7612"),
+        default=os.environ.get("GLADOS_ENDPOINT", "http://192.168.1.160:7612"),
         description="GLaDOS TTS API URL",
     )
     firecrawl_api_key: str = Field(
