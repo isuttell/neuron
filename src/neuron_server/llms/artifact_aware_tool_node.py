@@ -9,7 +9,6 @@ from typing import Literal, Union, cast
 
 from langchain_core.messages import ToolMessage
 from langchain_core.runnables import RunnableConfig
-from langgraph.errors import GraphBubbleUp
 from langgraph.prebuilt import ToolNode
 from langgraph.prebuilt.tool_node import (
     ToolCall,
@@ -51,10 +50,15 @@ class ArtifactAwareToolNode(ToolNode):
             # internally via BaseTool.run() which creates a ToolMessage with artifact
             response = self.tools_by_name[call["name"]].invoke(input_dict, config)
 
-        # GraphInterrupt is a special exception that must always be raised
-        except GraphBubbleUp as e:
-            raise e
         except Exception as e:
+            # Re-raise any graph control flow exceptions (e.g., GraphBubbleUp)
+            # These are special exceptions that must always be raised
+            if e.__class__.__name__ in (
+                "GraphBubbleUp",
+                "GraphInterrupt",
+                "NodeInterrupt",
+            ):
+                raise e
             # Handle errors according to configuration
             if isinstance(self.handle_tool_errors, tuple):
                 handled_types = self.handle_tool_errors
@@ -116,10 +120,15 @@ class ArtifactAwareToolNode(ToolNode):
             tool = self.tools_by_name[call["name"]]
             response = await tool.ainvoke(input_dict, config)
 
-        # GraphInterrupt must always be raised
-        except GraphBubbleUp as e:
-            raise e
         except Exception as e:
+            # Re-raise any graph control flow exceptions (e.g., GraphBubbleUp)
+            # These are special exceptions that must always be raised
+            if e.__class__.__name__ in (
+                "GraphBubbleUp",
+                "GraphInterrupt",
+                "NodeInterrupt",
+            ):
+                raise e
             # Handle errors according to configuration
             if isinstance(self.handle_tool_errors, tuple):
                 handled_types = self.handle_tool_errors
