@@ -228,7 +228,7 @@ Prompt Tips:
             "understand better what generated image looks like. Use this while "
             "telling stories to better incorporate the image into the story."
         ),
-        default=True,
+        default=False,
     )
 
 
@@ -454,7 +454,7 @@ class ReplicateImageGenerationTool(BaseTool):
         raw: bool = False,
         image_prompt_strength: float | None = None,
         seed: int | None = None,
-        describe: bool = True,
+        describe: bool = False,
     ) -> tuple[str, dict]:
         logger.debug(f"Generating image using {model}")
         try:
