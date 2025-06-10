@@ -253,7 +253,7 @@ export function getVideoContent(content: Content[] | string): VideoContent[] {
 function parseIncomingMessage(message: IncomingMessage): Message {
   return {
     ...message,
-    id: message.id.replace("run-", ""),
+    id: message.id.replace(/^run-+/, ""),
     textContent: getTextContent(message.content),
     thinkingContent: getThinkingContent(message.content),
     citations: getCitations(message.content),
@@ -289,7 +289,7 @@ export const messagesSlice = createSlice({
       state,
       action: PayloadAction<IncomingPartialMessageEvent>
     ) => {
-      const messageId = action.payload.message.id.replace("run-", "");
+      const messageId = action.payload.message.id.replace(/^run-+/, "");
       const existingMessage = state.messageMap[messageId];
       const incomingMessage = action.payload.message;
 

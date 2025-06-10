@@ -282,6 +282,18 @@ class ToolEventContext(TypedDict):
 DEFAULT_LOCATION = "San Diego, California at -117.1860 W and 32.84 N."
 
 
+def _clean_run_id(run_id: str) -> str:
+    """Remove 'run-' prefix and clean up any extra dashes from run IDs."""
+    # Remove 'run-' prefix (including any extra dashes like 'run--')
+    if run_id.startswith("run-"):
+        # Find where the actual ID starts (after all dashes following 'run')
+        cleaned = run_id[4:]  # Remove 'run-'
+        # Remove any leading dashes
+        cleaned = cleaned.lstrip("-")
+        return cleaned if cleaned else run_id  # Return original if empty
+    return run_id
+
+
 @dataclass
 class StatusEvent:
     """Represents a status change event for tracking."""
@@ -790,7 +802,7 @@ async def _handle_tool_event(ctx: ToolEventContext) -> None:
         # Ensure tool messages have consistent IDs
         # Use the tool's run_id as the message ID for consistency
         message_data = output.model_dump()
-        message_data["id"] = ctx["run_id"]
+        message_data["id"] = _clean_run_id(ctx["run_id"])
 
         # The tool message artifact (if present) will be preserved automatically
         # due to ThreadMessage's extra="allow" configuration
@@ -926,7 +938,7 @@ async def _process_stream_events(ctx: StreamEventContext) -> str | None:
                     "app",
                     PartialMessageEvent(
                         message=PartialMessage(
-                            id=run_id,  # Use run_id directly as message ID
+                            id=_clean_run_id(run_id),  # Clean run_id to remove prefix
                             type="ai",
                             content=content,
                             thread_id=ctx["thread"].id,
@@ -942,7 +954,7 @@ async def _process_stream_events(ctx: StreamEventContext) -> str | None:
             if "update_title" not in active_runs.values():
                 # Use the run_id as the message ID to match streaming messages
                 message_data = output.model_dump()
-                message_data["id"] = run_id
+                message_data["id"] = _clean_run_id(run_id)
 
                 message = ThreadMessage(
                     **message_data,
