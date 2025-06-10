@@ -2,6 +2,7 @@ import DeleteThreadButton from "@/components/DeleteThreadButton";
 import MediaPanelWidth, { WidthMode } from "@/components/MediaPanelWidth";
 import MediaTimeline from "@/components/MediaTimeline";
 import ToggleSystemMessages from "@/components/ToggleSystemMessages";
+import { ThreadStatusMessage } from "@/components/ThreadStatusMessage";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import Loading from "@/lib/loading";
 import { cn, debounce } from "@/lib/utils";
@@ -149,6 +150,12 @@ export default function Thread() {
             </div>
           </div>
           <div className="bottom-0">
+            {thread && (
+              <ThreadStatusMessage
+                thread={thread}
+                className="max-w-[1170px] w-full mx-auto px-4 mb-2"
+              />
+            )}
             <ThreadMessageForm
               thread={thread}
               className="max-w-[1170px] w-full mx-auto mt-2"

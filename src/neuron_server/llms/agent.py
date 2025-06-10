@@ -1,7 +1,8 @@
 import asyncio
 from collections.abc import AsyncIterator, Callable
+from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Protocol, TypedDict
+from typing import Any, Literal, Protocol, TypedDict
 from uuid import UUID, uuid4
 
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, ToolMessage
@@ -18,6 +19,7 @@ from neuron_server.controllers.events.thread_events import GetThreadResponse
 from neuron_server.database import pool
 from neuron_server.event_router import ErrorEvent
 from neuron_server.llms.llm import LLM
+from neuron_server.llms.status_agent import StatusAgent
 from neuron_server.llms.tools import get_tools
 from neuron_server.logger import logger
 from neuron_server.models.personality_model import PersonalityModel
@@ -280,6 +282,129 @@ class ToolEventContext(TypedDict):
 DEFAULT_LOCATION = "San Diego, California at -117.1860 W and 32.84 N."
 
 
+@dataclass
+class StatusEvent:
+    """Represents a status change event for tracking."""
+    timestamp: datetime
+    event_type: Literal["start", "end"]
+    operation: str
+    description: str
+
+
+# Tool descriptions for user-friendly status messages
+TOOL_DESCRIPTIONS = {
+    # Memory operations
+    "recall_memory": "Retrieving conversation context",
+    "store_memory": "Saving conversation context",
+    "update_memory": "Updating memory",
+    "read_thread_memory": "Reading thread memory",
+    "set_thread_memory": "Updating thread memory",
+
+    # Image generation/processing
+    "replicate_image_generation": "Creating AI-generated image",
+    "replicate_kontext_image_edit": "Editing image with AI",
+    "openai_image_generation": "Creating image with DALL-E",
+    "automatic1111": "Generating image with Stable Diffusion",
+    "app_image": "Processing application image",
+    "inspect_image": "Analyzing image content",
+    "inspect_webcam": "Capturing webcam image",
+    "astro_finder_image": "Generating astronomy finder chart",
+
+    # Audio/TTS/Music
+    "replicate_audio_generation": "Creating AI-generated audio",
+    "replicate_music_generation": "Generating music",
+    "replicate_sound_effect_generation": "Creating sound effects",
+    "elevenlabs_tts": "Converting text to speech",
+    "elevenlabs_sound_effects": "Generating sound effects",
+    "replicate_play_dialog_tts": "Synthesizing dialogue speech",
+    "replicate_kokoro_tts": "Generating Kokoro voice",
+    "openai_tts": "Converting text to speech with OpenAI",
+    "glados_tts": "Synthesizing GLaDOS voice",
+    "whisper_stt": "Transcribing audio to text",
+
+    # Video
+    "replicate_video_generation": "Creating AI-generated video",
+    "ffmpeg": "Processing media file",
+    "ffprobe": "Analyzing media file",
+
+    # Document/Graph operations
+    "document_inspect": "Analyzing document",
+    "query_documents": "Searching documents",
+    "graph_query_tool": "Querying knowledge graph",
+    "graph_question_tool": "Answering from knowledge graph",
+    "graph_import": "Importing to knowledge graph",
+    "graph_arxiv_import": "Importing paper to graph",
+    "graph_website_import": "Importing website to graph",
+
+    # Search operations
+    "arxiv_search": "Searching academic papers",
+    "arxiv_summary": "Summarizing research paper",
+    "arxiv_recall": "Recalling paper information",
+    "arxiv_graph_import": "Importing paper to graph",
+    "web_search": "Searching the web",
+    "simbad_tap_search": "Searching astronomical database",
+
+    # Astronomy tools
+    "astro_coordinates": "Converting celestial coordinates",
+    "astro_target_search": "Searching astronomical targets",
+    "astro_object_search": "Finding celestial objects",
+    "astro_observability": "Checking object visibility",
+    "astrospheric_forecast": "Getting astronomy weather",
+    "astrospheric_sky": "Checking sky conditions",
+    "moon": "Getting moon information",
+    "sun": "Getting sun information",
+    "skyfield": "Computing astronomical positions",
+
+    # Home automation
+    "homeassistant_sensor": "Reading home sensor",
+    "homeassistant_service": "Controlling home device",
+    "security_camera": "Accessing security camera",
+    "send_notification": "Sending notification",
+
+    # Weather
+    "openweathermap_forecast": "Getting weather forecast",
+    "openweathermap_overview": "Getting weather overview",
+
+    # Media lists
+    "media_list_access": "Checking media list access",
+    "media_list_add_item": "Adding to media list",
+    "media_list_create": "Creating media list",
+    "media_list_delete": "Deleting media list",
+    "media_list_get_items": "Retrieving media items",
+    "media_list_read": "Reading media list",
+    "media_list_remove_item": "Removing from media list",
+    "media_list_reorder_items": "Reordering media list",
+    "media_list_update": "Updating media list",
+
+    # Scheduling
+    "schedule_prompt": "Scheduling task",
+    "list_scheduled_prompts": "Listing scheduled tasks",
+    "remove_scheduled_prompt": "Removing scheduled task",
+
+    # Gaming
+    "hd2_galactic_war_report": "Getting Helldivers 2 war status",
+    "hd2_liberation_history": "Getting liberation history",
+    "dice": "Rolling dice",
+
+    # AI/Reasoning
+    "deepseek_reasoning": "Deep reasoning analysis",
+    "code_interpreter": "Executing code",
+    "openai_compatible": "Running AI model",
+
+    # Personality
+    "personality_prompt": "Getting personality prompt",
+
+    # System operations
+    "thinking": "Processing your request",
+    "streaming": "Writing response",
+    "update_title": "Updating conversation title",
+}
+
+
+# Track status events per thread
+status_events: dict[UUID, list[StatusEvent]] = {}
+
+
 async def execute_agent(
     prompt: str,
     personality_id: UUID,
@@ -433,6 +558,11 @@ class Debouncer:
 # Initialize a debouncer with a 100ms wait time
 debounce_publish = Debouncer(wait=0.1)
 
+# Track status agents per thread
+status_agents: dict[UUID, StatusAgent] = {}
+# Track personality info per thread for status agents
+thread_personalities: dict[UUID, tuple[str, str]] = {}
+
 
 async def _debounced_publish(channel: str, event: PubSubEvent) -> None:
     """Debounces pubsub publishes to limit frequency.
@@ -455,14 +585,65 @@ async def update_thread_status(
         force_update: Whether to update even if status hasn't changed
     """
     if thread.status != status or force_update:
-        thread.status = status
+        # Initialize event tracking for this thread if needed
+        if thread.id not in status_events:
+            status_events[thread.id] = []
 
-        async def update_task() -> None:
-            """Inner task to update thread status and publish change."""
-            await ThreadModel.set(thread.id, "status", status)
-            await _debounced_publish("app", GetThreadResponse(thread=thread))
+        # Get or create status agent for this thread
+        if thread.id not in status_agents:
+            # Get personality info if available
+            personality_name = ""
+            personality_context = ""
+            if thread.id in thread_personalities:
+                personality_name, personality_context = thread_personalities[thread.id]
 
-        asyncio.create_task(update_task())
+            status_agents[thread.id] = StatusAgent(
+                thread.id,
+                personality_name=personality_name,
+                personality_context=personality_context
+            )
+
+        status_agent = status_agents[thread.id]
+
+        # Track the status change event
+        # Handle comma-separated tools
+        if "," in status:
+            # Parse individual tools and create a combined description
+            tools = [t.strip() for t in status.split(",")]
+            descriptions = []
+            for tool in tools:
+                desc = TOOL_DESCRIPTIONS.get(tool, tool)
+                descriptions.append(desc)
+            description = f"Multiple operations: {', '.join(descriptions)}"
+        else:
+            description = TOOL_DESCRIPTIONS.get(status, status)
+
+        event = StatusEvent(
+            timestamp=datetime.now(),
+            event_type="start",
+            operation=status,
+            description=description
+        )
+        status_events[thread.id].append(event)
+
+        # Get events since last update
+        last_update_time = status_agent.last_execution_time or datetime.min
+        recent_events = [
+            e for e in status_events[thread.id]
+            if e.timestamp > last_update_time
+        ]
+
+        # Use status agent to generate intelligent status message
+        await status_agent.update_status(thread, status, recent_events)
+
+        # If status is idle, clean up everything
+        if status == "idle":
+            if thread.id in status_agents:
+                del status_agents[thread.id]
+            if thread.id in status_events:
+                del status_events[thread.id]
+            if thread.id in thread_personalities:
+                del thread_personalities[thread.id]
 
 
 async def wait_for_idle(thread_id: UUID, timeout: int = 300) -> None:
@@ -579,6 +760,20 @@ async def _handle_tool_event(ctx: ToolEventContext) -> None:
     Args:
         ctx: Tool event context containing all event data
     """
+    thread = ctx["thread"]
+    tool_name = ctx["name"]
+
+    # Track tool end events
+    if ctx["kind"] == "on_tool_end" and thread.id in status_events:
+        description = TOOL_DESCRIPTIONS.get(tool_name, f"Running {tool_name}")
+        event = StatusEvent(
+            timestamp=datetime.now(),
+            event_type="end",
+            operation=tool_name,
+            description=description
+        )
+        status_events[thread.id].append(event)
+
     if ctx["kind"] == "on_tool_start":
         logger.debug(f"Starting tool {ctx['name']}...")
         ctx["active_runs"][ctx["run_id"]] = (
@@ -652,6 +847,12 @@ async def _process_stream_events(ctx: StreamEventContext) -> str | None:
     index = -1
     active_runs: dict[str, str] = {}
     state_result: str | None = None
+
+    # Store personality info for status agent
+    thread_personalities[ctx["thread"].id] = (
+        ctx["personality"].name,
+        ctx["personality"].context
+    )
 
     async for body in ctx["graph"].astream_events(
         {
