@@ -15,6 +15,7 @@ interface ThreadStatusMessageProps {
 export function ThreadStatusMessage({ thread, className }: ThreadStatusMessageProps) {
   const [displayedText, setDisplayedText] = useState("");
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [isVisible, setIsVisible] = useState(false);
   const previousStatusRef = useRef<string>("");
   const animationRef = useRef<number | null>(null);
 
@@ -43,10 +44,12 @@ export function ThreadStatusMessage({ thread, className }: ThreadStatusMessagePr
       previousStatusRef.current = "";
       setDisplayedText("");
       setCurrentIndex(0);
+      setIsVisible(false);
     } else if (currentStatus !== previousStatusRef.current) {
       previousStatusRef.current = currentStatus;
       setDisplayedText("");
       setCurrentIndex(0);
+      setIsVisible(true);
     }
   }, [currentStatus, thread]);
 
@@ -56,7 +59,7 @@ export function ThreadStatusMessage({ thread, className }: ThreadStatusMessagePr
       animationRef.current = window.setTimeout(() => {
         setDisplayedText(currentStatus.slice(0, currentIndex + 1));
         setCurrentIndex(currentIndex + 1);
-      }, 30); // 30ms delay between characters
+      }, 15); // 15ms delay between characters (faster animation)
     }
 
     return () => {
@@ -66,13 +69,19 @@ export function ThreadStatusMessage({ thread, className }: ThreadStatusMessagePr
     };
   }, [currentIndex, currentStatus]);
 
-  // Only show status when thread is not idle
-  if (!thread || thread.status === "idle") {
-    return null;
-  }
+  // // Only show status when thread is not idle
+  // if (!thread || thread.status === "idle") {
+  //   return null;
+  // }
 
   return (
-    <div className={cn("flex items-center gap-2 text-sm text-muted-foreground", className)}>
+    <div
+      className={cn(
+        "flex items-center gap-2 text-sm text-muted-foreground py-2 transition-opacity duration-300",
+        isVisible ? "opacity-100" : "opacity-0",
+        className
+      )}
+    >
       <Loader2 className="h-3 w-3 animate-spin" />
       <span className="inline-block">
         {displayedText}

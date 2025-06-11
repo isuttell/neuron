@@ -5,6 +5,7 @@ from typing import Optional
 from uuid import UUID
 
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
+from pydantic import BaseModel, Field
 
 from neuron_server.controllers.events.thread_events import GetThreadResponse
 from neuron_server.llms.llm import LLM
@@ -12,6 +13,15 @@ from neuron_server.logger import logger
 from neuron_server.models.provider_model import ProviderModelModel
 from neuron_server.models.thread_model import ThreadModel
 from neuron_server.pubsub import pubsub
+
+
+class StatusMessage(BaseModel):
+    """Structured output for status messages."""
+
+    message: str = Field(
+        max_length=50,
+        description="Brief status message explaining the current operation",
+    )
 
 
 class StatusAgent:
@@ -24,14 +34,17 @@ class StatusAgent:
         self.last_execution_time: Optional[datetime] = None
         self.pending_task: Optional[asyncio.Task] = None
         self.pending_status: Optional[str] = None
+        self.pending_human_message: Optional[str] = None
         self.throttle_seconds = 5
 
         # Build system message with personality context
         system_content = (
-            "You are a professional status message generator for an AI "
+            "You are a status message generator for an AI "
             "assistant. Your role is to create informative, concise status "
-            "messages that help users understand what the AI is currently "
-            "doing.\n\n"
+            "messages that talk directly to the user. The goal is to help "
+            "the users understand what the AI is currently "
+            "doing at a glance. The messages are typically visible no "
+            "longer than 5 seconds.\n\n"
         )
 
         # Add personality information if provided
@@ -45,23 +58,26 @@ class StatusAgent:
                     f" with the following custom instructions:\n{personality_context}\n"
                 )
             system_content += (
-                "\nReflect this personality's tone and style in your "
-                "status messages.\n\n"
+                "\nYou must reflect this personality's tone, style, and emoji use in "
+                "your status messages, focus on naturally explaining what's "
+                "happening as the personality. That is your primary objective. \n\n"
             )
 
         system_content += (
             "RULES:\n"
-            "1. Keep messages under 100 characters\n"
-            "2. Be informative about the actual operation\n"
-            "3. Avoid repetition\n"
-            "4. Focus on what's happening right now\n"
-            "5. Use the personality to guide tone and style of the "
-            "status message\n\n"
-            "Use the converation history to understand progress and vary your "
-            "messages accordingly. If the same operation appears multiple "
-            "times, infer it's taking longer and adjust your message to "
-            "reflect continued work. Your responses will be shown to the "
-            "user while the main agent is busy, so keep them short."
+            "1. Response in the personalities voice\n"
+            "2. Keep messages under 50 characters\n"
+            "3. Always mention the specific tool when they are running\n"
+            "4. Treat this as an ongoing conversation - don't repeat\n"
+            "5. Each status message should feel like a natural continuation "
+            "from the last\n"
+            "6. Don't mention usernamefs - focus on the status\n"
+            "7. Don't reference specific times, or durations. Tools give no "
+            "progress updates other than start/end, and durations can vary widely.\n\n"
+            "Think of yourself as narrating what's happening right now. "
+            "Each status update should explain the current operation(s) in "
+            "context of what came before. Use the conversation history "
+            "to ensure variety and avoid repetition."
         )
 
         # Initialize with system message for prompt caching
@@ -70,22 +86,23 @@ class StatusAgent:
         ]
 
     async def update_status(
-        self, thread: ThreadModel, status: str, recent_events: list = None
+        self,
+        thread: ThreadModel,
+        status: str,
+        recent_events: list = None,
+        human_message: str | None = None,
     ) -> str:
-        """Update status with throttling."""
-        # Special handling for idle - cancel everything
+        """Update status with throttling.
+
+        Args:
+            thread: The thread model to update
+            status: The status operation being performed
+            recent_events: List of recent status events
+            human_message: The user's message that triggered this operation
+        """
+        # Special handling for idle - just reset and return
         if status == "idle":
-            if self.pending_task and not self.pending_task.done():
-                self.pending_task.cancel()
-                logger.debug(
-                    f"Cancelled pending status update for thread {self.thread_id}"
-                )
             self.reset()
-
-            # Still need to update the thread status to idle!
-            thread.status = "idle"
-            await self._publish_status_update(thread)
-
             return status  # Return "idle" directly, no LLM call
 
         now = datetime.now()
@@ -97,7 +114,7 @@ class StatusAgent:
         ):
             self.last_execution_time = now
             generated_status = await self._generate_status_message(
-                status, recent_events or []
+                status, recent_events or [], human_message
             )
             # Update thread with generated status
             thread.status = generated_status
@@ -106,6 +123,7 @@ class StatusAgent:
 
         # Too soon - queue for later
         self.pending_status = status
+        self.pending_human_message = human_message
         if not self.pending_task or self.pending_task.done():
             # Schedule execution exactly throttle_seconds after last execution
             wait_time = (
@@ -126,16 +144,17 @@ class StatusAgent:
         """Execute pending update after throttle period."""
         try:
             await asyncio.sleep(wait_time)
-            if self.pending_status and self.pending_status != "idle":
+            if self.pending_status:
                 self.last_execution_time = datetime.now()
-                # For pending updates, we don't have recent events
+                # For pending updates, we might have human message
                 generated_status = await self._generate_status_message(
-                    self.pending_status, []
+                    self.pending_status, [], self.pending_human_message
                 )
                 # Update thread with generated status
                 thread.status = generated_status
                 await self._publish_status_update(thread)
                 self.pending_status = None
+                self.pending_human_message = None
         except asyncio.CancelledError:
             logger.debug(f"Pending status update cancelled for thread {self.thread_id}")
             raise
@@ -146,7 +165,7 @@ class StatusAgent:
         await pubsub.publish("app", GetThreadResponse(thread=thread))
 
     async def _generate_status_message(
-        self, current_status: str, recent_events: list
+        self, current_status: str, recent_events: list, human_message: str | None = None
     ) -> str:
         """Generate a human-friendly status message using LLM."""
         try:
@@ -181,17 +200,24 @@ class StatusAgent:
                     current_status, f"Running {current_status}"
                 )
 
-            # Create new human message with only the diff since last update
-            human_message = HumanMessage(
-                content=(
-                    f"{event_context}"
-                    f"Current operation: {current_description}\n\n"
-                    "Generate a professional status message for this operation."
-                )
+            # Build the prompt with user context if available
+            prompt_content = f"{event_context}"
+
+            # Add user request context if available
+            if human_message:
+                prompt_content += f"User request: {human_message}\n\n"
+
+            prompt_content += (
+                f"Current operation: {current_description}\n"
+                f"Tool/Operation name: {current_status}\n\n"
+                "Generate the next status message in our ongoing conversation."
             )
 
+            # Create new human message with only the diff since last update
+            status_prompt = HumanMessage(content=prompt_content)
+
             # Add the new human message to history
-            self.message_history.append(human_message)
+            self.message_history.append(status_prompt)
 
             # Apply caching to messages if using Anthropic
             messages_to_send = self._apply_caching_if_needed(self.message_history, llm)
@@ -202,36 +228,20 @@ class StatusAgent:
             # Time the LLM call
             start_time = time.time()
 
-            # Generate the status message
-            response: AIMessage = await fast_model.ainvoke(messages_to_send)
+            # Generate the status message using structured output with raw output
+            structured_model = fast_model.with_structured_output(
+                StatusMessage, include_raw=True
+            )
+            response = await structured_model.ainvoke(messages_to_send)
 
             # Calculate elapsed time
             elapsed_ms = (time.time() - start_time) * 1000
 
-            if response.content:
-                status_message = response.content.strip()
+            if response and response.get("parsed") and response["parsed"].message:
+                status_message = response["parsed"].message
 
-                # Extract token usage if available
-                token_info = ""
-                if (
-                    hasattr(response, "response_metadata")
-                    and response.response_metadata
-                ):
-                    usage = response.response_metadata.get("usage", {})
-                    if usage:
-                        prompt_tokens = usage.get("input_tokens", 0)
-                        completion_tokens = usage.get("output_tokens", 0)
-                        total_tokens = usage.get(
-                            "total_tokens", prompt_tokens + completion_tokens
-                        )
-                        cache_read = usage.get("cache_read_input_tokens", 0)
-                        cache_creation = usage.get("cache_creation_input_tokens", 0)
-
-                        token_info = (
-                            f" - Tokens: prompt={prompt_tokens}"
-                            f" (cache_read={cache_read}, cache_create={cache_creation})"
-                            f", completion={completion_tokens}, total={total_tokens}"
-                        )
+                # Extract token usage from raw response if available
+                token_info = self._extract_token_info(response.get("raw"))
 
                 logger.debug(
                     f"Status generation took {elapsed_ms:.0f}ms{token_info}"
@@ -239,8 +249,9 @@ class StatusAgent:
                     f" - Status: '{status_message}' for thread {self.thread_id}"
                 )
 
-                # Add AI response to history
-                self.message_history.append(response)
+                # Add AI response to history as AIMessage
+                ai_message = AIMessage(content=status_message)
+                self.message_history.append(ai_message)
 
                 # Limit message history to prevent unbounded growth
                 # Keep system message + last 10 exchanges (20 messages)
@@ -294,9 +305,41 @@ class StatusAgent:
 
     def reset(self) -> None:
         """Reset the agent when thread goes idle."""
+        # Cancel any pending task
+        if self.pending_task and not self.pending_task.done():
+            self.pending_task.cancel()
+            logger.debug(f"Cancelled pending task for thread {self.thread_id}")
+
+        # Clear all state and throttle
         self.last_execution_time = None
         self.pending_task = None
         self.pending_status = None
+        self.pending_human_message = None
         # Reset message history to just the system message
         self.message_history = [self.message_history[0]] if self.message_history else []
         logger.debug(f"Status agent reset for thread {self.thread_id}")
+
+    def _extract_token_info(self, raw_response: AIMessage | None) -> str:
+        """Extract token usage information from raw response."""
+        if not (
+            raw_response
+            and hasattr(raw_response, "response_metadata")
+            and raw_response.response_metadata
+        ):
+            return ""
+
+        usage = raw_response.response_metadata.get("usage", {})
+        if not usage:
+            return ""
+
+        prompt_tokens = usage.get("input_tokens", 0)
+        completion_tokens = usage.get("output_tokens", 0)
+        total_tokens = usage.get("total_tokens", prompt_tokens + completion_tokens)
+        cache_read = usage.get("cache_read_input_tokens", 0)
+        cache_creation = usage.get("cache_creation_input_tokens", 0)
+
+        return (
+            f" - Tokens: prompt={prompt_tokens}"
+            f" (cache_read={cache_read}, cache_create={cache_creation})"
+            f", completion={completion_tokens}, total={total_tokens}"
+        )

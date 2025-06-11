@@ -270,6 +270,7 @@ class ToolEventContext(TypedDict):
         active_runs: Map of active run IDs to their status
         data: Event data payload
         node: Graph node identifier
+        human_message: The user's message content
     """
 
     thread: ThreadModel
@@ -279,6 +280,7 @@ class ToolEventContext(TypedDict):
     active_runs: dict[str, str]
     data: dict[str, Any]
     node: str | None
+    human_message: str | None
 
 
 DEFAULT_LOCATION = "San Diego, California at -117.1860 W and 32.84 N."
@@ -589,7 +591,10 @@ async def _debounced_publish(channel: str, event: PubSubEvent) -> None:
 
 
 async def update_thread_status(
-    thread: ThreadModel, status: str, force_update: bool = False
+    thread: ThreadModel,
+    status: str,
+    force_update: bool = False,
+    human_message: str | None = None,
 ) -> None:
     """Update thread status and publish the change.
 
@@ -597,6 +602,7 @@ async def update_thread_status(
         thread: Thread model instance to update
         status: New status to set
         force_update: Whether to update even if status hasn't changed
+        human_message: The user's message that triggered this status update
     """
     if thread.status != status or force_update:
         # Initialize event tracking for this thread if needed
@@ -648,10 +654,16 @@ async def update_thread_status(
         ]
 
         # Use status agent to generate intelligent status message
-        await status_agent.update_status(thread, status, recent_events)
+        await status_agent.update_status(thread, status, recent_events, human_message)
 
-        # If status is idle, clean up everything
+        # If status is idle, update thread and clean up everything
         if status == "idle":
+            # Update the thread status to idle
+            thread.status = "idle"
+            await ThreadModel.set(thread.id, "status", thread.status)
+            await _debounced_publish("app", GetThreadResponse(thread=thread))
+
+            # Clean up the status agent and related data
             if thread.id in status_agents:
                 del status_agents[thread.id]
             if thread.id in status_events:
@@ -729,10 +741,12 @@ class ChainEvent(TypedDict):
     Attributes:
         thread: Thread model instance
         event_data: Chain event data
+        human_message: The user's message content
     """
 
     thread: ThreadModel
     event_data: ChainEventData
+    human_message: str | None
 
 
 async def _handle_chain_event(event: ChainEvent) -> None:
@@ -745,6 +759,7 @@ async def _handle_chain_event(event: ChainEvent) -> None:
     """
     thread = event["thread"]
     data = event["event_data"]
+    human_message = event.get("human_message")
 
     if data["kind"] == "on_chain_start":
         data["active_runs"][data["run_id"]] = (
@@ -762,6 +777,7 @@ async def _handle_chain_event(event: ChainEvent) -> None:
         thread,
         ", ".join(values) if len(values) > 0 else "thinking",
         force_update=True,
+        human_message=human_message,
     )
 
 
@@ -776,6 +792,7 @@ async def _handle_tool_event(ctx: ToolEventContext) -> None:
     """
     thread = ctx["thread"]
     tool_name = ctx["name"]
+    human_message = ctx.get("human_message")
 
     # Track tool end events
     if ctx["kind"] == "on_tool_end" and thread.id in status_events:
@@ -820,6 +837,7 @@ async def _handle_tool_event(ctx: ToolEventContext) -> None:
     await update_thread_status(
         ctx["thread"],
         ", ".join(values) if len(values) > 0 else "thinking",
+        human_message=human_message,
     )
 
 
@@ -861,6 +879,14 @@ async def _process_stream_events(ctx: StreamEventContext) -> str | None:
     index = -1
     active_runs: dict[str, str] = {}
     state_result: str | None = None
+
+    # Extract human message content for status updates (limit to 1000 chars)
+    human_message_content = get_message_content(
+        ctx["human_message"], format_as_string=True
+    )
+    max_message_length = 1000
+    if human_message_content and len(human_message_content) > max_message_length:
+        human_message_content = human_message_content[:max_message_length - 3] + "..."
 
     # Store personality info for status agent
     thread_personalities[ctx["thread"].id] = (
@@ -906,6 +932,7 @@ async def _process_stream_events(ctx: StreamEventContext) -> str | None:
                         run_id=run_id,
                         active_runs=active_runs,
                     ),
+                    human_message=human_message_content,
                 )
             )
 
@@ -919,6 +946,7 @@ async def _process_stream_events(ctx: StreamEventContext) -> str | None:
                     active_runs=active_runs,
                     data=data,
                     node=node,
+                    human_message=human_message_content,
                 )
             )
 
@@ -928,7 +956,9 @@ async def _process_stream_events(ctx: StreamEventContext) -> str | None:
 
             # Handle content which can now be a list of Content objects or a string
             if content:
-                await update_thread_status(ctx["thread"], "streaming")
+                await update_thread_status(
+                    ctx["thread"], "streaming", human_message=human_message_content
+                )
                 index += 1
 
                 # If content is still a string (for backward compatibility),
@@ -966,7 +996,9 @@ async def _process_stream_events(ctx: StreamEventContext) -> str | None:
                 if not message.created_at:
                     message.created_at = ctx["start_time"].isoformat()
                 await pubsub.publish("app", MessageEvent(message=message))
-            await update_thread_status(ctx["thread"], "thinking")
+            await update_thread_status(
+                ctx["thread"], "thinking", human_message=human_message_content
+            )
 
         elif kind == "error":
             logger.error(data)
@@ -1026,7 +1058,7 @@ async def astream(args: StreamArgs) -> str | None:
         if thread.status not in {"idle", "error"}:
             await wait_for_idle(config["thread_id"])
 
-        await update_thread_status(thread, "thinking")
+        await update_thread_status(thread, "thinking", human_message=config["prompt"])
 
         personality = await PersonalityModel.get(config["personality_id"])
         if personality is None:
@@ -1088,12 +1120,16 @@ async def astream(args: StreamArgs) -> str | None:
         logger.error(e, exc_info=True)
         logger.error(f"AgentError: {e!r}")
         if thread:
-            await update_thread_status(thread, status="error")
+            await update_thread_status(
+                thread, status="error", human_message=config.get("prompt")
+            )
         await pubsub.publish("app", ErrorEvent(message=str(e)))
 
     finally:
         if thread:
-            await update_thread_status(thread, status="idle")
+            await update_thread_status(
+                thread, status="idle", human_message=config.get("prompt")
+            )
             logger.debug(f"Agent completed for {thread.id}")
 
     return result

@@ -45,8 +45,8 @@ export default function Thread() {
     localStorage.getItem("widthMode") === "wide"
       ? "wide"
       : localStorage.getItem("widthMode") === "narrow"
-      ? "narrow"
-      : "hidden"
+        ? "narrow"
+        : "hidden"
   );
 
   const filteredMessages = messages
@@ -54,7 +54,7 @@ export default function Thread() {
     .filter((message) =>
       [
         (message.textContent && message.textContent.length > 0) ||
-          (message.thinkingContent && message.thinkingContent.length > 0),
+        (message.thinkingContent && message.thinkingContent.length > 0),
         !showTools && typeof message.node === "string"
           ? ["agent", "tools"].includes(message.node)
           : true,
@@ -153,12 +153,12 @@ export default function Thread() {
             {thread && (
               <ThreadStatusMessage
                 thread={thread}
-                className="max-w-[1170px] w-full mx-auto px-4 mb-2"
+                className="max-w-[1170px] w-full mx-auto px-4"
               />
             )}
             <ThreadMessageForm
               thread={thread}
-              className="max-w-[1170px] w-full mx-auto mt-2"
+              className="max-w-[1170px] w-full mx-auto"
             />
           </div>
         </div>
