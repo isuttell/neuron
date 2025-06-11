@@ -137,6 +137,9 @@ export interface Message extends Omit<IncomingMessage, "created_at"> {
   textContent: string;
   thinkingContent?: string;
   citations?: Citation[];
+  isOptimistic?: boolean;
+  tempId?: string;
+  error?: string;
 }
 
 interface IncomingPartialMessage extends Omit<IncomingMessage, "status"> {
@@ -277,8 +280,62 @@ export const messagesSlice = createSlice({
   name: "messages",
   initialState,
   reducers: {
+    addOptimisticMessage: (
+      state,
+      action: PayloadAction<{
+        tempId: string;
+        content: string;
+        threadId: string;
+        userId?: string;
+      }>
+    ) => {
+      const { tempId, content, threadId, userId } = action.payload;
+      const optimisticMessage: Message = {
+        id: tempId,
+        tempId,
+        type: "human",
+        content,
+        thread_id: threadId,
+        user_id: userId,
+        created_at: Date.now(),
+        textContent: content,
+        isOptimistic: true,
+      };
+
+      state.messageIds.push(tempId);
+      state.messageMap[tempId] = optimisticMessage;
+    },
+    markMessageFailed: (
+      state,
+      action: PayloadAction<{ tempId: string; error: string }>
+    ) => {
+      const { tempId, error } = action.payload;
+      const message = state.messageMap[tempId];
+      if (message) {
+        message.error = error;
+        message.isOptimistic = false;
+      }
+    },
+    removeOptimisticMessage: (state, action: PayloadAction<string>) => {
+      const tempId = action.payload;
+      delete state.messageMap[tempId];
+      state.messageIds = state.messageIds.filter((id) => id !== tempId);
+    },
     upsertMessage: (state, action: PayloadAction<IncomingMessageEvent>) => {
-      upsert(state, action.payload.message);
+      const incomingMessage = action.payload.message;
+
+      // Check if we have an optimistic message to replace
+      const tempId = (incomingMessage as IncomingMessage & { temp_id?: string }).temp_id;
+      if (tempId) {
+        // Remove the optimistic message
+        const optimisticIndex = state.messageIds.indexOf(tempId);
+        if (optimisticIndex !== -1) {
+          state.messageIds.splice(optimisticIndex, 1);
+          delete state.messageMap[tempId];
+        }
+      }
+
+      upsert(state, incomingMessage);
     },
     upsertMessages: (state, action: PayloadAction<IncomingMessagesEvent>) => {
       for (const message of action.payload.messages) {
@@ -345,8 +402,14 @@ export const messagesSlice = createSlice({
   },
 });
 
-export const { upsertMessage, upsertMessages, partialMessage } =
-  messagesSlice.actions;
+export const {
+  addOptimisticMessage,
+  markMessageFailed,
+  removeOptimisticMessage,
+  upsertMessage,
+  upsertMessages,
+  partialMessage,
+} = messagesSlice.actions;
 
 // Base selectors
 const selectMessagesState = (state: RootState) => state.messages;

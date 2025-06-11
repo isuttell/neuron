@@ -157,6 +157,7 @@ async def post_thread_message(thread_id: UUID) -> tuple[dict[str, str], int]:
         raise BadRequest("Either prompt or file is required")
 
     prompt = await process_message_request(files, form)
+    temp_id = form.get("temp_id")
 
     await agent.astream(
         {
@@ -165,6 +166,7 @@ async def post_thread_message(thread_id: UUID) -> tuple[dict[str, str], int]:
             "user_id": request.token.user_id,
             "username": request.token.nickname,
             "prompt": prompt,
+            "temp_id": temp_id,
         }
     )
 

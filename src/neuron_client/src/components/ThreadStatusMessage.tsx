@@ -35,7 +35,7 @@ export function ThreadStatusMessage({ thread, className }: ThreadStatusMessagePr
     }
   };
 
-  const currentStatus = thread && thread.status !== "idle" ? formatStatus(thread.status) : "";
+  const currentStatus = thread && thread.status && thread.status !== "idle" ? formatStatus(thread.status) : "";
 
   useEffect(() => {
     // Reset animation when status changes or becomes idle

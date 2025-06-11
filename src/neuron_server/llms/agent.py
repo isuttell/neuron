@@ -236,6 +236,7 @@ class StreamArgs(TypedDict, total=False):
         username: The username (optional)
         prompt: The prompt text
         location: The location string (default: San Diego coordinates)
+        temp_id: Temporary ID for optimistic updates (optional)
     """
 
     thread_id: UUID
@@ -244,6 +245,7 @@ class StreamArgs(TypedDict, total=False):
     username: str | None
     prompt: str
     location: str
+    temp_id: str | None
 
 
 class StreamConfig(TypedDict):
@@ -1038,11 +1040,16 @@ async def astream(args: StreamArgs) -> str | None:
             created_at=datetime.now().astimezone().isoformat(),
         )
 
+        message_data = human_message.model_dump()
+        # Include temp_id if provided for optimistic updates
+        if args.get("temp_id"):
+            message_data["temp_id"] = args["temp_id"]
+
         await pubsub.publish(
             "app",
             MessageEvent(
                 message=ThreadMessage(
-                    **human_message.model_dump(),
+                    **message_data,
                     thread_id=thread.id,
                 )
             ),

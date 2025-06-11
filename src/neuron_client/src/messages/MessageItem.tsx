@@ -10,6 +10,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Loader2, AlertCircle } from "lucide-react";
 import { formatNumber } from "../utils/numberFormat";
 import TokenMetadataTable from "./TokenMetadataTable";
 import ToolMessage from "./ToolMessage";
@@ -43,6 +44,8 @@ const MessageItem: React.FC<MessageItemProps> = ({
     user_id,
     citations,
     content,
+    isOptimistic,
+    error,
   } = message;
 
   // Get the message user from the users slice if available
@@ -116,49 +119,74 @@ const MessageItem: React.FC<MessageItemProps> = ({
     <div
       key={message.id}
       className={cn(
-        "w-full my-2 rounded-md",
+        "w-full my-2 rounded-md transition-opacity duration-200",
         role === "system" ? "bg-zinc-900" : "",
-        role === "human" ? "border" : ""
+        role === "human" ? "border" : "",
+        isOptimistic ? "opacity-70" : "",
+        error ? "border-red-500" : ""
       )}
     >
       <div className="px-6 py-4 text-small text-default-400">
         {renderMessageContent()}
 
         {/* Message metadata footer */}
-        <div className="flex justify-end mt-2 space-x-2">
-          {message.usage_metadata?.total_tokens &&
-            message.usage_metadata.total_tokens > 0 && (
+        <div className="flex justify-between items-center mt-2">
+          {/* Error message on the left */}
+          {error && (
+            <div className="flex items-center gap-1 text-xs text-red-500">
+              <AlertCircle className="h-3 w-3" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {/* Metadata on the right */}
+          <div className="flex justify-end flex-1 space-x-2">
+            {/* Show loading indicator for optimistic messages */}
+            {isOptimistic && (
               <Tooltip delayDuration={0}>
                 <TooltipTrigger>
-                  <span className="text-xs text-gray-500">
-                    {formatNumber(message.usage_metadata.total_tokens)}
-                  </span>
+                  <Loader2 className="h-3 w-3 animate-spin text-gray-500" />
                 </TooltipTrigger>
                 <TooltipContent side="bottom">
-                  <TokenMetadataTable
-                    input_tokens={message.usage_metadata.input_tokens ?? 0}
-                    output_tokens={message.usage_metadata.output_tokens ?? 0}
-                    total_tokens={message.usage_metadata.total_tokens ?? 0}
-                    input_token_details={message.usage_metadata.input_token_details as { cache_creation?: number; cache_read?: number } | undefined}
-                  />
+                  <span>Sending...</span>
                 </TooltipContent>
               </Tooltip>
             )}
-          {message.created_at && (
-            <Tooltip delayDuration={0}>
-              <TooltipTrigger>
-                <FuzzyTimeAgo
-                  className="text-xs text-gray-500"
-                  timestamp={message.created_at}
-                />
-              </TooltipTrigger>
-              <TooltipContent side="bottom">
-                <span className="p-4">
-                  {new Date(message.created_at).toLocaleString()}
-                </span>
-              </TooltipContent>
-            </Tooltip>
-          )}
+
+            {message.usage_metadata?.total_tokens &&
+              message.usage_metadata.total_tokens > 0 && (
+                <Tooltip delayDuration={0}>
+                  <TooltipTrigger>
+                    <span className="text-xs text-gray-500">
+                      {formatNumber(message.usage_metadata.total_tokens)}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">
+                    <TokenMetadataTable
+                      input_tokens={message.usage_metadata.input_tokens ?? 0}
+                      output_tokens={message.usage_metadata.output_tokens ?? 0}
+                      total_tokens={message.usage_metadata.total_tokens ?? 0}
+                      input_token_details={message.usage_metadata.input_token_details as { cache_creation?: number; cache_read?: number } | undefined}
+                    />
+                  </TooltipContent>
+                </Tooltip>
+              )}
+            {message.created_at && (
+              <Tooltip delayDuration={0}>
+                <TooltipTrigger>
+                  <FuzzyTimeAgo
+                    className="text-xs text-gray-500"
+                    timestamp={message.created_at}
+                  />
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  <span className="p-4">
+                    {new Date(message.created_at).toLocaleString()}
+                  </span>
+                </TooltipContent>
+              </Tooltip>
+            )}
+          </div>
         </div>
       </div>
     </div>
