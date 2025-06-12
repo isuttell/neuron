@@ -250,7 +250,7 @@ text prompts with the stackadoc/stable-audio-open-1.0 model. Ideal for:
                 items=[artifact_item]
             )
 
-            return artifact.to_xml(), artifact.model_dump()
+            return artifact.to_xml(), [artifact.model_dump()]
         except Exception as e:
             logger.error(e, exc_info=True)
             raise

@@ -512,7 +512,7 @@ class ReplicateImageGenerationTool(BaseTool):
                 items=artifact_items  # List of ToolMediaItem instances
             )
 
-            return artifact.to_xml(), artifact.model_dump()
+            return artifact.to_xml(), [artifact.model_dump()]
         except Exception as error:
             logger.error(error, exc_info=True)
             raise error

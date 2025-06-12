@@ -6,7 +6,7 @@ import MediaArtifacts from "./MediaArtifacts";
 interface ToolMessageProps {
   name?: string;
   textContent: string;
-  artifact?: {
+  artifact?: Array<{
     type: string;
     media_type?: string;
     items?: Array<{
@@ -17,7 +17,7 @@ interface ToolMessageProps {
       duration?: number;
       metadata?: Record<string, unknown>;
     }>;
-  };
+  }>;
   showTools: boolean;
   status?: string;
 }
@@ -29,7 +29,7 @@ const ToolMessage: React.FC<ToolMessageProps> = ({
   showTools,
   status,
 }) => {
-  const hasMediaArtifact = artifact?.type === 'media';
+  const hasMediaArtifact = artifact && artifact.length > 0 && artifact.some(a => a.type === 'media');
 
   return (
     <div className="flex items-start space-x-2">

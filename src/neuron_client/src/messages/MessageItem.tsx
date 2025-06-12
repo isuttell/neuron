@@ -55,7 +55,14 @@ const MessageItem: React.FC<MessageItemProps> = ({
 
   const isTool = role === "tool" || node === "tools";
   const showToolOutput = isTool && toolOutput && toolOutput.includes(name ?? "");
-  const hasMediaArtifact = role === 'tool' && message.artifact?.type === 'media';
+  // Normalize artifact to always be an array for backward compatibility
+  const normalizedArtifact = message.artifact
+    ? Array.isArray(message.artifact)
+      ? message.artifact
+      : [message.artifact]
+    : [];
+
+  const hasMediaArtifact = role === 'tool' && normalizedArtifact.length > 0 && normalizedArtifact.some((a: { type: string }) => a.type === 'media');
 
   // Skip rendering tool messages based on conditions
   if (
@@ -74,7 +81,7 @@ const MessageItem: React.FC<MessageItemProps> = ({
           <ToolMessage
             name={name}
             textContent={textContent}
-            artifact={message.artifact}
+            artifact={normalizedArtifact}
             showTools={showTools}
             status={status}
           />

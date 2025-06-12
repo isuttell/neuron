@@ -211,7 +211,7 @@ complete.
                 items=[artifact_item]
             )
 
-            return artifact.to_xml(), artifact.model_dump()
+            return artifact.to_xml(), [artifact.model_dump()]
         except Exception as e:
             logger.error(e, exc_info=True)
             raise

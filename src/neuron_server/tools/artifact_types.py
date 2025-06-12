@@ -56,8 +56,8 @@ class ToolMediaItem(BaseModel):
 class ToolMediaArtifact(BaseModel):
     """Artifact containing media items for UI display."""
     type: Literal["media"] = "media"
-    media_type: Literal["image", "audio", "video"] = Field(
-        description="Type of media contained"
+    media_type: Literal["image", "audio", "video", "html", "code", "data"] = Field(
+        description="Type of content"
     )
     items: list[ToolMediaItem] = Field(
         description="List of generated media items"

@@ -40,7 +40,7 @@ export interface Message {
   };
   created_at?: string;
   node?: string;
-  artifact?: {
+  artifact?: Array<{
     type: string;
     media_type?: string;
     items?: Array<{
@@ -51,7 +51,7 @@ export interface Message {
       duration?: number;
       metadata?: Record<string, unknown>;
     }>;
-  };
+  }>;
 }
 
 // Raw message from backend - matches what API returns
@@ -80,7 +80,7 @@ export interface RawMessage {
   created_at?: string;
   node?: string;
   user_id?: string;
-  artifact?: {
+  artifact?: Array<{
     type: string;
     media_type?: string;
     items?: Array<{
@@ -91,7 +91,7 @@ export interface RawMessage {
       duration?: number;
       metadata?: Record<string, unknown>;
     }>;
-  };
+  }>;
   name?: string;
 }
 

@@ -371,7 +371,7 @@ class OpenAIImageGenerationTool(BaseTool):
                 items=artifact_items  # List of ToolMediaItem instances
             )
 
-            return full_llm_content, artifact.model_dump()
+            return full_llm_content, [artifact.model_dump()]
 
         except Exception as e:
             logger.error(e, exc_info=True)

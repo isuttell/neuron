@@ -8,6 +8,7 @@ import { selectAllMedia } from "@/slices/mediaSlice";
 import { MediaItem } from "@/types/media";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { TimelineControls } from "./TimelineControls";
+import { FileLink } from "./FileLink";
 
 interface MediaTimelineProps {
   threadId: string;
@@ -363,20 +364,15 @@ function MediaTimeline({ threadId, widthMode }: MediaTimelineProps) {
                 item.media_type === "data" ||
                 item.media_type === "code"
               ) {
-                let url = item.url;
-                if (item.media_type === "data" || item.media_type === "code") {
-                  url = `/code-viewer?url=${item.url}`;
-                }
                 return (
-                  <a
-                    className="inline-block px-2"
-                    href={url}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <FileLink
                     key={item.id}
-                  >
-                    {item.name}
-                  </a>
+                    url={item.url}
+                    name={item.name}
+                    mediaType={item.media_type}
+                    description={item.description}
+                    className="mx-2"
+                  />
                 );
               } else if (item.media_type === "image") {
                 return (

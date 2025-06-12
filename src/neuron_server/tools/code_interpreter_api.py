@@ -9,6 +9,11 @@ from langchain_core.runnables import RunnableConfig
 from neuron_server.config import config as neuron_config
 from neuron_server.logger import logger
 from neuron_server.models.media_item_model import MediaItemModel
+from neuron_server.tools.artifact_types import (
+    ToolArtifactMetadata,
+    ToolMediaArtifact,
+    ToolMediaItem,
+)
 from neuron_server.util.image_utilities import create_thumbnails
 from neuron_server.util.subprocess_runner import run_subprocess
 
@@ -149,13 +154,15 @@ async def process_artifacts(
     script_file: str,
     process_output: str,
     config: RunnableConfig,
-) -> tuple[str, list[str]]:
+) -> tuple[str, list[ToolMediaArtifact]]:
     """Process execution artifacts and generate media items."""
     artifacts_folder = os.path.join(
         neuron_config.static_folder, "artifacts", folder_name
     )
     shutil.copytree(temp_artifacts_folder, artifacts_folder)
-    artifacts: list[str] = []
+
+    # Group artifacts by media type
+    media_items_by_type: dict[str, list[ToolMediaItem]] = {}
 
     # Copy source code
     src_filename = "source_code.py"
@@ -183,18 +190,35 @@ async def process_artifacts(
             thread_id=config["configurable"].get("thread_id"),
             name=file,
         )
-        await MediaItemModel.create(create_params)
+        media_item = await MediaItemModel.create(create_params)
 
         if media_type == "image":
-            artifacts.append(f"<image>![{file}]({url})</image>")
             create_thumbnails(os.path.join(artifacts_folder, file))
-        elif media_type == "video":
-            artifacts.append(f'<video src="{url}" controls />')
-        elif media_type == "audio":
-            artifacts.append(f'<audio src="{url}" controls />')
-        else:
-            artifacts.append(f"<link>[{file}]({url})</link>")
+
+        # Create structured media item
+        artifact_item = ToolMediaItem(
+            id=str(media_item.id),
+            url=url,
+            caption=file,
+            description="",  # Code interpreter doesn't provide descriptions
+            metadata=ToolArtifactMetadata()  # Minimal metadata for code interpreter
+        )
+
+        # Group by media type
+        if media_type not in media_items_by_type:
+            media_items_by_type[media_type] = []
+        media_items_by_type[media_type].append(artifact_item)
+
         logger.debug(f"Artifact created <{url}>")
+
+    # Create ToolMediaArtifact objects for each media type
+    artifacts: list[ToolMediaArtifact] = []
+    for media_type, items in media_items_by_type.items():
+        artifact = ToolMediaArtifact(
+            media_type=media_type,
+            items=items
+        )
+        artifacts.append(artifact)
 
     return process_output.strip() if process_output else "", artifacts
 
@@ -204,7 +228,7 @@ async def run_code_interpreter(
     timeout: int = 120,
     code_interpreter_image: str = "gitea.zaks.io/isuttell/code-interpreter:latest",
     config: RunnableConfig = None,
-) -> tuple[str, list[str]]:
+) -> tuple[str, list[ToolMediaArtifact]]:
     """Execute Python code in a sandboxed environment and process the results."""
     try:
         cpu_limit = config.get("cpu_limit", 16) if config else 16

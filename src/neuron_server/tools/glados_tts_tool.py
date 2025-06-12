@@ -245,7 +245,7 @@ Returns an audio tag to be shown to the user so they can play it.
                     items=[artifact_item]
                 )
 
-                return artifact.to_xml(), artifact.model_dump()
+                return artifact.to_xml(), [artifact.model_dump()]
             # Handle case where audio URL was not present or download failed silently
             # before file creation but after API call succeeded
             raise Exception("Failed to generate or download GLaDOS audio file.")
