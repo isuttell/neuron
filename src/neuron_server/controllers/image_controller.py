@@ -1,12 +1,13 @@
 from uuid import UUID
 
 from pydantic import BaseModel
-from quart import Blueprint, request
+from quart import Blueprint
 
 from neuron_server.controllers.auth import requires_auth
 from neuron_server.decorators import rate_limit
 from neuron_server.event_router import EventRouter
 from neuron_server.models.media_item_model import MediaItemModel
+from neuron_server.type_defs.request_proxy import request
 
 blueprint = Blueprint("image", __name__)
 router = EventRouter()

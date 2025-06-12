@@ -1,7 +1,7 @@
 from uuid import UUID
 
 from pydantic import BaseModel
-from quart import Blueprint, Response, request
+from quart import Blueprint, Response
 from werkzeug.exceptions import NotFound
 
 from neuron_server.controllers.auth import requires_auth
@@ -9,6 +9,7 @@ from neuron_server.controllers.csrf import requires_csrf
 from neuron_server.event_router import EventRouter
 from neuron_server.models.personality_model import PersonalityModel
 from neuron_server.models.prompt_model import PromptModel
+from neuron_server.type_defs.request_proxy import request
 
 router = EventRouter()
 blueprint = Blueprint("prompt", __name__)

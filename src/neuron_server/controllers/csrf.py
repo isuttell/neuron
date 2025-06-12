@@ -197,7 +197,7 @@ async def extract_csrf_token(request: Request) -> str | None:
     return csrf_token
 
 
-async def rotate_csrf_token(response: Response, user_id: str) -> str:
+async def rotate_csrf_token(response: Response, user_id: str) -> str | None:
     """
     Rotate CSRF token after successful state-changing request.
     Returns the new CSRF token.
@@ -319,14 +319,14 @@ def requires_csrf(func: Callable[..., T]) -> Callable[..., T]:
         await _validate_csrf_tokens(request, cookie_data)
 
         # Attach validated user data to request
-        request.user_id = cookie_data.get("user_id")
-        request.session_data = cookie_data
+        request.user_id = cookie_data.get("user_id")  # type: ignore[attr-defined]
+        request.session_data = cookie_data  # type: ignore[attr-defined]
 
         # Execute the protected function
         result = await func(*args, **kwargs)
 
         # Handle token rotation
-        await _handle_token_rotation(result, request.user_id)
+        await _handle_token_rotation(result, request.user_id)  # type: ignore[attr-defined]
 
         return result
 

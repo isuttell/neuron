@@ -1,10 +1,11 @@
 from pydantic import BaseModel
-from quart import Blueprint, Response, request
+from quart import Blueprint, Response
 from werkzeug.exceptions import BadRequest, NotFound
 
 from neuron_server.controllers.auth import requires_auth
 from neuron_server.controllers.csrf import requires_csrf
 from neuron_server.models.personality_model import PersonalityModel
+from neuron_server.type_defs.request_proxy import request
 
 blueprint = Blueprint("scheduler", __name__)
 

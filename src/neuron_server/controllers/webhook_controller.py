@@ -1,13 +1,14 @@
 from uuid import UUID
 
 from pydantic import BaseModel
-from quart import Blueprint, request
+from quart import Blueprint
 from werkzeug.exceptions import BadRequest
 
 from neuron_server.controllers.auth import requires_api_key
 from neuron_server.decorators import rate_limit
 from neuron_server.llms.agent import execute_agent
 from neuron_server.logger import logger
+from neuron_server.type_defs.request_proxy import request
 
 blueprint = Blueprint("webhooks", __name__)
 

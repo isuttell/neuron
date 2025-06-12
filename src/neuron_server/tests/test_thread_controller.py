@@ -414,7 +414,7 @@ async def test_get_recent_threads(thread_test_context: dict) -> None:
 
         # Verify mocks were called correctly
         mock_get_recent.assert_called_once_with(hours=24, user_id=mock_token.user_id)
-        mock_get_many.assert_called_once_with({mock_thread.personality_id})
+        mock_get_many.assert_called_once_with([mock_thread.personality_id])
 
 
 @pytest.mark.asyncio
