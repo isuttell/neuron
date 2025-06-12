@@ -278,3 +278,8 @@ async def startup() -> None:
 async def shutdown() -> None:
     connection_manager.cleanup()
     logger.info("Neo4j connection closed")
+
+    # Clean up tools
+    from neuron_server.llms.tools import cleanup
+    await cleanup()
+    logger.info("Tools cleaned up")

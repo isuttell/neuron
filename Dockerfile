@@ -12,6 +12,10 @@ RUN apt-get update && \
   git && \
   rm -rf /var/lib/apt/lists/*
 
+# Install Deno
+RUN curl -fsSL https://deno.land/install.sh | sh && \
+  mv ~/.deno/bin/deno /usr/local/bin/
+
 # Install Poetry
 RUN curl -sSL https://install.python-poetry.org | python3 - \
   && mv ~/.local/bin/poetry /usr/local/bin/

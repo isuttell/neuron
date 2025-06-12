@@ -57,6 +57,7 @@ lxml = "*"
 pi-heif = "*"
 youtube-transcript-api = "*"
 langchain-google-genai = "2.1.4"
+langchain-sandbox = "^0.0.6"
 
 [tool.poetry.group.dev.dependencies]
 aioresponses = "*"
