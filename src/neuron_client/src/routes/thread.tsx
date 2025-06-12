@@ -2,7 +2,6 @@ import DeleteThreadButton from "@/components/DeleteThreadButton";
 import MediaPanelWidth, { WidthMode } from "@/components/MediaPanelWidth";
 import MediaTimeline from "@/components/MediaTimeline";
 import ToggleSystemMessages from "@/components/ToggleSystemMessages";
-import { ThreadStatusMessage } from "@/components/ThreadStatusMessage";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import Loading from "@/lib/loading";
 import { cn, debounce } from "@/lib/utils";
@@ -24,7 +23,6 @@ import {
 } from "../slices/messagesSlice";
 import { getActivePersonality } from "../slices/personalitiesSlice";
 import { selectThread } from "../slices/threadsSlice";
-
 export default function Thread() {
   const dispatch = useAppDispatch();
   const activePersonality = useAppSelector(getActivePersonality);
@@ -106,7 +104,7 @@ export default function Thread() {
 
   return (
     <div className="flex flex-1 p-4 ipad-top-spacing flex-col flex-nowrap max-h-screen">
-      <div className="flex justify-between mb-2 border-b pb-2">
+      <div className="flex justify-between border-b">
         <SidebarTrigger className="size-10 mr-2" />
         <h1 className="text-lg lg:text-2xl font-bold ">
           {thread.name || "Welcome..."}
@@ -126,8 +124,16 @@ export default function Thread() {
       <div className="flex flex-row flex-1">
         <div className="flex flex-col flex-1">
           <div className="flex-1 overflow-y-auto relative">
-            <div className="absolute top-0 left-0 right-0 bottom-0 flex flex-1 flex-col flex-nowrap max-h-full mx-auto overflow-y-auto">
-              <div className="max-w-[1170px] w-full mx-auto">
+            <div
+              className="h-5 w-full absolute top-0 z-10"
+              style={{
+                background:
+                  "linear-gradient(180deg,rgba(9, 9, 11, 1) 0%, rgba(9,9,11, 0) 100%)",
+                backgroundSize: "cover",
+              }}
+            />
+            <div className="absolute top-2 left-0 right-0 bottom-0 flex flex-1 flex-col flex-nowrap max-h-full mx-auto overflow-y-auto">
+              <div className="max-w-[1170px] w-full mx-auto relative z-10">
                 {filteredMessages.map((message, index) => (
                   <div
                     key={message.id}
@@ -148,18 +154,17 @@ export default function Thread() {
                 <div className="h-screen" />
               </div>
             </div>
+            <div
+              className="h-16 w-full absolute bottom-0"
+              style={{
+                background:
+                  "linear-gradient(0deg,rgba(9,9,11, 1) 0%, rgba(9,9,11, 0) 100%)",
+                backgroundSize: "cover",
+              }}
+            />
           </div>
           <div className="bottom-0">
-            {thread && (
-              <ThreadStatusMessage
-                thread={thread}
-                className="max-w-[1170px] w-full mx-auto px-4"
-              />
-            )}
-            <ThreadMessageForm
-              thread={thread}
-              className="max-w-[1170px] w-full mx-auto"
-            />
+            <ThreadMessageForm thread={thread} className="w-full" />
           </div>
         </div>
         <div
@@ -172,7 +177,11 @@ export default function Thread() {
           )}
         >
           {widthMode !== "hidden" && threadId ? (
-            <MediaTimeline key={threadId} threadId={threadId} widthMode={widthMode} />
+            <MediaTimeline
+              key={threadId}
+              threadId={threadId}
+              widthMode={widthMode}
+            />
           ) : null}
         </div>
       </div>

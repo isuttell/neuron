@@ -77,12 +77,12 @@ export function ThreadStatusMessage({ thread, className }: ThreadStatusMessagePr
   return (
     <div
       className={cn(
-        "flex items-center gap-2 text-sm text-muted-foreground py-2 transition-opacity duration-300",
+        "flex items-center gap-2 text-sm text-muted-foreground ml-2 transition-opacity duration-300",
         isVisible ? "opacity-100" : "opacity-0",
         className
       )}
     >
-      <Loader2 className="h-3 w-3 animate-spin" />
+      <Loader2 className="h-4 w-5 animate-spin" />
       <span className="inline-block">
         {displayedText}
         {currentIndex < currentStatus.length && (
