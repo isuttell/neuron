@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import type { ToastProps } from "@/components/ui/toast";
 import { MessageResponse } from "@/types/message";
 import {
@@ -23,16 +24,16 @@ type ToastReturnType = {
 };
 
 // Mock dependencies
-jest.mock("../../hooks", () => ({
-  useAppDispatch: jest.fn() as Mock<() => AppDispatch>,
+vi.mock("../../hooks", () => ({
+  useAppDispatch: vi.fn() as Mock<() => AppDispatch>,
 }));
 
-jest.mock("react-router-dom", () => ({
-  useParams: jest.fn() as Mock<() => { threadId: string }>,
+vi.mock("react-router-dom", () => ({
+  useParams: vi.fn() as Mock<() => { threadId: string }>,
 }));
 
-jest.mock("../../hooks/use-toast", () => ({
-  useToast: jest.fn() as Mock<
+vi.mock("../../hooks/use-toast", () => ({
+  useToast: vi.fn() as Mock<
     () => {
       toast: (props: ToastProps) => ToastReturnType;
       dismiss: (toastId?: string) => void;
@@ -41,16 +42,16 @@ jest.mock("../../hooks/use-toast", () => ({
   >,
 }));
 
-jest.mock("../../actions/messageActions", () => ({
-  postMessageByThread: jest.fn(),
+vi.mock("../../actions/messageActions", () => ({
+  postMessageByThread: vi.fn(),
 }));
 
 const mockAudioRecorderProps = {
-  onRecordingComplete: jest.fn(),
-  onAutoSend: jest.fn(),
+  onRecordingComplete: vi.fn(),
+  onAutoSend: vi.fn(),
 };
 
-jest.mock("@/components/AudioRecorder", () => ({
+vi.mock("@/components/AudioRecorder", () => ({
   AudioRecorder: (props: typeof mockAudioRecorderProps) => {
     mockAudioRecorderProps.onRecordingComplete = props.onRecordingComplete;
     mockAudioRecorderProps.onAutoSend = props.onAutoSend;
@@ -59,11 +60,11 @@ jest.mock("@/components/AudioRecorder", () => ({
 }));
 
 const mockPromptDropdownProps = {
-  onSelectPrompt: jest.fn(),
+  onSelectPrompt: vi.fn(),
   disabled: false,
 };
 
-jest.mock("@/components/PromptDropdown", () => ({
+vi.mock("@/components/PromptDropdown", () => ({
   PromptDropdown: (props: typeof mockPromptDropdownProps) => {
     mockPromptDropdownProps.onSelectPrompt = props.onSelectPrompt;
     mockPromptDropdownProps.disabled = props.disabled;
@@ -72,9 +73,9 @@ jest.mock("@/components/PromptDropdown", () => ({
 }));
 
 describe("MessageForm", () => {
-  const mockDispatch = jest.fn();
-  const mockToast = jest.fn();
-  const mockOnSubmit = jest.fn();
+  const mockDispatch = vi.fn();
+  const mockToast = vi.fn();
+  const mockOnSubmit = vi.fn();
   const mockThreadId = "123";
   const mockThread = {
     id: mockThreadId,
@@ -89,16 +90,16 @@ describe("MessageForm", () => {
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     (
-      useAppDispatch as jest.MockedFunction<typeof useAppDispatch>
+      useAppDispatch as vi.MockedFunction<typeof useAppDispatch>
     ).mockReturnValue(mockDispatch);
-    (useParams as jest.MockedFunction<typeof useParams>).mockReturnValue({
+    (useParams as vi.MockedFunction<typeof useParams>).mockReturnValue({
       threadId: mockThreadId,
     });
-    (useToast as jest.MockedFunction<typeof useToast>).mockReturnValue({
+    (useToast as vi.MockedFunction<typeof useToast>).mockReturnValue({
       toast: mockToast,
-      dismiss: jest.fn(),
+      dismiss: vi.fn(),
       toasts: [],
     });
     mockDispatch.mockResolvedValue({
@@ -265,7 +266,7 @@ describe("MessageForm", () => {
   });
 
   it("prevents submission when threadId is missing", async () => {
-    (useParams as jest.Mock).mockReturnValue({ threadId: undefined });
+    (useParams as vi.Mock).mockReturnValue({ threadId: undefined });
     render(<MessageForm thread={mockThread} onSubmit={mockOnSubmit} />);
 
     const input = screen.getByPlaceholderText("Type your message here...");
@@ -330,7 +331,7 @@ describe("MessageForm", () => {
   });
 
   it("prevents auto-send when threadId is missing", async () => {
-    (useParams as jest.Mock).mockReturnValue({ threadId: undefined });
+    (useParams as vi.Mock).mockReturnValue({ threadId: undefined });
     render(<MessageForm thread={mockThread} />);
 
     const blob = new Blob(["test"], { type: "audio/wav" });

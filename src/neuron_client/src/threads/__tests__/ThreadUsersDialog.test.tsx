@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { screen, render, fireEvent, waitFor } from "@testing-library/react";
 import { Provider } from "react-redux";
 import { configureStore } from "@reduxjs/toolkit";
@@ -17,28 +18,28 @@ const createMockStore = (initialState: Record<string, unknown> = {}) => {
 };
 
 // Mock the threadActions module
-jest.mock("../../actions/threadActions", () => ({
-  fetchThreadUsers: jest.fn(),
-  addUserByEmail: jest.fn(),
-  removeThreadUser: jest.fn(),
-  updateThreadUserRole: jest.fn(),
+vi.mock("../../actions/threadActions", () => ({
+  fetchThreadUsers: vi.fn(),
+  addUserByEmail: vi.fn(),
+  removeThreadUser: vi.fn(),
+  updateThreadUserRole: vi.fn(),
 }));
 
 // Mock the useToast hook
-jest.mock("../../hooks/use-toast", () => ({
+vi.mock("../../hooks/use-toast", () => ({
   useToast: () => ({
-    toast: jest.fn(),
+    toast: vi.fn(),
   }),
 }));
 
 // Mock the getThreadUsers and getUsers selectors
-jest.mock("../../slices/threadsSlice", () => ({
+vi.mock("../../slices/threadsSlice", () => ({
   getThreadUsers: (state: Record<string, unknown>) => {
     return state.mockThreadUsers || [];
   }
 }));
 
-jest.mock("../../slices/usersSlice", () => ({
+vi.mock("../../slices/usersSlice", () => ({
   getUsers: (state: Record<string, unknown>) => state.mockUsers || {}
 }));
 
@@ -79,40 +80,40 @@ describe("ThreadUsersDialog", () => {
     store = createMockStore(mockState);
 
     // Reset the mock implementations
-    ((threadActions.fetchThreadUsers as unknown) as jest.Mock).mockImplementation(() => ({
+    ((threadActions.fetchThreadUsers as unknown) as vi.Mock).mockImplementation(() => ({
       type: "fetchThreadUsers",
       payload: {
         threadId,
       },
-      unwrap: jest.fn().mockResolvedValue({}),
+      unwrap: vi.fn().mockResolvedValue({}),
     }));
 
-    ((threadActions.addUserByEmail as unknown) as jest.Mock).mockImplementation(() => ({
+    ((threadActions.addUserByEmail as unknown) as vi.Mock).mockImplementation(() => ({
       type: "addUserByEmail",
       payload: {
         threadId,
         email: "newuser@example.com",
       },
-      unwrap: jest.fn().mockResolvedValue({}),
+      unwrap: vi.fn().mockResolvedValue({}),
     }));
 
-    ((threadActions.removeThreadUser as unknown) as jest.Mock).mockImplementation(() => ({
+    ((threadActions.removeThreadUser as unknown) as vi.Mock).mockImplementation(() => ({
       type: "removeThreadUser",
       payload: {
         threadId,
         userId: "user-1",
       },
-      unwrap: jest.fn().mockResolvedValue({}),
+      unwrap: vi.fn().mockResolvedValue({}),
     }));
 
-    ((threadActions.updateThreadUserRole as unknown) as jest.Mock).mockImplementation(() => ({
+    ((threadActions.updateThreadUserRole as unknown) as vi.Mock).mockImplementation(() => ({
       type: "updateThreadUserRole",
       payload: {
         threadId,
         userId: "user-1",
         role: "user",
       },
-      unwrap: jest.fn().mockResolvedValue({}),
+      unwrap: vi.fn().mockResolvedValue({}),
     }));
   });
 

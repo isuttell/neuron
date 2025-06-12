@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { configureStore } from "@reduxjs/toolkit";
 import "@testing-library/jest-dom";
 import { render, screen, act } from "@testing-library/react";
@@ -12,48 +13,48 @@ import { Auth0ContextInterface, User } from "@auth0/auth0-react";
 import * as apiModule from "../../lib/api";
 
 // Mock Auth0 hook
-jest.mock("@auth0/auth0-react", () => ({
-  useAuth0: jest.fn(),
-  withAuthenticationRequired: jest.fn((component) => component),
+vi.mock("@auth0/auth0-react", () => ({
+  useAuth0: vi.fn(),
+  withAuthenticationRequired: vi.fn((component) => component),
 }));
 
 // Mock API client
-jest.mock("../../lib/api", () => ({
+vi.mock("../../lib/api", () => ({
   api: {
-    post: jest.fn(),
+    post: vi.fn(),
   },
 }));
 
 // Mock all the imported components
-jest.mock("@/components/layout/MainSidebar", () => ({
+vi.mock("@/components/layout/MainSidebar", () => ({
   MainSidebar: () => <div data-testid="main-sidebar">MainSidebar</div>,
 }));
 
-jest.mock("@/components/ThreadTitleUpdater", () => ({
+vi.mock("@/components/ThreadTitleUpdater", () => ({
   ThreadTitleUpdater: () => <div>ThreadTitleUpdater</div>,
 }));
 
-jest.mock("@/components/ui/spinner", () => ({
+vi.mock("@/components/ui/spinner", () => ({
   Spinner: () => <div data-testid="spinner">Loading...</div>,
 }));
 
-jest.mock("@/components/ui/sidebar", () => ({
+vi.mock("@/components/ui/sidebar", () => ({
   SidebarProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
 // Mock dispatch and selector hooks
-const mockDispatch = jest.fn();
-const useAppDispatchMock = jest.spyOn(hooks, "useAppDispatch");
-const useAppSelectorMock = jest.spyOn(hooks, "useAppSelector");
+const mockDispatch = vi.fn();
+const useAppDispatchMock = vi.spyOn(hooks, "useAppDispatch");
+const useAppSelectorMock = vi.spyOn(hooks, "useAppSelector");
 
 describe("RootComponent", () => {
   // Reset mocks before each test
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     useAppDispatchMock.mockReturnValue(mockDispatch);
   });
 
-  const mockGetAccessTokenSilently = jest.fn().mockResolvedValue("mock-token");
+  const mockGetAccessTokenSilently = vi.fn().mockResolvedValue("mock-token");
 
   // Setup auth0 mock with different states
   const setupAuth0Mock = (options: {
@@ -63,18 +64,18 @@ describe("RootComponent", () => {
   }) => {
     const { isAuthenticated, isLoading, error } = options;
 
-    const useAuth0Mock = jest.spyOn(auth0React, "useAuth0");
+    const useAuth0Mock = vi.spyOn(auth0React, "useAuth0");
     useAuth0Mock.mockReturnValue({
       isAuthenticated,
       isLoading,
       error,
       getAccessTokenSilently: mockGetAccessTokenSilently,
-      loginWithRedirect: jest.fn(),
-      logout: jest.fn(),
-      getAccessTokenWithPopup: jest.fn(),
-      getIdTokenClaims: jest.fn(),
-      loginWithPopup: jest.fn(),
-      handleRedirectCallback: jest.fn(),
+      loginWithRedirect: vi.fn(),
+      logout: vi.fn(),
+      getAccessTokenWithPopup: vi.fn(),
+      getIdTokenClaims: vi.fn(),
+      loginWithPopup: vi.fn(),
+      handleRedirectCallback: vi.fn(),
       user: { nickname: "testuser", picture: "https://example.com/avatar.png" } as User,
     } as Auth0ContextInterface<User>);
   };
@@ -83,9 +84,9 @@ describe("RootComponent", () => {
   const setupApiMock = (success: boolean = true) => {
     const apiMock = apiModule.api;
     if (success) {
-      (apiMock.post as jest.Mock).mockResolvedValue({ status: "success" });
+      (apiMock.post as vi.Mock).mockResolvedValue({ status: "success" });
     } else {
-      (apiMock.post as jest.Mock).mockRejectedValue(new Error("API error"));
+      (apiMock.post as vi.Mock).mockRejectedValue(new Error("API error"));
     }
   };
 
@@ -124,20 +125,20 @@ describe("RootComponent", () => {
   });
 
   it("redirects to login when not authenticated", async () => {
-    const loginWithRedirect = jest.fn();
+    const loginWithRedirect = vi.fn();
 
     setupAuth0Mock({ isAuthenticated: false, isLoading: false });
-    jest.spyOn(auth0React, "useAuth0").mockReturnValue({
+    vi.spyOn(auth0React, "useAuth0").mockReturnValue({
       isAuthenticated: false,
       isLoading: false,
       error: undefined,
       loginWithRedirect,
       getAccessTokenSilently: mockGetAccessTokenSilently,
-      logout: jest.fn(),
-      getAccessTokenWithPopup: jest.fn(),
-      getIdTokenClaims: jest.fn(),
-      loginWithPopup: jest.fn(),
-      handleRedirectCallback: jest.fn(),
+      logout: vi.fn(),
+      getAccessTokenWithPopup: vi.fn(),
+      getIdTokenClaims: vi.fn(),
+      loginWithPopup: vi.fn(),
+      handleRedirectCallback: vi.fn(),
       user: undefined,
     } as Auth0ContextInterface<User>);
 
@@ -183,7 +184,7 @@ describe("RootComponent", () => {
     const apiMock = apiModule.api;
 
     // Don't resolve the promise - keep it pending so userSynced stays false
-    (apiMock.post as jest.Mock).mockImplementation(() => new Promise(() => {}));
+    (apiMock.post as vi.Mock).mockImplementation(() => new Promise(() => {}));
 
     // Render the component using act to handle async state updates
     await act(async () => {
@@ -203,12 +204,12 @@ describe("RootComponent", () => {
     // Mock auth and API
     setupAuth0Mock({ isAuthenticated: true, isLoading: false });
     const apiMock = apiModule.api;
-    (apiMock.post as jest.Mock).mockResolvedValue({ status: "success" });
+    (apiMock.post as vi.Mock).mockResolvedValue({ status: "success" });
 
     // Mock state to simulate the userSynced state being true
-    const useStateMock = jest.spyOn(React, 'useState');
+    const useStateMock = vi.spyOn(React, 'useState');
     useStateMock.mockImplementationOnce(() => {
-      return [true, jest.fn()]; // Simulate userSynced=true
+      return [true, vi.fn()]; // Simulate userSynced=true
     });
 
     // Mock connected status
@@ -272,7 +273,7 @@ describe("RootComponent", () => {
     const apiPromise = new Promise<{ status: string }>((resolve) => {
       resolvePromise = resolve;
     });
-    (apiMock.post as jest.Mock).mockImplementation(() => apiPromise);
+    (apiMock.post as vi.Mock).mockImplementation(() => apiPromise);
 
     // Create container for assertion
     const container = document.createElement('div');

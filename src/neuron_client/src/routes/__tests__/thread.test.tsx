@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { MediaPlayerProvider } from "@/contexts/MediaPlayerContext";
 import { configureStore } from "@reduxjs/toolkit";
 import "@testing-library/jest-dom";
@@ -8,19 +9,19 @@ import * as hooks from "../../hooks";
 import Thread from "../thread";
 
 // Mock action creators
-jest.mock("../../actions/messageActions", () => ({
-  fetchMessagesByThread: jest.fn((threadId) => ({
+vi.mock("../../actions/messageActions", () => ({
+  fetchMessagesByThread: vi.fn((threadId) => ({
     type: "messages/fetchMessagesByThread",
     payload: threadId,
   })),
-  postMessageByThread: jest.fn((params) => ({
+  postMessageByThread: vi.fn((params) => ({
     type: "messages/postMessageByThread",
     payload: params,
   })),
 }));
 
 // Mock TooltipProvider
-jest.mock("@/components/ui/tooltip", () => ({
+vi.mock("@/components/ui/tooltip", () => ({
   __esModule: true,
   TooltipProvider: ({ children }: { children: React.ReactNode }) => (
     <>{children}</>
@@ -35,7 +36,7 @@ jest.mock("@/components/ui/tooltip", () => ({
 }));
 
 // Mock all the imported components
-jest.mock("@/lib/loading", () => ({
+vi.mock("@/lib/loading", () => ({
   __esModule: true,
   default: () => (
     <div className="flex flex-1 items-center justify-center h-full">
@@ -60,12 +61,12 @@ jest.mock("@/lib/loading", () => ({
   ),
 }));
 
-jest.mock("../../messages/MessageForm", () => ({
+vi.mock("../../messages/MessageForm", () => ({
   __esModule: true,
   default: () => <div data-testid="message-form">MessageForm</div>,
 }));
 
-jest.mock("../../messages/MessageItem", () => ({
+vi.mock("../../messages/MessageItem", () => ({
   __esModule: true,
   default: ({
     messageId,
@@ -101,7 +102,7 @@ jest.mock("../../messages/MessageItem", () => ({
   },
 }));
 
-jest.mock("../../components/MediaTimeline", () => ({
+vi.mock("../../components/MediaTimeline", () => ({
   __esModule: true,
   default: ({ threadId }: { threadId: string }) => (
     <div data-testid="media-timeline" className="flex flex-col h-full">
@@ -110,26 +111,26 @@ jest.mock("../../components/MediaTimeline", () => ({
   ),
 }));
 
-jest.mock("@/components/ui/sidebar", () => ({
+vi.mock("@/components/ui/sidebar", () => ({
   __esModule: true,
   SidebarTrigger: () => (
     <button aria-label="Toggle Sidebar">Toggle Sidebar</button>
   ),
 }));
 
-jest.mock("@/personalities/EditPersonalityDialog", () => ({
+vi.mock("@/personalities/EditPersonalityDialog", () => ({
   __esModule: true,
   default: () => (
     <button aria-label="Edit Personality">Edit Personality</button>
   ),
 }));
 
-jest.mock("@/components/DeleteThreadButton", () => ({
+vi.mock("@/components/DeleteThreadButton", () => ({
   __esModule: true,
   default: () => <button data-testid="delete-thread">Delete Thread</button>,
 }));
 
-jest.mock("@/components/ToggleSystemMessages", () => ({
+vi.mock("@/components/ToggleSystemMessages", () => ({
   __esModule: true,
   default: ({
     showTools,
@@ -144,7 +145,7 @@ jest.mock("@/components/ToggleSystemMessages", () => ({
   ),
 }));
 
-jest.mock("@/components/MediaPanelWidth", () => ({
+vi.mock("@/components/MediaPanelWidth", () => ({
   __esModule: true,
   default: ({
     widthMode,
@@ -169,11 +170,11 @@ jest.mock("@/components/MediaPanelWidth", () => ({
 // Mock localStorage
 const store: Record<string, string> = {};
 const localStorageMock = {
-  getItem: jest.fn((key: string) => store[key] || null),
-  setItem: jest.fn((key: string, value: string) => {
+  getItem: vi.fn((key: string) => store[key] || null),
+  setItem: vi.fn((key: string, value: string) => {
     store[key] = value;
   }),
-  clear: jest.fn(() => {
+  clear: vi.fn(() => {
     Object.keys(store).forEach((key) => {
       delete store[key];
     });
@@ -185,8 +186,8 @@ Object.defineProperty(window, "localStorage", {
 });
 
 // Mock dispatch and selector hooks
-const mockDispatch = jest.fn();
-const useAppDispatchMock = jest.spyOn(hooks, "useAppDispatch");
+const mockDispatch = vi.fn();
+const useAppDispatchMock = vi.spyOn(hooks, "useAppDispatch");
 useAppDispatchMock.mockReturnValue(mockDispatch);
 
 interface Message {
@@ -291,9 +292,9 @@ describe("Thread", () => {
   let mockScrollIntoView: jest.Mock;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     localStorageMock.clear();
-    mockScrollIntoView = jest.fn();
+    mockScrollIntoView = vi.fn();
     originalScrollIntoView = window.HTMLElement.prototype.scrollIntoView;
     window.HTMLElement.prototype.scrollIntoView = mockScrollIntoView;
   });

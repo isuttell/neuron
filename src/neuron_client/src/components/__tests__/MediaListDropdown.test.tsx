@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { render, screen, fireEvent } from "@testing-library/react";
 import { MediaListDropdown } from "../MediaListDropdown";
 import { MediaList } from "@/slices/mediaListsSlice";
@@ -7,20 +8,20 @@ import { useToast } from "@/hooks/use-toast";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 // Mock the hooks
-jest.mock("@/hooks", () => ({
-  useAppDispatch: jest.fn(),
-  useAppSelector: jest.fn(),
+vi.mock("@/hooks", () => ({
+  useAppDispatch: vi.fn(),
+  useAppSelector: vi.fn(),
 }));
 
 // Mock the useToast hook
-jest.mock("@/hooks/use-toast", () => ({
-  useToast: jest.fn(),
+vi.mock("@/hooks/use-toast", () => ({
+  useToast: vi.fn(),
 }));
 
 // Type assertions for mocked functions
-const mockedUseAppSelector = hooks.useAppSelector as jest.MockedFunction<typeof hooks.useAppSelector>;
-const mockedUseAppDispatch = hooks.useAppDispatch as jest.MockedFunction<typeof hooks.useAppDispatch>;
-const mockedUseToast = useToast as jest.MockedFunction<typeof useToast>;
+const mockedUseAppSelector = hooks.useAppSelector as vi.MockedFunction<typeof hooks.useAppSelector>;
+const mockedUseAppDispatch = hooks.useAppDispatch as vi.MockedFunction<typeof hooks.useAppDispatch>;
+const mockedUseToast = useToast as vi.MockedFunction<typeof useToast>;
 
 describe("MediaListDropdown", () => {
   // Sample media lists for testing
@@ -48,13 +49,13 @@ describe("MediaListDropdown", () => {
   ];
 
   // Mock dispatch function
-  const mockDispatch = jest.fn();
+  const mockDispatch = vi.fn();
 
   // Mock toast function
-  const mockToast = jest.fn();
+  const mockToast = vi.fn();
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Mock the dispatch function
     mockedUseAppDispatch.mockReturnValue(mockDispatch);
@@ -62,12 +63,12 @@ describe("MediaListDropdown", () => {
     // Mock the toast function with required properties
     mockedUseToast.mockReturnValue({
       toast: mockToast,
-      dismiss: jest.fn(),
+      dismiss: vi.fn(),
       toasts: [],
     });
 
     // Spy on the addMediaToList action
-    jest.spyOn(mediaListsSlice, "addMediaToList");
+    vi.spyOn(mediaListsSlice, "addMediaToList");
   });
 
   it("renders correctly with empty media lists", () => {

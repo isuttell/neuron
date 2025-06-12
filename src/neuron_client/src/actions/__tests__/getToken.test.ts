@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { setGetAccessTokenSilently, getAccessToken } from "../getToken";
 
 describe("getToken", () => {
@@ -8,7 +9,7 @@ describe("getToken", () => {
 
   describe("setGetAccessTokenSilently", () => {
     it("should set the getAccessTokenSilently function in the context", () => {
-      const mockGetAccessTokenSilently = jest.fn();
+      const mockGetAccessTokenSilently = vi.fn();
       setGetAccessTokenSilently(mockGetAccessTokenSilently);
 
       // We can't directly test the context, but we can verify through getAccessToken
@@ -25,7 +26,7 @@ describe("getToken", () => {
 
     it("should return the access token when getAccessTokenSilently is defined", async () => {
       const mockToken = "mock-access-token";
-      const mockGetAccessTokenSilently = jest.fn().mockResolvedValue(mockToken);
+      const mockGetAccessTokenSilently = vi.fn().mockResolvedValue(mockToken);
 
       setGetAccessTokenSilently(mockGetAccessTokenSilently);
 
@@ -37,7 +38,7 @@ describe("getToken", () => {
 
     it("should handle errors thrown by getAccessTokenSilently", async () => {
       const mockError = new Error("Failed to get token");
-      const mockGetAccessTokenSilently = jest.fn().mockRejectedValue(mockError);
+      const mockGetAccessTokenSilently = vi.fn().mockRejectedValue(mockError);
 
       setGetAccessTokenSilently(mockGetAccessTokenSilently);
 
@@ -48,7 +49,7 @@ describe("getToken", () => {
     it("should call getAccessTokenSilently multiple times for multiple getAccessToken calls", async () => {
       const mockToken1 = "mock-access-token-1";
       const mockToken2 = "mock-access-token-2";
-      const mockGetAccessTokenSilently = jest
+      const mockGetAccessTokenSilently = vi
         .fn()
         .mockResolvedValueOnce(mockToken1)
         .mockResolvedValueOnce(mockToken2);
@@ -67,8 +68,8 @@ describe("getToken", () => {
       const mockToken1 = "token-from-first-function";
       const mockToken2 = "token-from-second-function";
 
-      const mockGetAccessTokenSilently1 = jest.fn().mockResolvedValue(mockToken1);
-      const mockGetAccessTokenSilently2 = jest.fn().mockResolvedValue(mockToken2);
+      const mockGetAccessTokenSilently1 = vi.fn().mockResolvedValue(mockToken1);
+      const mockGetAccessTokenSilently2 = vi.fn().mockResolvedValue(mockToken2);
 
       // Set first function
       setGetAccessTokenSilently(mockGetAccessTokenSilently1);

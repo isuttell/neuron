@@ -1,18 +1,19 @@
+import { vi } from 'vitest';
 import { render, screen, fireEvent } from "@testing-library/react";
 import ToggleSystemMessages from "../ToggleSystemMessages";
 
 // Mock the tooltip since it uses React Portal which can be difficult to test
-jest.mock("@/components/ui/tooltip", () => ({
+vi.mock("@/components/ui/tooltip", () => ({
   Tooltip: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   TooltipTrigger: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   TooltipContent: () => null,
 }));
 
 describe("ToggleSystemMessages", () => {
-  const mockOnToggle = jest.fn();
+  const mockOnToggle = vi.fn();
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it("renders with correct variant based on showTools prop", () => {

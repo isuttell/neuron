@@ -1,10 +1,11 @@
+import { vi } from 'vitest';
 import { render, fireEvent, waitFor } from "@testing-library/react";
 import { AudioBarVisualization } from "../AudioBarVisualization";
 
 // Mock AudioContext
-const mockDecode = jest.fn();
-const mockGetChannelData = jest.fn();
-const mockClose = jest.fn();
+const mockDecode = vi.fn();
+const mockGetChannelData = vi.fn();
+const mockClose = vi.fn();
 
 class MockAudioContext {
   decodeAudioData = mockDecode;
@@ -14,33 +15,33 @@ class MockAudioContext {
 global.AudioContext = MockAudioContext as unknown as typeof AudioContext;
 
 // Mock canvas context
-const mockFillRect = jest.fn();
-const mockGetContext = jest.fn(() => ({
+const mockFillRect = vi.fn();
+const mockGetContext = vi.fn(() => ({
   fillRect: mockFillRect,
   fillStyle: "",
-})) as jest.Mock;
+})) as vi.Mock;
 
 // Mock fetch
-global.fetch = jest.fn();
+global.fetch = vi.fn();
 
 // Mock requestAnimationFrame
-global.requestAnimationFrame = jest.fn((cb) => {
+global.requestAnimationFrame = vi.fn((cb) => {
   cb(0);
   return 1;
 });
-global.cancelAnimationFrame = jest.fn();
+global.cancelAnimationFrame = vi.fn();
 
 // Mock ResizeObserver
 class MockResizeObserver {
-  observe = jest.fn();
-  disconnect = jest.fn();
-  unobserve = jest.fn();
+  observe = vi.fn();
+  disconnect = vi.fn();
+  unobserve = vi.fn();
 }
 global.ResizeObserver = MockResizeObserver as unknown as typeof ResizeObserver;
 
 describe("AudioBarVisualization", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     HTMLCanvasElement.prototype.getContext = mockGetContext;
 
     // Mock canvas properties
@@ -63,7 +64,7 @@ describe("AudioBarVisualization", () => {
     });
 
     // Setup default mock responses
-    (global.fetch as jest.Mock).mockResolvedValue({
+    (global.fetch as vi.Mock).mockResolvedValue({
       arrayBuffer: () => Promise.resolve(new ArrayBuffer(8)),
     });
 
@@ -101,7 +102,7 @@ describe("AudioBarVisualization", () => {
   });
 
   it("loads audio data on mount", async () => {
-    const onLoadingChange = jest.fn();
+    const onLoadingChange = vi.fn();
     render(<AudioBarVisualization src="test.mp3" progress={0} onLoadingChange={onLoadingChange} />);
 
     // Since the component checks for canvas ref, we'll verify through the loading callback
@@ -109,7 +110,7 @@ describe("AudioBarVisualization", () => {
   });
 
   it("calls onLoadingChange callback", async () => {
-    const onLoadingChange = jest.fn();
+    const onLoadingChange = vi.fn();
     render(
       <AudioBarVisualization
         src="test.mp3"
@@ -134,7 +135,7 @@ describe("AudioBarVisualization", () => {
   });
 
   it("handles click for seeking when onSeek is provided", async () => {
-    const onSeek = jest.fn();
+    const onSeek = vi.fn();
     const { container } = render(
       <AudioBarVisualization src="test.mp3" progress={0} onSeek={onSeek} />
     );
@@ -142,7 +143,7 @@ describe("AudioBarVisualization", () => {
     const canvas = container.querySelector("canvas")!;
 
     // Mock getBoundingClientRect
-    canvas.getBoundingClientRect = jest.fn(() => ({
+    canvas.getBoundingClientRect = vi.fn(() => ({
       left: 0,
       width: 100,
       right: 100,
@@ -176,13 +177,13 @@ describe("AudioBarVisualization", () => {
   });
 
   it("handles drag for seeking", async () => {
-    const onSeek = jest.fn();
+    const onSeek = vi.fn();
     const { container } = render(
       <AudioBarVisualization src="test.mp3" progress={0} onSeek={onSeek} />
     );
 
     const canvas = container.querySelector("canvas")!;
-    canvas.getBoundingClientRect = jest.fn(() => ({
+    canvas.getBoundingClientRect = vi.fn(() => ({
       left: 0,
       width: 100,
       right: 100,
@@ -222,10 +223,10 @@ describe("AudioBarVisualization", () => {
   });
 
   it("handles audio loading error", async () => {
-    const consoleError = jest.spyOn(console, "error").mockImplementation(() => {});
-    const onLoadingChange = jest.fn();
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    const onLoadingChange = vi.fn();
 
-    (global.fetch as jest.Mock).mockRejectedValue(new Error("Network error"));
+    (global.fetch as vi.Mock).mockRejectedValue(new Error("Network error"));
 
     render(
       <AudioBarVisualization
@@ -291,13 +292,13 @@ describe("AudioBarVisualization", () => {
   });
 
   it("clamps seek values to 0-100 range", async () => {
-    const onSeek = jest.fn();
+    const onSeek = vi.fn();
     const { container } = render(
       <AudioBarVisualization src="test.mp3" progress={0} onSeek={onSeek} />
     );
 
     const canvas = container.querySelector("canvas")!;
-    canvas.getBoundingClientRect = jest.fn(() => ({
+    canvas.getBoundingClientRect = vi.fn(() => ({
       left: 0,
       width: 100,
       right: 100,

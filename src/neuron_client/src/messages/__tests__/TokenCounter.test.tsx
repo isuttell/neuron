@@ -1,15 +1,16 @@
+import { vi } from 'vitest';
 import { render, screen } from "@testing-library/react";
 import TokenCounter from "../TokenCounter";
 import { formatNumber } from "../../utils/numberFormat";
 
 // Mock formatNumber function
-jest.mock("../../utils/numberFormat", () => ({
-  formatNumber: jest.fn(),
+vi.mock("../../utils/numberFormat", () => ({
+  formatNumber: vi.fn(),
 }));
 
 // Mock the TooltipContent component to make it always visible in tests
-jest.mock("@/components/ui/tooltip", () => {
-  const actual = jest.requireActual("@/components/ui/tooltip");
+vi.mock("@/components/ui/tooltip", () => {
+  const actual = vi.importActual("@/components/ui/tooltip");
   return {
     ...actual,
     TooltipContent: ({ children }: { children: React.ReactNode }) => (
@@ -22,8 +23,8 @@ jest.mock("@/components/ui/tooltip", () => {
 });
 
 // Mock TokenMetadataTable component
-jest.mock("../TokenMetadataTable", () => {
-  return function MockTokenMetadataTable({
+vi.mock("../TokenMetadataTable", () => ({
+  default: function MockTokenMetadataTable({
     input_tokens,
     output_tokens,
     total_tokens,
@@ -39,14 +40,14 @@ jest.mock("../TokenMetadataTable", () => {
         <div data-testid="total-tokens">{total_tokens}</div>
       </div>
     );
-  };
-});
+  }
+}));
 
 describe("TokenCounter", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     // Default implementation for formatNumber
-    (formatNumber as jest.Mock).mockImplementation((num) => num.toString());
+    (formatNumber as vi.Mock).mockImplementation((num) => num.toString());
   });
 
   it("renders with correct token values", () => {
@@ -56,7 +57,7 @@ describe("TokenCounter", () => {
       total_tokens: 250,
     };
 
-    (formatNumber as jest.Mock).mockReturnValue("250");
+    (formatNumber as vi.Mock).mockReturnValue("250");
 
     render(<TokenCounter {...props} />);
 
@@ -77,7 +78,7 @@ describe("TokenCounter", () => {
       total_tokens: 500,
     };
 
-    (formatNumber as jest.Mock).mockReturnValue("500");
+    (formatNumber as vi.Mock).mockReturnValue("500");
 
     const { container } = render(<TokenCounter {...props} />);
 

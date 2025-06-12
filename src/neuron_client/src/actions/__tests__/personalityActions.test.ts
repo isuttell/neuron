@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { configureStore } from "@reduxjs/toolkit";
 import personalitiesReducer from "@/slices/personalitiesSlice";
 import { api } from "@/lib/api";
@@ -13,12 +14,12 @@ import {
 import type { Personality, PersonalityState } from "@/slices/personalitiesSlice.d";
 
 // Mock the api module
-jest.mock("@/lib/api", () => ({
+vi.mock("@/lib/api", () => ({
   api: {
-    get: jest.fn(),
-    post: jest.fn(),
-    put: jest.fn(),
-    delete: jest.fn(),
+    get: vi.fn(),
+    post: vi.fn(),
+    put: vi.fn(),
+    delete: vi.fn(),
   },
 }));
 
@@ -38,7 +39,7 @@ describe("personalityActions", () => {
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     store = configureStore({
       reducer: {
         personalities: personalitiesReducer,
@@ -49,7 +50,7 @@ describe("personalityActions", () => {
   describe("fetchPersonalities", () => {
     it("should handle successful fetch with correct response structure", async () => {
       const mockResponse = { personalities: [mockPersonality] };
-      (api.get as jest.Mock).mockResolvedValueOnce(mockResponse);
+      (api.get as vi.Mock).mockResolvedValueOnce(mockResponse);
 
       await store.dispatch(fetchPersonalities());
 
@@ -64,7 +65,7 @@ describe("personalityActions", () => {
 
     it("should handle empty personalities array", async () => {
       const mockResponse = { personalities: [] };
-      (api.get as jest.Mock).mockResolvedValueOnce(mockResponse);
+      (api.get as vi.Mock).mockResolvedValueOnce(mockResponse);
 
       await store.dispatch(fetchPersonalities());
 
@@ -74,7 +75,7 @@ describe("personalityActions", () => {
 
     it("should handle API errors", async () => {
       const errorMessage = "Failed to fetch personalities";
-      (api.get as jest.Mock).mockRejectedValueOnce(new Error(errorMessage));
+      (api.get as vi.Mock).mockRejectedValueOnce(new Error(errorMessage));
 
       await store.dispatch(fetchPersonalities());
 
@@ -87,7 +88,7 @@ describe("personalityActions", () => {
 
   describe("fetchPersonality", () => {
     it("should handle successful fetch of single personality", async () => {
-      (api.get as jest.Mock).mockResolvedValueOnce(mockPersonality);
+      (api.get as vi.Mock).mockResolvedValueOnce(mockPersonality);
 
       await store.dispatch(fetchPersonality(mockPersonality.id));
 
@@ -108,7 +109,7 @@ describe("personalityActions", () => {
         description: "New description",
       };
 
-      (api.post as jest.Mock).mockResolvedValueOnce(mockPersonality);
+      (api.post as vi.Mock).mockResolvedValueOnce(mockPersonality);
 
       await store.dispatch(createPersonality(createPayload));
 
@@ -129,7 +130,7 @@ describe("personalityActions", () => {
       };
 
       const updatedPersonality = { ...mockPersonality, ...updatePayload };
-      (api.put as jest.Mock).mockResolvedValueOnce(updatedPersonality);
+      (api.put as vi.Mock).mockResolvedValueOnce(updatedPersonality);
 
       await store.dispatch(updatePersonality(updatePayload));
 
@@ -149,7 +150,7 @@ describe("personalityActions", () => {
 
   describe("deletePersonality", () => {
     it("should handle successful personality deletion", async () => {
-      (api.delete as jest.Mock).mockResolvedValueOnce(undefined);
+      (api.delete as vi.Mock).mockResolvedValueOnce(undefined);
 
       await store.dispatch(deletePersonality(mockPersonality.id));
 
@@ -171,7 +172,7 @@ describe("personalityActions", () => {
         ],
       };
 
-      (api.get as jest.Mock).mockResolvedValueOnce(mockEmbeddings);
+      (api.get as vi.Mock).mockResolvedValueOnce(mockEmbeddings);
 
       await store.dispatch(
         fetchPersonalityEmbeddings(mockPersonality.id)
@@ -191,7 +192,7 @@ describe("personalityActions", () => {
         response: "Logo updated successfully",
       };
 
-      (api.post as jest.Mock).mockResolvedValueOnce(mockResponse);
+      (api.post as vi.Mock).mockResolvedValueOnce(mockResponse);
 
       await store.dispatch(updatePersonalityLogo(mockPersonality.id));
 

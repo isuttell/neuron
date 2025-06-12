@@ -1,9 +1,10 @@
+import { vi } from 'vitest';
 import { render, screen } from "@testing-library/react";
 import TokenChart from "../TokenChart";
 import { ChartConfig } from "@/components/ui/chart";
 
 // Mock the recharts library
-jest.mock("recharts", () => ({
+vi.mock("recharts", () => ({
   BarChart: ({ children, data }: { children: React.ReactNode; data: unknown[] }) => (
     <div data-testid="bar-chart" data-chart-data={JSON.stringify(data)}>
       {children}
@@ -15,8 +16,8 @@ jest.mock("recharts", () => ({
 }));
 
 // Mock the chart UI components
-jest.mock("@/components/ui/chart", () => ({
-  ChartConfig: jest.fn(),
+vi.mock("@/components/ui/chart", () => ({
+  ChartConfig: vi.fn(),
   ChartContainer: ({
     children,
     config,

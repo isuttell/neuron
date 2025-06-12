@@ -1,15 +1,16 @@
+import { vi } from 'vitest';
 import { render } from "@testing-library/react";
 import { ThreadsUpdating } from "../ThreadsUpdating";
 import { useAppSelector } from "@/hooks";
 import { Thread } from "@/types/thread";
 
 // Mock the Redux hooks
-jest.mock("@/hooks", () => ({
-  useAppSelector: jest.fn(),
+vi.mock("@/hooks", () => ({
+  useAppSelector: vi.fn(),
 }));
 
 // Type assertion for the mocked hook
-const mockedUseAppSelector = useAppSelector as jest.MockedFunction<typeof useAppSelector>;
+const mockedUseAppSelector = useAppSelector as vi.MockedFunction<typeof useAppSelector>;
 
 describe("ThreadsUpdating", () => {
   // Mock data for different test scenarios
@@ -66,7 +67,7 @@ describe("ThreadsUpdating", () => {
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it("should render a spinner when there are active threads updated within the last hour", () => {

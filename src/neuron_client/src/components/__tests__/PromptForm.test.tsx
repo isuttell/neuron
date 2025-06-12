@@ -1,11 +1,12 @@
+import { vi } from 'vitest';
 import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { PromptForm } from "../PromptForm";
 import { Prompt } from "../../slices/promptsSlice";
 
 describe("PromptForm", () => {
-  const mockOnSubmit = jest.fn();
-  const mockOnCancel = jest.fn();
+  const mockOnSubmit = vi.fn();
+  const mockOnCancel = vi.fn();
 
   const mockPrompt: Prompt = {
     id: "123",
@@ -17,7 +18,7 @@ describe("PromptForm", () => {
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it("renders empty form correctly when no prompt is provided", () => {

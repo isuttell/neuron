@@ -1,40 +1,41 @@
+import { vi } from 'vitest';
 import { render, screen } from "@testing-library/react";
 import MediaTimeline from "../MediaTimeline";
 import { useAppSelector } from "@/hooks";
 import { MediaItem } from "@/types/media";
 
 // Mock the hooks
-jest.mock("@/hooks", () => ({
-  useAppSelector: jest.fn(),
+vi.mock("@/hooks", () => ({
+  useAppSelector: vi.fn(),
 }));
 
 // Mock child components to focus on the MediaTimeline logic
-jest.mock("@/messages/ImageContent", () => ({
+vi.mock("@/messages/ImageContent", () => ({
   __esModule: true,
   default: ({ thumbnail_size }: { thumbnail_size: string }) => (
     <div data-testid="image-content" data-thumbnail-size={thumbnail_size} />
   ),
 }));
 
-jest.mock("@/messages/SpeechAudioContent", () => ({
+vi.mock("@/messages/SpeechAudioContent", () => ({
   __esModule: true,
   default: () => <div data-testid="speech-audio-content" />,
 }));
 
-jest.mock("@/messages/SubtitleContent", () => ({
+vi.mock("@/messages/SubtitleContent", () => ({
   SubtitleContent: () => <div data-testid="subtitle-content" />,
 }));
 
-jest.mock("@/messages/VideoContent", () => ({
+vi.mock("@/messages/VideoContent", () => ({
   __esModule: true,
   default: () => <div data-testid="video-content" />,
 }));
 
-jest.mock("@/components/TimelineControls", () => ({
+vi.mock("@/components/TimelineControls", () => ({
   TimelineControls: () => <div data-testid="timeline-controls" />,
 }));
 
-const mockedUseAppSelector = useAppSelector as jest.MockedFunction<typeof useAppSelector>;
+const mockedUseAppSelector = useAppSelector as vi.MockedFunction<typeof useAppSelector>;
 
 describe("MediaTimeline", () => {
   const mockThreadId = "thread-123";
@@ -77,12 +78,12 @@ describe("MediaTimeline", () => {
   ];
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     // Mock localStorage
     Object.defineProperty(window, 'localStorage', {
       value: {
-        getItem: jest.fn(() => null),
-        setItem: jest.fn(),
+        getItem: vi.fn(() => null),
+        setItem: vi.fn(),
       },
       writable: true,
     });

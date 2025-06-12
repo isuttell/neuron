@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { render, screen } from "@testing-library/react";
 import FuzzyTimeAgo from "../FuzzyTimeAgo";
 
@@ -9,7 +10,7 @@ describe("FuzzyTimeAgo", () => {
 
   beforeEach(() => {
     // Mock Date.now() to return our fixed timestamp
-    Date.now = jest.fn(() => NOW);
+    Date.now = vi.fn(() => NOW);
   });
 
   afterEach(() => {
