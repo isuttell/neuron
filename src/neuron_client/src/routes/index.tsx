@@ -86,7 +86,13 @@ export default function Index() {
                 ? "Type your prompt here..."
                 : "Select a personality first"
             }
-          />
+          >
+            {activePersonality && (
+              <div className="text-xs text-gray-600 pl-1">
+                {activePersonality.name}
+              </div>
+            )}
+          </MessageForm>
         </div>
       </div>
     </div>
