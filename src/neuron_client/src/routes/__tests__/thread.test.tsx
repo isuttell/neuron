@@ -289,7 +289,7 @@ describe("Thread", () => {
   };
 
   let originalScrollIntoView: typeof window.HTMLElement.prototype.scrollIntoView;
-  let mockScrollIntoView: jest.Mock;
+  let mockScrollIntoView: vi.Mock;
 
   beforeEach(() => {
     vi.clearAllMocks();

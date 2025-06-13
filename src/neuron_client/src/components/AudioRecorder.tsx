@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Mic, Square } from "lucide-react";
-import { useToast } from "../hooks/use-toast";
+import { toast } from "sonner";
 
 interface AudioRecorderProps {
   onRecordingComplete: (blob: Blob) => void;
@@ -16,7 +16,6 @@ export function AudioRecorder({
   disabled = false,
   className,
 }: AudioRecorderProps) {
-  const { toast } = useToast();
   const [isRecording, setIsRecording] = useState(false);
   const [isPushToTalk, setIsPushToTalk] = useState(false);
   const mediaRecorder = useRef<MediaRecorder | null>(null);
@@ -55,14 +54,12 @@ export function AudioRecorder({
       setIsRecording(true);
     } catch (error) {
       console.error("Error accessing microphone:", error);
-      toast({
-        variant: "destructive",
-        title: "Microphone Error",
+      toast.error("Microphone Error", {
         description:
           "Failed to access microphone. Please ensure you have granted permission.",
       });
     }
-  }, [onAutoSend, onRecordingComplete, toast]);
+  }, [onAutoSend, onRecordingComplete]);
 
   const stopRecording = useCallback(() => {
     if (mediaRecorder.current && isRecording) {

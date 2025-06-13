@@ -1,4 +1,4 @@
-from quart import Blueprint, Response, jsonify, request
+from quart import Blueprint, Response, jsonify
 
 from neuron_server.controllers.auth import TokenPayload, requires_auth
 from neuron_server.controllers.csrf import (
@@ -7,6 +7,7 @@ from neuron_server.controllers.csrf import (
     create_session_cookie,
 )
 from neuron_server.models import UserModel  # Import UserModel
+from neuron_server.type_defs.request_proxy import request
 
 user_bp = Blueprint("user", __name__)
 
@@ -27,11 +28,13 @@ async def login_user() -> Response:  # Add return type hint
     cookie_value, csrf_token = create_session_cookie(payload.user_id, include_csrf=True)
 
     # Create response with CSRF token
-    response = jsonify({
-        "status": "success",
-        "user_id": payload.user_id,
-        "csrf_token": csrf_token  # Send CSRF token to client
-    })
+    response = jsonify(
+        {
+            "status": "success",
+            "user_id": payload.user_id,
+            "csrf_token": csrf_token,  # Send CSRF token to client
+        }
+    )
 
     # Set secure session cookie
     response.set_cookie(
@@ -41,7 +44,7 @@ async def login_user() -> Response:  # Add return type hint
         httponly=True,
         samesite="Lax",  # Protect against CSRF attacks
         secure=IS_PRODUCTION,  # Use secure cookies in production
-        path="/"  # Ensure cookie is sent with all requests
+        path="/",  # Ensure cookie is sent with all requests
     )
 
     return response, 200

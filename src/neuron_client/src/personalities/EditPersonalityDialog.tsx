@@ -21,7 +21,7 @@ import {
 } from "../actions/personalityActions";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "../hooks/use-toast";
+import { toast } from "sonner";
 import {
   Tooltip,
   TooltipContent,
@@ -63,7 +63,6 @@ export default function EditPersonalityDialog({
 }: EditPersonalityDialogProps) {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [name, setName] = useState(personality?.name || "");
@@ -113,9 +112,7 @@ export default function EditPersonalityDialog({
     } catch (error: unknown) {
       const apiError = error as ApiError;
       console.log(apiError);
-      toast({
-        variant: "destructive",
-        title: "Failed to save personality",
+      toast.error("Failed to save personality", {
         description: apiError?.message || "An unexpected error occurred",
       });
     } finally {

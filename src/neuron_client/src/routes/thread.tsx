@@ -15,7 +15,7 @@ import {
   postMessageByThread,
 } from "../actions/messageActions";
 import { useAppDispatch, useAppSelector } from "../hooks";
-import MessageForm from "../messages/MessageForm";
+import ThreadMessageForm from "../messages/ThreadMessageForm";
 import MessageItem from "../messages/MessageItem";
 import {
   getMessagesLoading,
@@ -23,7 +23,6 @@ import {
 } from "../slices/messagesSlice";
 import { getActivePersonality } from "../slices/personalitiesSlice";
 import { selectThread } from "../slices/threadsSlice";
-
 export default function Thread() {
   const dispatch = useAppDispatch();
   const activePersonality = useAppSelector(getActivePersonality);
@@ -44,8 +43,8 @@ export default function Thread() {
     localStorage.getItem("widthMode") === "wide"
       ? "wide"
       : localStorage.getItem("widthMode") === "narrow"
-      ? "narrow"
-      : "hidden"
+        ? "narrow"
+        : "hidden"
   );
 
   const filteredMessages = messages
@@ -53,7 +52,7 @@ export default function Thread() {
     .filter((message) =>
       [
         (message.textContent && message.textContent.length > 0) ||
-          (message.thinkingContent && message.thinkingContent.length > 0),
+        (message.thinkingContent && message.thinkingContent.length > 0),
         !showTools && typeof message.node === "string"
           ? ["agent", "tools"].includes(message.node)
           : true,
@@ -105,7 +104,7 @@ export default function Thread() {
 
   return (
     <div className="flex flex-1 p-4 ipad-top-spacing flex-col flex-nowrap max-h-screen">
-      <div className="flex justify-between mb-2 border-b pb-2">
+      <div className="flex justify-between mb-2 border-b pb-2 mobile-safe-top">
         <SidebarTrigger className="size-10 mr-2" />
         <h1 className="text-lg lg:text-2xl font-bold ">
           {thread.name || "Welcome..."}
@@ -125,8 +124,16 @@ export default function Thread() {
       <div className="flex flex-row flex-1">
         <div className="flex flex-col flex-1">
           <div className="flex-1 overflow-y-auto relative">
-            <div className="absolute top-0 left-0 right-0 bottom-0 flex flex-1 flex-col flex-nowrap max-h-full mx-auto overflow-y-auto">
-              <div className="max-w-[1170px] w-full mx-auto">
+            <div
+              className="h-5 w-full absolute top-0 z-20"
+              style={{
+                background:
+                  "linear-gradient(180deg,rgba(9, 9, 11, 1) 0%, rgba(9,9,11, 0) 100%)",
+                backgroundSize: "cover",
+              }}
+            />
+            <div className="absolute top-2 left-0 right-0 bottom-0 flex flex-1 flex-col flex-nowrap max-h-full mx-auto overflow-y-auto">
+              <div className="max-w-[1170px] w-full mx-auto relative z-10">
                 {filteredMessages.map((message, index) => (
                   <div
                     key={message.id}
@@ -147,12 +154,17 @@ export default function Thread() {
                 <div className="h-screen" />
               </div>
             </div>
+            <div
+              className="h-16 w-full absolute bottom-0 z-20"
+              style={{
+                background:
+                  "linear-gradient(0deg,rgba(9,9,11, 1) 0%, rgba(9,9,11, 0) 100%)",
+                backgroundSize: "cover",
+              }}
+            />
           </div>
           <div className="bottom-0">
-            <MessageForm
-              thread={thread}
-              className="max-w-[1170px] w-full mx-auto mt-2"
-            />
+            <ThreadMessageForm thread={thread} className="w-full" />
           </div>
         </div>
         <div
@@ -165,7 +177,11 @@ export default function Thread() {
           )}
         >
           {widthMode !== "hidden" && threadId ? (
-            <MediaTimeline key={threadId} threadId={threadId} widthMode={widthMode} />
+            <MediaTimeline
+              key={threadId}
+              threadId={threadId}
+              widthMode={widthMode}
+            />
           ) : null}
         </div>
       </div>

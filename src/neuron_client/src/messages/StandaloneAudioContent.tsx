@@ -1,4 +1,4 @@
-import { Download, Copy, Play, Pause, BookOpen } from "lucide-react";
+import { Download, Copy, Play, Pause, BookOpen, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -10,10 +10,10 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { AudioBarVisualization } from "@/components/AudioBarVisualization";
 import { cn } from "@/lib/utils";
-import { useEffect, useState, memo, useRef, useId } from "react";
+import React, { useEffect, useState, memo, useRef, useId } from "react";
 import { useMediaPlayer } from "@/hooks/useMediaPlayer";
 import { Spinner } from "@/components/ui/spinner";
 import { MediaListDropdown } from "@/components/MediaListDropdown";
@@ -27,6 +27,8 @@ interface StandaloneAudioContentProps {
   preload?: "" | "none" | "metadata" | "auto";
   autoPlay?: boolean;
   mediaItem?: MediaItem;
+  duration?: number;
+  metadata?: Record<string, unknown>;
   onPlay?: () => void;
   onEnded?: () => void;
   onPause?: () => void;
@@ -50,17 +52,18 @@ const StandaloneAudioContent: React.FC<StandaloneAudioContentProps> = memo(
     description,
     className,
     mediaItem,
+    duration: propDuration,
+    metadata,
     preload = "auto",
     autoPlay = false,
     onPlay,
     onEnded,
     onPause,
   }) => {
-    const { toast } = useToast();
     const [isPlaying, setIsPlaying] = useState(false);
     const [progress, setProgress] = useState(0);
     const [currentTime, setCurrentTime] = useState("0:00.00");
-    const [duration, setDuration] = useState("0:00.00");
+    const [duration, setDuration] = useState(propDuration ? formatTime(propDuration) : "0:00.00");
     const [isWaveDataLoading, setIsWaveDataLoading] = useState(true);
     const id = useId();
     const audioRef = useRef<HTMLAudioElement>();
@@ -161,7 +164,7 @@ const StandaloneAudioContent: React.FC<StandaloneAudioContentProps> = memo(
 
     return (
       <div
-        className={cn("flex rounded-lg flex-col w-full border", className)}
+        className={cn("flex rounded-lg flex-col w-full min-w-0 max-w-full sm:max-w-[400px] md:max-w-[500px] border", className)}
         data-audio-url={url}
       >
         <div
@@ -242,6 +245,59 @@ const StandaloneAudioContent: React.FC<StandaloneAudioContentProps> = memo(
               </Popover>
             </div>
           )}
+          {metadata && Object.keys(metadata).length > 0 && (
+            <div className="flex items-center">
+              <Popover>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <PopoverTrigger asChild>
+                      <Button size="sm" variant="ghost">
+                        <Info className="size-4" />
+                      </Button>
+                    </PopoverTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent>View metadata</TooltipContent>
+                </Tooltip>
+                <PopoverContent className="w-80">
+                  <div className="space-y-2">
+                    <h4 className="font-medium text-sm">Generation Details</h4>
+                    <div className="text-sm space-y-1">
+                      {metadata.model ? (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Model:</span>
+                          <span className="font-mono text-xs">
+                            {String(metadata.model)}
+                          </span>
+                        </div>
+                      ) : null}
+                      {metadata.duration ? (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Duration:</span>
+                          <span>{formatTime(metadata.duration as number)}</span>
+                        </div>
+                      ) : null}
+                      {metadata.output_format ? (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Format:</span>
+                          <span>
+                            {String(metadata.output_format)}
+                          </span>
+                        </div>
+                      ) : null}
+                      {metadata.seed ? (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Seed:</span>
+                          <span className="font-mono text-xs">
+                            {String(metadata.seed)}
+                          </span>
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
+          )}
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
@@ -250,9 +306,7 @@ const StandaloneAudioContent: React.FC<StandaloneAudioContentProps> = memo(
                 onClick={(e) => {
                   e.preventDefault();
                   navigator.clipboard.writeText(url);
-                  toast({
-                    title: "Audio URL copied to clipboard",
-                  });
+                  toast("Audio URL copied to clipboard");
                 }}
               >
                 <Copy className="size-4" />

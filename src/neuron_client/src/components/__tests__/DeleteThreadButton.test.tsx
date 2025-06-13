@@ -35,12 +35,15 @@ vi.mock("../../actions/threadActions", () => ({
   deleteThread: vi.fn(),
 }));
 
-// Mock the useToast hook
-vi.mock("../../hooks/use-toast", () => ({
-  useToast: () => ({
-    toast: vi.fn(),
-  }),
-}));
+// Mock sonner toast for Vitest
+vi.mock("sonner", () => {
+  const mockToast = Object.assign(vi.fn(), {
+    error: vi.fn(),
+  });
+  return {
+    toast: mockToast,
+  };
+});
 
 describe("DeleteThreadButton", () => {
   const threadId = "thread-123";

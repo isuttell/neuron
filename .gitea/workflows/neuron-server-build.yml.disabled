@@ -2,7 +2,7 @@ name: Neuron Server Build
 
 on:
   push:
-    branches: [ master ]
+    branches: [ master ]  # Only build on master, not develop
     tags: [ 'v*' ]
     paths:
       - 'src/neuron_server/**'
@@ -42,10 +42,8 @@ jobs:
         id: buildx
         uses: docker/setup-buildx-action@v3
         with:
-          driver: docker
+          driver: docker-container
           install: true
-
-# Docker driver with buildx uses its own internal caching mechanism
 
       - name: Build image
         uses: docker/build-push-action@v5
@@ -57,6 +55,8 @@ jobs:
           tags: |
             gitea.zaks.io/isuttell/neuron-server:latest
             ${{ github.event_name != 'pull_request' && startsWith(github.ref, 'refs/tags/') && format('gitea.zaks.io/isuttell/neuron-server:{0}', github.ref_name) || '' }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Build notification
         run: |

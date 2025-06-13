@@ -3,6 +3,7 @@ from typing import Any
 from langchain_core.messages import AIMessage, HumanMessage
 
 from neuron_server.llms.anthropic import AnthropicLLM
+from neuron_server.llms.llm import THINKING_TOKEN_BUDGETS
 
 
 class TestAnthropicCaching:
@@ -52,10 +53,12 @@ class TestAnthropicCaching:
         messages = [
             HumanMessage(content="Hello, world!"),
             AIMessage(content="Hi there!"),
-            HumanMessage(content=[
-                {"type": "text", "text": "How are you today?"},
-                {"type": "text", "text": "I hope you're doing well."},
-            ]),
+            HumanMessage(
+                content=[
+                    {"type": "text", "text": "How are you today?"},
+                    {"type": "text", "text": "I hope you're doing well."},
+                ]
+            ),
         ]
 
         result = llm._apply_caching_to_messages(messages)
@@ -158,11 +161,13 @@ class TestAnthropicCaching:
         """Test handling of mixed content types in list."""
         llm = AnthropicLLM(caching_enabled=True)
         messages = [
-            HumanMessage(content=[
-                {"type": "text", "text": "Here's some text"},
-                "string content",  # Non-dict content
-                {"type": "image_url", "image_url": {"url": "https://example.com"}},
-            ]),
+            HumanMessage(
+                content=[
+                    {"type": "text", "text": "Here's some text"},
+                    "string content",  # Non-dict content
+                    {"type": "image_url", "image_url": {"url": "https://example.com"}},
+                ]
+            ),
         ]
 
         result = llm._apply_caching_to_messages(messages)
@@ -238,3 +243,101 @@ class TestAnthropicCaching:
         assert isinstance(result[0].content, str)  # Unchanged
         assert isinstance(result[2].content, str)  # Unchanged
         assert isinstance(result[4].content, list)  # Modified with cache control
+
+    def test_create_model_with_thinking_off(self) -> None:
+        """Test model creation with thinking off."""
+        llm = AnthropicLLM(
+            model_id="claude-3-5-sonnet-20241022",
+            provider_model_id="claude-sonnet-4-20250514",
+        )
+
+        # Test with empty tools - should return base model
+        result = llm._create_model_with_thinking("off", [])
+        assert result == llm.model
+
+        # Test with None tools - should return base model
+        result_none = llm._create_model_with_thinking("off", None)
+        assert result_none == llm.model
+
+    def test_create_model_with_thinking_low(self) -> None:
+        """Test model creation with thinking level low."""
+        from unittest.mock import MagicMock, patch
+
+        llm = AnthropicLLM(
+            model_id="claude-3-5-sonnet-20241022",
+            provider_model_id="claude-sonnet-4-20250514",
+        )
+
+        tools = [MagicMock()]
+
+        with patch("neuron_server.llms.anthropic.ChatAnthropic") as mock_chat:
+            mock_instance = MagicMock()
+            mock_instance.bind_tools = MagicMock(return_value=mock_instance)
+            mock_chat.return_value = mock_instance
+
+            llm._create_model_with_thinking("low", tools)
+
+            # Verify ChatAnthropic was called with thinking config
+            expected_params = llm.model_params.copy()
+            expected_params["thinking"] = {
+                "type": "enabled",
+                "budget_tokens": THINKING_TOKEN_BUDGETS["low"],
+            }
+            mock_chat.assert_called_once_with(**expected_params)
+            mock_instance.bind_tools.assert_called_once_with(tools)
+
+    def test_create_model_with_thinking_medium(self) -> None:
+        """Test model creation with thinking level medium."""
+        from unittest.mock import MagicMock, patch
+
+        llm = AnthropicLLM(
+            model_id="claude-3-5-sonnet-20241022",
+            provider_model_id="claude-opus-4-20250514",
+        )
+
+        tools = [MagicMock()]
+
+        with patch("neuron_server.llms.anthropic.ChatAnthropic") as mock_chat:
+            mock_instance = MagicMock()
+            mock_instance.bind_tools = MagicMock(return_value=mock_instance)
+            mock_chat.return_value = mock_instance
+
+            llm._create_model_with_thinking("medium", tools)
+
+            # Verify ChatAnthropic was called with thinking config
+            expected_params = llm.model_params.copy()
+            expected_params["thinking"] = {
+                "type": "enabled",
+                "budget_tokens": THINKING_TOKEN_BUDGETS["medium"],
+            }
+            mock_chat.assert_called_once_with(**expected_params)
+            mock_instance.bind_tools.assert_called_once_with(tools)
+
+    def test_model_params_stored_correctly(self) -> None:
+        """Test that model parameters are stored correctly for dynamic instantiation."""
+        llm = AnthropicLLM(
+            model_id="claude-3-5-sonnet-20241022",
+            provider_model_id="claude-sonnet-4-20250514",
+        )
+
+        assert llm.model_params["model"] == "claude-3-5-sonnet-20241022"
+        assert llm.model_params["temperature"] == 1
+        assert llm.model_params["streaming"] is True
+        assert llm.model_params["max_tokens"] == 64_000
+        assert llm.model_params["verbose"] is True
+        assert "thinking" not in llm.model_params  # No thinking in default params
+
+    def test_create_model_with_thinking_empty_tools(self) -> None:
+        """Test model creation with empty tools list."""
+
+        llm = AnthropicLLM(
+            model_id="claude-3-5-sonnet-20241022",
+            provider_model_id="claude-sonnet-4-20250514",
+        )
+
+        tools = []
+
+        # Test with "off" - should return model without binding
+        result = llm._create_model_with_thinking("off", tools)
+        # Should return base model without binding empty tools
+        assert result == llm.model

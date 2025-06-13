@@ -260,6 +260,8 @@ describe("RootComponent", () => {
     expect(mockDispatch).toHaveBeenCalledWith({ type: "socket/connect" });
     expect(mockDispatch).toHaveBeenCalledWith(expect.any(Function)); // fetchConfig
     expect(mockDispatch).toHaveBeenCalledWith(expect.any(Function)); // fetchMediaLists
+    expect(mockDispatch).toHaveBeenCalledWith(expect.any(Function)); // fetchProviders
+    expect(mockDispatch).toHaveBeenCalledWith(expect.any(Function)); // fetchPersonalities
   });
 
   // Test specifically for the userSynced state transitions and effects on rendering

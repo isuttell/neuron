@@ -33,7 +33,7 @@ import {
   updateThreadUserRole,
 } from "../actions/threadActions";
 import { useAppDispatch, useAppSelector } from "../hooks";
-import { useToast } from "../hooks/use-toast";
+import { toast } from "sonner";
 import { getThreadUsers } from "../slices/threadsSlice";
 import { getUsers } from "../slices/usersSlice";
 
@@ -45,7 +45,6 @@ export default function ThreadUsersDialog({
   threadId,
 }: ThreadUsersDialogProps) {
   const dispatch = useAppDispatch();
-  const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [addingUser, setAddingUser] = useState(false);
@@ -60,9 +59,7 @@ export default function ThreadUsersDialog({
     try {
       await dispatch(fetchThreadUsers(threadId)).unwrap();
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Failed to load thread users",
+      toast.error("Failed to load thread users", {
         description:
           error instanceof Error
             ? error.message
@@ -86,15 +83,12 @@ export default function ThreadUsersDialog({
     setAddingUser(true);
     try {
       await dispatch(addUserByEmail({ threadId, email })).unwrap();
-      toast({
-        title: "User added",
+      toast("User added", {
         description: "User has been added to the thread",
       });
       setEmail("");
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Failed to add user",
+      toast.error("Failed to add user", {
         description:
           error instanceof Error
             ? error.message
@@ -108,14 +102,11 @@ export default function ThreadUsersDialog({
   const handleRemoveUser = async (userId: string) => {
     try {
       await dispatch(removeThreadUser({ threadId, userId })).unwrap();
-      toast({
-        title: "User removed",
+      toast("User removed", {
         description: "User has been removed from the thread",
       });
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Failed to remove user",
+      toast.error("Failed to remove user", {
         description:
           error instanceof Error
             ? error.message
@@ -127,14 +118,11 @@ export default function ThreadUsersDialog({
   const handleRoleChange = async (userId: string, role: string) => {
     try {
       await dispatch(updateThreadUserRole({ threadId, userId, role })).unwrap();
-      toast({
-        title: "Role updated",
+      toast("Role updated", {
         description: `User role has been updated to ${role}`,
       });
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Failed to update role",
+      toast.error("Failed to update role", {
         description:
           error instanceof Error
             ? error.message

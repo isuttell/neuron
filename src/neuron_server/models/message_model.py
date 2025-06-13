@@ -208,7 +208,7 @@ class MessageModel(BaseModel):
         usage_metadata: dict[str, int | dict] | None = None
 
     @classmethod
-    async def update(cls, params: UpdateParams) -> Message:
+    async def update(cls, params: UpdateParams) -> Self:
         async with get_session() as session:
             message = await session.get(Message, params.message_id)
             if not message:

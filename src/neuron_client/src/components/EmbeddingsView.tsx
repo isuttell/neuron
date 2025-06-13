@@ -21,7 +21,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { useToast } from "../hooks/use-toast";
+import { toast } from "sonner";
 import {
   deleteEmbedding,
   bulkDeleteEmbeddings,
@@ -161,7 +161,6 @@ function EmbeddingsViewComponent() {
   );
   const isLoading = useSelector((state: RootState) => state.embeddings.loading);
   const [rowSelection, setRowSelection] = useState({});
-  const { toast } = useToast();
 
   const [deleteTarget, setDeleteTarget] = useState<{
     id?: string;
@@ -191,14 +190,11 @@ function EmbeddingsViewComponent() {
       const selectedIds = getSelectedIds();
       await dispatch(bulkDeleteEmbeddings(selectedIds));
       setRowSelection({});
-      toast({
-        title: "Embeddings deleted",
+      toast("Embeddings deleted", {
         description: `Successfully deleted ${selectedIds.length} embeddings`,
       });
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Failed to delete embeddings",
+      toast.error("Failed to delete embeddings", {
         description:
           error instanceof Error
             ? error.message
@@ -211,13 +207,9 @@ function EmbeddingsViewComponent() {
   const handleDeleteOne = async (id: string) => {
     try {
       await dispatch(deleteEmbedding(id));
-      toast({
-        title: "Embedding deleted",
-      });
+      toast("Embedding deleted");
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Failed to delete embedding",
+      toast.error("Failed to delete embedding", {
         description:
           error instanceof Error
             ? error.message
@@ -236,14 +228,11 @@ function EmbeddingsViewComponent() {
         dispatch(fetchPersonalityEmbeddings(personalityId));
       }
 
-      toast({
-        title: "Embedding updated",
+      toast("Embedding updated", {
         description: "The embedding has been successfully updated",
       });
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Failed to update embedding",
+      toast.error("Failed to update embedding", {
         description:
           error instanceof Error
             ? error.message

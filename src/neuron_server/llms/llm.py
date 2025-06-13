@@ -8,20 +8,22 @@ from typing import (
     Literal,
     TypedDict,
 )
+from uuid import UUID
 
 import tiktoken
 from langchain_core.messages import AIMessage, BaseMessage, ToolMessage
 from langchain_core.messages.utils import get_buffer_string
 from langchain_core.output_parsers import StrOutputParser
+from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import Runnable, RunnableConfig
 from langchain_core.tools import BaseTool
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from langgraph.graph import END, StateGraph
 from langgraph.graph.message import add_messages
-from langgraph.prebuilt import ToolNode
 from pydantic import BaseModel, Field
 
 from neuron_server.config import config
+from neuron_server.llms.artifact_aware_tool_node import ArtifactAwareToolNode
 from neuron_server.llms.prompts import (
     chat_prompt,
     memory_prompt,
@@ -37,6 +39,34 @@ from neuron_server.tools.memory_recall_tool import (
 
 tokenizer = tiktoken.encoding_for_model("gpt-4o")
 
+# Thinking mode types and constants
+ThinkingLevel = Literal["off", "low", "medium"]
+
+# Models that support thinking mode
+THINKING_SUPPORTED_MODELS = {
+    "claude-sonnet-4-20250514": True,  # Latest Sonnet model with thinking support
+    "claude-opus-4-20250514": True,  # Latest Opus model with thinking support
+    # Add future models as they gain thinking support
+}
+
+# Token budgets for different thinking levels
+THINKING_TOKEN_BUDGETS = {
+    "low": 1024,
+    "medium": 4096,
+}
+
+
+class ComplexityAnalysis(BaseModel):
+    """Quick complexity analysis for thinking mode."""
+
+    thinking_level: ThinkingLevel = Field(
+        description="Required thinking level for this request"
+    )
+    confidence: float = Field(
+        ge=0.0, le=1.0, description="Confidence in the assessment"
+    )
+    reason: str = Field(max_length=100, description="Brief reason for the choice")
+
 
 class AgentState(TypedDict, total=False):
     """The state of the agent.
@@ -48,6 +78,8 @@ class AgentState(TypedDict, total=False):
         personality: The personality to use for responses
         location: The user's location (default: "")
         recall_memories: Previously recalled memories (default: "")
+        thinking_level: The thinking level for the current request (default: "off")
+        complexity_analysis: The complexity analysis result
     """
 
     messages: Annotated[Sequence[BaseMessage], add_messages]
@@ -56,6 +88,8 @@ class AgentState(TypedDict, total=False):
     personality: str  # Required
     location: str  # Optional with default ""
     recall_memories: str  # Optional with default ""
+    thinking_level: ThinkingLevel  # Optional with default "off"
+    complexity_analysis: ComplexityAnalysis | None  # Optional
 
 
 class MemoryRecallRanking(BaseModel):
@@ -84,36 +118,134 @@ class LLM:
         title: The title generation pipeline
         memory: The memory generation pipeline
         memory_model: The memory model for ranking
-        title_model: The model for generating titles
+        fast_model: The fast model for quick operations
     """
 
     model: Runnable
     title: Runnable
     memory: Runnable
     memory_model: Runnable
-    title_model: Runnable | None
+    fast_model: Runnable | None
 
     def __init__(
         self,
         model: Runnable,
-        title_model: Runnable | None = None,
+        model_id: str,
+        fast_model: Runnable | None = None,
         memory_model: Runnable | None = None,
-        provider_model_id: str | None = None,
+        provider_model_id: UUID | None = None,
     ) -> None:
         """Initialize the LLM wrapper.
 
         Args:
             model: The base language model
-            title_model: Optional model for generating titles
+            model_id: Model ID string (e.g., "claude-3-5-sonnet-20241022")
+            fast_model: Optional fast model for quick operations
             memory_model: Optional model for memory operations
-            provider_model_id: Optional provider model identifier
+            provider_model_id: Optional provider model identifier (UUID)
         """
         self.model = model
-        self.title_model = title_model
-        self.title = title_prompt | self.title_model | StrOutputParser()
+        self.model_id = model_id
+        self.fast_model = fast_model
+        self.title = title_prompt | self.fast_model | StrOutputParser()
         self.memory_model = memory_model
         self.memory = memory_prompt | self.memory_model | StrOutputParser()
         self.provider_model_id = provider_model_id
+        self._active_tools: list[BaseTool] | None = None
+
+    async def analyze_complexity(
+        self, state: AgentState, config: RunnableConfig
+    ) -> AgentState:
+        """Analyze complexity only if model supports thinking."""
+
+        # Check if the specific model supports thinking
+        if not THINKING_SUPPORTED_MODELS.get(self.model_id, False):
+            return {"thinking_level": "off"}
+
+        # Check if fast model is available
+        if not self.fast_model:
+            logger.warning("No fast model available for complexity analysis")
+            return {"thinking_level": "off"}
+
+        messages = state.get("messages", [])
+        if not messages:
+            return {"thinking_level": "off"}
+
+        # Handle None content safely
+        latest_message = ""
+        if messages and messages[-1].content:
+            content = messages[-1].content
+            # Handle both string and list content types
+            if isinstance(content, str):
+                latest_message = content
+            elif isinstance(content, list):
+                # Extract text from list content (e.g., multimodal messages)
+                text_parts = []
+                for item in content:
+                    if isinstance(item, str):
+                        text_parts.append(item)
+                    elif isinstance(item, dict) and item.get("type") == "text":
+                        text_parts.append(item.get("text", ""))
+                latest_message = " ".join(text_parts)
+            else:
+                # Fallback for other types
+                latest_message = str(content)
+
+        # Quick prompt for thinking level
+        analysis_prompt = ChatPromptTemplate.from_messages(
+            [
+                (
+                    "system",
+                    """Quickly assess the thinking level needed:
+
+"off": Simple questions, factual queries, basic tasks
+"low": Moderate analysis, straightforward multi-step problems
+"medium": Complex reasoning, deep analysis, creative challenges
+
+Most requests should be "off". Use "low" when some analysis helps.
+Reserve "medium" for truly complex problems.
+
+Consider user intent - if they explicitly ask for careful analysis or thinking,
+lean towards "low" or "medium".""",
+                ),
+                ("human", "{message}"),
+            ]
+        )
+
+        try:
+            chain = analysis_prompt | self.fast_model.with_structured_output(
+                ComplexityAnalysis
+            )
+            analysis = await chain.ainvoke({"message": latest_message}, config)
+
+            return {
+                "thinking_level": analysis.thinking_level,
+                "complexity_analysis": analysis,
+            }
+        except Exception as e:
+            logger.warning(f"Complexity analysis failed: {e}")
+            return {"thinking_level": "off"}
+
+    async def _dynamic_agent_node(
+        self, state: AgentState, config: RunnableConfig
+    ) -> AgentState:
+        """Agent node that dynamically creates model with thinking config."""
+
+        thinking_level = state.get("thinking_level", "off")
+        analysis = state.get("complexity_analysis")
+
+        if analysis:
+            logger.debug(
+                f"Using thinking level: {thinking_level} "
+                f"(confidence: {analysis.confidence}, reason: {analysis.reason})"
+            )
+
+        # Create model with appropriate configuration
+        model = self._create_model_with_thinking(
+            thinking_level=thinking_level, tools=self._active_tools
+        )
+
+        return await self.call_model(model, state, config)
 
     def create_workflow(
         self,
@@ -130,17 +262,13 @@ class LLM:
         workflow = StateGraph(AgentState)
         active_tools = tools or default_tools
 
-        # Bind tools to the model
-        model = self.model.bind_tools(active_tools)
+        # Store tools for dynamic configuration
+        self._active_tools = active_tools or []
 
-        # Add tools to ToolNode
-        workflow.add_node("tools", ToolNode(active_tools))
-
-        async def agent_node(state: AgentState, config: RunnableConfig) -> AgentState:
-            # pass the model with the tools into the call_model function
-            return await self.call_model(model, state, config)
-
-        workflow.add_node("agent", agent_node)
+        # Add tools to our custom ToolNode that handles artifacts
+        workflow.add_node("tools", ArtifactAwareToolNode(active_tools))
+        workflow.add_node("analyze_complexity", self.analyze_complexity)
+        workflow.add_node("agent", self._dynamic_agent_node)
         workflow.add_node("update_title", self.call_title)
 
         if config.memory_enabled:
@@ -149,9 +277,12 @@ class LLM:
         # Entry point
         if config.memory_enabled:
             workflow.set_entry_point("load_memory")
-            workflow.add_edge("load_memory", "agent")
+            workflow.add_edge("load_memory", "analyze_complexity")
         else:
-            workflow.set_entry_point("agent")
+            workflow.set_entry_point("analyze_complexity")
+
+        # Add edge from complexity analysis to agent
+        workflow.add_edge("analyze_complexity", "agent")
 
         workflow.add_conditional_edges(
             "agent",
@@ -261,8 +392,22 @@ class LLM:
         # Filter out messages that don't have content
         messages = state.get("messages", [])
 
+        # Filter out empty AIMessages that are not the last message
+        filtered_messages = []
+        for i, msg in enumerate(messages):
+            if isinstance(msg, AIMessage) and not msg.content and i < len(messages) - 1:
+                # Log the full message being filtered
+                logger.warning(
+                    f"Filtering out empty AIMessage at index {i}/{len(messages)-1}: "
+                    f"{msg.model_dump()}"
+                )
+            else:
+                filtered_messages.append(msg)
+
+        messages = filtered_messages
+
         # Apply caching if enabled
-        if getattr(self, 'caching_enabled', False):
+        if getattr(self, "caching_enabled", False):
             messages = self._apply_caching_to_messages(messages)
 
         chain = chat_prompt | model
@@ -406,6 +551,15 @@ class LLM:
         """
         # Schedule ranking memories task in background
         asyncio.create_task(self.rank_memories(state, config))
+
+    def _create_model_with_thinking(
+        self, thinking_level: ThinkingLevel, tools: list[BaseTool]
+    ) -> Runnable:
+        """Base implementation - override in provider-specific classes."""
+        # Default implementation just binds tools if they exist
+        if tools:
+            return self.model.bind_tools(tools)
+        return self.model
 
     def should_call_tools(self, state: AgentState) -> Literal["tools", "continue"]:
         """Determine if tools should be called based on the last message.

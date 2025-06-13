@@ -1,4 +1,5 @@
 from typing import Literal
+from uuid import UUID
 
 from langchain_openai import ChatOpenAI
 
@@ -11,7 +12,7 @@ class OpenAILLM(LLM):
     def __init__(
         self,
         model_id: str | None = "gpt-4o",
-        provider_model_id: str | None = None,
+        provider_model_id: UUID | None = None,
     ) -> None:
         model = ChatOpenAI(
             model=model_id,
@@ -20,10 +21,9 @@ class OpenAILLM(LLM):
             stream_usage=True,
             max_tokens=None,
         )
-        title_model = ChatOpenAI(
+        fast_model = ChatOpenAI(
             model="gpt-4o-mini",
             temperature=1,
-            max_tokens=42,
         )
         memory_model = ChatOpenAI(
             model=model_id,
@@ -31,7 +31,8 @@ class OpenAILLM(LLM):
         )
         super().__init__(
             model,
-            title_model,
-            memory_model,
+            model_id=model_id,
+            fast_model=fast_model,
+            memory_model=memory_model,
             provider_model_id=provider_model_id,
         )

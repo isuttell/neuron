@@ -23,6 +23,8 @@ async def process_uploaded_file(file: FileStorage) -> tuple[str, str, str]:
     Raises:
         BadRequest: If file type is invalid or file is too large
     """
+    if file.filename is None:
+        raise BadRequest("File has no filename")
     ext: str | None = os.path.splitext(file.filename)[1]
     ext = ext.lower() if ext else None
     if ext is None or ext not in neuron_config.allowed_file_types:

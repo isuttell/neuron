@@ -126,9 +126,9 @@ class TestOpenAIImageGenerationTool:
     def sample_image_base64(self) -> str:
         """Create a sample base64 encoded image for testing."""
         # Create a small test image
-        img = Image.new('RGB', (100, 100), color='red')
+        img = Image.new("RGB", (100, 100), color="red")
         buffer = BytesIO()
-        img.save(buffer, format='PNG')
+        img.save(buffer, format="PNG")
         return base64.b64encode(buffer.getvalue()).decode()
 
     def test_tool_properties(self, tool: OpenAIImageGenerationTool) -> None:
@@ -164,23 +164,20 @@ class TestOpenAIImageGenerationTool:
         mock_media_item.id = "media_123"
 
         with (
-            patch(
-                "neuron_server.tools.openai_image_tool.AsyncOpenAI"
-            ) as mock_openai,
+            patch("neuron_server.tools.openai_image_tool.AsyncOpenAI") as mock_openai,
             patch(
                 "neuron_server.tools.openai_image_tool.MediaItemModel"
             ) as mock_media_model,
             patch("neuron_server.tools.openai_image_tool.create_thumbnails"),
             patch(
                 "neuron_server.tools.openai_image_tool.safe_filename",
-                return_value="test_image.png"
+                return_value="test_image.png",
             ),
             patch("neuron_server.config.config") as mock_config_module,
             patch(
                 "neuron_server.tools.openai_image_tool.Image.open"
             ) as mock_image_open,
         ):
-
             # Mock Image.open and save
             mock_image = MagicMock()
             mock_image_open.return_value = mock_image
@@ -209,11 +206,19 @@ class TestOpenAIImageGenerationTool:
             # Just verify it was called, detailed validation in integration tests
             assert mock_media_model.create.called
 
-            # Verify result format
-            assert "<images>" in result
-            assert "<image id=\"media_123\">" in result
-            assert "<image_id>img_call_123</image_id>" in result
-            assert "![A beautiful cat sitting gracefully]" in result
+            # Verify result format - single image doesn't get wrapped in <images>
+            xml_content, artifact_list = result
+            assert "<image>" in xml_content
+            assert "<id>media_123</id>" in xml_content
+            assert "<image_id>img_call_123</image_id>" in xml_content
+            assert (
+                "<revised_prompt>A beautiful cat sitting gracefully</revised_prompt>"
+                in xml_content
+            )
+
+            # Verify artifact format is a list like other tools
+            assert isinstance(artifact_list, list)
+            assert len(artifact_list) == 1
 
     @pytest.mark.asyncio
     async def test_successful_image_generation_with_multi_turn(
@@ -241,23 +246,20 @@ class TestOpenAIImageGenerationTool:
         mock_media_item.id = "media_456"
 
         with (
-            patch(
-                "neuron_server.tools.openai_image_tool.AsyncOpenAI"
-            ) as mock_openai,
+            patch("neuron_server.tools.openai_image_tool.AsyncOpenAI") as mock_openai,
             patch(
                 "neuron_server.tools.openai_image_tool.MediaItemModel"
             ) as mock_media_model,
             patch("neuron_server.tools.openai_image_tool.create_thumbnails"),
             patch(
                 "neuron_server.tools.openai_image_tool.safe_filename",
-                return_value="test_edit.png"
+                return_value="test_edit.png",
             ),
             patch("neuron_server.config.config") as mock_config_module,
             patch(
                 "neuron_server.tools.openai_image_tool.Image.open"
             ) as mock_image_open,
         ):
-
             # Mock Image.open and save
             mock_image = MagicMock()
             mock_image_open.return_value = mock_image
@@ -291,7 +293,8 @@ class TestOpenAIImageGenerationTool:
             assert input_data[1]["id"] == "img_call_123"
 
             # Verify result contains multi-turn reference
-            assert "<image_id>img_call_456</image_id>" in result
+            xml_content, artifact_list = result
+            assert "<image_id>img_call_456</image_id>" in xml_content
 
     @pytest.mark.asyncio
     async def test_custom_parameters(
@@ -317,23 +320,20 @@ class TestOpenAIImageGenerationTool:
         mock_media_item.id = "media_789"
 
         with (
-            patch(
-                "neuron_server.tools.openai_image_tool.AsyncOpenAI"
-            ) as mock_openai,
+            patch("neuron_server.tools.openai_image_tool.AsyncOpenAI") as mock_openai,
             patch(
                 "neuron_server.tools.openai_image_tool.MediaItemModel"
             ) as mock_media_model,
             patch("neuron_server.tools.openai_image_tool.create_thumbnails"),
             patch(
                 "neuron_server.tools.openai_image_tool.safe_filename",
-                return_value="test_custom.jpg"
+                return_value="test_custom.jpg",
             ),
             patch("neuron_server.config.config") as mock_config_module,
             patch(
                 "neuron_server.tools.openai_image_tool.Image.open"
             ) as mock_image_open,
         ):
-
             # Mock Image.open and save
             mock_image = MagicMock()
             mock_image_open.return_value = mock_image
@@ -376,9 +376,7 @@ class TestOpenAIImageGenerationTool:
         mock_client.responses.create.return_value = mock_response
 
         with (
-            patch(
-                "neuron_server.tools.openai_image_tool.AsyncOpenAI"
-            ) as mock_openai,
+            patch("neuron_server.tools.openai_image_tool.AsyncOpenAI") as mock_openai,
             patch("neuron_server.config.config") as mock_config_module,
         ):
             mock_openai.return_value = mock_client
@@ -411,9 +409,7 @@ class TestOpenAIImageGenerationTool:
         mock_client.responses.create.return_value = mock_response
 
         with (
-            patch(
-                "neuron_server.tools.openai_image_tool.AsyncOpenAI"
-            ) as mock_openai,
+            patch("neuron_server.tools.openai_image_tool.AsyncOpenAI") as mock_openai,
             patch("neuron_server.config.config") as mock_config_module,
         ):
             mock_openai.return_value = mock_client
@@ -438,9 +434,7 @@ class TestOpenAIImageGenerationTool:
         mock_client.responses.create.side_effect = Exception("API Error")
 
         with (
-            patch(
-                "neuron_server.tools.openai_image_tool.AsyncOpenAI"
-            ) as mock_openai,
+            patch("neuron_server.tools.openai_image_tool.AsyncOpenAI") as mock_openai,
             patch("neuron_server.config.config") as mock_config_module,
         ):
             mock_openai.return_value = mock_client
@@ -467,6 +461,7 @@ class TestOpenAIImageGenerationTool:
         mock_call.type = "image_generation_call"
         mock_call.status = "completed"
         mock_call.result = sample_image_base64
+        mock_call.revised_prompt = "A test image in WebP format"
 
         mock_response = MagicMock()
         mock_response.output = [mock_call]
@@ -478,23 +473,20 @@ class TestOpenAIImageGenerationTool:
         mock_media_item.id = "media_webp"
 
         with (
-            patch(
-                "neuron_server.tools.openai_image_tool.AsyncOpenAI"
-            ) as mock_openai,
+            patch("neuron_server.tools.openai_image_tool.AsyncOpenAI") as mock_openai,
             patch(
                 "neuron_server.tools.openai_image_tool.MediaItemModel"
             ) as mock_media_model,
             patch("neuron_server.tools.openai_image_tool.create_thumbnails"),
             patch(
                 "neuron_server.tools.openai_image_tool.safe_filename",
-                return_value="test.webp"
+                return_value="test.webp",
             ),
             patch("neuron_server.config.config") as mock_config_module,
             patch(
                 "neuron_server.tools.openai_image_tool.Image.open"
             ) as mock_image_open,
         ):
-
             # Mock Image.open and save
             mock_image = MagicMock()
             mock_image_open.return_value = mock_image
@@ -517,12 +509,13 @@ class TestOpenAIImageGenerationTool:
             assert call_args[1]["tools"][0]["output_format"] == "webp"
 
             # Verify successful result
-            assert "<images>" in result
-            assert "media_webp" in result
+            xml_content, artifact_list = result
+            assert "<image>" in xml_content
+            assert "media_webp" in xml_content
 
     def test_sync_run_method(self, tool: OpenAIImageGenerationTool) -> None:
         """Test that the sync _run method calls the async _arun method."""
-        with patch.object(tool, '_arun', return_value="test_result") as mock_arun:
+        with patch.object(tool, "_arun", return_value="test_result") as mock_arun:
             result = tool._run(
                 name="test",
                 prompt="test prompt",
@@ -531,7 +524,6 @@ class TestOpenAIImageGenerationTool:
 
             mock_arun.assert_called_once()
             assert result == "test_result"
-
 
     @pytest.mark.asyncio
     async def test_image_url_generation(
@@ -549,6 +541,7 @@ class TestOpenAIImageGenerationTool:
         mock_call.type = "image_generation_call"
         mock_call.status = "completed"
         mock_call.result = sample_image_base64
+        mock_call.revised_prompt = "A darker image from URL"
 
         mock_response = MagicMock()
         mock_response.output = [mock_call]
@@ -560,27 +553,23 @@ class TestOpenAIImageGenerationTool:
         mock_media_item.id = "media_from_url"
 
         with (
-            patch(
-                "neuron_server.tools.openai_image_tool.AsyncOpenAI"
-            ) as mock_openai,
+            patch("neuron_server.tools.openai_image_tool.AsyncOpenAI") as mock_openai,
             patch(
                 "neuron_server.tools.openai_image_tool.MediaItemModel"
             ) as mock_media_model,
             patch("neuron_server.tools.openai_image_tool.create_thumbnails"),
             patch(
                 "neuron_server.tools.openai_image_tool.safe_filename",
-                return_value="test_from_url.png"
+                return_value="test_from_url.png",
             ),
             patch("neuron_server.config.config") as mock_config_module,
             patch(
                 "neuron_server.tools.openai_image_tool.Image.open"
             ) as mock_image_open,
             patch.object(
-                tool, '_download_and_encode_image',
-                return_value=mock_downloaded_base64
+                tool, "_download_and_encode_image", return_value=mock_downloaded_base64
             ) as mock_download,
         ):
-
             # Mock Image.open and save
             mock_image = MagicMock()
             mock_image_open.return_value = mock_image
@@ -615,14 +604,13 @@ class TestOpenAIImageGenerationTool:
             assert content[0]["type"] == "input_text"
             assert content[0]["text"] == "Modify this image to be darker"
             assert content[1]["type"] == "input_image"
-            expected_image_url = (
-                f"data:image/jpeg;base64,{mock_downloaded_base64}"
-            )
+            expected_image_url = f"data:image/jpeg;base64,{mock_downloaded_base64}"
             assert content[1]["image_url"] == expected_image_url
 
             # Verify successful result
-            assert "<images>" in result
-            assert "media_from_url" in result
+            xml_content, artifact_list = result
+            assert "<image>" in xml_content
+            assert "media_from_url" in xml_content
 
     @pytest.mark.asyncio
     async def test_image_url_download_error(
@@ -632,8 +620,7 @@ class TestOpenAIImageGenerationTool:
     ) -> None:
         """Test handling of image download errors."""
         with patch.object(
-            tool, '_download_and_encode_image',
-            side_effect=Exception("Download failed")
+            tool, "_download_and_encode_image", side_effect=Exception("Download failed")
         ):
             result = await tool._arun(
                 name="error_image",

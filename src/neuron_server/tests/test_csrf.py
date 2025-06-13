@@ -1,4 +1,6 @@
+import os
 from datetime import datetime, timedelta
+from unittest.mock import patch
 
 import pytest
 from quart import Quart
@@ -35,7 +37,7 @@ class TestCookieSigning:
         data = {
             "user_id": "test123",
             "csrf_token": "test_token",
-            "expires": (datetime.utcnow() + timedelta(hours=1)).isoformat()
+            "expires": (datetime.utcnow() + timedelta(hours=1)).isoformat(),
         }
 
         # Sign the data
@@ -53,7 +55,7 @@ class TestCookieSigning:
         """Test that expired cookies are rejected."""
         data = {
             "user_id": "test123",
-            "expires": (datetime.utcnow() - timedelta(hours=1)).isoformat()
+            "expires": (datetime.utcnow() - timedelta(hours=1)).isoformat(),
         }
 
         signed = sign_cookie_data(data)
@@ -77,14 +79,14 @@ class TestCookieSigning:
         data = {
             "user_id": "test123",
             "csrf_token": "test_token",
-            "expires": (datetime.utcnow() + timedelta(hours=1)).isoformat()
+            "expires": (datetime.utcnow() + timedelta(hours=1)).isoformat(),
         }
 
         # Sign the data
         signed = sign_cookie_data(data)
 
         # Remove padding from the base64 string
-        signed_no_padding = signed.rstrip('=')
+        signed_no_padding = signed.rstrip("=")
 
         # Verify that the cookie can still be decoded
         verified = verify_cookie_data(signed_no_padding)
@@ -97,7 +99,7 @@ class TestCookieSigning:
         data = {
             "user_id": "auth0|677842260dc433462eaf13a6",
             "csrf_token": "test_token",
-            "expires": (datetime.utcnow() + timedelta(hours=1)).isoformat()
+            "expires": (datetime.utcnow() + timedelta(hours=1)).isoformat(),
         }
 
         # Sign the data
@@ -156,20 +158,16 @@ class TestCSRFDecorator:
         async with app.test_client() as client:
             # Set cookie using set_cookie with proper parameters
             client.set_cookie(
-                server_name="localhost",
-                key="neuron_session",
-                value=cookie_value
+                server_name="localhost", key="neuron_session", value=cookie_value
             )
 
-            response = await client.post(
-                "/test",
-                headers={"X-CSRF-Token": csrf_token}
-            )
+            response = await client.post("/test", headers={"X-CSRF-Token": csrf_token})
 
             assert response.status_code == 200
             data = await response.get_json()
             assert data["status"] == "ok"
 
+    @patch.dict(os.environ, {"DISABLE_CSRF": ""}, clear=False)
     async def test_requires_csrf_missing_token(self):
         """Test CSRF decorator with missing token."""
         app = Quart(__name__)
@@ -185,9 +183,7 @@ class TestCSRFDecorator:
         async with app.test_client() as client:
             # Set cookie using set_cookie
             client.set_cookie(
-                server_name="localhost",
-                key="neuron_session",
-                value=cookie_value
+                server_name="localhost", key="neuron_session", value=cookie_value
             )
 
             # No CSRF token in request
@@ -195,6 +191,7 @@ class TestCSRFDecorator:
 
             assert response.status_code == 403
 
+    @patch.dict(os.environ, {"DISABLE_CSRF": ""}, clear=False)
     async def test_requires_csrf_invalid_token(self):
         """Test CSRF decorator with invalid token."""
         app = Quart(__name__)
@@ -210,14 +207,11 @@ class TestCSRFDecorator:
         async with app.test_client() as client:
             # Set cookie using set_cookie
             client.set_cookie(
-                server_name="localhost",
-                key="neuron_session",
-                value=cookie_value
+                server_name="localhost", key="neuron_session", value=cookie_value
             )
 
             response = await client.post(
-                "/test",
-                headers={"X-CSRF-Token": "invalid_token"}
+                "/test", headers={"X-CSRF-Token": "invalid_token"}
             )
 
             assert response.status_code == 403
@@ -251,14 +245,11 @@ class TestCSRFDecorator:
         async with app.test_client() as client:
             # Set cookie using set_cookie
             client.set_cookie(
-                server_name="localhost",
-                key="neuron_session",
-                value=cookie_value
+                server_name="localhost", key="neuron_session", value=cookie_value
             )
 
             response = await client.post(
-                "/test",
-                form={"csrf_token": csrf_token, "message": "test"}
+                "/test", form={"csrf_token": csrf_token, "message": "test"}
             )
 
             assert response.status_code == 200
@@ -273,13 +264,13 @@ class TestCSRFExtraction:
         @app.route("/test", methods=["POST"])
         async def test_endpoint():
             from quart import request
+
             token = await extract_csrf_token(request)
             return {"token": token}
 
         async with app.test_client() as client:
             response = await client.post(
-                "/test",
-                headers={"X-CSRF-Token": "test_token"}
+                "/test", headers={"X-CSRF-Token": "test_token"}
             )
 
             data = await response.get_json()

@@ -228,7 +228,7 @@ Prompt Tips:
             "understand better what generated image looks like. Use this while "
             "telling stories to better incorporate the image into the story."
         ),
-        default=True,
+        default=False,
     )
 
 
@@ -250,6 +250,7 @@ class ReplicateImageGenerationTool(BaseTool):
     args_schema: type[ReplicateImageGenerationToolArgs] = (
         ReplicateImageGenerationToolArgs
     )
+    response_format: str = "content_and_artifact"
 
     async def _process_image_prompt(
         self, image_url: str | None
@@ -263,6 +264,7 @@ class ReplicateImageGenerationTool(BaseTool):
             cookies = None
             if neuron_config.static_require_auth:
                 from neuron_server.controllers.csrf import create_session_cookie
+
                 session_cookie, _ = create_session_cookie("system", include_csrf=False)
                 cookies = {"neuron_session": session_cookie}
 
@@ -344,7 +346,7 @@ class ReplicateImageGenerationTool(BaseTool):
         self,
         result: replicate.helpers.FileOutput,
         params: ImageProcessingParams,
-    ) -> str:
+    ) -> tuple[str, dict]:
         """Save and process a single generated image."""
         filename = safe_filename(
             params.model.replace("/", "_").split(":")[0],
@@ -393,19 +395,36 @@ class ReplicateImageGenerationTool(BaseTool):
         )
         media_item = await MediaItemModel.create(params=create_params)
 
-        if described_image:
-            return f"""\
-<image id="{media_item.id}">
-    <display>![{described_image.caption}]({url})</display>
-    <description>{described_image.description}</description>
-    <prompt_comparison>{described_image.prompt_comparison}</prompt_comparison>
-</image>
-"""
-        return f"""\
-<image id="{media_item.id}">
-    <display>![{params.prompt}]({url})</display>
-</image>
-"""
+        # Prepare artifact for UI using typed models
+        from neuron_server.tools.artifact_types import (
+            ToolArtifactMetadata,
+            ToolMediaArtifact,
+            ToolMediaItem,
+        )
+
+        metadata = ToolArtifactMetadata(
+            model=params.model,
+            seed=params.input_args.get("seed"),
+            aspect_ratio=params.input_args.get("aspect_ratio"),
+            style=params.input_args.get("style"),
+            num_inference_steps=params.input_args.get("num_inference_steps"),
+            prompt=params.prompt,
+        )
+
+        artifact_item = ToolMediaItem(
+            id=str(media_item.id),
+            url=url,
+            caption=described_image.caption if described_image else params.name,
+            description=described_image.description if described_image else "",
+            prompt_comparison=(
+                described_image.prompt_comparison if described_image else None
+            ),
+            metadata=metadata,
+        )
+
+        artifact = ToolMediaArtifact(media_type="image", items=[artifact_item])
+
+        return artifact.to_xml(), artifact_item
 
     def _run(
         self,
@@ -432,8 +451,8 @@ class ReplicateImageGenerationTool(BaseTool):
         raw: bool = False,
         image_prompt_strength: float | None = None,
         seed: int | None = None,
-        describe: bool = True,
-    ) -> str:
+        describe: bool = False,
+    ) -> tuple[str, dict]:
         logger.debug(f"Generating image using {model}")
         try:
             # Process image prompt if provided
@@ -462,7 +481,9 @@ class ReplicateImageGenerationTool(BaseTool):
             if not isinstance(output, list):
                 output = [output]
 
-            results = []
+            llm_contents = []
+            artifact_items = []
+
             for i, result in enumerate(output):
                 assert isinstance(result, replicate.helpers.FileOutput)
                 params = self.ImageProcessingParams(
@@ -474,9 +495,21 @@ class ReplicateImageGenerationTool(BaseTool):
                     config=config,
                     index=i,
                 )
-                results.append(await self._save_and_process_image(result, params))
+                llm_content, artifact_data = await self._save_and_process_image(
+                    result, params
+                )
+                llm_contents.append(llm_content)
+                artifact_items.append(artifact_data)
 
-            return "<images>\n" + "\n".join(results) + "\n</images>"
+            # Create typed artifact with all images
+            from neuron_server.tools.artifact_types import ToolMediaArtifact
+
+            artifact = ToolMediaArtifact(
+                media_type="image",
+                items=artifact_items,  # List of ToolMediaItem instances
+            )
+
+            return artifact.to_xml(), [artifact.model_dump()]
         except Exception as error:
             logger.error(error, exc_info=True)
             raise error

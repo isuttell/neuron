@@ -25,12 +25,6 @@ vi.mock("../../actions/threadActions", () => ({
   updateThreadUserRole: vi.fn(),
 }));
 
-// Mock the useToast hook
-vi.mock("../../hooks/use-toast", () => ({
-  useToast: () => ({
-    toast: vi.fn(),
-  }),
-}));
 
 // Mock the getThreadUsers and getUsers selectors
 vi.mock("../../slices/threadsSlice", () => ({

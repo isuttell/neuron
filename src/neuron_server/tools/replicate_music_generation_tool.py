@@ -106,6 +106,7 @@ class ReplicateMusicGenerationTool(BaseTool):
     args_schema: type[ReplicateMusicGenerationToolArgs] = (
         ReplicateMusicGenerationToolArgs
     )
+    response_format: str = "content_and_artifact"
 
     ref: str = (
         "meta/musicgen:671ac645ce5e552cc63a54a2bbff63fcf798043055d2dac5fc9e36a837eedcfb"
@@ -121,7 +122,7 @@ class ReplicateMusicGenerationTool(BaseTool):
         config: RunnableConfig,
         input_audio: str | None = None,
         **kwargs: Any,
-    ) -> str:
+    ) -> tuple[str, dict]:
         logger.debug(f"Generating music with prompt: {prompt}")
 
         input_args = {
@@ -184,9 +185,36 @@ class ReplicateMusicGenerationTool(BaseTool):
                 name=name,
                 description=prompt,
             )
-            await MediaItemModel.create(params=create_params)
+            media_item = await MediaItemModel.create(params=create_params)
             logger.debug(f"Saved generated audio to {file_path} <{url}>")
-            return f'<audio controls src="{url}"></audio>\nFilename: {file_path}'
+
+            # Prepare artifact for UI using typed models
+            from neuron_server.tools.artifact_types import (
+                ToolArtifactMetadata,
+                ToolMediaArtifact,
+                ToolMediaItem,
+            )
+
+            metadata = ToolArtifactMetadata(
+                model=self.ref,
+                prompt=prompt,
+                duration=float(kwargs.get("duration", 6)),
+                output_format=kwargs.get("output_format", "mp3"),
+                temperature=kwargs.get("temperature"),
+                cfg_strength=kwargs.get("classifier_free_guidance"),
+            )
+
+            artifact_item = ToolMediaItem(
+                id=str(media_item.id),
+                url=url,
+                caption=name,
+                description=prompt,
+                metadata=metadata,
+            )
+
+            artifact = ToolMediaArtifact(media_type="audio", items=[artifact_item])
+
+            return artifact.to_xml(), [artifact.model_dump()]
 
         except Exception as e:
             logger.error(e, exc_info=True)

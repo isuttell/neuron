@@ -156,8 +156,11 @@ class TestTools:
 
             # The mock TavilySearchResults won't be a BaseTool in tests
             # but schedule tools should be
-            schedule_tools = [t for t in tools if hasattr(t, '__class__') and
-                            'Schedule' in t.__class__.__name__]
+            schedule_tools = [
+                t
+                for t in tools
+                if hasattr(t, "__class__") and "Schedule" in t.__class__.__name__
+            ]
             assert all(isinstance(tool, BaseTool) for tool in schedule_tools)
 
     @pytest.mark.asyncio

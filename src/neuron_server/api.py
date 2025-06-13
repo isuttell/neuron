@@ -66,6 +66,7 @@ from neuron_server.event_router import EventRouter
 from neuron_server.graph.connection import connection_manager
 from neuron_server.pubsub import client
 from neuron_server.task_scheduler import TaskScheduler
+from neuron_server.type_defs.request import NeuronRequest
 from neuron_server.util.image_utilities import create_thumbnails
 
 logger = logging.getLogger(__name__)
@@ -84,6 +85,7 @@ app = Quart(
     static_folder=config.client_assets_folder if config.serve_client else None,
     root_path="/",
 )
+app.request_class = NeuronRequest
 
 
 blueprint = Blueprint(
@@ -96,6 +98,7 @@ blueprint = Blueprint(
 
 # Client routes - conditionally served based on config
 if config.serve_client:
+
     @blueprint.get("/")
     @blueprint.get("/thread/<thread_id>")
     @blueprint.get("/personalities")
@@ -110,7 +113,6 @@ if config.serve_client:
     @blueprint.get("/share/<list_id>")
     async def index(**kwargs: Any) -> Response:
         return await blueprint.send_static_file("index.html")
-
 
     # Assets don't change so we can cache them for a long time
     # Public route for logo without authentication
@@ -219,7 +221,9 @@ async def refresh_csrf() -> tuple[dict[str, str], int]:
     Refresh CSRF token endpoint.
     Used by the frontend when CSRF token becomes invalid.
     """
-    from quart import jsonify, request
+    from quart import jsonify
+
+    from neuron_server.type_defs.request_proxy import request
 
     # Create new session cookie with CSRF token
     cookie_value, csrf_token = create_session_cookie(
@@ -227,10 +231,7 @@ async def refresh_csrf() -> tuple[dict[str, str], int]:
     )
 
     # Create response with new CSRF token
-    response = jsonify({
-        "status": "success",
-        "csrf_token": csrf_token
-    })
+    response = jsonify({"status": "success", "csrf_token": csrf_token})
 
     # Set new session cookie
     response.set_cookie(
@@ -240,7 +241,7 @@ async def refresh_csrf() -> tuple[dict[str, str], int]:
         httponly=True,
         samesite="Lax",
         secure=config.is_production,
-        path="/"  # Ensure cookie is sent with all requests
+        path="/",  # Ensure cookie is sent with all requests
     )
 
     return response, 200
@@ -281,3 +282,9 @@ async def startup() -> None:
 async def shutdown() -> None:
     connection_manager.cleanup()
     logger.info("Neo4j connection closed")
+
+    # Clean up tools
+    from neuron_server.llms.tools import cleanup
+
+    await cleanup()
+    logger.info("Tools cleaned up")

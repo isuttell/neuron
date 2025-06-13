@@ -7,96 +7,148 @@ import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { CornerDownLeft, Upload } from "lucide-react";
-import { useState } from "react";
-import { useParams } from "react-router-dom";
-import { postMessageByThread } from "../actions/messageActions";
-import { useAppDispatch } from "../hooks";
-import { useToast } from "../hooks/use-toast";
-import { Thread } from "../types/thread";
-import { StatusMessage } from "./StatusMessage";
+import { useState, useRef, useEffect, ReactNode } from "react";
 
+/**
+ * Props for the MessageForm component - a pure presentation component for message input
+ */
 interface MessageFormProps {
+  /** Whether the form should be disabled (prevents all interactions) */
   disabled?: boolean;
-  onSubmit?: (value: string) => void;
+  /** Whether the form is in a loading state (shows spinner, disables submit) */
+  isLoading?: boolean;
+  /** Placeholder text for the textarea input */
+  placeholder?: string;
+  /** Additional CSS classes to apply to the form element */
   className?: string;
-  lastMessageAt?: number;
-  thread: Thread;
+  /**
+   * Callback fired when the form is submitted
+   * @param value - The trimmed text content of the message
+   * @param file - Optional file attachment (File object or Blob for recordings)
+   */
+  onSubmit: (value: string, file?: File | Blob) => void;
+  /**
+   * Callback fired when a file is added (upload or recording)
+   * @param file - The file or audio blob that was added
+   * @param isRecording - True if this is an audio recording, false for file upload
+   */
+  onFileAdd?: (file: File | Blob, isRecording: boolean) => void;
+  /**
+   * Callback fired when a file attachment is removed
+   */
+  onFileRemove?: () => void;
+
+  /**
+   * Optional children to render to the left of the buttons
+   */
+  children?: ReactNode
 }
 
+/**
+ * MessageForm - A pure presentation component for message input with file attachments
+ *
+ * This component provides a rich text input form with support for:
+ * - Text message input with keyboard shortcuts (Enter to submit, Shift+Enter for newlines)
+ * - File upload with drag & drop support
+ * - Audio recording with auto-send functionality
+ * - Visual feedback for loading and disabled states
+ * - Attachment indicators and removal
+ * - Prompt suggestions dropdown
+ *
+ * The component is designed to be reusable across different contexts by using
+ * callback props for all business logic operations.
+ *
+ * @example
+ * ```tsx
+ * <MessageForm
+ *   onSubmit={(text, file) => console.log('Submitted:', text, file)}
+ *   onFileAdd={(file, isRecording) => showToast('File added')}
+ *   onFileRemove={() => showToast('File removed')}
+ *   placeholder="Type your message..."
+ *   isLoading={false}
+ *   disabled={false}
+ * />
+ * ```
+ */
 export default function MessageForm({
   disabled = false,
-  onSubmit,
+  isLoading = false,
+  placeholder = "Type your message here...",
   className = "",
-  thread,
+  onSubmit,
+  onFileAdd,
+  onFileRemove,
+  children = undefined,
 }: MessageFormProps) {
-  const { toast } = useToast();
-  const dispatch = useAppDispatch();
   const [value, setValue] = useState("");
-  const { threadId } = useParams();
   const [file, setFile] = useState<File | Blob | undefined>(undefined);
   const [isAudioRecording, setIsAudioRecording] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const handleSubmit = (
-    e:
-      | React.FormEvent<HTMLFormElement>
-      | React.FormEvent<HTMLButtonElement>
-      | React.KeyboardEvent<HTMLTextAreaElement>
-  ) => {
-    e.preventDefault();
-    if ((!value.trim().length && !file) || !threadId) {
+  useEffect(() => {
+    // Focus textarea when thread becomes idle
+    if (!isLoading) {
+      setTimeout(() => {
+        textareaRef.current?.focus();
+      }, 50);
+    }
+  }, [isLoading]);
+
+  /**
+   * Handles form submission with validation and cleanup
+   *
+   * @param e - Optional form event (prevented if provided)
+   */
+  const handleSubmit = (e?: React.FormEvent) => {
+    if (e) {
+      e.preventDefault();
+    }
+
+    if ((!value.trim().length && !file) || isLoading) {
       return;
     }
-    onSubmit?.(value.trim());
+
+    onSubmit(value.trim(), file);
     setValue("");
     setFile(undefined);
     setIsAudioRecording(false);
-    dispatch(
-      postMessageByThread({
-        threadId,
-        prompt: value.trim(),
-        personalityId: thread.personality_id,
-        file,
-      })
-    ).catch((error) => {
-      toast({
-        variant: "destructive",
-        title: "Failed to send message",
-        description:
-          error instanceof Error
-            ? error.message
-            : "An unexpected error occurred",
-      });
-    });
   };
 
+  /**
+   * Handles file selection from the file input
+   *
+   * @param e - File input change event
+   */
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       setFile(file);
       setIsAudioRecording(false);
-      toast({
-        title: "Attachment added",
-        description: `${file.name} has been added to the message`,
-      });
+      onFileAdd?.(file, false);
     }
   };
 
+  const isDisabled = disabled || isLoading;
+  const isSubmitDisabled = !value.trim().length && !file;
+
   return (
-    <form className={`${className}`} onSubmit={handleSubmit}>
+    <form className={className} onSubmit={handleSubmit}>
       <Label htmlFor="message" className="sr-only">
         Message
       </Label>
       <div className="space-y-2">
         <Textarea
+          ref={textareaRef}
           id="message"
-          placeholder="Type your message here..."
+          placeholder={placeholder}
           className="flex min-h-[60px] w-full rounded-md border border-input bg-transparent text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 p-4"
           value={value}
-          disabled={disabled}
+          disabled={isDisabled}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {
-              handleSubmit(e);
+              e.preventDefault();
+              handleSubmit();
             }
           }}
         />
@@ -107,116 +159,78 @@ export default function MessageForm({
             onRemove={() => {
               setFile(undefined);
               setIsAudioRecording(false);
-              toast({
-                title: "Attachment removed",
-              });
+              onFileRemove?.();
             }}
           />
         )}
       </div>
-      <div className="flex items-center gap-2 pt-2">
-        {thread.status !== "idle" && (
-          <StatusMessage
-            status={thread.status}
-            tagClassName={cn(
-              "text-sm capitalize inline-flex items-center rounded-md  px-2 py-1 font-medium ring-1 ring-inset ring-gray-100/10",
-              thread.status === "idle"
-                ? "bg-muted text-muted-foreground"
-                : "bg-accent text-accent-foreground"
-            )}
-          />
-        )}
+      <div className="flex flex-row flex-nowrap items-center gap-2 pt-2">
+        {children && <div>
+          {children}
+        </div>}
         <div className="flex-1" />
-        <div className="flex gap-2">
-          <Button
-            type="button"
-            size="sm"
-            variant={file ? "default" : "outline"}
-            disabled={disabled}
-            onClick={() => {
-              if (file) {
-                setFile(undefined);
-                setIsAudioRecording(false);
-                toast({
-                  title: "Attachment removed",
-                });
-              } else {
-                document.getElementById("file-upload")?.click();
-              }
-            }}
-          >
-            <Upload className="size-3.5" />
-          </Button>
-          <input
-            id="file-upload"
-            type="file"
-            className="hidden"
-            onChange={handleFileUpload}
-            accept=".png,.jpg,.jpeg,.gif,.webp,.pdf,.md,.txt,.csv,.srt,.vtt,.mp3,.wav,.mp4,.heic,.heif"
-          />
-          <AudioRecorder
-            disabled={disabled || !!file}
-            onRecordingComplete={(blob) => {
-              setFile(blob);
-              setIsAudioRecording(true);
-              toast({
-                title: "Recording sent",
-                description: "Message added to conversation",
-              });
-            }}
-            onAutoSend={(blob) => {
-              if (!threadId) return;
-              setFile(blob);
-              setIsAudioRecording(true);
-              dispatch(
-                postMessageByThread({
-                  threadId,
-                  prompt: value,
-                  personalityId: thread.personality_id,
-                  file: blob,
-                })
-              ).catch((error) => {
-                toast({
-                  variant: "destructive",
-                  title: "Failed to send message",
-                  description:
-                    error instanceof Error
-                      ? error.message
-                      : "An unexpected error occurred",
-                });
-              });
+        <Button
+          type="button"
+          size="sm"
+          variant={file ? "default" : "outline"}
+          className="size-10 gap-1.5 flex-shrink-0"
+          disabled={isDisabled}
+          onClick={() => {
+            if (file) {
               setFile(undefined);
               setIsAudioRecording(false);
-              setValue("");
-            }}
-          />
-        </div>
+              onFileRemove?.();
+            } else {
+              document.getElementById("file-upload")?.click();
+            }
+          }}
+        >
+          <Upload className="size-3.5" />
+        </Button>
+        <AudioRecorder
+          className="size-10 flex-shrink-0"
+          disabled={isDisabled || !!file}
+          onRecordingComplete={(blob) => {
+            setFile(blob);
+            setIsAudioRecording(true);
+            onFileAdd?.(blob, true);
+          }}
+          onAutoSend={(blob) => {
+            onSubmit(value, blob);
+            setValue("");
+            setFile(undefined);
+            setIsAudioRecording(false);
+          }}
+        />
         <PromptDropdown
-          disabled={disabled}
+          disabled={isDisabled}
           onSelectPrompt={(promptText) => setValue(promptText)}
         />
+        <input
+          id="file-upload"
+          type="file"
+          className="hidden"
+          onChange={handleFileUpload}
+          accept=".png,.jpg,.jpeg,.gif,.webp,.pdf,.md,.txt,.csv,.srt,.vtt,.mp3,.wav,.mp4,.heic,.heif"
+        />
         <Button
-          onClick={handleSubmit}
-          data-testid="submit-button"
+          onClick={() => handleSubmit()}
           type="submit"
           size="sm"
+          data-testid="submit-button"
+          disabled={isSubmitDisabled || isDisabled}
           className={cn(
-            "ml-auto gap-1.5",
-            thread.status === "idle"
-              ? "bg-accent text-accent-foreground"
-              : "bg-primary text-primary-foreground"
+            "size-10 flex-shrink-0",
+            isLoading && "cursor-progress",
+            isSubmitDisabled || isDisabled
+              ? "bg-muted text-muted-foreground cursor-not-allowed"
+              : "bg-accent text-accent-foreground"
           )}
-          disabled={disabled || (!value.length && !file)}
         >
-          {thread.status !== "idle" ? (
-            <>
-              <Spinner className="size-3.5" />
-            </>
+          {isLoading ? (
+            <Spinner className="size-3.5" />
           ) : (
-            <>
-              Send
-              <CornerDownLeft className="size-3.5" />
-            </>
+            <CornerDownLeft className="size-3.5" />
           )}
         </Button>
       </div>

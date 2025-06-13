@@ -1,10 +1,12 @@
 """CSRF protection for Neuron API."""
+
 import base64
 import binascii
 import hashlib
 import hmac
 import json
 import logging
+import os
 import secrets
 import sys
 from datetime import datetime, timedelta
@@ -45,6 +47,7 @@ T = TypeVar("T")
 
 class CSRFError(Forbidden):
     """Custom CSRF error exception"""
+
     def __init__(self, description: str = "CSRF validation failed") -> None:
         super().__init__(description=description)
 
@@ -61,9 +64,7 @@ def sign_cookie_data(data: dict[str, Any]) -> str:
 
     # Create HMAC signature
     signature = hmac.new(
-        SECRET_KEY.encode(),
-        json_data.encode(),
-        hashlib.sha256
+        SECRET_KEY.encode(), json_data.encode(), hashlib.sha256
     ).hexdigest()
 
     # Return base64-encoded signed data
@@ -78,7 +79,7 @@ def verify_cookie_data(signed_data: str) -> dict[str, Any] | None:
         # Add padding if missing - some systems strip the '=' padding
         padding_needed = len(signed_data) % 4
         if padding_needed:
-            signed_data += '=' * (4 - padding_needed)
+            signed_data += "=" * (4 - padding_needed)
 
         # Decode base64
         decoded = base64.urlsafe_b64decode(signed_data.encode()).decode()
@@ -97,9 +98,7 @@ def verify_cookie_data(signed_data: str) -> dict[str, Any] | None:
 
         # Verify signature
         expected_signature = hmac.new(
-            SECRET_KEY.encode(),
-            json_data.encode(),
-            hashlib.sha256
+            SECRET_KEY.encode(), json_data.encode(), hashlib.sha256
         ).hexdigest()
 
         if not hmac.compare_digest(signature, expected_signature):
@@ -198,7 +197,7 @@ async def extract_csrf_token(request: Request) -> str | None:
     return csrf_token
 
 
-async def rotate_csrf_token(response: Response, user_id: str) -> str:
+async def rotate_csrf_token(response: Response, user_id: str) -> str | None:
     """
     Rotate CSRF token after successful state-changing request.
     Returns the new CSRF token.
@@ -217,7 +216,7 @@ async def rotate_csrf_token(response: Response, user_id: str) -> str:
         httponly=True,
         samesite="Lax",
         secure=IS_PRODUCTION,  # Use secure flag in production
-        path="/"  # Ensure cookie is sent with all requests
+        path="/",  # Ensure cookie is sent with all requests
     )
 
     if config.debug:
@@ -276,9 +275,7 @@ async def _validate_csrf_tokens(request: Request, cookie_data: dict[str, Any]) -
             f"on {request.method} {request.path}"
         )
         if config.debug:
-            logger.debug(
-                f"Expected: {stored_csrf[:8]}..., Got: {provided_csrf[:8]}..."
-            )
+            logger.debug(f"Expected: {stored_csrf[:8]}..., Got: {provided_csrf[:8]}...")
         raise CSRFError("Invalid CSRF token")
 
 
@@ -291,9 +288,7 @@ async def _handle_token_rotation(result: object, user_id: str) -> None:
     if new_token:
         result.headers["X-New-CSRF-Token"] = new_token
         if config.debug:
-            logger.debug(
-                f"Added new CSRF token to response headers for user {user_id}"
-            )
+            logger.debug(f"Added new CSRF token to response headers for user {user_id}")
 
 
 def requires_csrf(func: Callable[..., T]) -> Callable[..., T]:
@@ -301,8 +296,18 @@ def requires_csrf(func: Callable[..., T]) -> Callable[..., T]:
     Decorator to require CSRF validation for state-changing operations.
     Use this on POST, PUT, DELETE, PATCH endpoints.
     """
+
     @wraps(func)
     async def decorated(*args: object, **kwargs: object) -> T:
+        # Skip CSRF check in debug mode if DISABLE_CSRF is set
+        if config.debug and os.environ.get("DISABLE_CSRF", "").lower() == "true":
+            if request.method not in ["GET", "HEAD", "OPTIONS"]:
+                logger.warning(
+                    f"CSRF check bypassed in debug mode for "
+                    f"{request.method} {request.path}"
+                )
+            return await func(*args, **kwargs)
+
         # Skip CSRF check for safe methods
         if request.method in ["GET", "HEAD", "OPTIONS"]:
             return await func(*args, **kwargs)
@@ -314,14 +319,14 @@ def requires_csrf(func: Callable[..., T]) -> Callable[..., T]:
         await _validate_csrf_tokens(request, cookie_data)
 
         # Attach validated user data to request
-        request.user_id = cookie_data.get("user_id")
-        request.session_data = cookie_data
+        request.user_id = cookie_data.get("user_id")  # type: ignore[attr-defined]
+        request.session_data = cookie_data  # type: ignore[attr-defined]
 
         # Execute the protected function
         result = await func(*args, **kwargs)
 
         # Handle token rotation
-        await _handle_token_rotation(result, request.user_id)
+        await _handle_token_rotation(result, request.user_id)  # type: ignore[attr-defined]
 
         return result
 
@@ -333,6 +338,7 @@ def requires_csrf_or_api_key(func: Callable[..., T]) -> Callable[..., T]:
     Decorator that allows either CSRF validation or API key authentication.
     Useful for endpoints that need to support both browser and API access.
     """
+
     @wraps(func)
     async def decorated(*args: object, **kwargs: object) -> T:
         # Check for API key first

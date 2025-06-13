@@ -113,13 +113,13 @@ class TestParseDiceExpression:
         """Test parsing invalid dice expressions."""
         # These expressions should definitely fail the regex pattern
         invalid_expressions = [
-            "",            # Empty string
-            "d20",         # Missing count
-            "4d",          # Missing sides
-            "4+2",         # Missing 'd'
-            "4k6",         # Invalid separator
-            "d6+3",        # Missing count
-            "hello",       # Completely invalid
+            "",  # Empty string
+            "d20",  # Missing count
+            "4d",  # Missing sides
+            "4+2",  # Missing 'd'
+            "4k6",  # Invalid separator
+            "d6+3",  # Missing count
+            "hello",  # Completely invalid
         ]
 
         for expression in invalid_expressions:
@@ -137,8 +137,8 @@ class TestParseDiceExpression:
         # These expressions are accepted by the current implementation
         # but might be considered invalid from a user perspective
         expressions_with_incomplete_modifiers = [
-            "4d6+",    # Plus sign without a number
-            "4d6-",    # Minus sign without a number
+            "4d6+",  # Plus sign without a number
+            "4d6-",  # Minus sign without a number
         ]
 
         for expression in expressions_with_incomplete_modifiers:
@@ -234,5 +234,5 @@ class TestDiceTool:
 
             # Check totals
             assert "total=30" in result  # 20 + 10 = 30
-            assert "total=5" in result   # 4 + 2 - 1 = 5
-            assert "total=8" in result   # 5 + 3 = 8
+            assert "total=5" in result  # 4 + 2 - 1 = 5
+            assert "total=8" in result  # 5 + 3 = 8

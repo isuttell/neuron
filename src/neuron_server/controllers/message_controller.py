@@ -2,7 +2,7 @@ import logging
 from uuid import UUID
 
 from openai import AsyncOpenAI
-from quart import Blueprint, request
+from quart import Blueprint
 from werkzeug.exceptions import BadRequest, NotFound
 
 from neuron_server.config import config as neuron_config
@@ -22,6 +22,7 @@ from neuron_server.models.media_item_model import MediaItemModel
 from neuron_server.models.thread_user_model import ThreadUserModel
 from neuron_server.models.user_model import UserModel
 from neuron_server.pubsub import pubsub
+from neuron_server.type_defs.request_proxy import request
 from neuron_server.util.file_utilities import process_uploaded_file
 
 logger = logging.getLogger(__name__)
@@ -45,6 +46,7 @@ async def get_thread_messages(thread_id: UUID) -> dict[str, list[dict]]:
         ThreadMessage(**message.model_dump(), thread_id=thread.id)
         for message in (state.values.get("messages", []))
         if message.type != "system"
+        and not message.additional_kwargs.get("hidden", False)
     ]
 
     # Get media items for this thread
@@ -157,6 +159,7 @@ async def post_thread_message(thread_id: UUID) -> tuple[dict[str, str], int]:
         raise BadRequest("Either prompt or file is required")
 
     prompt = await process_message_request(files, form)
+    temp_id = form.get("temp_id")
 
     await agent.astream(
         {
@@ -165,6 +168,7 @@ async def post_thread_message(thread_id: UUID) -> tuple[dict[str, str], int]:
             "user_id": request.token.user_id,
             "username": request.token.nickname,
             "prompt": prompt,
+            "temp_id": temp_id,
         }
     )
 
@@ -178,7 +182,7 @@ async def apost_message(event: PostMessage) -> None:
     await agent.astream(
         {
             "thread_id": event.thread_id,
-            "personality_id": UUID(event.personality_id),  # Convert string to UUID
+            "personality_id": event.personality_id,
             "user_id": None,
             "prompt": event.prompt,
         }

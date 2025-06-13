@@ -26,7 +26,6 @@ from neuron_server.tools.ffmpeg_tool import FFmpegTool
 from neuron_server.tools.glados_tts_tool import GladosToolset
 from neuron_server.tools.graph_arxiv_import_tool import GraphArxivImportTool
 from neuron_server.tools.graph_import_tool import GraphImportTool
-from neuron_server.tools.graph_query_tool import GraphQueryTool
 from neuron_server.tools.graph_question_tool import GraphQuestionTool
 from neuron_server.tools.graph_website_import_tool import GraphWebsiteImportTool
 from neuron_server.tools.hd2_galactic_war_report_tool import (
@@ -66,6 +65,7 @@ from neuron_server.tools.openweathermap_forecast_tool import (
 from neuron_server.tools.openweathermap_overview_tool import (
     OpenWeatherMapOverviewTool,
 )
+from neuron_server.tools.pyodide_code_interpreter_tool import PyodideCodeInterpreterTool
 from neuron_server.tools.read_thread_memory_tool import ReadThreadMemoryTool
 from neuron_server.tools.replicate_audio_generation_tool import (
     ReplicateAudioGenerationTool,
@@ -73,6 +73,7 @@ from neuron_server.tools.replicate_audio_generation_tool import (
 from neuron_server.tools.replicate_image_generation_tool import (
     ReplicateImageGenerationTool,
 )
+from neuron_server.tools.replicate_kokoro_tts_tool import ReplicateKokoroTTSTool
 from neuron_server.tools.replicate_kontext_image_tool import (
     ReplicateKontextImageTool,
 )
@@ -115,7 +116,6 @@ tool_sets: dict[str, list[BaseTool]] = {
     "graph": [
         ArxivSearchTool(),
         GraphQuestionTool(),
-        GraphQueryTool(),
         GraphArxivImportTool(),
         GraphImportTool(),
         GraphWebsiteImportTool(),
@@ -147,6 +147,7 @@ tool_sets: dict[str, list[BaseTool]] = {
     "tts": [
         ElevenLabsTTSTool(),
         ReplicatePlayDialogTool(),
+        ReplicateKokoroTTSTool(),
         FFmpegTool(),
         WhisperSTTTool(),
     ],
@@ -202,6 +203,7 @@ tool_sets: dict[str, list[BaseTool]] = {
     ],
     "code_interpreter": [
         CodeInterpreterTool(),
+        PyodideCodeInterpreterTool(),
     ],
 }
 
@@ -261,7 +263,6 @@ async def get_tools(query: str) -> list[BaseTool]:
         categories = [name for name in query.strip("+").split("+") if name in tool_sets]
         ts = [tool for name in categories for tool in tool_sets[name]]
 
-
     # Required Tools
     if config.memory_enabled:
         ts.extend(memory_tools)
@@ -270,3 +271,16 @@ async def get_tools(query: str) -> list[BaseTool]:
     ts.extend(thread_memory_tools)
 
     return list({tool.name: tool for tool in ts}.values())
+
+
+async def cleanup() -> None:
+    """Clean up resources for all tools on shutdown."""
+    # Iterate through all tool categories
+    for _category, tools in tool_sets.items():
+        for tool in tools:
+            # Check if tool has a cleanup method
+            if hasattr(tool, "cleanup") and callable(tool.cleanup):
+                await tool.cleanup()
+            # Also check for __del__ for backward compatibility
+            elif hasattr(tool, "__del__"):
+                tool.__del__()

@@ -73,6 +73,7 @@ class ReplicateAudioGenerationTool(BaseTool):
     args_schema: type[ReplicateAudioGenerationToolArgs] = (
         ReplicateAudioGenerationToolArgs
     )
+    response_format: str = "content_and_artifact"
 
     ref: str = f"zsxkib/mmaudio:{MMAUDIO_MODEL_HASH}"
 
@@ -99,7 +100,7 @@ class ReplicateAudioGenerationTool(BaseTool):
         cfg_strength: float = 4.5,
         seed: int | None = None,
         negative_prompt: str = "music, voice, ethereal",
-    ) -> str:
+    ) -> tuple[str, dict]:
         logger.debug(f"Generating audio for {video_url} with prompt: {prompt}")
         tmp_upload_file = os.path.abspath(
             os.path.join(neuron_config.temp_folder, uuid4().hex)
@@ -109,6 +110,7 @@ class ReplicateAudioGenerationTool(BaseTool):
             cookies = None
             if neuron_config.static_require_auth:
                 from neuron_server.controllers.csrf import create_session_cookie
+
                 session_cookie, _ = create_session_cookie("system", include_csrf=False)
                 cookies = {"neuron_session": session_cookie}
 
@@ -163,11 +165,36 @@ class ReplicateAudioGenerationTool(BaseTool):
             )
             media_item = await MediaItemModel.create(params=create_params)
             logger.debug(f"Saved generated video to {file_path} <{url}>")
-            return f"""\
-<video id="{media_item.id}">
-    <display><video src="{url}"></video></display>
-    <filename>{file_path}</filename>
-</video>"""
+
+            # Prepare artifact for UI using typed models
+            from neuron_server.tools.artifact_types import (
+                ToolArtifactMetadata,
+                ToolMediaArtifact,
+                ToolMediaItem,
+            )
+
+            metadata = ToolArtifactMetadata(
+                model=self.ref,
+                seed=input_args.get("seed"),
+                cfg_strength=cfg_strength,
+                num_steps=num_steps,
+                negative_prompt=negative_prompt,
+                duration=float(duration),
+                audio_added=True,
+                prompt=prompt,
+            )
+
+            artifact_item = ToolMediaItem(
+                id=str(media_item.id),
+                url=url,
+                caption=name,
+                description=prompt,
+                metadata=metadata,
+            )
+
+            artifact = ToolMediaArtifact(media_type="video", items=[artifact_item])
+
+            return artifact.to_xml(), [artifact.model_dump()]
         except Exception as e:
             logger.error(e, exc_info=True)
             raise

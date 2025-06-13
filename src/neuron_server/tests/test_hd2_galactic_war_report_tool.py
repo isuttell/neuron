@@ -226,7 +226,9 @@ War status data appears to be unavailable."""
             patch(
                 "neuron_server.tools.hd2_galactic_war_report_tool.get_war_status",
                 return_value={
-                    "globalEvents": [], "planetStatus": [], "planetAttacks": []
+                    "globalEvents": [],
+                    "planetStatus": [],
+                    "planetAttacks": [],
                 },
             ),
             patch(

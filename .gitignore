@@ -31,3 +31,6 @@ secrets/
 **/.claude/settings.local.json
 tsconfig.app.tsbuildinfo
 tsconfig.node.tsbuildinfo
+
+# mpy
+.mypy_cache/

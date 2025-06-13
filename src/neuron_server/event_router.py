@@ -33,7 +33,7 @@ class EventRouter:
     def __init__(self, routes: dict[str, tuple[BaseModel, Callable]] = None) -> None:
         self.routes = routes or {}
 
-    def on(self, model: BaseModel) -> Callable[[Callable], Callable]:
+    def on(self, model: type[BaseModel]) -> Callable[[Callable], Callable]:
         def decorator(func: Callable[..., Coroutine]) -> Callable:
             if model.__name__ in self.routes:
                 raise ValueError(f"Event type {model.__name__} already registered")
@@ -45,7 +45,7 @@ class EventRouter:
     def register_controller(self, event_router: Self) -> None:
         self.routes.update(event_router.routes)
 
-    async def dispatch(self, event: dict[str, Any]) -> Coroutine[Any, Any, None]:
+    async def dispatch(self, event: dict[str, Any]) -> None:
         event_type = event.get("type")
         if not event_type:
             raise ValueError("Event type is required")

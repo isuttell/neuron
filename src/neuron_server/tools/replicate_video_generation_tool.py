@@ -88,6 +88,7 @@ complete.
     args_schema: type[ReplicateVideoGenerationToolArgs] = (
         ReplicateVideoGenerationToolArgs
     )
+    response_format: str = "content_and_artifact"
 
     def _run(
         self,
@@ -105,7 +106,7 @@ complete.
         prompt_optimizer: bool = True,
         image_url: str | None = None,
         seed: int | None = None,
-    ) -> str:
+    ) -> tuple[str, dict]:
         start_time = time.perf_counter()
         source = f" from {image_url}" if image_url else ""
         logger.debug(f"Generating video with prompt{source}: {prompt}")
@@ -118,6 +119,7 @@ complete.
                 cookies = None
                 if neuron_config.static_require_auth:
                     from neuron_server.controllers.csrf import create_session_cookie
+
                     session_cookie, _ = create_session_cookie(
                         "system", include_csrf=False
                     )
@@ -176,11 +178,37 @@ complete.
             media_item = await MediaItemModel.create(params=create_params)
             duration = time.perf_counter() - start_time
             logger.debug(f"Saved video to {file_path} <{url}> - {duration:.2f}s")
-            return f"""\
-<video id="{media_item.id}">
-    <display><video src="{url}"></video></display>
-    <filename>{file_path}</filename>
-</video>"""
+
+            # Prepare artifact for UI using typed models
+            from neuron_server.tools.artifact_types import (
+                ToolArtifactMetadata,
+                ToolMediaArtifact,
+                ToolMediaItem,
+            )
+            from neuron_server.util.media_utilities import get_media_duration
+
+            # Get actual duration from the generated file
+            video_duration = await get_media_duration(file_path)
+
+            metadata = ToolArtifactMetadata(
+                model=ref,
+                seed=input_args.get("seed"),
+                prompt=prompt,
+                revised_prompt=prompt if prompt_optimizer else None,
+                duration=video_duration,
+            )
+
+            artifact_item = ToolMediaItem(
+                id=str(media_item.id),
+                url=url,
+                caption=name,
+                description=prompt,
+                metadata=metadata,
+            )
+
+            artifact = ToolMediaArtifact(media_type="video", items=[artifact_item])
+
+            return artifact.to_xml(), [artifact.model_dump()]
         except Exception as e:
             logger.error(e, exc_info=True)
             raise

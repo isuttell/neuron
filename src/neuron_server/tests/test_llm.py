@@ -11,6 +11,8 @@ from pydantic import BaseModel
 
 from neuron_server.llms.llm import (
     LLM,
+    THINKING_SUPPORTED_MODELS,
+    ComplexityAnalysis,
     MemoryRecallRanking,
     MemoryResponse,
 )
@@ -108,8 +110,8 @@ def fake_model() -> FakeRunnable:
 
 
 @pytest.fixture
-def fake_title_model() -> FakeRunnable:
-    """Create a fake title model that returns a title string."""
+def fake_fast_model() -> FakeRunnable:
+    """Create a fake fast model that returns a title string."""
     return FakeRunnable('"Test Title"')
 
 
@@ -132,13 +134,14 @@ def fake_memory_model() -> FakeRunnable:
 @pytest.fixture
 def llm(
     fake_model: FakeRunnable,
-    fake_title_model: FakeRunnable,
+    fake_fast_model: FakeRunnable,
     fake_memory_model: FakeRunnable,
 ) -> LLM:
     """Create an LLM instance with fake models."""
     return LLM(
         model=fake_model,
-        title_model=fake_title_model,
+        model_id="test-model-id",
+        fast_model=fake_fast_model,
         memory_model=fake_memory_model,
         provider_model_id="test-model",
     )
@@ -148,7 +151,7 @@ def llm(
 async def test_init(llm: LLM) -> None:
     """Test LLM initialization."""
     assert llm.model is not None
-    assert llm.title_model is not None
+    assert llm.fast_model is not None
     assert llm.memory_model is not None
     assert llm.provider_model_id == "test-model"
 
@@ -316,7 +319,8 @@ def test_should_call_tools() -> None:
     fake_model = FakeRunnable(AIMessage(content="test"))
     llm_instance = LLM(
         model=fake_model,
-        title_model=fake_model,
+        model_id="test-model-id",
+        fast_model=fake_model,
         memory_model=fake_model,
     )
 
@@ -335,7 +339,8 @@ def test_should_call_update_memory() -> None:
     fake_model = FakeRunnable(AIMessage(content="test"))
     llm_instance = LLM(
         model=fake_model,
-        title_model=fake_model,
+        model_id="test-model-id",
+        fast_model=fake_model,
         memory_model=fake_model,
     )
 
@@ -379,3 +384,287 @@ async def test_aget_state(llm: LLM) -> None:
 
         # Verify state matches expected
         assert state == expected_state
+
+
+@pytest.mark.asyncio
+async def test_analyze_complexity_unsupported_model(llm: LLM) -> None:
+    """Test complexity analysis with unsupported model."""
+    # Use a model that doesn't support thinking
+    llm.model_id = "gpt-4"
+
+    state = {"messages": [AIMessage(content="What is 2+2?")]}
+    result = await llm.analyze_complexity(state, {})
+
+    assert result["thinking_level"] == "off"
+    assert "complexity_analysis" not in result
+
+
+@pytest.mark.asyncio
+async def test_analyze_complexity_supported_model_simple() -> None:
+    """Test complexity analysis with supported model for simple query."""
+    # Create a fake fast model that returns a simple analysis
+    analysis = ComplexityAnalysis(
+        thinking_level="off", confidence=0.9, reason="Simple arithmetic question"
+    )
+    fake_fast_model = FakeRunnable(analysis)
+
+    llm = LLM(
+        model=FakeRunnable(AIMessage(content="test")),
+        model_id="claude-sonnet-4-20250514",  # Supported model
+        fast_model=fake_fast_model,
+        memory_model=FakeRunnable(MemoryResponse(memory_recall_rankings=[])),
+        provider_model_id="test-provider-model",
+    )
+
+    state = {"messages": [AIMessage(content="What is 2+2?")]}
+    result = await llm.analyze_complexity(state, {})
+
+    assert result["thinking_level"] == "off"
+    assert result["complexity_analysis"] == analysis
+
+
+@pytest.mark.asyncio
+async def test_analyze_complexity_supported_model_complex() -> None:
+    """Test complexity analysis with supported model for complex query."""
+    # Create a fake fast model that returns a complex analysis
+    analysis = ComplexityAnalysis(
+        thinking_level="medium", confidence=0.85, reason="Complex reasoning required"
+    )
+    fake_fast_model = FakeRunnable(analysis)
+
+    llm = LLM(
+        model=FakeRunnable(AIMessage(content="test")),
+        model_id="claude-opus-4-20250514",  # Supported model
+        fast_model=fake_fast_model,
+        memory_model=FakeRunnable(MemoryResponse(memory_recall_rankings=[])),
+        provider_model_id="test-provider-model",
+    )
+
+    state = {
+        "messages": [
+            AIMessage(
+                content="Explain quantum mechanics and its philosophical implications"
+            )
+        ]
+    }
+    result = await llm.analyze_complexity(state, {})
+
+    assert result["thinking_level"] == "medium"
+    assert result["complexity_analysis"] == analysis
+
+
+@pytest.mark.asyncio
+async def test_analyze_complexity_empty_messages(llm: LLM) -> None:
+    """Test complexity analysis with empty messages."""
+    llm.provider_model_id = "claude-sonnet-4-20250514"
+
+    state = {"messages": []}
+    result = await llm.analyze_complexity(state, {})
+
+    assert result["thinking_level"] == "off"
+
+
+@pytest.mark.asyncio
+async def test_analyze_complexity_empty_content(llm: LLM) -> None:
+    """Test complexity analysis with empty message content."""
+    llm.model_id = "claude-sonnet-4-20250514"
+
+    # Create a message with empty content
+    message = AIMessage(content="")
+    state = {"messages": [message]}
+    result = await llm.analyze_complexity(state, {})
+
+    assert result["thinking_level"] == "off"
+
+
+@pytest.mark.asyncio
+async def test_analyze_complexity_fast_model_failure() -> None:
+    """Test complexity analysis when fast model fails."""
+
+    # Create a fast model that raises an exception when used
+    class FailingRunnable(FakeRunnable):
+        def with_structured_output(self, cls):
+            # Return self so the chain works
+            return self
+
+        async def ainvoke(self, *args, **kwargs):
+            raise Exception("Fast model error")
+
+    llm = LLM(
+        model=FakeRunnable(AIMessage(content="test")),
+        model_id="claude-sonnet-4-20250514",
+        fast_model=FailingRunnable(None),  # Will fail when invoked
+        memory_model=FakeRunnable(MemoryResponse(memory_recall_rankings=[])),
+        provider_model_id="test-provider-model",
+    )
+
+    state = {"messages": [AIMessage(content="Test message")]}
+
+    # The analyze_complexity method should catch the exception and return "off"
+    result = await llm.analyze_complexity(state, {})
+
+    # Should fall back to "off" on error
+    assert result.get("thinking_level") == "off"
+    assert "complexity_analysis" not in result
+
+
+@pytest.mark.asyncio
+async def test_analyze_complexity_list_content() -> None:
+    """Test complexity analysis with list content (multimodal messages)."""
+    analysis = ComplexityAnalysis(
+        thinking_level="low", confidence=0.8, reason="Question with image"
+    )
+    fake_fast_model = FakeRunnable(analysis)
+
+    llm = LLM(
+        model=FakeRunnable(AIMessage(content="test")),
+        model_id="claude-sonnet-4-20250514",
+        fast_model=fake_fast_model,
+        memory_model=FakeRunnable(MemoryResponse(memory_recall_rankings=[])),
+        provider_model_id="test-provider-model",
+    )
+
+    # Create a message with list content (simulating multimodal)
+    list_content = [
+        {"type": "text", "text": "What is in this image?"},
+        {"type": "image", "source": {"data": "base64data"}},
+    ]
+    state = {"messages": [AIMessage(content=list_content)]}
+    result = await llm.analyze_complexity(state, {})
+
+    # Should extract the text and analyze it
+    assert result.get("thinking_level") == "low"
+    assert result.get("complexity_analysis") == analysis
+
+
+@pytest.mark.asyncio
+async def test_dynamic_agent_node() -> None:
+    """Test dynamic agent node with different thinking levels."""
+    # Create a mock model
+    mock_model = MagicMock()
+    mock_model.bind_tools = MagicMock(return_value=mock_model)
+
+    # Create LLM with mock _create_model_with_thinking
+    llm = LLM(
+        model=mock_model,
+        model_id="claude-sonnet-4-20250514",
+        fast_model=FakeRunnable("test"),
+        memory_model=FakeRunnable(MemoryResponse(memory_recall_rankings=[])),
+        provider_model_id="test-provider-model",
+    )
+    llm._active_tools = []
+
+    # Mock the call_model method
+    llm.call_model = AsyncMock(
+        return_value={"messages": [AIMessage(content="Response")]}
+    )
+
+    # Test with thinking level "off"
+    state = {"thinking_level": "off"}
+    result = await llm._dynamic_agent_node(state, {})
+
+    # Verify call_model was called
+    llm.call_model.assert_called_once()
+    assert result["messages"][0].content == "Response"
+
+
+@pytest.mark.asyncio
+async def test_dynamic_agent_node_with_analysis() -> None:
+    """Test dynamic agent node with complexity analysis."""
+    analysis = ComplexityAnalysis(
+        thinking_level="low", confidence=0.8, reason="Moderate complexity"
+    )
+
+    llm = LLM(
+        model=FakeRunnable(AIMessage(content="test")),
+        model_id="claude-sonnet-4-20250514",
+        fast_model=FakeRunnable("test"),
+        memory_model=FakeRunnable(MemoryResponse(memory_recall_rankings=[])),
+        provider_model_id="test-provider-model",
+    )
+    llm._active_tools = []
+    llm.call_model = AsyncMock(
+        return_value={"messages": [AIMessage(content="Response")]}
+    )
+
+    state = {"thinking_level": "low", "complexity_analysis": analysis}
+    result = await llm._dynamic_agent_node(state, {})
+
+    # Verify call_model was called
+    llm.call_model.assert_called_once()
+    assert result["messages"][0].content == "Response"
+
+
+def test_create_model_with_thinking_base_implementation() -> None:
+    """Test base implementation of _create_model_with_thinking."""
+    mock_model = MagicMock()
+    mock_model.bind_tools = MagicMock(return_value=mock_model)
+
+    llm = LLM(
+        model=mock_model,
+        model_id="test-model-id",
+        fast_model=FakeRunnable("test"),
+        memory_model=FakeRunnable(MemoryResponse(memory_recall_rankings=[])),
+    )
+
+    tools = [MagicMock(spec=BaseTool)]
+    result = llm._create_model_with_thinking("off", tools)
+
+    # Base implementation should just bind tools
+    mock_model.bind_tools.assert_called_once_with(tools)
+    assert result == mock_model
+
+
+def test_create_model_with_thinking_none_tools() -> None:
+    """Test _create_model_with_thinking with None tools."""
+    mock_model = MagicMock()
+    mock_model.bind_tools = MagicMock(return_value=mock_model)
+
+    llm = LLM(
+        model=mock_model,
+        model_id="test-model-id",
+        fast_model=FakeRunnable("test"),
+        memory_model=FakeRunnable(MemoryResponse(memory_recall_rankings=[])),
+    )
+
+    # Should handle None tools gracefully - returns model without binding
+    result = llm._create_model_with_thinking("off", None)
+    mock_model.bind_tools.assert_not_called()
+    assert result == mock_model
+
+
+@pytest.mark.asyncio
+async def test_workflow_with_thinking_analysis() -> None:
+    """Test workflow includes complexity analysis node."""
+    with (
+        patch("neuron_server.llms.llm.config", MockConfig()),
+        patch("neuron_server.llms.llm.default_tools", []),
+        patch("neuron_server.llms.llm.ArtifactAwareToolNode") as mock_tool_node,
+    ):
+        # Mock the ArtifactAwareToolNode to avoid any side effect issues
+        mock_tool_node.return_value = MagicMock()
+
+        llm = LLM(
+            model=FakeRunnable(AIMessage(content="test")),
+            model_id="claude-sonnet-4-20250514",
+            fast_model=FakeRunnable("test"),
+            memory_model=FakeRunnable(MemoryResponse(memory_recall_rankings=[])),
+            provider_model_id="test-provider-model",
+        )
+
+        workflow = llm.create_workflow()
+
+        # Verify that the workflow was created
+        assert workflow is not None
+
+        # Verify active tools are stored
+        assert llm._active_tools is not None
+        assert llm._active_tools == []  # We patched default_tools to be empty
+
+
+def test_thinking_supported_models_constant() -> None:
+    """Test THINKING_SUPPORTED_MODELS contains expected models."""
+    assert "claude-sonnet-4-20250514" in THINKING_SUPPORTED_MODELS
+    assert "claude-opus-4-20250514" in THINKING_SUPPORTED_MODELS
+    assert THINKING_SUPPORTED_MODELS["claude-sonnet-4-20250514"] is True
+    assert THINKING_SUPPORTED_MODELS["claude-opus-4-20250514"] is True

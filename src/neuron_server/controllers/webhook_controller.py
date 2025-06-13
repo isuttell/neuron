@@ -1,13 +1,14 @@
 from uuid import UUID
 
 from pydantic import BaseModel
-from quart import Blueprint, request
+from quart import Blueprint
 from werkzeug.exceptions import BadRequest
 
 from neuron_server.controllers.auth import requires_api_key
 from neuron_server.decorators import rate_limit
 from neuron_server.llms.agent import execute_agent
 from neuron_server.logger import logger
+from neuron_server.type_defs.request_proxy import request
 
 blueprint = Blueprint("webhooks", __name__)
 
@@ -36,6 +37,8 @@ async def prompt() -> dict[str, str]:
             "follow questions. This is an automated request."
         ),
         personality_id=payload.personality_id,
+        user_id="auth0|677842260dc433462eaf13a6",
+        username="Isaac",
     )
     logger.info(f"prompt.response={content}")
     return {"status": "success", "content": content}

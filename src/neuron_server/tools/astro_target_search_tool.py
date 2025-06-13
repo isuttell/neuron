@@ -168,8 +168,8 @@ class AstroTargetSearchTool(BaseTool):
         AND CONTAINS(POINT('ICRS', RA, DEC), CIRCLE('ICRS', {ra}, {dec}, {radius})) = 1
         AND (
             (
-                flux.flux <= {float(max_flux)}
-                AND flux.flux >= {float(min_flux)}
+                flux.flux <= {float(max_flux) if max_flux is not None else "NULL"}
+                AND flux.flux >= {float(min_flux) if min_flux is not None else "NULL"}
             )
             OR flux.flux IS NULL
         )

@@ -1,4 +1,5 @@
 from typing import Literal
+from uuid import UUID
 
 from langchain_google_genai import ChatGoogleGenerativeAI
 
@@ -11,14 +12,14 @@ class GoogleLLM(LLM):
     def __init__(
         self,
         model_id: str | None = "gemini-2.5-pro-preview-03-25",
-        provider_model_id: str | None = None,
+        provider_model_id: UUID | None = None,
     ) -> None:
         model = ChatGoogleGenerativeAI(
             model=model_id,
             temperature=1,
             max_tokens=None,
         )
-        title_model = ChatGoogleGenerativeAI(
+        fast_model = ChatGoogleGenerativeAI(
             model=model_id,
             temperature=1,
         )
@@ -28,7 +29,8 @@ class GoogleLLM(LLM):
         )
         super().__init__(
             model,
-            title_model,
-            memory_model,
+            model_id=model_id,
+            fast_model=fast_model,
+            memory_model=memory_model,
             provider_model_id=provider_model_id,
         )

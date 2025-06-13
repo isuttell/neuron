@@ -103,6 +103,7 @@ class OpenAIImageGenerationTool(BaseTool):
         "with image IDs for display and future reference."
     )
     args_schema: type[OpenAIImageArgs] = OpenAIImageArgs
+    response_format: str = "content_and_artifact"
 
     def _run(
         self,
@@ -121,6 +122,7 @@ class OpenAIImageGenerationTool(BaseTool):
             cookies = None
             if neuron_config.static_require_auth:
                 from neuron_server.controllers.csrf import create_session_cookie
+
                 session_cookie, _ = create_session_cookie("system", include_csrf=False)
                 cookies = {"neuron_session": session_cookie}
 
@@ -166,7 +168,7 @@ class OpenAIImageGenerationTool(BaseTool):
         output_format: Literal["png", "jpeg", "webp"] = "png",
         image_id: Optional[str] = None,
         image_url: Optional[str] = None,
-    ) -> str:
+    ) -> tuple[str, dict]:
         """
         Generate an image using OpenAI's GPT-Image-1 model via Responses API.
 
@@ -181,7 +183,7 @@ class OpenAIImageGenerationTool(BaseTool):
             image_url: Optional image URL to use as reference.
 
         Returns:
-            str: A markdown string containing the generated image(s) with image IDs.
+            tuple: (llm_content, artifact) - XML content and UI artifact
         """
         try:
             client = AsyncOpenAI(api_key=neuron_config.openai_api_key)
@@ -247,10 +249,11 @@ class OpenAIImageGenerationTool(BaseTool):
             ]
 
             if not image_generation_calls:
-                return "Error: No image generation calls found in response"
+                return "Error: No image generation calls found in response", {}
 
             now = datetime.now(UTC).astimezone()
-            results = []
+            llm_contents = []
+            artifact_items = []
 
             for i, call in enumerate(image_generation_calls):
                 if call.status != "completed":
@@ -272,7 +275,7 @@ class OpenAIImageGenerationTool(BaseTool):
                 if output_format == "png":
                     pnginfo = PngImagePlugin.PngInfo()
                     pnginfo.add_text("Description", prompt)
-                    if hasattr(call, 'revised_prompt'):
+                    if hasattr(call, "revised_prompt"):
                         pnginfo.add_text("RevisedPrompt", call.revised_prompt)
                     pnginfo.add_text("Model", "gpt-image-1")
                     pnginfo.add_text(
@@ -301,7 +304,7 @@ class OpenAIImageGenerationTool(BaseTool):
                 url = f"{neuron_config.static_content_url}/{filename}"
 
                 # Create media item record
-                description = getattr(call, 'revised_prompt', prompt)
+                description = getattr(call, "revised_prompt", prompt)
                 create_params = MediaItemModel.CreateParams(
                     thread_id=config["configurable"].get("thread_id"),
                     user_id=config["configurable"].get("user_id"),
@@ -313,23 +316,66 @@ class OpenAIImageGenerationTool(BaseTool):
                 media_item = await MediaItemModel.create(params=create_params)
                 logger.debug(f"Saved generated image to {file_path} <{url}>")
 
-                results.append(
-                    f"""\
-<image id="{media_item.id}">
+                # XML content for LLM
+                llm_content = f"""<image>
+    <id>{media_item.id}</id>
+    <url>{url}</url>
     <image_id>{call.id}</image_id>
-    <display>![{description}]({url})</display>
-</image>
-"""
+    <caption>{name}</caption>
+    <prompt>{prompt}</prompt>
+    <revised_prompt>{description}</revised_prompt>
+</image>"""
+                llm_contents.append(llm_content)
+
+                # Artifact for UI using typed models
+                from neuron_server.tools.artifact_types import (
+                    ToolArtifactMetadata,
+                    ToolMediaItem,
                 )
 
-            if not results:
-                return "Error: No images were successfully generated"
+                metadata = ToolArtifactMetadata(
+                    model="gpt-image-1",
+                    image_id=call.id,
+                    aspect_ratio=size,
+                    quality=quality,
+                    background=background,
+                    output_format=output_format,
+                    revised_prompt=description,
+                )
 
-            return "<images>\n" + "\n".join(results) + "\n</images>"
+                artifact_item = ToolMediaItem(
+                    id=str(media_item.id),
+                    url=url,
+                    caption=name,
+                    description=description,
+                    metadata=metadata,
+                )
+                artifact_items.append(artifact_item)
+
+            if not llm_contents:
+                return "Error: No images were successfully generated", {}
+
+            # Combine XML content
+            if len(llm_contents) == 1:
+                full_llm_content = llm_contents[0]
+            else:
+                full_llm_content = (
+                    "<images>\n" + "\n".join(llm_contents) + "\n</images>"
+                )
+
+            # Create typed artifact
+            from neuron_server.tools.artifact_types import ToolMediaArtifact
+
+            artifact = ToolMediaArtifact(
+                media_type="image",
+                items=artifact_items,  # List of ToolMediaItem instances
+            )
+
+            return full_llm_content, [artifact.model_dump()]
 
         except Exception as e:
             logger.error(e, exc_info=True)
-            return f"Error generating image: {str(e)}"
+            return f"Error generating image: {str(e)}", {}
 
 
 if __name__ == "__main__":

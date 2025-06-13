@@ -13,11 +13,16 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useToast } from "@/hooks/use-toast";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { toast } from "sonner";
 import { useMediaPlayer } from "@/hooks/useMediaPlayer";
 import { MediaItem } from "@/types/media";
-import { Copy, Download } from "lucide-react";
-import { memo, useEffect, useId, useRef } from "react";
+import { Copy, Download, Info } from "lucide-react";
+import React, { memo, useEffect, useId, useRef } from "react";
 interface VideoContentProps {
   url: string;
   autoPlay?: boolean;
@@ -25,6 +30,11 @@ interface VideoContentProps {
   loop?: boolean;
   showControls?: boolean;
   mediaItem?: MediaItem;
+  caption?: string;
+  description?: string;
+  duration?: number;
+  metadata?: Record<string, unknown>;
+  preload?: "none" | "metadata" | "auto";
 }
 
 const VideoContent: React.FC<VideoContentProps> = ({
@@ -34,8 +44,12 @@ const VideoContent: React.FC<VideoContentProps> = ({
   controls = false,
   loop = false,
   showControls = false,
+  caption,
+  description,
+  duration,
+  metadata,
+  preload = "metadata",
 }) => {
-  const { toast } = useToast();
   const thumbnailId = useId();
   const dialogId = useId();
   const dialogVideoRef = useRef<HTMLVideoElement>(null);
@@ -66,7 +80,7 @@ const VideoContent: React.FC<VideoContentProps> = ({
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <div className="w-full relative max-h-[1024px] max-w-[1024px]">
+        <div className="relative max-h-[400px] max-w-[500px] w-fit">
           <video
             className="rounded-lg w-full h-full object-contain cursor-pointer"
             src={url}
@@ -74,7 +88,13 @@ const VideoContent: React.FC<VideoContentProps> = ({
             muted={true}
             controls={controls}
             loop={loop}
+            preload={preload}
           />
+          {duration && (
+            <div className="absolute top-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
+              {Math.floor(duration / 60)}:{(Math.floor(duration) % 60).toString().padStart(2, '0')}
+            </div>
+          )}
           {showControls && (
             <div className="absolute bottom-2 right-2 space-x-2">
               {mediaItem && (
@@ -91,9 +111,7 @@ const VideoContent: React.FC<VideoContentProps> = ({
                     onClick={(e) => {
                       e.preventDefault();
                       navigator.clipboard.writeText(url);
-                      toast({
-                        title: "Video URL copied to clipboard",
-                      });
+                      toast("Video URL copied to clipboard");
                     }}
                   >
                     <Copy />
@@ -123,15 +141,80 @@ const VideoContent: React.FC<VideoContentProps> = ({
                 </TooltipTrigger>
                 <TooltipContent>Download video</TooltipContent>
               </Tooltip>
+              {metadata && Object.keys(metadata).length > 0 && (
+                <Popover>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                          }}
+                        >
+                          <Info />
+                        </Button>
+                      </PopoverTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent>View metadata</TooltipContent>
+                  </Tooltip>
+                  <PopoverContent className="w-80">
+                    <div className="space-y-2">
+                      <h4 className="font-medium text-sm">Generation Details</h4>
+                      <div className="text-sm space-y-1">
+                        {metadata.model ? (
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Model:</span>
+                            <span className="font-mono text-xs">
+                            {String(metadata.model)}
+                          </span>
+                          </div>
+                        ) : null}
+                        {metadata.duration ? (
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Duration:</span>
+                            <span>{Math.floor((metadata.duration as number) / 60)}:{(Math.floor(metadata.duration as number) % 60).toString().padStart(2, '0')}</span>
+                          </div>
+                        ) : null}
+                        {metadata.fps ? (
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">FPS:</span>
+                            <span>
+                            {String(metadata.fps)}
+                          </span>
+                          </div>
+                        ) : null}
+                        {metadata.format ? (
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Format:</span>
+                            <span>
+                            {String(metadata.format)}
+                          </span>
+                          </div>
+                        ) : null}
+                        {metadata.seed ? (
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Seed:</span>
+                            <span className="font-mono text-xs">
+                            {String(metadata.seed)}
+                          </span>
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              )}
             </div>
           )}
         </div>
       </DialogTrigger>
       <DialogContent className="max-w-[95vw] max-h-[95vh] mx-auto box-border h-full flex-1 flex flex-col">
         <DialogHeader>
-          <DialogTitle>{mediaItem?.name || "Video Details"}</DialogTitle>
-          {mediaItem?.description && (
-            <DialogDescription>{mediaItem.description}</DialogDescription>
+          <DialogTitle>{caption || mediaItem?.name || "Video Details"}</DialogTitle>
+          {(description || mediaItem?.description) && (
+            <DialogDescription>{description || mediaItem?.description}</DialogDescription>
           )}
         </DialogHeader>
         <div className="flex-1 overflow-hidden">
@@ -156,9 +239,7 @@ const VideoContent: React.FC<VideoContentProps> = ({
             onClick={(e) => {
               e.preventDefault();
               navigator.clipboard.writeText(url);
-              toast({
-                title: "Image URL copied to clipboard",
-              });
+              toast("Video URL copied to clipboard");
             }}
           >
             <Copy /> Copy

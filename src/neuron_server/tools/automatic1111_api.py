@@ -46,7 +46,9 @@ async def make_post(
     try:
         async with (
             aiohttp.ClientSession() as session,
-            session.post(url, json=json, timeout=timeout) as response,
+            session.post(
+                url, json=json, timeout=aiohttp.ClientTimeout(total=timeout)
+            ) as response,
         ):
             response.raise_for_status()
             return await response.json()

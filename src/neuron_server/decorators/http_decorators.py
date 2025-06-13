@@ -44,7 +44,7 @@ def cors(
                 "http://127.0.0.1:3000",
                 "http://127.0.0.1:5173",
                 "http://127.0.0.1:5174",
-                "https://neuron.zaks.io"
+                "https://neuron.zaks.io",
             ]
         else:
             # Production: only allow specific domain
@@ -178,11 +178,11 @@ class RateLimiter:
 
         # Check various proxy headers in order of reliability
         for header in [
-            "CF-Connecting-IP",      # Cloudflare
-            "True-Client-IP",        # Some CDNs
-            "X-Forwarded-For",       # Standard (Traefik uses this)
-            "X-Real-IP",             # Nginx
-            "X-Client-IP",           # Legacy
+            "CF-Connecting-IP",  # Cloudflare
+            "True-Client-IP",  # Some CDNs
+            "X-Forwarded-For",  # Standard (Traefik uses this)
+            "X-Real-IP",  # Nginx
+            "X-Client-IP",  # Legacy
         ]:
             ip_value = request.headers.get(header)
             if ip_value:
@@ -263,23 +263,19 @@ class RateLimiter:
                 logger.error(
                     f"Redis connection failed after {max_retries + 1} attempts "
                     f"for {command_name}: {e}",
-                    exc_info=True
+                    exc_info=True,
                 )
                 if fail_fast:
                     raise
             except redis.TimeoutError as e:
                 # Don't retry timeouts - Redis is overwhelmed
                 logger.error(
-                    f"Redis timeout error on {command_name}: {e}",
-                    exc_info=True
+                    f"Redis timeout error on {command_name}: {e}", exc_info=True
                 )
                 if fail_fast:
                     raise
             except redis.RedisError as e:
-                logger.error(
-                    f"Redis error on {command_name}: {e}",
-                    exc_info=True
-                )
+                logger.error(f"Redis error on {command_name}: {e}", exc_info=True)
                 if fail_fast:
                     raise
 
@@ -301,20 +297,18 @@ class RateLimiter:
         # Remove old entries outside the window
         await self._execute_redis_command(
             "zremrangebyscore",
-            lambda: self.redis_client.zremrangebyscore(key, 0, window_start)
+            lambda: self.redis_client.zremrangebyscore(key, 0, window_start),
         )
 
         # Count current requests in window
         current_count = await self._execute_redis_command(
-            "zcard",
-            lambda: self.redis_client.zcard(key)
+            "zcard", lambda: self.redis_client.zcard(key)
         )
 
         if current_count >= limit:
             # Get the oldest entry to calculate retry time
             oldest_entries = await self._execute_redis_command(
-                "zrange",
-                lambda: self.redis_client.zrange(key, 0, 0, withscores=True)
+                "zrange", lambda: self.redis_client.zrange(key, 0, 0, withscores=True)
             )
             if oldest_entries:
                 oldest_time = oldest_entries[0][1]
@@ -324,14 +318,12 @@ class RateLimiter:
 
         # Add current request
         await self._execute_redis_command(
-            "zadd",
-            lambda: self.redis_client.zadd(key, {str(now): now})
+            "zadd", lambda: self.redis_client.zadd(key, {str(now): now})
         )
 
         # Set expiration on the key
         await self._execute_redis_command(
-            "expire",
-            lambda: self.redis_client.expire(key, window_seconds + 10)
+            "expire", lambda: self.redis_client.expire(key, window_seconds + 10)
         )
 
         return True, 0
@@ -433,7 +425,9 @@ def rate_limit(enabled: bool = True, limit_type: str = "api") -> Callable:
                 except (TypeError, AttributeError):
                     # In test environment, redis may not have these exception types
                     is_redis_error = type(e).__name__ in (
-                        'ConnectionError', 'TimeoutError', 'RedisError'
+                        "ConnectionError",
+                        "TimeoutError",
+                        "RedisError",
                     )
 
                 if is_redis_error:
@@ -441,7 +435,7 @@ def rate_limit(enabled: bool = True, limit_type: str = "api") -> Callable:
                     logger.error(
                         "Rate limiter error - rejecting request to protect system: %s",
                         e,
-                        exc_info=True
+                        exc_info=True,
                     )
                     # Return 503 Service Unavailable when rate limiter fails
                     error_response = {

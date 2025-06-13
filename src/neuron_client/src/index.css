@@ -63,7 +63,7 @@
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%
   ;
-    --sidebar-background: 240 5.9% 8%;
+    --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;
     --sidebar-primary-foreground: 0 0% 100%;
@@ -88,10 +88,15 @@ li {
   list-style-type: none;
 }
 
-/* iPad-specific padding for translucent menu bar */
+/* Safe area padding for various devices and contexts */
 @layer utilities {
   /* Use env() for safe area with fallback */
   .safe-top {
+    padding-top: env(safe-area-inset-top, 0);
+  }
+
+  /* Simple mobile safe area */
+  .mobile-safe-top {
     padding-top: env(safe-area-inset-top, 0);
   }
 

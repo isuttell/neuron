@@ -25,16 +25,20 @@ class CommandRunner:
         """
         try:
             if shell:
+                if isinstance(command, list):
+                    command = " ".join(command)
                 process = await create_subprocess_shell(
                     command, stdout=PIPE, stderr=PIPE
                 )
             else:
+                if isinstance(command, str):
+                    raise ValueError("Command must be a list when shell=False")
                 process = await create_subprocess_exec(
                     *command, stdout=PIPE, stderr=PIPE
                 )
 
             stdout, stderr = await process.communicate()
-            return process.returncode, stdout.decode(), stderr.decode()
+            return process.returncode or 0, stdout.decode(), stderr.decode()
 
         except Exception as e:
             return -1, "", str(e)

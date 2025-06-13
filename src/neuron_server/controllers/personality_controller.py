@@ -6,7 +6,7 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import Runnable
 from langgraph.prebuilt import create_react_agent
 from pydantic import BaseModel
-from quart import Blueprint, Response, request
+from quart import Blueprint, Response
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 from neuron_server.controllers.auth import TokenPayload, requires_auth
@@ -30,6 +30,7 @@ from neuron_server.models.embedding_model import EmbeddingModel
 from neuron_server.models.personality_user_model import PersonalityUserModel
 from neuron_server.models.provider_model import ProviderModelModel
 from neuron_server.models.user_model import UserModel
+from neuron_server.type_defs.request_proxy import request
 
 router = EventRouter()
 
@@ -68,9 +69,7 @@ async def ainvoke_update_personality(
     llm: LLM, personality: PersonalityModel, context: str, prompt: str
 ) -> str:
     tools = (
-        await get_tools(personality.tool_set)
-        if personality.tool_set
-        else default_tools
+        await get_tools(personality.tool_set) if personality.tool_set else default_tools
     )
     chain: Runnable = (
         personality_update_prompt | llm.model.bind_tools(tools) | StrOutputParser()
@@ -613,6 +612,8 @@ async def update_personality_logo(personality_id: UUID) -> dict[str, dict]:
         },
     )
     updated_personality = await PersonalityModel.get(personality.id)
+    if updated_personality is None:
+        raise NotFound("Personality not found after update")
     if personality.logo == updated_personality.logo:
         raise BadRequest("Logo not updated")
 
@@ -621,3 +622,38 @@ async def update_personality_logo(personality_id: UUID) -> dict[str, dict]:
         "logo": updated_personality.logo,
         "response": _extract_message_content(response["messages"][-1]),
     }
+
+
+@blueprint.post("/<uuid:personality_id>/set-default")
+@requires_auth
+@requires_csrf
+async def set_default_personality(personality_id: UUID) -> dict[str, dict]:
+    """Set a personality as the default.
+
+    Args:
+        personality_id: The ID of the personality to set as default
+
+    Returns:
+        A dictionary with the updated personality
+
+    Raises:
+        Forbidden: If the user doesn't have admin access
+        NotFound: If the personality doesn't exist
+    """
+    assert isinstance(request.token, TokenPayload)
+
+    # Check if user is a system admin
+    if "admin" not in request.token.roles:
+        raise Forbidden("Admin access required to set default personality")
+
+    # Check if personality exists
+    personality = await PersonalityModel.get(personality_id=personality_id)
+    if not personality:
+        raise NotFound(f"Personality with id {personality_id} not found")
+
+    # Set the personality as default using the set method
+    updated_personality = await PersonalityModel.set(
+        personality_id=personality_id, key="default", value=True
+    )
+
+    return {"personality": updated_personality.model_dump()}

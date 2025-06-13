@@ -12,10 +12,11 @@ load_dotenv()
 
 class PushoverConfig(BaseModel):
     token: str = Field(
-        default=os.environ.get("PUSHOVER_API_TOKEN"), description="Pushover API token"
+        default=os.environ.get("PUSHOVER_API_TOKEN", ""),
+        description="Pushover API token",
     )
     user: str = Field(
-        default=os.environ.get("PUSHOVER_USER_KEY"), description="Pushover user key"
+        default=os.environ.get("PUSHOVER_USER_KEY", ""), description="Pushover user key"
     )
 
 
@@ -33,7 +34,7 @@ class DatabaseConfig(BaseModel):
         description="Database user",
     )
     password: str = Field(
-        default=os.environ.get("POSTGRES_PASSWORD"),
+        default=os.environ.get("POSTGRES_PASSWORD", ""),
         description="Database password",
     )
     database: str = Field(
@@ -79,7 +80,7 @@ class Neo4jConfig(BaseModel):
         description="Neo4j username",
     )
     password: str = Field(
-        default=os.environ.get("NEO4J_PASSWORD"), description="Neo4j password"
+        default=os.environ.get("NEO4J_PASSWORD", ""), description="Neo4j password"
     )
 
 
@@ -97,19 +98,21 @@ class Config(BaseModel):
         description="LLM debug mode",
     )
     hf_token: str = Field(
-        default=os.environ.get("HF_TOKEN"), description="Hugging Face token"
+        default=os.environ.get("HF_TOKEN", ""), description="Hugging Face token"
     )
     openai_api_key: str = Field(
-        default=os.environ.get("OPENAI_API_KEY"), description="OpenAI API key"
+        default=os.environ.get("OPENAI_API_KEY", ""), description="OpenAI API key"
     )
     openrouter_api_key: str = Field(
-        default=os.environ.get("OPENROUTER_API_KEY"), description="OpenRouter API key"
+        default=os.environ.get("OPENROUTER_API_KEY", ""),
+        description="OpenRouter API key",
     )
     anthropic_api_key: str = Field(
-        default=os.environ.get("ANTHROPIC_API_KEY"), description="Anthropic API key"
+        default=os.environ.get("ANTHROPIC_API_KEY", ""), description="Anthropic API key"
     )
     elevenlabs_api_key: str = Field(
-        default=os.environ.get("ELEVENLABS_API_KEY"), description="ElevenLabs API key"
+        default=os.environ.get("ELEVENLABS_API_KEY", ""),
+        description="ElevenLabs API key",
     )
     openweather_api_key: str = Field(
         default=os.environ.get("OPENWEATHER_API_KEY", ""),
@@ -172,11 +175,11 @@ class Config(BaseModel):
         description="Automatic1111 API URL",
     )
     glados_endpoint: str = Field(
-        default=os.environ.get("GLADOS_ENDPOINT", "http://192.168.1.211:7612"),
+        default=os.environ.get("GLADOS_ENDPOINT", "http://192.168.1.160:7612"),
         description="GLaDOS TTS API URL",
     )
     firecrawl_api_key: str = Field(
-        default=os.environ.get("FIRECRAWL_API_KEY"),
+        default=os.environ.get("FIRECRAWL_API_KEY", ""),
         description="FireCrawl API key",
     )
     neo4j: Neo4jConfig = Neo4jConfig()

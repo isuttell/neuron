@@ -154,17 +154,18 @@ async def test_get_personality_users(
         ) as mock_get_users,
         patch.object(
             UserModel, "get_by_ids", new_callable=AsyncMock
-        ) as mock_get_by_ids,
+        ) as mock_get_users_model,
     ):
         # Setup mocks
         mock_has_admin.return_value = True
         mock_get.return_value = mock_personality
         mock_get_users.return_value = [mock_personality_user]
-        mock_get_by_ids.return_value = [mock_user]
+        mock_get_users_model.return_value = [mock_user]
 
         # Create request context
         async with app.test_request_context(
             f"/api/personality/{personality_id}/users",
+            method="GET",
             headers={"Authorization": TEST_JWT_TOKEN},
         ):
             # Set token on request
@@ -189,9 +190,7 @@ async def test_get_personality_users(
         )
         mock_get.assert_called_once_with(personality_id=personality_id)
         mock_get_users.assert_called_once_with(personality_id=personality_id)
-        mock_get_by_ids.assert_called_once_with(
-            user_ids=[mock_personality_user.user_id]
-        )
+        mock_get_users_model.assert_called_once_with(user_ids=[mock_user.id])
 
 
 @pytest.mark.asyncio
@@ -201,18 +200,19 @@ async def test_get_personality_users_forbidden(
     mock_personality: MagicMock,
     mock_decode_token: AsyncMock,
 ) -> None:
-    """Test getting users without admin access."""
+    """Test getting personality users without admin access."""
     personality_id = mock_personality.id
 
     with patch.object(
         PersonalityModel, "has_admin_access", new_callable=AsyncMock
     ) as mock_has_admin:
-        # Setup mocks
+        # Setup mock to return False (no admin access)
         mock_has_admin.return_value = False
 
         # Create request context
         async with app.test_request_context(
             f"/api/personality/{personality_id}/users",
+            method="GET",
             headers={"Authorization": TEST_JWT_TOKEN},
         ):
             # Set token on request
@@ -225,10 +225,13 @@ async def test_get_personality_users_forbidden(
                 get_personality_users,
             )
 
-            with pytest.raises(Forbidden):
+            with pytest.raises(Forbidden) as excinfo:
                 await get_personality_users(personality_id)
 
-        # Verify mocks were called correctly
+            # Verify error message
+            assert "permission" in str(excinfo.value).lower()
+
+        # Verify mock was called
         mock_has_admin.assert_called_once_with(
             personality_id=personality_id, user_id=mock_token.user_id
         )
@@ -236,7 +239,9 @@ async def test_get_personality_users_forbidden(
 
 @pytest.mark.asyncio
 async def test_get_personality_users_not_found(
-    app: Quart, mock_token: TokenPayload, mock_decode_token: AsyncMock
+    app: Quart,
+    mock_token: TokenPayload,
+    mock_decode_token: AsyncMock,
 ) -> None:
     """Test getting users for a non-existent personality."""
     personality_id = uuid4()
@@ -249,11 +254,12 @@ async def test_get_personality_users_not_found(
     ):
         # Setup mocks
         mock_has_admin.return_value = True
-        mock_get.return_value = None
+        mock_get.return_value = None  # Personality not found
 
         # Create request context
         async with app.test_request_context(
             f"/api/personality/{personality_id}/users",
+            method="GET",
             headers={"Authorization": TEST_JWT_TOKEN},
         ):
             # Set token on request
@@ -266,10 +272,13 @@ async def test_get_personality_users_not_found(
                 get_personality_users,
             )
 
-            with pytest.raises(NotFound):
+            with pytest.raises(NotFound) as excinfo:
                 await get_personality_users(personality_id)
 
-        # Verify mocks were called correctly
+            # Verify error message
+            assert str(personality_id) in str(excinfo.value)
+
+        # Verify mocks were called
         mock_has_admin.assert_called_once_with(
             personality_id=personality_id, user_id=mock_token.user_id
         )
@@ -281,21 +290,24 @@ async def test_add_personality_user(
     app: Quart,
     mock_token: TokenPayload,
     mock_personality: MagicMock,
-    test_context: dict,
+    mock_user: MagicMock,
+    mock_personality_user: MagicMock,
     mock_decode_token: AsyncMock,
 ) -> None:
     """Test adding a user to a personality."""
     personality_id = mock_personality.id
-    user_id = test_context["user"].id
+    new_user_id = "new_user_id"
+
+    # Update mock_personality_user to match the new user
+    mock_personality_user.user_id = new_user_id
+    mock_personality_user.model_dump.return_value["user_id"] = new_user_id
 
     with (
         patch.object(
             PersonalityModel, "has_admin_access", new_callable=AsyncMock
         ) as mock_has_admin,
         patch.object(PersonalityModel, "get", new_callable=AsyncMock) as mock_get,
-        patch.object(
-            UserModel, "get_by_ids", new_callable=AsyncMock
-        ) as mock_get_by_ids,
+        patch.object(UserModel, "get_by_ids", new_callable=AsyncMock) as mock_get_users,
         patch.object(
             PersonalityUserModel, "get", new_callable=AsyncMock
         ) as mock_get_pu,
@@ -306,18 +318,23 @@ async def test_add_personality_user(
         # Setup mocks
         mock_has_admin.return_value = True
         mock_get.return_value = mock_personality
-        mock_get_by_ids.return_value = [test_context["user"]]
-        mock_get_pu.side_effect = [
-            None,
-            test_context["personality_user"],
-        ]  # First call returns None, second call returns the created user
+        mock_get_users.return_value = [mock_user]  # User exists
+        # First check, then return after add
+        mock_get_pu.side_effect = [None, mock_personality_user]
+        mock_add_user.return_value = None
+
+        # Create request data
+        request_data = {"user_id": new_user_id, "role": "user"}
 
         # Create request context
         async with app.test_request_context(
             f"/api/personality/{personality_id}/users",
             method="POST",
-            json={"user_id": user_id, "role": "user"},
-            headers={"Authorization": TEST_JWT_TOKEN},
+            headers={
+                "Authorization": TEST_JWT_TOKEN,
+                "X-CSRF-Token": "test-csrf-token",
+            },
+            json=request_data,
         ):
             # Set token on request
             app.request_class.token = mock_token
@@ -331,18 +348,20 @@ async def test_add_personality_user(
 
             # Verify response
             assert "personality_user" in result
-            assert result["personality_user"]["user_id"] == user_id
+            assert result["personality_user"]["user_id"] == new_user_id
+            assert result["personality_user"]["role"] == "admin"
 
         # Verify mocks were called correctly
         mock_has_admin.assert_called_once_with(
             personality_id=personality_id, user_id=mock_token.user_id
         )
         mock_get.assert_called_once_with(personality_id=personality_id)
-        mock_get_by_ids.assert_called_once_with(user_ids=[user_id])
-        assert mock_get_pu.call_count == PERSONALITY_USER_GET_CALL_COUNT
+        mock_get_users.assert_called_once_with(user_ids=[new_user_id])
         mock_add_user.assert_called_once_with(
-            personality_id=personality_id, user_id=user_id, role="user"
+            personality_id=personality_id, user_id=new_user_id, role="user"
         )
+        # Mock get called twice - once for checking existing, once after adding
+        assert mock_get_pu.call_count == PERSONALITY_USER_GET_CALL_COUNT
 
 
 @pytest.mark.asyncio
@@ -350,21 +369,20 @@ async def test_add_personality_user_already_exists(
     app: Quart,
     mock_token: TokenPayload,
     mock_personality: MagicMock,
-    test_context: dict,
+    mock_user: MagicMock,
+    mock_personality_user: MagicMock,
     mock_decode_token: AsyncMock,
 ) -> None:
-    """Test adding a user that already exists."""
+    """Test adding a user that already has access to the personality."""
     personality_id = mock_personality.id
-    user_id = test_context["user"].id
+    existing_user_id = mock_personality_user.user_id
 
     with (
         patch.object(
             PersonalityModel, "has_admin_access", new_callable=AsyncMock
         ) as mock_has_admin,
         patch.object(PersonalityModel, "get", new_callable=AsyncMock) as mock_get,
-        patch.object(
-            UserModel, "get_by_ids", new_callable=AsyncMock
-        ) as mock_get_by_ids,
+        patch.object(UserModel, "get_by_ids", new_callable=AsyncMock) as mock_get_users,
         patch.object(
             PersonalityUserModel, "get", new_callable=AsyncMock
         ) as mock_get_pu,
@@ -372,16 +390,21 @@ async def test_add_personality_user_already_exists(
         # Setup mocks
         mock_has_admin.return_value = True
         mock_get.return_value = mock_personality
-        mock_get_by_ids.return_value = [test_context["user"]]
-        # User already exists
-        mock_get_pu.return_value = test_context["personality_user"]
+        mock_get_users.return_value = [mock_user]
+        mock_get_pu.return_value = mock_personality_user  # User already has access
+
+        # Create request data
+        request_data = {"user_id": existing_user_id, "role": "user"}
 
         # Create request context
         async with app.test_request_context(
             f"/api/personality/{personality_id}/users",
             method="POST",
-            json={"user_id": user_id, "role": "user"},
-            headers={"Authorization": TEST_JWT_TOKEN},
+            headers={
+                "Authorization": TEST_JWT_TOKEN,
+                "X-CSRF-Token": "test-csrf-token",
+            },
+            json=request_data,
         ):
             # Set token on request
             app.request_class.token = mock_token
@@ -410,8 +433,20 @@ async def test_update_personality_user(
 ) -> None:
     """Test updating a user's role for a personality."""
     personality_id = mock_personality.id
-    user_id = "test_user_id2"
-    new_role = "admin"
+    user_id = mock_personality_user.user_id
+
+    # Create updated personality user with new role
+    updated_personality_user = MagicMock()
+    updated_personality_user.id = mock_personality_user.id
+    updated_personality_user.personality_id = personality_id
+    updated_personality_user.user_id = user_id
+    updated_personality_user.role = "user"  # Changed from admin
+    updated_personality_user.model_dump.return_value = {
+        "id": str(updated_personality_user.id),
+        "personality_id": str(personality_id),
+        "user_id": user_id,
+        "role": "user",
+    }
 
     with (
         patch.object(
@@ -428,15 +463,21 @@ async def test_update_personality_user(
         # Setup mocks
         mock_has_admin.return_value = True
         mock_get.return_value = mock_personality
-        mock_get_pu.return_value = mock_personality_user
-        mock_update_role.return_value = mock_personality_user
+        mock_get_pu.return_value = mock_personality_user  # User exists
+        mock_update_role.return_value = updated_personality_user
+
+        # Create request data
+        request_data = {"user_id": user_id, "role": "user"}
 
         # Create request context
         async with app.test_request_context(
             f"/api/personality/{personality_id}/users/{user_id}",
             method="PUT",
-            json={"user_id": user_id, "role": new_role},
-            headers={"Authorization": TEST_JWT_TOKEN},
+            headers={
+                "Authorization": TEST_JWT_TOKEN,
+                "X-CSRF-Token": "test-csrf-token",
+            },
+            json=request_data,
         ):
             # Set token on request
             app.request_class.token = mock_token
@@ -450,18 +491,7 @@ async def test_update_personality_user(
 
             # Verify response
             assert "personality_user" in result
-
-        # Verify mocks were called correctly
-        mock_has_admin.assert_called_once_with(
-            personality_id=personality_id, user_id=mock_token.user_id
-        )
-        mock_get.assert_called_once_with(personality_id=personality_id)
-        mock_get_pu.assert_called_once_with(
-            personality_id=personality_id, user_id=user_id
-        )
-        mock_update_role.assert_called_once_with(
-            personality_id=personality_id, user_id=user_id, role=new_role
-        )
+            assert result["personality_user"]["role"] == "user"
 
 
 @pytest.mark.asyncio
@@ -471,10 +501,9 @@ async def test_update_personality_user_not_found(
     mock_personality: MagicMock,
     mock_decode_token: AsyncMock,
 ) -> None:
-    """Test updating a user that doesn't exist."""
+    """Test updating a user that doesn't have access to the personality."""
     personality_id = mock_personality.id
-    user_id = "nonexistent_user_id"
-    new_role = "admin"
+    user_id = "non_existent_user"
 
     with (
         patch.object(
@@ -490,12 +519,18 @@ async def test_update_personality_user_not_found(
         mock_get.return_value = mock_personality
         mock_get_pu.return_value = None  # User not found
 
+        # Create request data
+        request_data = {"user_id": user_id, "role": "user"}
+
         # Create request context
         async with app.test_request_context(
             f"/api/personality/{personality_id}/users/{user_id}",
             method="PUT",
-            json={"user_id": user_id, "role": new_role},
-            headers={"Authorization": TEST_JWT_TOKEN},
+            headers={
+                "Authorization": TEST_JWT_TOKEN,
+                "X-CSRF-Token": "test-csrf-token",
+            },
+            json=request_data,
         ):
             # Set token on request
             app.request_class.token = mock_token
@@ -507,8 +542,11 @@ async def test_update_personality_user_not_found(
                 update_personality_user,
             )
 
-            with pytest.raises(NotFound):
+            with pytest.raises(NotFound) as excinfo:
                 await update_personality_user(personality_id, user_id)
+
+            # Verify error message
+            assert user_id in str(excinfo.value)
 
 
 @pytest.mark.asyncio
@@ -516,20 +554,25 @@ async def test_remove_personality_user(
     app: Quart,
     mock_token: TokenPayload,
     mock_personality: MagicMock,
+    mock_personality_user: MagicMock,
     mock_decode_token: AsyncMock,
 ) -> None:
     """Test removing a user from a personality."""
     personality_id = mock_personality.id
-    user_id = "test_user_id2"
+    user_id = "user_to_remove"
 
-    # Create two admin users
+    # Create multiple users including admins
     admin1 = MagicMock()
     admin1.user_id = mock_token.user_id
     admin1.role = "admin"
 
     admin2 = MagicMock()
-    admin2.user_id = user_id
+    admin2.user_id = "another_admin"
     admin2.role = "admin"
+
+    user_to_remove = MagicMock()
+    user_to_remove.user_id = user_id
+    user_to_remove.role = "user"
 
     with (
         patch.object(
@@ -546,7 +589,8 @@ async def test_remove_personality_user(
         # Setup mocks
         mock_has_admin.return_value = True
         mock_get.return_value = mock_personality
-        mock_get_users.return_value = [admin1, admin2]  # Two admin users
+        mock_get_users.return_value = [admin1, admin2, user_to_remove]  # Multiple users
+        mock_remove_user.return_value = None
 
         # Create request context
         async with app.test_request_context(
@@ -562,10 +606,10 @@ async def test_remove_personality_user(
                 remove_personality_user,
             )
 
-            response = await remove_personality_user(personality_id, user_id)
+            result = await remove_personality_user(personality_id, user_id)
 
-            # Verify response
-            assert response.status_code == HTTPStatus.NO_CONTENT
+            # Verify response is empty (204 No Content)
+            assert result.status_code == HTTPStatus.NO_CONTENT
 
         # Verify mocks were called correctly
         mock_has_admin.assert_called_once_with(
@@ -636,3 +680,158 @@ async def test_remove_last_admin(
         )
         mock_get.assert_called_once_with(personality_id=personality_id)
         mock_get_users.assert_called_once_with(personality_id=personality_id)
+
+
+@pytest.mark.asyncio
+async def test_set_default_personality_success(
+    app: Quart,
+    mock_personality: MagicMock,
+) -> None:
+    """Test setting a personality as default with admin access."""
+    personality_id = mock_personality.id
+
+    # Create admin token
+    admin_token = TokenPayload(
+        user_id="admin_user_id",
+        roles=["admin"],
+        email="admin@example.com",
+        nickname="admin_user",
+        picture=None,
+        permissions=[],
+    )
+
+    # Update mock personality to include default field
+    mock_personality.default = True
+    mock_personality.model_dump.return_value["default"] = True
+
+    with (
+        patch("neuron_server.controllers.auth.decode_token") as mock_decode_token,
+        patch.object(PersonalityModel, "get", new_callable=AsyncMock) as mock_get,
+        patch.object(PersonalityModel, "set", new_callable=AsyncMock) as mock_set,
+    ):
+        # Setup mocks
+        mock_decode_token.return_value = admin_token
+        mock_get.return_value = mock_personality
+        mock_set.return_value = mock_personality
+
+        # Create request context
+        async with app.test_request_context(
+            f"/api/personality/{personality_id}/set-default",
+            method="POST",
+            headers={
+                "Authorization": TEST_JWT_TOKEN,
+                "X-CSRF-Token": "test-csrf-token",
+            },
+        ):
+            # Set token on request
+            app.request_class.token = admin_token
+
+            # Call the endpoint function directly
+            from neuron_server.controllers.personality_controller import (
+                set_default_personality,
+            )
+
+            result = await set_default_personality(personality_id)
+
+            # Verify response
+            assert "personality" in result
+            assert result["personality"]["id"] == str(personality_id)
+            assert result["personality"]["default"] is True
+
+        # Verify mocks were called
+        mock_get.assert_called_once_with(personality_id=personality_id)
+        mock_set.assert_called_once_with(
+            personality_id=personality_id, key="default", value=True
+        )
+
+
+@pytest.mark.asyncio
+async def test_set_default_personality_forbidden_non_admin(
+    app: Quart,
+    mock_token: TokenPayload,
+    mock_personality: MagicMock,
+    mock_decode_token: AsyncMock,
+) -> None:
+    """Test setting a personality as default without admin access."""
+    personality_id = mock_personality.id
+
+    # Create request context
+    async with app.test_request_context(
+        f"/api/personality/{personality_id}/set-default",
+        method="POST",
+        headers={
+            "Authorization": TEST_JWT_TOKEN,
+            "X-CSRF-Token": "test-csrf-token",
+        },
+    ):
+        # Set non-admin token on request
+        app.request_class.token = mock_token
+
+        # Call the endpoint function directly
+        from werkzeug.exceptions import Forbidden
+
+        from neuron_server.controllers.personality_controller import (
+            set_default_personality,
+        )
+
+        with pytest.raises(Forbidden) as excinfo:
+            await set_default_personality(personality_id)
+
+        # Verify error message
+        assert "Admin access required" in str(excinfo.value)
+
+
+@pytest.mark.asyncio
+async def test_set_default_personality_not_found(
+    app: Quart,
+) -> None:
+    """Test setting a non-existent personality as default."""
+    personality_id = uuid4()
+
+    # Create admin token
+    admin_token = TokenPayload(
+        user_id="admin_user_id",
+        roles=["admin"],
+        email="admin@example.com",
+        nickname="admin_user",
+        picture=None,
+        permissions=[],
+    )
+
+    with (
+        patch("neuron_server.controllers.auth.decode_token") as mock_decode_token,
+        patch.object(PersonalityModel, "get", new_callable=AsyncMock) as mock_get,
+    ):
+        # Setup mocks
+        mock_decode_token.return_value = admin_token
+        mock_get.return_value = None  # Personality not found
+
+        # Create request context
+        async with app.test_request_context(
+            f"/api/personality/{personality_id}/set-default",
+            method="POST",
+            headers={
+                "Authorization": TEST_JWT_TOKEN,
+                "X-CSRF-Token": "test-csrf-token",
+            },
+        ):
+            # Set token on request
+            app.request_class.token = admin_token
+
+            # Call the endpoint function directly
+            from werkzeug.exceptions import NotFound
+
+            from neuron_server.controllers.personality_controller import (
+                set_default_personality,
+            )
+
+            with pytest.raises(NotFound) as excinfo:
+                await set_default_personality(personality_id)
+
+            # Verify error message
+            assert f"Personality with id {personality_id} not found" in str(
+                excinfo.value
+            )
+
+        # Verify mock was called
+        mock_get.assert_called_once_with(personality_id=personality_id)

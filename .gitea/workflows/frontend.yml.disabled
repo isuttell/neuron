@@ -11,6 +11,7 @@ on:
       - 'tailwind.config.js'
       - 'vite.config.ts'
       - '.gitea/workflows/frontend.yml'
+  workflow_call:
 
 jobs:
   build:

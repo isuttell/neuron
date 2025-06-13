@@ -2,7 +2,7 @@ name: Neuron Client Build
 
 on:
   push:
-    branches: [ master ]
+    branches: [ master ]  # Only build on master, not develop
     tags: [ 'v*' ]
     paths:
       - 'src/neuron_client/**'
@@ -54,7 +54,7 @@ jobs:
         id: buildx
         uses: docker/setup-buildx-action@v3
         with:
-          driver: docker
+          driver: docker-container
           install: true
 
       - name: Build image
@@ -67,6 +67,8 @@ jobs:
           tags: |
             gitea.zaks.io/isuttell/neuron-client:latest
             ${{ github.event_name != 'pull_request' && startsWith(github.ref, 'refs/tags/') && format('gitea.zaks.io/isuttell/neuron-client:{0}', github.ref_name) || '' }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Build notification
         run: |

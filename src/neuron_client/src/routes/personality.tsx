@@ -19,14 +19,13 @@ import {
   deletePersonality,
 } from "../actions/personalityActions";
 import EditPersonalityDialog from "../personalities/EditPersonalityDialog";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { api } from "@/lib/api";
 
 const selectPersonality = (state: RootState, personalityId?: string) =>
   state.personalities.personalities.find((per) => per.id === personalityId);
 
 export default function Personality() {
-  const { toast } = useToast();
   const [updatedContext, setUpdatedContext] = useState("");
   const [updatedName, setUpdatedName] = useState("");
   const [prompt, setPrompt] = useState("");
@@ -98,14 +97,9 @@ export default function Personality() {
       );
       setUpdatedContext(data.context);
       setPrompt("");
-      toast({
-        title: "Context updated",
-      });
+      toast("Context updated");
     } catch {
-      toast({
-        title: "Failed to update personality context",
-        variant: "destructive",
-      });
+      toast.error("Failed to update personality context");
     } finally {
       setIsLoading(false);
     }
