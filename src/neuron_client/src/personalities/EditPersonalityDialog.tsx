@@ -31,6 +31,8 @@ import {
 interface EditPersonalityDialogProps {
   personality?: Personality;
   default_tools?: string[];
+  triggerOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 const ToolSetLabels = {
@@ -60,10 +62,17 @@ interface ApiError extends Error {
 export default function EditPersonalityDialog({
   personality,
   default_tools = ["image", "search", "tts"],
+  triggerOpen,
+  onOpenChange: externalOnOpenChange,
 }: EditPersonalityDialogProps) {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+
+  const handleOpenChange = (newOpen: boolean) => {
+    setOpen(newOpen);
+    externalOnOpenChange?.(newOpen);
+  };
   const [loading, setLoading] = useState(false);
   const [name, setName] = useState(personality?.name || "");
   const [description, setDescription] = useState(
@@ -108,7 +117,7 @@ export default function EditPersonalityDialog({
 
         navigate(`/personality/${body.personality.id}`);
       }
-      setOpen(false);
+      handleOpenChange(false);
     } catch (error: unknown) {
       const apiError = error as ApiError;
       console.log(apiError);
@@ -126,7 +135,7 @@ export default function EditPersonalityDialog({
     }
     e.preventDefault();
     await dispatch(deletePersonality(personality.id));
-    setOpen(false);
+    handleOpenChange(false);
   };
 
   useEffect(() => {
@@ -144,9 +153,15 @@ export default function EditPersonalityDialog({
       setLogo("");
     }
   }, [personality, open]);
+
+  useEffect(() => {
+    if (triggerOpen !== undefined) {
+      setOpen(triggerOpen);
+    }
+  }, [triggerOpen]);
   const active_tools = tool_set.length > 0 ? tool_set : default_tools;
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <Tooltip>
         <TooltipTrigger asChild>
           <DialogTrigger asChild>

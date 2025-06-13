@@ -87,25 +87,31 @@ vi.mock("../../actions/personalityActions", () => ({
 
 // Mock hooks
 const mockDispatch = vi.fn();
+const mockActivePersonality = { id: "1", name: "Assistant", description: "Default assistant" };
+
+// Create a mock that returns proper values for specific selectors
+const mockUseAppSelector = vi.fn((selector) => {
+  // Mock state for all selectors
+  const mockState = {
+    personalities: {
+      personalities: [mockActivePersonality],
+      activePersonalityId: "1",  // This is the correct property name
+      loading: false,
+      error: null
+    },
+    threads: {
+      threads: {},
+      loading: false,
+      error: null
+    }
+  };
+
+  return selector(mockState);
+});
+
 vi.mock("../../hooks", () => ({
   useAppDispatch: () => mockDispatch,
-  useAppSelector: (selector: (state: unknown) => unknown) => {
-    // Mock different selectors
-    if (selector.toString().includes("personalities")) {
-      return {
-        personalities: [
-          { id: "1", name: "Assistant", description: "Default assistant" },
-        ],
-        activeId: "1",
-        loading: false,
-        error: null,
-      };
-    }
-    if (selector.toString().includes("threads")) {
-      return [];
-    }
-    return null;
-  },
+  useAppSelector: mockUseAppSelector,
 }));
 
 // Import the component after all mocks are set up
@@ -130,7 +136,7 @@ describe("Index Route", () => {
         threads: (state = { threads: {}, loading: false, error: null }) => state,
         personalities: (state = {
           personalities: [{ id: "1", name: "Assistant" }],
-          activeId: "1",
+          activePersonalityId: "1",  // Correct property name
           loading: false,
           error: null
         }) => state,
@@ -170,6 +176,63 @@ describe("Index Route", () => {
       expect(uploadButtons.length).toBeGreaterThan(1);
       expect(audioRecorder).toBeInTheDocument();
       expect(promptDropdown).toBeInTheDocument();
+    });
+
+    it("should display active personality name", () => {
+      renderComponent();
+
+      // Check that the active personality name is displayed
+      expect(screen.getByText("Assistant")).toBeInTheDocument();
+
+      // Verify it has the correct styling classes
+      const personalityDisplay = screen.getByText("Assistant");
+      expect(personalityDisplay).toHaveClass("text-xs", "text-gray-600", "pl-1");
+    });
+
+    it("should not display personality name when no active personality", () => {
+      // Override the mock to return null for active personality
+      mockUseAppSelector.mockImplementation((selector) => {
+        const mockState = {
+          personalities: {
+            personalities: [{ id: "1", name: "Assistant", description: "Default assistant" }],
+            activePersonalityId: null,  // No active personality
+            loading: false,
+            error: null
+          },
+          threads: {
+            threads: {},
+            loading: false,
+            error: null
+          }
+        };
+
+        return selector(mockState);
+      });
+
+      renderComponent();
+
+      // Check that no personality name is displayed
+      expect(screen.queryByText("Assistant")).not.toBeInTheDocument();
+      expect(screen.getByPlaceholderText("Select a personality first")).toBeInTheDocument();
+
+      // Reset mock for other tests
+      mockUseAppSelector.mockImplementation((selector) => {
+        const mockState = {
+          personalities: {
+            personalities: [mockActivePersonality],
+            activePersonalityId: "1",
+            loading: false,
+            error: null
+          },
+          threads: {
+            threads: {},
+            loading: false,
+            error: null
+          }
+        };
+
+        return selector(mockState);
+      });
     });
   });
 
