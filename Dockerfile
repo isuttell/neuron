@@ -9,7 +9,8 @@ RUN apt-get update && \
   apt-get -y upgrade && \
   apt-get -y install \
   curl \
-  git && \
+  git \
+  unzip && \
   rm -rf /var/lib/apt/lists/*
 
 # Install Deno
