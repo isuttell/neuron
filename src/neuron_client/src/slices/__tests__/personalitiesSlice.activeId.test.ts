@@ -51,14 +51,14 @@ describe("personalitiesSlice - activePersonalityId localStorage handling", () =>
     expect(state.personalities.activePersonalityId).toBe("personality-123");
   });
 
-  it("handles localStorage initialization edge cases", () => {
+  it("handles localStorage initialization edge cases", async () => {
     // Test 1: When localStorage has no value, activePersonalityId should be undefined
     localStorage.clear();
 
     // Need to re-import the reducer to get fresh initial state
     vi.resetModules();
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { default: freshReducer } = require("../personalitiesSlice");
+    const importedModule = await vi.importActual<{ default: typeof personalitiesReducer }>("../personalitiesSlice");
+    const freshReducer = importedModule.default;
 
     const store = configureStore({
       reducer: {

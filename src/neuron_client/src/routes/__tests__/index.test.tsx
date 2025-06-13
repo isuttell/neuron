@@ -18,13 +18,18 @@ vi.mock("sonner", () => {
   };
 });
 
-vi.mock("@/assets/logo.svg", () => "logo.svg");
+vi.mock("@/assets/logo.svg", () => ({
+  default: "logo.svg"
+}));
 
 const mockNavigate = vi.fn();
-vi.mock("react-router-dom", () => ({
-  ...vi.importActual("react-router-dom"),
-  useNavigate: () => mockNavigate,
-}));
+vi.mock("react-router-dom", async () => {
+  const actual = await vi.importActual("react-router-dom");
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+  };
+});
 
 vi.mock("@/components/AudioRecorder", () => ({
   AudioRecorder: ({ onRecordingComplete, disabled, className }: {
@@ -71,56 +76,51 @@ vi.mock("@/components/ui/spinner", () => ({
 }));
 
 
-// Mock action creators
-const mockCreateThread = vi.fn();
-const mockFetchPersonalities = vi.fn();
-const mockSetActivePersonality = vi.fn();
-
 vi.mock("../../actions/threadActions", () => ({
-  createThread: mockCreateThread,
+  createThread: vi.fn(),
 }));
 
 vi.mock("../../actions/personalityActions", () => ({
-  fetchPersonalities: () => mockFetchPersonalities,
-  setActivePersonality: () => mockSetActivePersonality,
+  fetchPersonalities: () => vi.fn(),
+  setActivePersonality: () => vi.fn(),
 }));
 
 // Mock hooks
-const mockDispatch = vi.fn();
 const mockActivePersonality = { id: "1", name: "Assistant", description: "Default assistant" };
 
-// Create a mock that returns proper values for specific selectors
-const mockUseAppSelector = vi.fn((selector) => {
-  // Mock state for all selectors
-  const mockState = {
-    personalities: {
-      personalities: [mockActivePersonality],
-      activePersonalityId: "1",  // This is the correct property name
-      loading: false,
-      error: null
-    },
-    threads: {
-      threads: {},
-      loading: false,
-      error: null
-    }
-  };
-
-  return selector(mockState);
-});
+const mockDispatch = vi.fn();
 
 vi.mock("../../hooks", () => ({
   useAppDispatch: () => mockDispatch,
-  useAppSelector: mockUseAppSelector,
+  useAppSelector: vi.fn((selector) => {
+    // Mock state for all selectors
+    const mockState = {
+      personalities: {
+        personalities: [mockActivePersonality],
+        activePersonalityId: "1",  // This is the correct property name
+        loading: false,
+        error: null
+      },
+      threads: {
+        threads: {},
+        loading: false,
+        error: null
+      }
+    };
+
+    return selector(mockState);
+  }),
 }));
 
 // Import the component after all mocks are set up
 import Index from "../index";
+import { useAppSelector } from "../../hooks";
+import { createThread } from "../../actions/threadActions";
 
 describe("Index Route", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockCreateThread.mockImplementation((args) => ({
+    (createThread as vi.MockedFunction<typeof createThread>).mockImplementation((args) => ({
       unwrap: () => Promise.resolve({ thread: { id: "thread-1" } }),
       type: "threads/createThread/pending",
       payload: args,
@@ -191,7 +191,7 @@ describe("Index Route", () => {
 
     it("should not display personality name when no active personality", () => {
       // Override the mock to return null for active personality
-      mockUseAppSelector.mockImplementation((selector) => {
+      (useAppSelector as vi.MockedFunction<typeof useAppSelector>).mockImplementation((selector) => {
         const mockState = {
           personalities: {
             personalities: [{ id: "1", name: "Assistant", description: "Default assistant" }],
@@ -216,7 +216,7 @@ describe("Index Route", () => {
       expect(screen.getByPlaceholderText("Select a personality first")).toBeInTheDocument();
 
       // Reset mock for other tests
-      mockUseAppSelector.mockImplementation((selector) => {
+      (useAppSelector as vi.MockedFunction<typeof useAppSelector>).mockImplementation((selector) => {
         const mockState = {
           personalities: {
             personalities: [mockActivePersonality],

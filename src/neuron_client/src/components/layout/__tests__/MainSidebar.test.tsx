@@ -13,7 +13,9 @@ import * as useMobile from "@/hooks/use-mobile";
 import * as usePermissions from "@/hooks/usePermissions";
 
 // Mock the logo SVG
-vi.mock("@/assets/logo.svg", () => "logo.svg");
+vi.mock("@/assets/logo.svg", () => ({
+  default: "logo.svg"
+}));
 
 // Mock Auth0 hook
 vi.mock("@auth0/auth0-react", () => ({

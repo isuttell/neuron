@@ -47,8 +47,8 @@ const mockMessageFormProps = {
   className: "",
 };
 
-vi.mock("../MessageForm", () => {
-  return function MockMessageForm(props: typeof mockMessageFormProps) {
+vi.mock("../MessageForm", () => ({
+  default: function MockMessageForm(props: typeof mockMessageFormProps) {
     mockMessageFormProps.onSubmit = props.onSubmit;
     mockMessageFormProps.onFileAdd = props.onFileAdd;
     mockMessageFormProps.onFileRemove = props.onFileRemove;
@@ -79,8 +79,8 @@ vi.mock("../MessageForm", () => {
         <div data-testid="class-name">{props.className}</div>
       </div>
     );
-  };
-});
+  },
+}));
 
 describe("ThreadMessageForm", () => {
   const mockDispatch = vi.fn();
