@@ -47,7 +47,7 @@ export function MainSidebar() {
   const location = useLocation();
   const { logout, user } = useAuth0();
   const sidebarImage = useAppSelector(getSidebarImage);
-  const { canAccessPrompts, canAccessProviders } = usePermissions();
+  const { canAccessPrompts, canAccessProviders, isAdmin } = usePermissions();
   const links: SidebarLink[] = [
     {
       to: "/",
@@ -59,11 +59,11 @@ export function MainSidebar() {
       label: "Personalities",
       Icon: CircleUser,
     },
-    {
+    ...(isAdmin ? [{
       to: "/gallery",
       label: "Recent Media",
       Icon: LayoutGrid,
-    },
+    }] : []),
     // Disabled since it's broken and not used
     // {
     //   to: "/media-lists",
