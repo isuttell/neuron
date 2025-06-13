@@ -138,6 +138,7 @@ class ReplicatePlayDialogTool(BaseTool):
         dialog between two voices."""
 
     args_schema: type[ReplicatePlayDialogToolArgs] = ReplicatePlayDialogToolArgs
+    response_format: str = "content_and_artifact"
 
     ref: str = "playht/play-dialog"
 
@@ -150,7 +151,7 @@ class ReplicatePlayDialogTool(BaseTool):
         name: str,
         config: RunnableConfig,
         **kwargs: Any,
-    ) -> str:
+    ) -> tuple[str, dict]:
         logger.debug(f"Generating speech with text: {text}")
 
         input_args = {
@@ -207,9 +208,39 @@ class ReplicatePlayDialogTool(BaseTool):
                 name=name,
                 description=text,
             )
-            await MediaItemModel.create(params=create_params)
+            media_item = await MediaItemModel.create(params=create_params)
             logger.debug(f"Saved generated audio to {file_path} <{url}>")
-            return f'<audio controls src="{url}"></audio>\nFilename: {file_path}'
+
+            # Prepare artifact for UI using typed models
+            from neuron_server.tools.artifact_types import (
+                ToolArtifactMetadata,
+                ToolMediaArtifact,
+                ToolMediaItem,
+            )
+            from neuron_server.util.media_utilities import get_media_duration
+
+            # Get actual duration from the generated file
+            duration = await get_media_duration(file_path)
+
+            metadata = ToolArtifactMetadata(
+                model=self.ref,
+                prompt=name,
+                duration=duration,
+                output_format="mp3",
+                seed=kwargs.get("seed") if kwargs.get("seed", -1) != -1 else None,
+            )
+
+            artifact_item = ToolMediaItem(
+                id=str(media_item.id),
+                url=url,
+                caption=name,
+                description=text,
+                metadata=metadata,
+            )
+
+            artifact = ToolMediaArtifact(media_type="audio", items=[artifact_item])
+
+            return artifact.to_xml(), [artifact.model_dump()]
 
         except Exception as e:
             logger.error(e, exc_info=True)

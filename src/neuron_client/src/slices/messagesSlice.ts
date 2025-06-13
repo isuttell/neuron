@@ -33,8 +33,46 @@ interface ThinkingContent extends BaseContent {
   thinking: string;
 }
 
+// Image content from tool artifacts
+export interface ImageContent extends BaseContent {
+  type: "image";
+  id: string;
+  url: string;
+  caption: string;
+  description?: string;
+  metadata: Record<string, unknown>;
+}
+
+// Audio content from tool artifacts
+export interface AudioContent extends BaseContent {
+  type: "audio";
+  id: string;
+  url: string;
+  caption: string;
+  description?: string;
+  duration?: number;
+  metadata: Record<string, unknown>;
+}
+
+// Video content from tool artifacts
+export interface VideoContent extends BaseContent {
+  type: "video";
+  id: string;
+  url: string;
+  caption: string;
+  description?: string;
+  duration?: number;
+  metadata: Record<string, unknown>;
+}
+
 // Union type for all content types
-type Content = TextContent | ThinkingContent | BaseContent;
+export type Content =
+  | TextContent
+  | ThinkingContent
+  | ImageContent
+  | AudioContent
+  | VideoContent
+  | BaseContent;
 
 type MessageRole = "ai" | "human" | "tool" | "system";
 
@@ -79,6 +117,18 @@ export interface IncomingMessage {
   created_at: string;
   node?: string;
   user_id?: string;
+  artifact?: {
+    type: string;
+    media_type?: string;
+    items?: Array<{
+      id: string;
+      url: string;
+      caption: string;
+      description?: string;
+      duration?: number;
+      metadata?: Record<string, unknown>;
+    }>;
+  };
 }
 
 export interface Message extends Omit<IncomingMessage, "created_at"> {
@@ -87,6 +137,9 @@ export interface Message extends Omit<IncomingMessage, "created_at"> {
   textContent: string;
   thinkingContent?: string;
   citations?: Citation[];
+  isOptimistic?: boolean;
+  tempId?: string;
+  error?: string;
 }
 
 interface IncomingPartialMessage extends Omit<IncomingMessage, "status"> {
@@ -162,6 +215,39 @@ export function getCitations(content: Content[] | string): Citation[] {
   return citations;
 }
 
+export function getMediaContent(
+  content: Content[] | string
+): (ImageContent | AudioContent | VideoContent)[] {
+  if (typeof content === "string") {
+    return [];
+  }
+  return content.filter(
+    (item): item is ImageContent | AudioContent | VideoContent =>
+      item.type === "image" || item.type === "audio" || item.type === "video"
+  );
+}
+
+export function getImageContent(content: Content[] | string): ImageContent[] {
+  if (typeof content === "string") {
+    return [];
+  }
+  return content.filter((item): item is ImageContent => item.type === "image");
+}
+
+export function getAudioContent(content: Content[] | string): AudioContent[] {
+  if (typeof content === "string") {
+    return [];
+  }
+  return content.filter((item): item is AudioContent => item.type === "audio");
+}
+
+export function getVideoContent(content: Content[] | string): VideoContent[] {
+  if (typeof content === "string") {
+    return [];
+  }
+  return content.filter((item): item is VideoContent => item.type === "video");
+}
+
 /**
  * Parses an incoming message dates and returns a Message object
  * @param message - The incoming message
@@ -170,7 +256,7 @@ export function getCitations(content: Content[] | string): Citation[] {
 function parseIncomingMessage(message: IncomingMessage): Message {
   return {
     ...message,
-    id: message.id.replace("run-", ""),
+    id: message.id.replace(/^run-+/, ""),
     textContent: getTextContent(message.content),
     thinkingContent: getThinkingContent(message.content),
     citations: getCitations(message.content),
@@ -194,8 +280,62 @@ export const messagesSlice = createSlice({
   name: "messages",
   initialState,
   reducers: {
+    addOptimisticMessage: (
+      state,
+      action: PayloadAction<{
+        tempId: string;
+        content: string;
+        threadId: string;
+        userId?: string;
+      }>
+    ) => {
+      const { tempId, content, threadId, userId } = action.payload;
+      const optimisticMessage: Message = {
+        id: tempId,
+        tempId,
+        type: "human",
+        content,
+        thread_id: threadId,
+        user_id: userId,
+        created_at: Date.now(),
+        textContent: content,
+        isOptimistic: true,
+      };
+
+      state.messageIds.push(tempId);
+      state.messageMap[tempId] = optimisticMessage;
+    },
+    markMessageFailed: (
+      state,
+      action: PayloadAction<{ tempId: string; error: string }>
+    ) => {
+      const { tempId, error } = action.payload;
+      const message = state.messageMap[tempId];
+      if (message) {
+        message.error = error;
+        message.isOptimistic = false;
+      }
+    },
+    removeOptimisticMessage: (state, action: PayloadAction<string>) => {
+      const tempId = action.payload;
+      delete state.messageMap[tempId];
+      state.messageIds = state.messageIds.filter((id) => id !== tempId);
+    },
     upsertMessage: (state, action: PayloadAction<IncomingMessageEvent>) => {
-      upsert(state, action.payload.message);
+      const incomingMessage = action.payload.message;
+
+      // Check if we have an optimistic message to replace
+      const tempId = (incomingMessage as IncomingMessage & { temp_id?: string }).temp_id;
+      if (tempId) {
+        // Remove the optimistic message
+        const optimisticIndex = state.messageIds.indexOf(tempId);
+        if (optimisticIndex !== -1) {
+          state.messageIds.splice(optimisticIndex, 1);
+          delete state.messageMap[tempId];
+        }
+      }
+
+      upsert(state, incomingMessage);
     },
     upsertMessages: (state, action: PayloadAction<IncomingMessagesEvent>) => {
       for (const message of action.payload.messages) {
@@ -206,7 +346,7 @@ export const messagesSlice = createSlice({
       state,
       action: PayloadAction<IncomingPartialMessageEvent>
     ) => {
-      const messageId = action.payload.message.id.replace("run-", "");
+      const messageId = action.payload.message.id.replace(/^run-+/, "");
       const existingMessage = state.messageMap[messageId];
       const incomingMessage = action.payload.message;
 
@@ -252,20 +392,24 @@ export const messagesSlice = createSlice({
         (state, action: PayloadAction<MessageResponse>) => {
           state.loading = false;
           for (const message of action.payload.messages) {
-            if (message.created_at) {
-              upsert(state, {
-                ...message,
-                created_at: message.created_at,
-              } as IncomingMessage);
-            }
+            upsert(state, {
+              ...message,
+              created_at: message.created_at,
+            } as IncomingMessage);
           }
         }
       );
   },
 });
 
-export const { upsertMessage, upsertMessages, partialMessage } =
-  messagesSlice.actions;
+export const {
+  addOptimisticMessage,
+  markMessageFailed,
+  removeOptimisticMessage,
+  upsertMessage,
+  upsertMessages,
+  partialMessage,
+} = messagesSlice.actions;
 
 // Base selectors
 const selectMessagesState = (state: RootState) => state.messages;
@@ -296,7 +440,8 @@ export const getMessage = createSelector(
 
 export const selectThreadMessages = createSelector(
   [getMessages, (_, threadId?: string) => threadId],
-  (messages, threadId) => messages.filter((message) => message.thread_id === threadId)
+  (messages, threadId) =>
+    messages.filter((message) => message.thread_id === threadId)
 );
 
 export default messagesSlice.reducer;

@@ -117,6 +117,21 @@ describe("messageSlice", () => {
         expect(state.messageMap["123"]).toBeTruthy();
         expect(state.messageMap["456"]).toBeTruthy();
       });
+
+      it("should handle messages with double dash prefix", () => {
+        const doubleDashMessage = {
+          ...mockMessage,
+          id: "run--789",
+          content: "Double dash message",
+        };
+
+        store.dispatch(upsertMessage({ message: doubleDashMessage }));
+        const state = store.getState().messages;
+
+        expect(state.messageMap["789"]).toBeTruthy();
+        expect(state.messageMap["789"].id).toBe("789");
+        expect(state.messageIds).toContain("789");
+      });
     });
 
     describe("partialMessage", () => {

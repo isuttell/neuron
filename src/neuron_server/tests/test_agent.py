@@ -347,6 +347,7 @@ async def test_message_id_consistency_during_streaming() -> None:
     with (
         patch("neuron_server.llms.agent.pubsub.publish", mock_publish),
         patch("neuron_server.llms.agent.aget_state", aget_state_mock),
+        patch("neuron_server.models.thread_model.ThreadModel.set", AsyncMock()),
     ):
         ctx = StreamEventContext(
             thread=thread,

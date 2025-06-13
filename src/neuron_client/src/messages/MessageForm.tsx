@@ -7,7 +7,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { CornerDownLeft, Upload } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, ReactNode } from "react";
 
 /**
  * Props for the MessageForm component - a pure presentation component for message input
@@ -37,6 +37,11 @@ interface MessageFormProps {
    * Callback fired when a file attachment is removed
    */
   onFileRemove?: () => void;
+
+  /**
+   * Optional children to render to the left of the buttons
+   */
+  children?: ReactNode
 }
 
 /**
@@ -73,6 +78,7 @@ export default function MessageForm({
   onSubmit,
   onFileAdd,
   onFileRemove,
+  children = undefined,
 }: MessageFormProps) {
   const [value, setValue] = useState("");
   const [file, setFile] = useState<File | Blob | undefined>(undefined);
@@ -159,6 +165,9 @@ export default function MessageForm({
         )}
       </div>
       <div className="flex flex-row flex-nowrap items-center gap-2 pt-2">
+        {children && <div>
+          {children}
+        </div>}
         <div className="flex-1" />
         <Button
           type="button"

@@ -88,10 +88,15 @@ li {
   list-style-type: none;
 }
 
-/* iPad-specific padding for translucent menu bar */
+/* Safe area padding for various devices and contexts */
 @layer utilities {
   /* Use env() for safe area with fallback */
   .safe-top {
+    padding-top: env(safe-area-inset-top, 0);
+  }
+
+  /* Simple mobile safe area */
+  .mobile-safe-top {
     padding-top: env(safe-area-inset-top, 0);
   }
 

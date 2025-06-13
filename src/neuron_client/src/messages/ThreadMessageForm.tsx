@@ -4,6 +4,8 @@ import { useParams } from "react-router-dom";
 import { postMessageByThread } from "../actions/messageActions";
 import { Thread } from "../types/thread";
 import MessageForm from "./MessageForm";
+import { ThreadStatusMessage } from "@/components/ThreadStatusMessage";
+import { cn } from "@/lib/utils";
 
 /**
  * Props for the ThreadMessageForm component - a business logic wrapper for thread-specific messaging
@@ -100,11 +102,15 @@ export default function ThreadMessageForm({
 
   return (
     <MessageForm
+      className={cn("bg-background rounded-md drop-shadow-md p-2", className)}
       onSubmit={handleSubmit}
       onFileAdd={handleFileAdd}
       onFileRemove={handleFileRemove}
       isLoading={isLoading}
-      className={className}
-    />
+    >
+      <ThreadStatusMessage
+        thread={thread}
+      />
+    </MessageForm>
   );
 }

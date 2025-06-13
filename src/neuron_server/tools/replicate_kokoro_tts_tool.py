@@ -79,6 +79,7 @@ class ReplicateKokoroTTSTool(BaseTool):
         and automatically handles text batching for extended generations."""
 
     args_schema: type[ReplicateKokoroTTSToolArgs] = ReplicateKokoroTTSToolArgs
+    response_format: str = "content_and_artifact"
 
     ref: str = (
         "jaaari/kokoro-82m:"
@@ -94,7 +95,7 @@ class ReplicateKokoroTTSTool(BaseTool):
         name: str,
         config: RunnableConfig,
         **kwargs: Any,
-    ) -> str:
+    ) -> tuple[str, dict]:
         logger.debug(f"Generating speech with Kokoro TTS: {create_text_preview(text)}")
 
         input_args = {
@@ -124,9 +125,38 @@ class ReplicateKokoroTTSTool(BaseTool):
                 name=name,
                 description=text,
             )
-            await MediaItemModel.create(params=create_params)
+            media_item = await MediaItemModel.create(params=create_params)
             logger.debug(f"Saved generated audio to {file_path} <{url}>")
-            return f'<audio controls src="{url}"></audio>\nFilename: {file_path}'
+
+            # Prepare artifact for UI using typed models
+            from neuron_server.tools.artifact_types import (
+                ToolArtifactMetadata,
+                ToolMediaArtifact,
+                ToolMediaItem,
+            )
+            from neuron_server.util.media_utilities import get_media_duration
+
+            # Get actual duration from the generated file
+            duration = await get_media_duration(file_path)
+
+            metadata = ToolArtifactMetadata(
+                model=self.ref,
+                prompt=name,
+                duration=duration,
+                output_format="wav",
+            )
+
+            artifact_item = ToolMediaItem(
+                id=str(media_item.id),
+                url=url,
+                caption=name,
+                description=text,
+                metadata=metadata,
+            )
+
+            artifact = ToolMediaArtifact(media_type="audio", items=[artifact_item])
+
+            return artifact.to_xml(), [artifact.model_dump()]
 
         except Exception as e:
             logger.error(e, exc_info=True)

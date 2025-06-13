@@ -1,7 +1,6 @@
 import asyncio
 import os
 import random
-import re
 import subprocess
 from typing import Any
 from uuid import uuid4
@@ -11,10 +10,13 @@ import aiohttp
 import replicate
 import replicate.helpers
 from langchain.tools import BaseTool
+from langchain_core.runnables import RunnableConfig
 from pydantic import BaseModel, Field
 
 from neuron_server.config import config as neuron_config
 from neuron_server.logger import logger
+from neuron_server.models.media_item_model import MediaItemModel
+from neuron_server.util.slug import safe_filename
 from neuron_server.util.subprocess_runner import run_subprocess
 
 
@@ -99,6 +101,7 @@ text prompts with the stackadoc/stable-audio-open-1.0 model. Ideal for:
     args_schema: type[ReplicateSoundEffectGenerationToolArgs] = (
         ReplicateSoundEffectGenerationToolArgs
     )
+    response_format: str = "content_and_artifact"
 
     ref: str = (
         "stackadoc/stable-audio-open-1.0:"
@@ -117,6 +120,7 @@ text prompts with the stackadoc/stable-audio-open-1.0 model. Ideal for:
         video_url: str,
         prompt: str,
         slug: str,
+        config: RunnableConfig,
         seed: int = -1,
         steps: int = 25,
         cfg_scale: float = 4.5,
@@ -128,7 +132,7 @@ text prompts with the stackadoc/stable-audio-open-1.0 model. Ideal for:
         seconds_total: int = 6,
         negative_prompt: str = "",
         init_noise_level: float = 1,
-    ) -> str:
+    ) -> tuple[str, dict]:
         logger.debug(f"Generating audio with prompt: {prompt}")
 
         tmp_files: list[str] = []
@@ -192,10 +196,8 @@ text prompts with the stackadoc/stable-audio-open-1.0 model. Ideal for:
                     await file.write(chunk)
 
             # Create safe filename from slug
-            safe_name = re.sub(r"[^a-z0-9-_]", "", slug)[:255].lower().replace(" ", "-")
-            output_filename = (
-                f"{self.ref.split(':')[0].replace('/', '_')}_"
-                f"{uuid4().hex[:8]}_{safe_name}.mp4"
+            output_filename = safe_filename(
+                self.ref.split(":")[0].replace("/", "_"), slug, "mp4"
             )
             output_file_path = os.path.abspath(
                 os.path.join(neuron_config.static_folder, output_filename)
@@ -204,8 +206,48 @@ text prompts with the stackadoc/stable-audio-open-1.0 model. Ideal for:
             await join_video_audio(tmp_video_file, tmp_audio_file, output_file_path)
 
             url = f"{neuron_config.static_content_url}/{output_filename}"
+
+            # Create media item in database
+            create_params = MediaItemModel.CreateParams(
+                thread_id=config["configurable"].get("thread_id"),
+                user_id=config["configurable"].get("user_id"),
+                url=url,
+                media_type="video",
+                name=slug,
+                description=prompt,
+            )
+            media_item = await MediaItemModel.create(params=create_params)
             logger.debug(f"Saved generated video to {output_file_path} <{url}>")
-            return f'<video src="{url}"></video>\nFilename: {output_file_path}'
+
+            # Prepare artifact for UI using typed models
+            from neuron_server.tools.artifact_types import (
+                ToolArtifactMetadata,
+                ToolMediaArtifact,
+                ToolMediaItem,
+            )
+
+            metadata = ToolArtifactMetadata(
+                model=self.ref,
+                seed=input_args.get("seed"),
+                prompt=prompt,
+                negative_prompt=negative_prompt,
+                cfg_strength=cfg_scale,
+                num_steps=steps,
+                duration=float(seconds_total),
+                audio_added=True,
+            )
+
+            artifact_item = ToolMediaItem(
+                id=str(media_item.id),
+                url=url,
+                caption=slug,
+                description=prompt,
+                metadata=metadata,
+            )
+
+            artifact = ToolMediaArtifact(media_type="video", items=[artifact_item])
+
+            return artifact.to_xml(), [artifact.model_dump()]
         except Exception as e:
             logger.error(e, exc_info=True)
             raise

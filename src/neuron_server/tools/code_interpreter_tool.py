@@ -65,6 +65,7 @@ within 300 seconds.
 """.strip()
 
     args_schema: type[CodeInterpreterToolArgs] = CodeInterpreterToolArgs
+    response_format: str = "content_and_artifact"
 
     timeout: int = 300
     code_interpreter_image: str = "gitea.zaks.io/isuttell/code-interpreter:latest"
@@ -72,7 +73,7 @@ within 300 seconds.
     def _run(self, *args: Any, **kwargs: Any) -> str:
         return asyncio.run(self._arun(*args, **kwargs))
 
-    async def _arun(self, python_code: str, config: RunnableConfig) -> str:
+    async def _arun(self, python_code: str, config: RunnableConfig) -> tuple[str, dict]:
         try:
             start_time = time.perf_counter()
             stdout, artifacts = await run_code_interpreter(
@@ -82,32 +83,42 @@ within 300 seconds.
                 config=config,
             )
             duration = time.perf_counter() - start_time
-            artifacts_str = (
-                "\n".join([f"* {artifact}" for artifact in artifacts])
-                if len(artifacts) > 0
-                else "No files"
+
+            # Build XML content for LLM consumption
+            llm_contents = []
+            all_artifacts = []
+
+            for artifact in artifacts:
+                # Add XML representation for LLM
+                llm_contents.append(artifact.to_xml())
+                # Collect all artifacts for return
+                all_artifacts.append(artifact.model_dump())
+
+            # Format files section for markdown output
+            files_section = (
+                "\n".join(llm_contents) if llm_contents else "No media files generated"
             )
-            return """
-# Code Interpreter Results
+
+            markdown_output = f"""# Code Interpreter Results
 
 ## stdout
 
 ```
-{stdout}
+{stdout if stdout else "No output"}
 ```
 
 ## Files
 
-{artifacts}
+{files_section}
 
 ## Execution Time
 
-{duration:.2f} seconds
-""".format(
-                stdout=stdout if stdout else "No output",
-                artifacts=artifacts_str,
-                duration=duration,
-            ).strip()
+{duration:.2f} seconds"""
+
+            # Return all artifacts as a list
+            if all_artifacts:
+                return markdown_output.strip(), all_artifacts
+            return markdown_output.strip(), []
         except Exception as e:
             logger.error(e, exc_info=True)
             if isinstance(e, subprocess.CalledProcessError):

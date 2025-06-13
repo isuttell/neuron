@@ -62,6 +62,7 @@ class OpenAITTSTool(BaseTool):
         "generate spoken audio."
     )
     args_schema: type[OpenAITTSToolArgs] = OpenAITTSToolArgs
+    response_format: str = "content_and_artifact"
 
     def _run(self, *args: Any, **kwargs: Any) -> str:
         return asyncio.run(self._arun(*args, **kwargs))
@@ -72,7 +73,7 @@ class OpenAITTSTool(BaseTool):
         name: str,
         config: RunnableConfig,
         speed: float = 1,
-    ) -> str:
+    ) -> tuple[str, dict]:
         working_dir: str
         try:
             working_dir = os.path.abspath(
@@ -137,10 +138,38 @@ class OpenAITTSTool(BaseTool):
             )
             media_item = await MediaItemModel.create(params=create_params)
             logger.debug("Generated audio file at %s <%s>", output, url)
-            return f"""\
-<audio id="{media_item.id}">
-    <display><audio src="{url}"></audio></display>
-</audio>""".strip()
+
+            # Prepare artifact for UI using typed models
+            from neuron_server.tools.artifact_types import (
+                ToolArtifactMetadata,
+                ToolMediaArtifact,
+                ToolMediaItem,
+            )
+            from neuron_server.util.media_utilities import get_media_duration
+
+            # Get actual duration from the generated file
+            duration = await get_media_duration(output)
+
+            metadata = ToolArtifactMetadata(
+                model="openai/tts-1-hd",
+                prompt=name,
+                duration=duration,
+                output_format="mp3",
+            )
+
+            artifact_item = ToolMediaItem(
+                id=str(media_item.id),
+                url=url,
+                caption=name,
+                description="\n".join(
+                    [f"[{line.voice}]\n\n{line.text}" for line in script]
+                ),
+                metadata=metadata,
+            )
+
+            artifact = ToolMediaArtifact(media_type="audio", items=[artifact_item])
+
+            return artifact.to_xml(), [artifact.model_dump()]
         except Exception as e:
             logger.error(e, exc_info=True)
             raise

@@ -1,4 +1,4 @@
-from unittest.mock import patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -72,12 +72,22 @@ class TestReplicateKokoroTTSTool:
     @patch("neuron_server.tools.replicate_kokoro_tts_tool.replicate.async_run")
     @patch("neuron_server.tools.replicate_kokoro_tts_tool.save_replicate_output")
     @patch("neuron_server.models.media_item_model.MediaItemModel.create")
+    @patch(
+        "neuron_server.util.media_utilities.get_media_duration",
+        new_callable=AsyncMock,
+        return_value=5.2,
+    )
     async def test_arun_bytes_output(
-        self, mock_create, mock_save_output, mock_replicate
+        self, mock_duration, mock_create, mock_save_output, mock_replicate
     ):
         """Test the basic flow of the _arun method with bytes output."""
         # Mock replicate response as bytes (simpler case)
         mock_replicate.return_value = b"fake audio data"
+
+        # Mock media item
+        mock_media_item = MagicMock()
+        mock_media_item.id = "media_123"
+        mock_create.return_value = mock_media_item
 
         # Mock config
         config = {"configurable": {"thread_id": "test-thread", "user_id": "test-user"}}
@@ -106,9 +116,28 @@ class TestReplicateKokoroTTSTool:
         # Verify media item was created
         mock_create.assert_called_once()
 
-        # Verify result contains audio controls
-        assert "<audio controls" in result
-        assert "Filename:" in result
+        # Verify result format - should be tuple of (xml, artifact)
+        assert isinstance(result, tuple)
+        assert len(result) == 2
+        xml_content, artifact = result
+
+        # Check XML content
+        assert "<audio>" in xml_content
+        assert "<id>media_123</id>" in xml_content
+        assert "<caption>test audio</caption>" in xml_content
+
+        # Check artifact - it's returned as a list containing the artifact dict
+        assert isinstance(artifact, list)
+        assert len(artifact) == 1
+        artifact_dict = artifact[0]
+        assert isinstance(artifact_dict, dict)
+        assert artifact_dict["type"] == "media"
+        assert artifact_dict["media_type"] == "audio"
+        assert len(artifact_dict["items"]) == 1
+        assert artifact_dict["items"][0]["id"] == "media_123"
+        assert artifact_dict["items"][0]["caption"] == "test audio"
+        # Check that duration is from ffprobe
+        assert artifact_dict["items"][0]["metadata"]["duration"] == 5.2
 
     def test_create_text_preview_short_text(self):
         """Test text preview with short text."""

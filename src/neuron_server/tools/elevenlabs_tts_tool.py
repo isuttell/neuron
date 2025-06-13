@@ -121,6 +121,7 @@ shown to the user so they can play it. Hide the filename as the user will not
 need it.
 """.strip()
     args_schema: type[ElevenLabsTTSToolArgs] = ElevenLabsTTSToolArgs
+    response_format: str = "content_and_artifact"
 
     def _run(
         self,
@@ -136,7 +137,7 @@ need it.
         config: RunnableConfig,
         model: Literal["eleven_turbo_v2_5", "eleven_multilingual_v2"]
         | None = "eleven_turbo_v2_5",
-    ) -> str:
+    ) -> tuple[str, dict]:
         try:
             logger.debug(f"Generating elevenlabs audio using {model}...")
             client = AsyncElevenLabs(api_key=neuron_config.elevenlabs_api_key)
@@ -222,10 +223,38 @@ need it.
             )
             media_item = await MediaItemModel.create(params=create_params)
             logger.info(f"Generated audio file saved to {output} <{url}>")
-            return f"""\
-<audio id="{media_item.id}">
-    <display><audio src="{url}"></audio></display>
-</audio>"""
+
+            # Prepare artifact for UI using typed models
+            from neuron_server.tools.artifact_types import (
+                ToolArtifactMetadata,
+                ToolMediaArtifact,
+                ToolMediaItem,
+            )
+            from neuron_server.util.media_utilities import get_media_duration
+
+            # Get actual duration from the generated file
+            duration = await get_media_duration(output)
+
+            metadata = ToolArtifactMetadata(
+                model=f"elevenlabs/{model}",
+                prompt=name,
+                duration=duration,
+                output_format="mp3",
+            )
+
+            artifact_item = ToolMediaItem(
+                id=str(media_item.id),
+                url=url,
+                caption=name,
+                description="\n".join(
+                    [f"[{line.voice}]\n\n{line.text}" for line in script]
+                ),
+                metadata=metadata,
+            )
+
+            artifact = ToolMediaArtifact(media_type="audio", items=[artifact_item])
+
+            return artifact.to_xml(), [artifact.model_dump()]
         except Exception as e:
             logger.error(e, exc_info=True)
             raise
