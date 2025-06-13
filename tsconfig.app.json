@@ -25,5 +25,10 @@
       "@/*": ["./src/neuron_client/src/*"]
     }
   },
-  "include": ["src/neuron_client/src"]
+  "include": ["src/neuron_client/src"],
+  "exclude": [
+    "src/neuron_client/src/**/__tests__/**",
+    "src/neuron_client/src/**/*.test.ts",
+    "src/neuron_client/src/**/*.test.tsx"
+  ]
 }

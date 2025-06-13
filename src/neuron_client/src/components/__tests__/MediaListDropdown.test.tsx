@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { render, screen, fireEvent } from "@testing-library/react";
 import { MediaListDropdown } from "../MediaListDropdown";
 import { MediaList } from "@/slices/mediaListsSlice";
@@ -6,17 +7,15 @@ import * as mediaListsSlice from "@/slices/mediaListsSlice";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 // Mock the hooks
-jest.mock("@/hooks", () => ({
-  useAppDispatch: jest.fn(),
-  useAppSelector: jest.fn(),
+vi.mock("@/hooks", () => ({
+  useAppDispatch: vi.fn(),
+  useAppSelector: vi.fn(),
 }));
 
-// Mock sonner toast
-jest.mock("sonner", () => {
-  const mockToast: jest.MockedFunction<(...args: unknown[]) => void> & {
-    error: jest.MockedFunction<(...args: unknown[]) => void>;
-  } = Object.assign(jest.fn(), {
-    error: jest.fn(),
+// Mock sonner toast for Vitest
+vi.mock("sonner", () => {
+  const mockToast = Object.assign(vi.fn(), {
+    error: vi.fn(),
   });
   return {
     toast: mockToast,
@@ -24,8 +23,8 @@ jest.mock("sonner", () => {
 });
 
 // Type assertions for mocked functions
-const mockedUseAppSelector = hooks.useAppSelector as jest.MockedFunction<typeof hooks.useAppSelector>;
-const mockedUseAppDispatch = hooks.useAppDispatch as jest.MockedFunction<typeof hooks.useAppDispatch>;
+const mockedUseAppSelector = hooks.useAppSelector as vi.MockedFunction<typeof hooks.useAppSelector>;
+const mockedUseAppDispatch = hooks.useAppDispatch as vi.MockedFunction<typeof hooks.useAppDispatch>;
 
 describe("MediaListDropdown", () => {
   // Sample media lists for testing
@@ -53,18 +52,18 @@ describe("MediaListDropdown", () => {
   ];
 
   // Mock dispatch function
-  const mockDispatch = jest.fn();
+  const mockDispatch = vi.fn();
 
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Mock the dispatch function
     mockedUseAppDispatch.mockReturnValue(mockDispatch);
 
 
     // Spy on the addMediaToList action
-    jest.spyOn(mediaListsSlice, "addMediaToList");
+    vi.spyOn(mediaListsSlice, "addMediaToList");
   });
 
   it("renders correctly with empty media lists", () => {

@@ -1,11 +1,12 @@
+import { vi } from 'vitest';
 import { render, screen, fireEvent } from "@testing-library/react";
 import { AttachmentIndicator } from "../AttachmentIndicator";
 
 describe("AttachmentIndicator", () => {
-  const mockOnRemove = jest.fn();
+  const mockOnRemove = vi.fn();
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it("renders audio attachment indicator correctly", () => {

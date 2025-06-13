@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { render, screen, fireEvent } from "@testing-library/react";
 import MediaListCard from "../MediaListCard";
 import { useAppSelector } from "@/hooks";
@@ -6,23 +7,23 @@ import { MediaList } from "@/slices/mediaListsSlice";
 import { MediaItem } from "@/types/media";
 
 // Mock the hooks
-jest.mock("@/hooks", () => ({
-  useAppSelector: jest.fn(),
+vi.mock("@/hooks", () => ({
+  useAppSelector: vi.fn(),
 }));
 
-jest.mock("react-router-dom", () => ({
-  useNavigate: jest.fn(),
+vi.mock("react-router-dom", () => ({
+  useNavigate: vi.fn(),
 }));
 
 // Mock MediaTimeline component since we don't need to test its implementation
-jest.mock("@/components/MediaTimeline", () => ({
+vi.mock("@/components/MediaTimeline", () => ({
   __esModule: true,
   default: () => <div data-testid="media-timeline" />,
 }));
 
 // Type assertion for the mocked hooks
-const mockedUseAppSelector = useAppSelector as jest.MockedFunction<typeof useAppSelector>;
-const mockedUseNavigate = useNavigate as jest.MockedFunction<typeof useNavigate>;
+const mockedUseAppSelector = useAppSelector as vi.MockedFunction<typeof useAppSelector>;
+const mockedUseNavigate = useNavigate as vi.MockedFunction<typeof useNavigate>;
 
 describe("MediaListCard", () => {
   // Sample media list data
@@ -64,10 +65,10 @@ describe("MediaListCard", () => {
   // MediaListItems would connect media items to lists in a real app
   // We don't need to use them directly in our tests because we're mocking the selector
 
-  const mockNavigate = jest.fn();
+  const mockNavigate = vi.fn();
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Mock the navigate function
     mockedUseNavigate.mockReturnValue(mockNavigate);

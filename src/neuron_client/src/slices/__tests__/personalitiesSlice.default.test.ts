@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { configureStore } from "@reduxjs/toolkit";
 import personalitiesReducer from "../personalitiesSlice";
 import * as actions from "../../actions/personalityActions";
@@ -87,14 +88,14 @@ describe("personalitiesSlice - default personality selection", () => {
     expect(localStorage.getItem("activePersonalityId")).toBe("p2");
   });
 
-  it("clears activePersonalityId when invalid and no default exists", () => {
+  it("clears activePersonalityId when invalid and no default exists", async () => {
     // Set an invalid personality ID in localStorage
     localStorage.setItem("activePersonalityId", "invalid-id");
 
     // Re-import the reducer to get fresh initial state with localStorage value
-    jest.resetModules();
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { default: freshReducer } = require("../personalitiesSlice");
+    vi.resetModules();
+    const importedModule = await vi.importActual<{ default: typeof personalitiesReducer }>("../personalitiesSlice");
+    const freshReducer = importedModule.default;
 
     const store = configureStore({
       reducer: {
@@ -109,8 +110,8 @@ describe("personalitiesSlice - default personality selection", () => {
     ];
 
     // Re-import actions too
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { fetchPersonalities } = require("../../actions/personalityActions");
+    const importedActions = await vi.importActual<{ fetchPersonalities: typeof import("../../actions/personalityActions").fetchPersonalities }>("../../actions/personalityActions");
+    const { fetchPersonalities } = importedActions;
 
     // Dispatch fetchPersonalities.fulfilled
     store.dispatch(
@@ -128,14 +129,14 @@ describe("personalitiesSlice - default personality selection", () => {
     expect(localStorage.getItem("activePersonalityId")).toBeNull();
   });
 
-  it("preserves valid activePersonalityId even when default exists", () => {
+  it("preserves valid activePersonalityId even when default exists", async () => {
     // Set a valid personality ID in localStorage
     localStorage.setItem("activePersonalityId", "p1");
 
     // Re-import the reducer to get fresh initial state with localStorage value
-    jest.resetModules();
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { default: freshReducer } = require("../personalitiesSlice");
+    vi.resetModules();
+    const importedModule = await vi.importActual<{ default: typeof personalitiesReducer }>("../personalitiesSlice");
+    const freshReducer = importedModule.default;
 
     const store = configureStore({
       reducer: {
@@ -150,8 +151,8 @@ describe("personalitiesSlice - default personality selection", () => {
     ];
 
     // Re-import actions too
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { fetchPersonalities } = require("../../actions/personalityActions");
+    const importedActions = await vi.importActual<{ fetchPersonalities: typeof import("../../actions/personalityActions").fetchPersonalities }>("../../actions/personalityActions");
+    const { fetchPersonalities } = importedActions;
 
     // Dispatch fetchPersonalities.fulfilled
     store.dispatch(
@@ -169,14 +170,14 @@ describe("personalitiesSlice - default personality selection", () => {
     expect(localStorage.getItem("activePersonalityId")).toBe("p1");
   });
 
-  it("only validates after initial fetch", () => {
+  it("only validates after initial fetch", async () => {
     // Need to set localStorage before importing the reducer
     localStorage.setItem("activePersonalityId", "invalid-id");
 
     // Re-import the reducer to get fresh initial state with localStorage value
-    jest.resetModules();
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { default: freshReducer } = require("../personalitiesSlice");
+    vi.resetModules();
+    const importedModule = await vi.importActual<{ default: typeof personalitiesReducer }>("../personalitiesSlice");
+    const freshReducer = importedModule.default;
 
     const store = configureStore({
       reducer: {
@@ -196,8 +197,8 @@ describe("personalitiesSlice - default personality selection", () => {
     ];
 
     // Re-import actions too since we reset modules
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { fetchPersonalities } = require("../../actions/personalityActions");
+    const importedActions = await vi.importActual<{ fetchPersonalities: typeof import("../../actions/personalityActions").fetchPersonalities }>("../../actions/personalityActions");
+    const { fetchPersonalities } = importedActions;
 
     store.dispatch(
       fetchPersonalities.fulfilled(

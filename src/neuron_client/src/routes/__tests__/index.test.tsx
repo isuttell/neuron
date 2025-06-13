@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { configureStore } from "@reduxjs/toolkit";
 import "@testing-library/jest-dom";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
@@ -6,26 +7,31 @@ import { Provider } from "react-redux";
 import { MemoryRouter } from "react-router-dom";
 
 // Mock all external dependencies first
-jest.mock("sonner", () => {
-  const mockToast: jest.MockedFunction<(...args: unknown[]) => void> & {
-    error: jest.MockedFunction<(...args: unknown[]) => void>;
-  } = Object.assign(jest.fn(), {
-    error: jest.fn(),
+vi.mock("sonner", () => {
+  const mockToast: vi.MockedFunction<(...args: unknown[]) => void> & {
+    error: vi.MockedFunction<(...args: unknown[]) => void>;
+  } = Object.assign(vi.fn(), {
+    error: vi.fn(),
   });
   return {
     toast: mockToast,
   };
 });
 
-jest.mock("@/assets/logo.svg", () => "logo.svg");
-
-const mockNavigate = jest.fn();
-jest.mock("react-router-dom", () => ({
-  ...jest.requireActual("react-router-dom"),
-  useNavigate: () => mockNavigate,
+vi.mock("@/assets/logo.svg", () => ({
+  default: "logo.svg"
 }));
 
-jest.mock("@/components/AudioRecorder", () => ({
+const mockNavigate = vi.fn();
+vi.mock("react-router-dom", async () => {
+  const actual = await vi.importActual("react-router-dom");
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+  };
+});
+
+vi.mock("@/components/AudioRecorder", () => ({
   AudioRecorder: ({ onRecordingComplete, disabled, className }: {
     onRecordingComplete: (blob: Blob) => void;
     disabled: boolean;
@@ -45,7 +51,7 @@ jest.mock("@/components/AudioRecorder", () => ({
   ),
 }));
 
-jest.mock("@/components/PromptDropdown", () => ({
+vi.mock("@/components/PromptDropdown", () => ({
   PromptDropdown: ({ onSelectPrompt, disabled }: {
     onSelectPrompt: (prompt: string) => void;
     disabled: boolean;
@@ -61,65 +67,60 @@ jest.mock("@/components/PromptDropdown", () => ({
   ),
 }));
 
-jest.mock("@/components/ui/sidebar", () => ({
+vi.mock("@/components/ui/sidebar", () => ({
   SidebarTrigger: () => <div data-testid="sidebar-trigger">Sidebar</div>,
 }));
 
-jest.mock("@/components/ui/spinner", () => ({
+vi.mock("@/components/ui/spinner", () => ({
   Spinner: () => <div data-testid="spinner">Loading...</div>,
 }));
 
 
-// Mock action creators
-const mockCreateThread = jest.fn();
-const mockFetchPersonalities = jest.fn();
-const mockSetActivePersonality = jest.fn();
-
-jest.mock("../../actions/threadActions", () => ({
-  createThread: mockCreateThread,
+vi.mock("../../actions/threadActions", () => ({
+  createThread: vi.fn(),
 }));
 
-jest.mock("../../actions/personalityActions", () => ({
-  fetchPersonalities: () => mockFetchPersonalities,
-  setActivePersonality: () => mockSetActivePersonality,
+vi.mock("../../actions/personalityActions", () => ({
+  fetchPersonalities: () => vi.fn(),
+  setActivePersonality: () => vi.fn(),
 }));
 
 // Mock hooks
-const mockDispatch = jest.fn();
 const mockActivePersonality = { id: "1", name: "Assistant", description: "Default assistant" };
 
-// Create a mock that returns proper values for specific selectors
-const mockUseAppSelector = jest.fn((selector) => {
-  // Mock state for all selectors
-  const mockState = {
-    personalities: {
-      personalities: [mockActivePersonality],
-      activePersonalityId: "1",  // This is the correct property name
-      loading: false,
-      error: null
-    },
-    threads: {
-      threads: {},
-      loading: false,
-      error: null
-    }
-  };
+const mockDispatch = vi.fn();
 
-  return selector(mockState);
-});
-
-jest.mock("../../hooks", () => ({
+vi.mock("../../hooks", () => ({
   useAppDispatch: () => mockDispatch,
-  useAppSelector: mockUseAppSelector,
+  useAppSelector: vi.fn((selector) => {
+    // Mock state for all selectors
+    const mockState = {
+      personalities: {
+        personalities: [mockActivePersonality],
+        activePersonalityId: "1",  // This is the correct property name
+        loading: false,
+        error: null
+      },
+      threads: {
+        threads: {},
+        loading: false,
+        error: null
+      }
+    };
+
+    return selector(mockState);
+  }),
 }));
 
 // Import the component after all mocks are set up
 import Index from "../index";
+import { useAppSelector } from "../../hooks";
+import { createThread } from "../../actions/threadActions";
 
 describe("Index Route", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-    mockCreateThread.mockImplementation((args) => ({
+    vi.clearAllMocks();
+    (createThread as vi.MockedFunction<typeof createThread>).mockImplementation((args) => ({
       unwrap: () => Promise.resolve({ thread: { id: "thread-1" } }),
       type: "threads/createThread/pending",
       payload: args,
@@ -190,7 +191,7 @@ describe("Index Route", () => {
 
     it("should not display personality name when no active personality", () => {
       // Override the mock to return null for active personality
-      mockUseAppSelector.mockImplementation((selector) => {
+      (useAppSelector as vi.MockedFunction<typeof useAppSelector>).mockImplementation((selector) => {
         const mockState = {
           personalities: {
             personalities: [{ id: "1", name: "Assistant", description: "Default assistant" }],
@@ -215,7 +216,7 @@ describe("Index Route", () => {
       expect(screen.getByPlaceholderText("Select a personality first")).toBeInTheDocument();
 
       // Reset mock for other tests
-      mockUseAppSelector.mockImplementation((selector) => {
+      (useAppSelector as vi.MockedFunction<typeof useAppSelector>).mockImplementation((selector) => {
         const mockState = {
           personalities: {
             personalities: [mockActivePersonality],

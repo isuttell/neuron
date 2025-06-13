@@ -9,7 +9,7 @@
     "paths": {
       "@/*": ["./src/neuron_client/src/*"]
     },
-    "types": ["jest", "node", "@testing-library/jest-dom"]
+    "types": ["vitest/globals", "node", "@testing-library/jest-dom"]
   },
   "include": [
     "src/neuron_client/src/**/__tests__/**/*.ts",

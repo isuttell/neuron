@@ -1,18 +1,19 @@
+import { vi } from 'vitest';
 import { renderHook } from "@testing-library/react";
 import { User, Auth0ContextInterface } from "@auth0/auth0-react";
 import { usePermissions } from "../usePermissions";
 import * as auth0React from "@auth0/auth0-react";
 
 // Mock Auth0 hook
-jest.mock("@auth0/auth0-react", () => ({
-  useAuth0: jest.fn(),
+vi.mock("@auth0/auth0-react", () => ({
+  useAuth0: vi.fn(),
 }));
 
 describe("usePermissions", () => {
-  const mockUseAuth0 = jest.spyOn(auth0React, "useAuth0");
+  const mockUseAuth0 = vi.spyOn(auth0React, "useAuth0");
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it("returns permission data and utility functions", () => {

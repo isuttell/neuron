@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { configureStore } from "@reduxjs/toolkit";
 import { Provider } from "../providerSlice";
 import providerReducer, {
@@ -10,10 +11,10 @@ import providerReducer, {
 import type { RootState } from "@/store";
 
 // Mock the api module
-jest.mock("@/lib/api", () => ({
+vi.mock("@/lib/api", () => ({
   api: {
-    get: jest.fn(),
-    post: jest.fn(),
+    get: vi.fn(),
+    post: vi.fn(),
   },
 }));
 
@@ -28,7 +29,7 @@ describe("providerSlice", () => {
         providers: providerReducer,
       },
     });
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it("should handle initial state", () => {
@@ -60,7 +61,7 @@ describe("providerSlice", () => {
         },
       ];
 
-      (api.get as jest.Mock).mockResolvedValueOnce({
+      (api.get as vi.Mock).mockResolvedValueOnce({
         providers: mockProviders,
         active_provider_id: "provider-1",
       });
@@ -79,7 +80,7 @@ describe("providerSlice", () => {
 
     it("should handle fetch error", async () => {
       const errorMessage = "Failed to fetch";
-      (api.get as jest.Mock).mockRejectedValueOnce(new Error(errorMessage));
+      (api.get as vi.Mock).mockRejectedValueOnce(new Error(errorMessage));
 
       await store.dispatch(fetchProviders());
 
@@ -92,7 +93,7 @@ describe("providerSlice", () => {
   describe("setupProvider", () => {
     it("should activate a provider", async () => {
       const providerId = "provider-1";
-      (api.post as jest.Mock).mockResolvedValueOnce({});
+      (api.post as vi.Mock).mockResolvedValueOnce({});
 
       await store.dispatch(setupProvider(providerId));
 
@@ -123,7 +124,7 @@ describe("providerSlice", () => {
         },
       ];
 
-      (api.get as jest.Mock).mockResolvedValueOnce({
+      (api.get as vi.Mock).mockResolvedValueOnce({
         providers: mockProviders,
         active_provider_id: "provider-1",
       });

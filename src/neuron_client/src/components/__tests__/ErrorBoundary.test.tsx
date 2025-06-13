@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { ErrorBoundary } from "../ErrorBoundary";
@@ -14,7 +15,7 @@ describe("ErrorBoundary", () => {
   // Suppress console.error for these tests since we expect errors
   const originalError = console.error;
   beforeAll(() => {
-    console.error = jest.fn();
+    console.error = vi.fn();
   });
 
   afterAll(() => {
@@ -54,7 +55,7 @@ describe("ErrorBoundary", () => {
   });
 
   it("logs error to console", () => {
-    const consoleErrorSpy = jest.spyOn(console, "error");
+    const consoleErrorSpy = vi.spyOn(console, "error");
 
     render(
       <ErrorBoundary>

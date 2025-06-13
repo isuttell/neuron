@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { configureStore } from "@reduxjs/toolkit";
 import "@testing-library/jest-dom";
 import { render, screen, waitFor } from "@testing-library/react";
@@ -12,46 +13,48 @@ import * as useMobile from "@/hooks/use-mobile";
 import * as usePermissions from "@/hooks/usePermissions";
 
 // Mock the logo SVG
-jest.mock("@/assets/logo.svg", () => "logo.svg");
+vi.mock("@/assets/logo.svg", () => ({
+  default: "logo.svg"
+}));
 
 // Mock Auth0 hook
-jest.mock("@auth0/auth0-react", () => ({
-  useAuth0: jest.fn(),
+vi.mock("@auth0/auth0-react", () => ({
+  useAuth0: vi.fn(),
 }));
 
 // Mock the hooks
-jest.mock("@/hooks", () => ({
-  useAppSelector: jest.fn(),
+vi.mock("@/hooks", () => ({
+  useAppSelector: vi.fn(),
 }));
 
 // Mock use-mobile hook
-jest.mock("@/hooks/use-mobile", () => ({
-  useIsMobile: jest.fn(),
+vi.mock("@/hooks/use-mobile", () => ({
+  useIsMobile: vi.fn(),
 }));
 
 // Mock usePermissions hook
-jest.mock("@/hooks/usePermissions", () => ({
-  usePermissions: jest.fn(),
+vi.mock("@/hooks/usePermissions", () => ({
+  usePermissions: vi.fn(),
 }));
 
 // Mock components
-jest.mock("@/messages/ImageContent", () => ({
+vi.mock("@/messages/ImageContent", () => ({
   __esModule: true,
   default: ({ url }: { url: string }) => <img src={url} alt="sidebar" />,
 }));
 
-jest.mock("@/threads/NavThreads", () => ({
+vi.mock("@/threads/NavThreads", () => ({
   __esModule: true,
   default: ({ activePathname }: { activePathname: string }) => (
     <div data-testid="nav-threads">NavThreads: {activePathname}</div>
   ),
 }));
 
-jest.mock("@/components/ThreadsUpdating", () => ({
+vi.mock("@/components/ThreadsUpdating", () => ({
   ThreadsUpdating: () => <div data-testid="threads-updating">ThreadsUpdating</div>,
 }));
 
-jest.mock("../ProvidersMenuItem", () => ({
+vi.mock("../ProvidersMenuItem", () => ({
   ProvidersMenuItem: () => <div data-testid="providers-menu-item">ProvidersMenuItem</div>,
 }));
 
@@ -65,36 +68,36 @@ describe("MainSidebar", () => {
     picture: "https://example.com/avatar.png",
   } as User;
 
-  const mockLogout = jest.fn();
+  const mockLogout = vi.fn();
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Setup Auth0 mock
-    const useAuth0Mock = jest.spyOn(auth0React, "useAuth0");
+    const useAuth0Mock = vi.spyOn(auth0React, "useAuth0");
     useAuth0Mock.mockReturnValue({
       isAuthenticated: true,
       isLoading: false,
       user: mockUser,
       logout: mockLogout,
-      getAccessTokenSilently: jest.fn(),
-      loginWithRedirect: jest.fn(),
-      getAccessTokenWithPopup: jest.fn(),
-      getIdTokenClaims: jest.fn(),
-      loginWithPopup: jest.fn(),
-      handleRedirectCallback: jest.fn(),
+      getAccessTokenSilently: vi.fn(),
+      loginWithRedirect: vi.fn(),
+      getAccessTokenWithPopup: vi.fn(),
+      getIdTokenClaims: vi.fn(),
+      loginWithPopup: vi.fn(),
+      handleRedirectCallback: vi.fn(),
     } as Auth0ContextInterface<User>);
 
     // Mock hooks
-    (hooks.useAppSelector as unknown as jest.Mock).mockReturnValue(null); // Default no sidebar image
-    (useMobile.useIsMobile as jest.Mock).mockReturnValue(false); // Default to desktop
+    (hooks.useAppSelector as unknown as vi.Mock).mockReturnValue(null); // Default no sidebar image
+    (useMobile.useIsMobile as vi.Mock).mockReturnValue(false); // Default to desktop
 
     // Mock permissions hook to allow access to all features by default
-    (usePermissions.usePermissions as jest.Mock).mockReturnValue({
+    (usePermissions.usePermissions as vi.Mock).mockReturnValue({
       canAccessPrompts: true,
       canAccessProviders: true,
-      hasPermission: jest.fn(),
-      hasRole: jest.fn(),
+      hasPermission: vi.fn(),
+      hasRole: vi.fn(),
       isAdmin: true,
       permissions: ["admin-prompts", "admin-providers"],
       roles: ["admin"],
@@ -112,7 +115,7 @@ describe("MainSidebar", () => {
   const renderComponent = (isMobile = false) => {
     // Update mobile mock if needed
     if (isMobile) {
-      (useMobile.useIsMobile as jest.Mock).mockReturnValue(true);
+      (useMobile.useIsMobile as vi.Mock).mockReturnValue(true);
     }
 
     const store = configureStore({
@@ -205,7 +208,7 @@ describe("MainSidebar", () => {
 
   describe("Sidebar image", () => {
     it("shows custom sidebar image when available", () => {
-      (hooks.useAppSelector as unknown as jest.Mock).mockReturnValue("https://example.com/custom-image.png");
+      (hooks.useAppSelector as unknown as vi.Mock).mockReturnValue("https://example.com/custom-image.png");
 
       renderComponent();
 
@@ -247,11 +250,11 @@ describe("MainSidebar", () => {
 
     it("hides prompts menu when user lacks admin-prompts permission", async () => {
       // Mock permissions hook to deny prompts access
-      (usePermissions.usePermissions as jest.Mock).mockReturnValue({
+      (usePermissions.usePermissions as vi.Mock).mockReturnValue({
         canAccessPrompts: false,
         canAccessProviders: true,
-        hasPermission: jest.fn(),
-        hasRole: jest.fn(),
+        hasPermission: vi.fn(),
+        hasRole: vi.fn(),
         isAdmin: false,
         permissions: ["admin-providers"],
         roles: [],
@@ -290,11 +293,11 @@ describe("MainSidebar", () => {
 
     it("hides providers menu when user lacks admin-providers permission", async () => {
       // Mock permissions hook to deny providers access
-      (usePermissions.usePermissions as jest.Mock).mockReturnValue({
+      (usePermissions.usePermissions as vi.Mock).mockReturnValue({
         canAccessPrompts: true,
         canAccessProviders: false,
-        hasPermission: jest.fn(),
-        hasRole: jest.fn(),
+        hasPermission: vi.fn(),
+        hasRole: vi.fn(),
         isAdmin: false,
         permissions: ["admin-prompts"],
         roles: [],
@@ -321,11 +324,11 @@ describe("MainSidebar", () => {
 
     it("hides both prompts and providers when user has no admin permissions", async () => {
       // Mock permissions hook to deny all access
-      (usePermissions.usePermissions as jest.Mock).mockReturnValue({
+      (usePermissions.usePermissions as vi.Mock).mockReturnValue({
         canAccessPrompts: false,
         canAccessProviders: false,
-        hasPermission: jest.fn(),
-        hasRole: jest.fn(),
+        hasPermission: vi.fn(),
+        hasRole: vi.fn(),
         isAdmin: false,
         permissions: [],
         roles: [],
@@ -355,11 +358,11 @@ describe("MainSidebar", () => {
 
     it("always shows scheduled menu regardless of permissions", async () => {
       // Mock permissions hook to deny all admin access
-      (usePermissions.usePermissions as jest.Mock).mockReturnValue({
+      (usePermissions.usePermissions as vi.Mock).mockReturnValue({
         canAccessPrompts: false,
         canAccessProviders: false,
-        hasPermission: jest.fn(),
-        hasRole: jest.fn(),
+        hasPermission: vi.fn(),
+        hasRole: vi.fn(),
         isAdmin: false,
         permissions: [],
         roles: [],

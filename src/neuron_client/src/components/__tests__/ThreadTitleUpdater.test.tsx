@@ -1,15 +1,16 @@
+import { vi } from 'vitest';
 import { render } from "@testing-library/react";
 import { ThreadTitleUpdater } from "../ThreadTitleUpdater";
 import { useAppSelector } from "@/hooks";
 import { Thread } from "@/types/thread";
 
 // Mock the Redux hooks
-jest.mock("@/hooks", () => ({
-  useAppSelector: jest.fn(),
+vi.mock("@/hooks", () => ({
+  useAppSelector: vi.fn(),
 }));
 
 // Type assertion for the mocked hook
-const mockedUseAppSelector = useAppSelector as jest.MockedFunction<typeof useAppSelector>;
+const mockedUseAppSelector = useAppSelector as vi.MockedFunction<typeof useAppSelector>;
 
 describe("ThreadTitleUpdater", () => {
   // Save the original document.title so we can restore it after tests
@@ -69,7 +70,7 @@ describe("ThreadTitleUpdater", () => {
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     document.title = originalTitle;
   });
 

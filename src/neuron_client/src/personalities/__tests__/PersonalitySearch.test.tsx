@@ -1,12 +1,13 @@
+import { vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import PersonalitySearch from "../PersonalitySearch";
 
 describe("PersonalitySearch", () => {
-  const mockOnSearch = jest.fn();
+  const mockOnSearch = vi.fn();
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it("renders search input with default placeholder", () => {

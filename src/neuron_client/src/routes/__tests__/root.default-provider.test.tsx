@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { render, waitFor } from "@testing-library/react";
 import { Provider } from "react-redux";
 import { MemoryRouter } from "react-router-dom";
@@ -19,63 +20,63 @@ import schedulerReducer from "@/slices/schedulerSlice";
 import usersReducer from "@/slices/usersSlice";
 
 // Mock Auth0
-jest.mock("@auth0/auth0-react");
+vi.mock("@auth0/auth0-react");
 
 // Mock SVG imports
-jest.mock("@/assets/logo.svg", () => "logo.svg");
+vi.mock("@/assets/logo.svg", () => "logo.svg");
 
 // Mock components that might have complex dependencies
-jest.mock("@/components/layout/MainSidebar", () => ({
+vi.mock("@/components/layout/MainSidebar", () => ({
   MainSidebar: () => <div>MainSidebar</div>,
 }));
 
-jest.mock("@/components/ThreadTitleUpdater", () => ({
+vi.mock("@/components/ThreadTitleUpdater", () => ({
   ThreadTitleUpdater: () => null,
 }));
 
 // Mock API
-jest.mock("@/lib/api", () => ({
+vi.mock("@/lib/api", () => ({
   api: {
-    get: jest.fn(),
-    post: jest.fn(),
+    get: vi.fn(),
+    post: vi.fn(),
   },
 }));
 
 import { api } from "@/lib/api";
 
 // Mock actions
-jest.mock("@/actions/getToken", () => ({
-  setGetAccessTokenSilently: jest.fn(),
+vi.mock("@/actions/getToken", () => ({
+  setGetAccessTokenSilently: vi.fn(),
 }));
 
 // Mock WebSocketManager
-jest.mock("@/WebSocketManager", () => ({
+vi.mock("@/WebSocketManager", () => ({
   socketManager: {
-    connect: jest.fn(),
-    disconnect: jest.fn(),
-    emit: jest.fn(),
-    on: jest.fn(),
-    off: jest.fn(),
+    connect: vi.fn(),
+    disconnect: vi.fn(),
+    emit: vi.fn(),
+    on: vi.fn(),
+    off: vi.fn(),
   },
 }));
 
 describe("Root Component - Default Provider Selection", () => {
   let store: ReturnType<typeof configureStore>;
-  const mockGetAccessTokenSilently = jest.fn();
+  const mockGetAccessTokenSilently = vi.fn();
 
   beforeEach(() => {
     // Mock window.matchMedia
     Object.defineProperty(window, 'matchMedia', {
       writable: true,
-      value: jest.fn().mockImplementation(query => ({
+      value: vi.fn().mockImplementation(query => ({
         matches: false,
         media: query,
         onchange: null,
-        addListener: jest.fn(), // deprecated
-        removeListener: jest.fn(), // deprecated
-        addEventListener: jest.fn(),
-        removeEventListener: jest.fn(),
-        dispatchEvent: jest.fn(),
+        addListener: vi.fn(), // deprecated
+        removeListener: vi.fn(), // deprecated
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
       })),
     });
     store = configureStore({
@@ -97,19 +98,19 @@ describe("Root Component - Default Provider Selection", () => {
     });
 
     // Mock Auth0 as authenticated
-    (useAuth0 as jest.Mock).mockReturnValue({
+    (useAuth0 as vi.Mock).mockReturnValue({
       isAuthenticated: true,
       isLoading: false,
       error: null,
       getAccessTokenSilently: mockGetAccessTokenSilently,
-      loginWithRedirect: jest.fn(),
-      logout: jest.fn(),
+      loginWithRedirect: vi.fn(),
+      logout: vi.fn(),
     });
 
     // Mock socket as connected
     store.dispatch({ type: "socket/connectionChanged", payload: true });
 
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it("should automatically set default provider when no active provider exists", async () => {
@@ -133,7 +134,7 @@ describe("Root Component - Default Provider Selection", () => {
     ];
 
     // Mock API responses
-    (api.get as jest.Mock).mockImplementation((url) => {
+    (api.get as vi.Mock).mockImplementation((url) => {
       if (url === "/providers/") {
         return Promise.resolve({
           providers: mockProviders,
@@ -157,7 +158,7 @@ describe("Root Component - Default Provider Selection", () => {
       return Promise.resolve({});
     });
 
-    (api.post as jest.Mock).mockResolvedValue({});
+    (api.post as vi.Mock).mockResolvedValue({});
 
     render(
       <Provider store={store}>
@@ -199,7 +200,7 @@ describe("Root Component - Default Provider Selection", () => {
     ];
 
     // Mock API responses
-    (api.get as jest.Mock).mockImplementation((url) => {
+    (api.get as vi.Mock).mockImplementation((url) => {
       if (url === "/providers/") {
         return Promise.resolve({
           providers: mockProviders,
@@ -216,7 +217,7 @@ describe("Root Component - Default Provider Selection", () => {
       return Promise.resolve({});
     });
 
-    (api.post as jest.Mock).mockResolvedValue({});
+    (api.post as vi.Mock).mockResolvedValue({});
 
     render(
       <Provider store={store}>
@@ -258,7 +259,7 @@ describe("Root Component - Default Provider Selection", () => {
     ];
 
     // Mock API responses
-    (api.get as jest.Mock).mockImplementation((url) => {
+    (api.get as vi.Mock).mockImplementation((url) => {
       if (url === "/providers/") {
         return Promise.resolve({
           providers: mockProviders,
@@ -275,7 +276,7 @@ describe("Root Component - Default Provider Selection", () => {
       return Promise.resolve({});
     });
 
-    (api.post as jest.Mock).mockResolvedValue({});
+    (api.post as vi.Mock).mockResolvedValue({});
 
     render(
       <Provider store={store}>

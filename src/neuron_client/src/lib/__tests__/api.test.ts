@@ -1,9 +1,10 @@
+import { vi } from 'vitest';
 import { api } from "../api";
 import { getAccessToken } from "@/actions/getToken";
 import { setCSRFToken, getCSRFToken, clearCSRFToken } from "../csrf";
 
 // Mock the getAccessToken function
-jest.mock("@/actions/getToken");
+vi.mock("@/actions/getToken");
 
 describe("ApiClient", () => {
   const mockToken = "test-token";
@@ -11,26 +12,26 @@ describe("ApiClient", () => {
 
   beforeEach(() => {
     // Reset all mocks before each test
-    jest.resetAllMocks();
+    vi.resetAllMocks();
 
     // Mock getAccessToken to return our test token
-    (getAccessToken as jest.Mock).mockResolvedValue(mockToken);
+    (getAccessToken as vi.Mock).mockResolvedValue(mockToken);
 
     // Mock fetch globally
-    global.fetch = jest.fn();
+    global.fetch = vi.fn();
 
     // Clear CSRF token before each test
     clearCSRFToken();
   });
 
   afterEach(() => {
-    jest.resetAllMocks();
+    vi.resetAllMocks();
     clearCSRFToken();
   });
 
   describe("GET requests", () => {
     it("should make a GET request with correct headers", async () => {
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      (global.fetch as vi.Mock).mockResolvedValueOnce({
         ok: true,
         headers: new Map([["content-type", "application/json"]]),
         json: () => Promise.resolve(mockResponse),
@@ -49,7 +50,7 @@ describe("ApiClient", () => {
     });
 
     it("should throw an error when GET request fails", async () => {
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      (global.fetch as vi.Mock).mockResolvedValueOnce({
         ok: false,
         statusText: "Not Found",
         headers: new Map([["content-type", "application/json"]]),
@@ -64,7 +65,7 @@ describe("ApiClient", () => {
     const postData = { key: "value" };
 
     it("should make a POST request with correct headers and body", async () => {
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      (global.fetch as vi.Mock).mockResolvedValueOnce({
         ok: true,
         headers: new Map([["content-type", "application/json"]]),
         json: () => Promise.resolve(mockResponse),
@@ -85,7 +86,7 @@ describe("ApiClient", () => {
     });
 
     it("should throw an error when POST request fails", async () => {
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      (global.fetch as vi.Mock).mockResolvedValueOnce({
         ok: false,
         statusText: "Bad Request",
         headers: new Map([["content-type", "application/json"]]),
@@ -102,7 +103,7 @@ describe("ApiClient", () => {
     const putData = { key: "value" };
 
     it("should make a PUT request with correct headers and body", async () => {
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      (global.fetch as vi.Mock).mockResolvedValueOnce({
         ok: true,
         headers: new Map([["content-type", "application/json"]]),
         json: () => Promise.resolve(mockResponse),
@@ -123,7 +124,7 @@ describe("ApiClient", () => {
     });
 
     it("should throw an error when PUT request fails", async () => {
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      (global.fetch as vi.Mock).mockResolvedValueOnce({
         ok: false,
         statusText: "Bad Request",
         headers: new Map([["content-type", "application/json"]]),
@@ -138,7 +139,7 @@ describe("ApiClient", () => {
 
   describe("DELETE requests", () => {
     it("should make a DELETE request with correct headers", async () => {
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      (global.fetch as vi.Mock).mockResolvedValueOnce({
         ok: true,
         headers: new Map([["content-type", "application/json"]]),
         json: () => Promise.resolve(mockResponse),
@@ -158,7 +159,7 @@ describe("ApiClient", () => {
     });
 
     it("should throw an error when DELETE request fails", async () => {
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      (global.fetch as vi.Mock).mockResolvedValueOnce({
         ok: false,
         statusText: "Not Found",
         headers: new Map([["content-type", "application/json"]]),
@@ -171,7 +172,7 @@ describe("ApiClient", () => {
 
   describe("Error handling", () => {
     it("should handle network errors", async () => {
-      (global.fetch as jest.Mock).mockRejectedValueOnce(
+      (global.fetch as vi.Mock).mockRejectedValueOnce(
         new Error("Network error")
       );
 
@@ -180,7 +181,7 @@ describe("ApiClient", () => {
 
     it("should handle token retrieval errors", async () => {
       const tokenError = new Error("Token error");
-      (getAccessToken as jest.Mock).mockRejectedValueOnce(tokenError);
+      (getAccessToken as vi.Mock).mockRejectedValueOnce(tokenError);
 
       await expect(api.get("/test")).rejects.toThrow("Token error");
     });
@@ -196,7 +197,7 @@ describe("ApiClient", () => {
         csrf_token: csrfToken,
       };
 
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      (global.fetch as vi.Mock).mockResolvedValueOnce({
         ok: true,
         headers: new Map([["content-type", "application/json"]]),
         json: () => Promise.resolve(loginResponse),
@@ -215,7 +216,7 @@ describe("ApiClient", () => {
         new_csrf_token: csrfToken,
       };
 
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      (global.fetch as vi.Mock).mockResolvedValueOnce({
         ok: true,
         headers: new Map([["content-type", "application/json"]]),
         json: () => Promise.resolve(responseWithNewToken),
@@ -229,7 +230,7 @@ describe("ApiClient", () => {
     it("should capture CSRF token from X-New-CSRF-Token header (preferred)", async () => {
       const responseWithHeaderToken = { data: "test" };
 
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      (global.fetch as vi.Mock).mockResolvedValueOnce({
         ok: true,
         headers: new Map([
           ["content-type", "application/json"],
@@ -253,7 +254,7 @@ describe("ApiClient", () => {
         csrf_token: bodyToken,
       };
 
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      (global.fetch as vi.Mock).mockResolvedValueOnce({
         ok: true,
         headers: new Map([
           ["content-type", "application/json"],
@@ -271,7 +272,7 @@ describe("ApiClient", () => {
       // Set up CSRF token
       setCSRFToken(csrfToken);
 
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      (global.fetch as vi.Mock).mockResolvedValueOnce({
         ok: true,
         headers: new Map([["content-type", "application/json"]]),
         json: () => Promise.resolve(mockResponse),
@@ -298,7 +299,7 @@ describe("ApiClient", () => {
       const formData = new FormData();
       formData.append("test", "value");
 
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      (global.fetch as vi.Mock).mockResolvedValueOnce({
         ok: true,
         headers: new Map([["content-type", "application/json"]]),
         json: () => Promise.resolve(mockResponse),
@@ -307,7 +308,7 @@ describe("ApiClient", () => {
       await api.post("/test", formData);
 
       // Check that fetch was called with FormData that includes CSRF token
-      const fetchCall = (global.fetch as jest.Mock).mock.calls[0];
+      const fetchCall = (global.fetch as vi.Mock).mock.calls[0];
       const requestBody = fetchCall[1].body as FormData;
 
       expect(requestBody.get("csrf_token")).toBe(csrfToken);
@@ -321,7 +322,7 @@ describe("ApiClient", () => {
         new_csrf_token: newCsrfToken,
       };
 
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      (global.fetch as vi.Mock).mockResolvedValueOnce({
         ok: false,
         status: 400, // Use 400 to avoid CSRF retry logic
         headers: new Map([["content-type", "application/json"]]),
@@ -344,7 +345,7 @@ describe("ApiClient", () => {
 
       const responseWithoutToken = { data: "test" };
 
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      (global.fetch as vi.Mock).mockResolvedValueOnce({
         ok: true,
         headers: new Map([["content-type", "application/json"]]),
         json: () => Promise.resolve(responseWithoutToken),

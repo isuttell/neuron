@@ -1,31 +1,32 @@
+import { vi } from 'vitest';
 import { api } from "../api";
 import { getAccessToken } from "@/actions/getToken";
 import { addCSRFHeader, setCSRFToken } from "../csrf";
 
 // Mock dependencies
-jest.mock("@/actions/getToken", () => ({
-  getAccessToken: jest.fn(),
+vi.mock("@/actions/getToken", () => ({
+  getAccessToken: vi.fn(),
 }));
 
-jest.mock("../csrf", () => ({
-  addCSRFHeader: jest.fn((headers) => ({ ...headers, "X-CSRF-Token": "test-csrf-token" })),
-  addCSRFToFormData: jest.fn((formData) => formData),
-  setCSRFToken: jest.fn(),
-  clearCSRFToken: jest.fn(),
+vi.mock("../csrf", () => ({
+  addCSRFHeader: vi.fn((headers) => ({ ...headers, "X-CSRF-Token": "test-csrf-token" })),
+  addCSRFToFormData: vi.fn((formData) => formData),
+  setCSRFToken: vi.fn(),
+  clearCSRFToken: vi.fn(),
 }));
 
 // Mock fetch
-const mockFetch = jest.fn();
+const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
 describe("api client response handling", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-    (getAccessToken as jest.Mock).mockResolvedValue("test-token");
+    vi.clearAllMocks();
+    (getAccessToken as vi.Mock).mockResolvedValue("test-token");
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   describe("response data extraction", () => {

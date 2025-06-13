@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { configureStore } from "@reduxjs/toolkit";
 import threadsReducer from "@/slices/threadsSlice";
 import { api } from "@/lib/api";
@@ -10,11 +11,11 @@ import type { Thread, ThreadUser } from "@/types/thread";
 import type { User } from "@/types/user";
 
 // Mock the api module
-jest.mock("@/lib/api", () => ({
+vi.mock("@/lib/api", () => ({
   api: {
-    get: jest.fn(),
-    post: jest.fn(),
-    delete: jest.fn(),
+    get: vi.fn(),
+    post: vi.fn(),
+    delete: vi.fn(),
   },
 }));
 
@@ -55,7 +56,7 @@ describe("threadActions", () => {
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     store = configureStore({
       reducer: {
         threads: threadsReducer,
@@ -77,7 +78,7 @@ describe("threadActions", () => {
         user: mockUser,
       };
 
-      (api.post as jest.Mock).mockResolvedValueOnce(mockResponse);
+      (api.post as vi.Mock).mockResolvedValueOnce(mockResponse);
 
       await store.dispatch(
         addUserByEmail({ threadId: "thread-123", email: "newuser@example.com" })
@@ -91,7 +92,7 @@ describe("threadActions", () => {
 
     it("should handle API errors", async () => {
       const errorMessage = "User not found";
-      (api.post as jest.Mock).mockRejectedValueOnce(new Error(errorMessage));
+      (api.post as vi.Mock).mockRejectedValueOnce(new Error(errorMessage));
 
       await store.dispatch(
         addUserByEmail({ threadId: "thread-123", email: "invalid@example.com" })
@@ -105,7 +106,7 @@ describe("threadActions", () => {
     });
 
     it("should handle unknown errors", async () => {
-      (api.post as jest.Mock).mockRejectedValueOnce("Unknown error");
+      (api.post as vi.Mock).mockRejectedValueOnce("Unknown error");
 
       await store.dispatch(
         addUserByEmail({ threadId: "thread-123", email: "test@example.com" })
@@ -129,7 +130,7 @@ describe("threadActions", () => {
         ],
       };
 
-      (api.get as jest.Mock).mockResolvedValueOnce(mockResponse);
+      (api.get as vi.Mock).mockResolvedValueOnce(mockResponse);
 
       await store.dispatch(fetchThreadUsers("thread-123"));
 
@@ -138,7 +139,7 @@ describe("threadActions", () => {
 
     it("should handle empty users array", async () => {
       const mockResponse = { users: [] };
-      (api.get as jest.Mock).mockResolvedValueOnce(mockResponse);
+      (api.get as vi.Mock).mockResolvedValueOnce(mockResponse);
 
       await store.dispatch(fetchThreadUsers("thread-123"));
 
@@ -148,7 +149,7 @@ describe("threadActions", () => {
 
   describe("removeThreadUser", () => {
     it("should handle successful user removal", async () => {
-      (api.delete as jest.Mock).mockResolvedValueOnce(undefined);
+      (api.delete as vi.Mock).mockResolvedValueOnce(undefined);
 
       await store.dispatch(
         removeThreadUser({ threadId: "thread-123", userId: "user-123" })
@@ -159,7 +160,7 @@ describe("threadActions", () => {
 
     it("should handle deletion errors", async () => {
       const errorMessage = "Permission denied";
-      (api.delete as jest.Mock).mockRejectedValueOnce(new Error(errorMessage));
+      (api.delete as vi.Mock).mockRejectedValueOnce(new Error(errorMessage));
 
       await store.dispatch(
         removeThreadUser({ threadId: "thread-123", userId: "user-123" })

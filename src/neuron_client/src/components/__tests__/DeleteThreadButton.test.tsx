@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { screen, render, fireEvent, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { Provider } from "react-redux";
@@ -17,24 +18,27 @@ const createMockStore = () => {
   });
 };
 
-// Mock the navigate function
-const mockNavigate = jest.fn();
-jest.mock("react-router-dom", () => ({
-  ...jest.requireActual("react-router-dom"),
-  useNavigate: () => mockNavigate,
-}));
+// Mock react-router-dom using shared utility
+import { createRouterMocks } from "../../../../../test/mocks/react-router-dom";
+
+const { mockNavigate } = createRouterMocks();
+vi.mock("react-router-dom", async () => {
+  const actual = await vi.importActual<typeof import("react-router-dom")>("react-router-dom");
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+  };
+});
 
 // Mock the threadActions module
-jest.mock("../../actions/threadActions", () => ({
-  deleteThread: jest.fn(),
+vi.mock("../../actions/threadActions", () => ({
+  deleteThread: vi.fn(),
 }));
 
-// Mock sonner toast
-jest.mock("sonner", () => {
-  const mockToast: jest.MockedFunction<(...args: unknown[]) => void> & {
-    error: jest.MockedFunction<(...args: unknown[]) => void>;
-  } = Object.assign(jest.fn(), {
-    error: jest.fn(),
+// Mock sonner toast for Vitest
+vi.mock("sonner", () => {
+  const mockToast = Object.assign(vi.fn(), {
+    error: vi.fn(),
   });
   return {
     toast: mockToast,
@@ -49,10 +53,10 @@ describe("DeleteThreadButton", () => {
     store = createMockStore();
 
     // Reset the mock implementations
-    ((threadActions.deleteThread as unknown) as jest.Mock).mockImplementation(() => ({
+    ((threadActions.deleteThread as unknown) as vi.Mock).mockImplementation(() => ({
       type: "deleteThread",
       payload: threadId,
-      unwrap: jest.fn().mockResolvedValue({}),
+      unwrap: vi.fn().mockResolvedValue({}),
     }));
 
     mockNavigate.mockClear();

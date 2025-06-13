@@ -1,21 +1,22 @@
+import { vi } from 'vitest';
 import { render, screen } from "@testing-library/react";
 import { User, Auth0ContextInterface } from "@auth0/auth0-react";
 import { withAdminAuth } from "../withAdminAuth";
 import * as auth0React from "@auth0/auth0-react";
 
 // Mock Auth0 hook
-jest.mock("@auth0/auth0-react", () => ({
-  useAuth0: jest.fn(),
+vi.mock("@auth0/auth0-react", () => ({
+  useAuth0: vi.fn(),
 }));
 
 // Test component
 const TestComponent = () => <div>Test Component Content</div>;
 
 describe("withAdminAuth", () => {
-  const mockUseAuth0 = jest.spyOn(auth0React, "useAuth0");
+  const mockUseAuth0 = vi.spyOn(auth0React, "useAuth0");
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe("when user is admin", () => {

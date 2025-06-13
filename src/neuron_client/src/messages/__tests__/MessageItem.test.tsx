@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
@@ -10,7 +11,7 @@ import { Citation } from "@/slices/messagesSlice";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 // Mock the Citations component
-jest.mock("../Citations", () => ({
+vi.mock("../Citations", () => ({
   __esModule: true,
   default: ({ citations }: { citations: Citation[] }) => (
     <div data-testid="citations-component">
@@ -20,7 +21,7 @@ jest.mock("../Citations", () => ({
 }));
 
 // Mock the Content component to avoid react-markdown issues
-jest.mock("../Content", () => ({
+vi.mock("../Content", () => ({
   __esModule: true,
   default: ({ content }: { content: string }) => (
     <div>{content}</div>
@@ -249,7 +250,7 @@ describe("MessageItem", () => {
   });
 
   it("should handle prompt click", () => {
-    const mockOnPromptClick = jest.fn();
+    const mockOnPromptClick = vi.fn();
     const message = {
       id: "107",
       type: "ai" as const,

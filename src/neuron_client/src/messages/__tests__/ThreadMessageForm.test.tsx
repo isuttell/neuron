@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import type { Thread as ThreadModel } from "../../types/thread";
 import {
   fireEvent,
@@ -14,40 +15,40 @@ import { Thread } from "../../types/thread";
 import ThreadMessageForm from "../ThreadMessageForm";
 
 // Mock dependencies
-jest.mock("../../hooks", () => ({
-  useAppDispatch: jest.fn() as Mock<() => AppDispatch>,
+vi.mock("../../hooks", () => ({
+  useAppDispatch: vi.fn() as Mock<() => AppDispatch>,
 }));
 
-jest.mock("react-router-dom", () => ({
-  useParams: jest.fn() as Mock<() => { threadId: string }>,
+vi.mock("react-router-dom", () => ({
+  useParams: vi.fn() as Mock<() => { threadId: string }>,
 }));
 
-jest.mock("sonner", () => {
-  const mockToast: jest.MockedFunction<(...args: unknown[]) => void> & {
-    error: jest.MockedFunction<(...args: unknown[]) => void>;
-  } = Object.assign(jest.fn(), {
-    error: jest.fn(),
+vi.mock("sonner", () => {
+  const mockToast: vi.MockedFunction<(...args: unknown[]) => void> & {
+    error: vi.MockedFunction<(...args: unknown[]) => void>;
+  } = Object.assign(vi.fn(), {
+    error: vi.fn(),
   });
   return {
     toast: mockToast,
   };
 });
 
-jest.mock("../../actions/messageActions", () => ({
-  postMessageByThread: jest.fn(),
+vi.mock("../../actions/messageActions", () => ({
+  postMessageByThread: vi.fn(),
 }));
 
 // Mock MessageForm component
 const mockMessageFormProps = {
-  onSubmit: jest.fn(),
-  onFileAdd: jest.fn(),
-  onFileRemove: jest.fn(),
+  onSubmit: vi.fn(),
+  onFileAdd: vi.fn(),
+  onFileRemove: vi.fn(),
   isLoading: false,
   className: "",
 };
 
-jest.mock("../MessageForm", () => {
-  return function MockMessageForm(props: typeof mockMessageFormProps) {
+vi.mock("../MessageForm", () => ({
+  default: function MockMessageForm(props: typeof mockMessageFormProps) {
     mockMessageFormProps.onSubmit = props.onSubmit;
     mockMessageFormProps.onFileAdd = props.onFileAdd;
     mockMessageFormProps.onFileRemove = props.onFileRemove;
@@ -78,11 +79,11 @@ jest.mock("../MessageForm", () => {
         <div data-testid="class-name">{props.className}</div>
       </div>
     );
-  };
-});
+  },
+}));
 
 describe("ThreadMessageForm", () => {
-  const mockDispatch = jest.fn();
+  const mockDispatch = vi.fn();
   const mockThreadId = "test-thread-123";
 
   const mockThread: Thread = {
@@ -98,10 +99,10 @@ describe("ThreadMessageForm", () => {
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
-    (useAppDispatch as jest.MockedFunction<typeof useAppDispatch>).mockReturnValue(mockDispatch);
-    (useParams as jest.MockedFunction<typeof useParams>).mockReturnValue({
+    (useAppDispatch as vi.MockedFunction<typeof useAppDispatch>).mockReturnValue(mockDispatch);
+    (useParams as vi.MockedFunction<typeof useParams>).mockReturnValue({
       threadId: mockThreadId,
     });
 
@@ -145,7 +146,7 @@ describe("ThreadMessageForm", () => {
     const mockFile = new File(["test content"], "test.txt", { type: "text/plain" });
 
     // Mock the MessageForm to call onSubmit with a file
-    jest.doMock("../MessageForm", () => {
+    vi.doMock("../MessageForm", () => {
       return function MockMessageForm(props: { onSubmit: (text: string, file?: File | Blob) => void; [key: string]: unknown }) {
         return (
           <button
@@ -201,7 +202,7 @@ describe("ThreadMessageForm", () => {
   });
 
   it("does not submit when threadId is missing", () => {
-    (useParams as jest.MockedFunction<typeof useParams>).mockReturnValue({
+    (useParams as vi.MockedFunction<typeof useParams>).mockReturnValue({
       threadId: undefined,
     });
 
@@ -233,7 +234,7 @@ describe("ThreadMessageForm", () => {
 
   it("handles file add with audio recording", () => {
     // Mock the MessageForm to call onFileAdd with audio recording
-    jest.doMock("../MessageForm", () => {
+    vi.doMock("../MessageForm", () => {
       return function MockMessageForm(props: { onFileAdd?: (file: File | Blob, isRecording: boolean) => void; [key: string]: unknown }) {
         return (
           <button
@@ -258,7 +259,7 @@ describe("ThreadMessageForm", () => {
 
   it("handles file add with blob (no name)", () => {
     // Mock the MessageForm to call onFileAdd with a blob
-    jest.doMock("../MessageForm", () => {
+    vi.doMock("../MessageForm", () => {
       return function MockMessageForm(props: { onFileAdd?: (file: File | Blob, isRecording: boolean) => void; [key: string]: unknown }) {
         return (
           <button

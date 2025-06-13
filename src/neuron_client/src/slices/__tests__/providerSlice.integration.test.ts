@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { configureStore } from "@reduxjs/toolkit";
 import providerReducer, {
   fetchProviders,
@@ -8,10 +9,10 @@ import providerReducer, {
 import type { RootState } from "@/store";
 
 // Mock the api module
-jest.mock("@/lib/api", () => ({
+vi.mock("@/lib/api", () => ({
   api: {
-    get: jest.fn(),
-    post: jest.fn(),
+    get: vi.fn(),
+    post: vi.fn(),
   },
 }));
 
@@ -26,7 +27,7 @@ describe("Provider Slice - Default Provider Integration", () => {
         providers: providerReducer,
       },
     });
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it("should handle default provider selection flow", async () => {
@@ -51,7 +52,7 @@ describe("Provider Slice - Default Provider Integration", () => {
     ];
 
     // Mock fetchProviders to return no active provider
-    (api.get as jest.Mock).mockResolvedValueOnce({
+    (api.get as vi.Mock).mockResolvedValueOnce({
       providers: mockProviders,
       active_provider_id: null, // No active provider
     });
@@ -74,7 +75,7 @@ describe("Provider Slice - Default Provider Integration", () => {
     expect(defaultProvider?.id).toBe("provider-2");
 
     // Mock setupProvider call
-    (api.post as jest.Mock).mockResolvedValueOnce({});
+    (api.post as vi.Mock).mockResolvedValueOnce({});
 
     // Simulate setting up the default provider
     await store.dispatch(setupProvider(defaultProvider!.id));
@@ -108,7 +109,7 @@ describe("Provider Slice - Default Provider Integration", () => {
     ];
 
     // Mock fetchProviders to return an active provider
-    (api.get as jest.Mock).mockResolvedValueOnce({
+    (api.get as vi.Mock).mockResolvedValueOnce({
       providers: mockProviders,
       active_provider_id: "provider-1", // Already has active provider
     });
