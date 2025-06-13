@@ -9,14 +9,13 @@ import {
   getPersonalities,
 } from "../slices/personalitiesSlice";
 import logo from "@/assets/logo.svg";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { fetchPersonalities } from "../actions/personalityActions";
 import MessageForm from "../messages/MessageForm";
 
 
 export default function Index() {
-  const { toast } = useToast();
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const [isLoading, setLoading] = useState(false);
@@ -61,9 +60,7 @@ export default function Index() {
         navigate(`/thread/${thread.id}`);
       })
       .catch((error) => {
-        toast({
-          variant: "destructive",
-          title: "Failed to create thread",
+        toast.error("Failed to create thread", {
           description: error?.message || "An unexpected error occurred",
         });
       })

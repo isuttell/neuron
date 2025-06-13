@@ -5,13 +5,12 @@ import { getActivePersonalityId } from "../slices/personalitiesSlice";
 import { createThread } from "../actions/threadActions";
 import { useNavigate } from "react-router-dom";
 import { SidebarGroupAction } from "../components/ui/sidebar";
-import { useToast } from "../hooks/use-toast";
+import { toast } from "sonner";
 
 const NewThreadButton: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const { toast } = useToast();
   const activePersonalityId = useAppSelector(getActivePersonalityId);
 
   return (
@@ -28,9 +27,7 @@ const NewThreadButton: React.FC = () => {
             navigate(`/thread/${thread.id}`);
           })
           .catch((error) => {
-            toast({
-              variant: "destructive",
-              title: "Failed to create thread",
+            toast.error("Failed to create thread", {
               description: error?.message || "An unexpected error occurred",
             });
           })

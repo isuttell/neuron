@@ -29,12 +29,17 @@ jest.mock("../../actions/threadActions", () => ({
   deleteThread: jest.fn(),
 }));
 
-// Mock the useToast hook
-jest.mock("../../hooks/use-toast", () => ({
-  useToast: () => ({
-    toast: jest.fn(),
-  }),
-}));
+// Mock sonner toast
+jest.mock("sonner", () => {
+  const mockToast: jest.MockedFunction<(...args: unknown[]) => void> & {
+    error: jest.MockedFunction<(...args: unknown[]) => void>;
+  } = Object.assign(jest.fn(), {
+    error: jest.fn(),
+  });
+  return {
+    toast: mockToast,
+  };
+});
 
 describe("DeleteThreadButton", () => {
   const threadId = "thread-123";

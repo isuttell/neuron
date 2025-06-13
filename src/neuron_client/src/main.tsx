@@ -1,5 +1,5 @@
 import ScheduledEvents from "@/components/pages/ScheduledEvents";
-import { Toaster } from "@/components/ui/toaster";
+import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { MediaPlayerProvider } from "@/contexts/MediaPlayerContext";
 import { Auth0Provider, User } from "@auth0/auth0-react";

@@ -1,5 +1,5 @@
 import { Action, Dispatch, MiddlewareAPI } from "redux";
-import { toast } from "../hooks/use-toast";
+import { toast } from "sonner";
 import { setSidebarImage } from "../slices/appSlice";
 import { upsertImage } from "../slices/imagesSlice";
 import { upsertMedia } from "../slices/mediaSlice";
@@ -62,8 +62,7 @@ const websocketMiddleware =
         socket.on("open", () => {
           // Dispatch an action when connected
           dispatch(connect(socket));
-          toast({
-            title: "Connected",
+          toast("Connected", {
             duration: 1000,
           });
         });
@@ -71,9 +70,7 @@ const websocketMiddleware =
         socket.on("close", () => {
           // Dispatch an action when disconnected
           dispatch(disconnect());
-          toast({
-            title: "Disconnected. Attempting to reconnect...",
-          });
+          toast("Disconnected. Attempting to reconnect...");
         });
 
         socket.on("personality", (event: PersonalityEvent) => {
@@ -93,9 +90,7 @@ const websocketMiddleware =
 
         socket.on("error", (event: ErrorEvent) => {
           console.error(`ServerError: ${event.message}`);
-          toast({
-            title: "Server error",
-            variant: "destructive",
+          toast.error("Server error", {
             description: event.message,
           });
         });

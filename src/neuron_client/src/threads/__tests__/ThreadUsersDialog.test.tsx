@@ -24,12 +24,17 @@ jest.mock("../../actions/threadActions", () => ({
   updateThreadUserRole: jest.fn(),
 }));
 
-// Mock the useToast hook
-jest.mock("../../hooks/use-toast", () => ({
-  useToast: () => ({
-    toast: jest.fn(),
-  }),
-}));
+// Mock sonner toast
+jest.mock("sonner", () => {
+  const mockToast: jest.MockedFunction<(...args: unknown[]) => void> & {
+    error: jest.MockedFunction<(...args: unknown[]) => void>;
+  } = Object.assign(jest.fn(), {
+    error: jest.fn(),
+  });
+  return {
+    toast: mockToast,
+  };
+});
 
 // Mock the getThreadUsers and getUsers selectors
 jest.mock("../../slices/threadsSlice", () => ({

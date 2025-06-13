@@ -10,7 +10,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { AudioBarVisualization } from "@/components/AudioBarVisualization";
 import { cn } from "@/lib/utils";
 import { memo, useState } from "react";
@@ -42,7 +42,6 @@ const SpeechAudioContent: React.FC<SpeechAudioContentProps> = memo(
     onPause,
     mediaItem,
   }) => {
-    const { toast } = useToast();
     const [isWaveDataLoading, setIsWaveDataLoading] = useState(true);
 
     title = title || url.split("/").pop()?.split(".")[0] || "";
@@ -131,9 +130,7 @@ const SpeechAudioContent: React.FC<SpeechAudioContentProps> = memo(
                 onClick={(e) => {
                   e.preventDefault();
                   navigator.clipboard.writeText(url);
-                  toast({
-                    title: "Audio URL copied to clipboard",
-                  });
+                  toast("Audio URL copied to clipboard");
                 }}
               >
                 <Copy className="size-4" />

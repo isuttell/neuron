@@ -1,7 +1,7 @@
 import { Trash } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAppDispatch } from "../hooks";
-import { useToast } from "../hooks/use-toast";
+import { toast } from "sonner";
 import { deleteThread } from "../actions/threadActions";
 import {
   Dialog,
@@ -29,7 +29,6 @@ export default function DeleteThreadButton({
 }: DeleteThreadButtonProps) {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const { toast } = useToast();
 
   return (
     <Dialog>
@@ -65,13 +64,9 @@ export default function DeleteThreadButton({
               navigate("/");
               try {
                 await dispatch(deleteThread(threadId));
-                toast({
-                  title: "Thread deleted",
-                });
+                toast("Thread deleted");
               } catch (error) {
-                toast({
-                  variant: "destructive",
-                  title: "Failed to delete thread",
+                toast.error("Failed to delete thread", {
                   description:
                     error instanceof Error
                       ? error.message

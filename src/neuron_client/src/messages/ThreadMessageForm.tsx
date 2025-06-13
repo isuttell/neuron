@@ -1,5 +1,5 @@
 import { useAppDispatch } from "@/hooks";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useParams } from "react-router-dom";
 import { postMessageByThread } from "../actions/messageActions";
 import { Thread } from "../types/thread";
@@ -43,7 +43,6 @@ export default function ThreadMessageForm({
   className,
 }: ThreadMessageFormProps) {
   const dispatch = useAppDispatch();
-  const { toast } = useToast();
   const { threadId } = useParams();
 
   /**
@@ -63,9 +62,7 @@ export default function ThreadMessageForm({
         file,
       })
     ).catch((error) => {
-      toast({
-        variant: "destructive",
-        title: "Failed to send message",
+      toast.error("Failed to send message", {
         description:
           error instanceof Error
             ? error.message
@@ -81,8 +78,7 @@ export default function ThreadMessageForm({
    * @param isRecording - Whether this is an audio recording or file upload
    */
   const handleFileAdd = (file: File | Blob, isRecording: boolean) => {
-    toast({
-      title: isRecording ? "Recording added" : "Attachment added",
+    toast(isRecording ? "Recording added" : "Attachment added", {
       description: isRecording
         ? "Ready to send with your message"
         : `${file instanceof File ? file.name : "File"} has been added to the message`,
@@ -93,9 +89,7 @@ export default function ThreadMessageForm({
    * Handles file removal by showing toast notification
    */
   const handleFileRemove = () => {
-    toast({
-      title: "Attachment removed",
-    });
+    toast("Attachment removed");
   };
 
   const isLoading = thread ? thread.status !== "idle" : false;
