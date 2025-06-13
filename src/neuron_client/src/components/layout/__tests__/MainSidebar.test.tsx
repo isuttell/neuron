@@ -384,4 +384,41 @@ describe("MainSidebar", () => {
       });
     });
   });
+
+  describe("Admin-only Recent Media link", () => {
+    it("shows Recent Media link when user is admin", () => {
+      // Default mock already has isAdmin: true
+      renderComponent();
+
+      expect(screen.getByText("Recent Media")).toBeInTheDocument();
+    });
+
+    it("hides Recent Media link when user is not admin", () => {
+      // Mock permissions hook to deny admin access
+      (usePermissions.usePermissions as jest.Mock).mockReturnValue({
+        canAccessPrompts: false,
+        canAccessProviders: false,
+        hasPermission: jest.fn(),
+        hasRole: jest.fn(),
+        isAdmin: false,
+        permissions: [],
+        roles: [],
+        PERMISSIONS: {
+          ADMIN_PROMPTS: "admin-prompts",
+          ADMIN_PROVIDERS: "admin-providers",
+          ADMIN: "admin",
+        },
+        ROLES: {
+          ADMIN: "admin",
+        },
+      });
+
+      renderComponent();
+
+      expect(screen.queryByText("Recent Media")).not.toBeInTheDocument();
+      // But other links should still be visible
+      expect(screen.getByText("Home")).toBeInTheDocument();
+      expect(screen.getByText("Personalities")).toBeInTheDocument();
+    });
+  });
 });
