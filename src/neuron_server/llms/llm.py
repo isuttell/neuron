@@ -392,6 +392,20 @@ lean towards "low" or "medium".""",
         # Filter out messages that don't have content
         messages = state.get("messages", [])
 
+        # Filter out empty AIMessages that are not the last message
+        filtered_messages = []
+        for i, msg in enumerate(messages):
+            if isinstance(msg, AIMessage) and not msg.content and i < len(messages) - 1:
+                # Log the full message being filtered
+                logger.warning(
+                    f"Filtering out empty AIMessage at index {i}/{len(messages)-1}: "
+                    f"{msg.model_dump()}"
+                )
+            else:
+                filtered_messages.append(msg)
+
+        messages = filtered_messages
+
         # Apply caching if enabled
         if getattr(self, "caching_enabled", False):
             messages = self._apply_caching_to_messages(messages)
