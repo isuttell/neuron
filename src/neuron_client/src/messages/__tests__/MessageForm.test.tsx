@@ -281,4 +281,35 @@ describe("MessageForm", () => {
     render(<MessageForm onSubmit={mockOnSubmit} disabled={true} />);
     expect(mockPromptDropdownProps.disabled).toBe(true);
   });
+
+  it("renders children content correctly", () => {
+    const childContent = <div data-testid="child-content">Test Child</div>;
+    render(<MessageForm onSubmit={mockOnSubmit}>{childContent}</MessageForm>);
+
+    expect(screen.getByTestId("child-content")).toBeInTheDocument();
+    expect(screen.getByText("Test Child")).toBeInTheDocument();
+  });
+
+  it("does not render children container when no children provided", () => {
+    render(<MessageForm onSubmit={mockOnSubmit} />);
+
+    // The children container should not be in the DOM when no children
+    expect(screen.queryByTestId("child-content")).not.toBeInTheDocument();
+  });
+
+  it("positions children correctly relative to form controls", () => {
+    const childContent = <div data-testid="child-content">Test Child</div>;
+    render(<MessageForm onSubmit={mockOnSubmit}>{childContent}</MessageForm>);
+
+    const childElement = screen.getByTestId("child-content");
+    const submitButton = screen.getByTestId("submit-button");
+
+    // Both should be in the document
+    expect(childElement).toBeInTheDocument();
+    expect(submitButton).toBeInTheDocument();
+
+    // The children should appear before the submit button in the button row
+    const buttonRow = submitButton.closest(".flex.flex-row");
+    expect(buttonRow).toContainElement(childElement);
+  });
 });

@@ -1,14 +1,17 @@
 import React, { useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, MoreHorizontal, Pencil, Image, Brain, Play, Square } from "lucide-react";
 import {
   Card,
-  CardHeader,
   CardTitle,
   CardContent,
-  CardFooter,
 } from "@/components/ui/card";
-import { Pencil, Image } from "lucide-react";
-import EditPersonalityDialog from "./EditPersonalityDialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Personality } from "@/slices/personalitiesSlice.d";
 import { Button } from "@/components/ui/button";
 import { useAppDispatch, useAppSelector } from "@/hooks";
@@ -20,17 +23,29 @@ import { updatePersonalityLogo } from "@/actions/personalityActions";
 import { cn } from "@/lib/utils";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import {
-  Tooltip,
-  TooltipTrigger,
-  TooltipContent,
-} from "@/components/ui/tooltip";
-import { EmbeddingsButton } from "./EmbeddingsButton";
+import { withAdminAuth } from "@/components/hoc/withAdminAuth";
 
 interface PersonalityItemProps {
   personality: Personality;
   className?: string;
 }
+
+// Create admin-protected embeddings menu item
+const EmbeddingsMenuItemComponent: React.FC<{ personalityId: string }> = ({
+  personalityId,
+}) => (
+  <DropdownMenuItem asChild>
+    <Link
+      className="flex items-center gap-2 text-foreground"
+      to={`/personality/${personalityId}/embeddings`}
+    >
+      <Brain className="size-4" />
+      View Embeddings
+    </Link>
+  </DropdownMenuItem>
+);
+
+const EmbeddingsMenuItem = withAdminAuth(EmbeddingsMenuItemComponent);
 
 const PersonalityItem: React.FC<PersonalityItemProps> = ({
   className,
@@ -49,106 +64,146 @@ const PersonalityItem: React.FC<PersonalityItemProps> = ({
     }
   };
 
+  const handleUpdateLogo = async () => {
+    setIsUpdatingLogo(true);
+    try {
+      await dispatch(updatePersonalityLogo(personality.id)).unwrap();
+      toast("Logo updated", {
+        description: "Logo updated successfully",
+      });
+    } catch (error) {
+      toast.error("Failed to update logo", {
+        description:
+          error instanceof Error
+            ? error.message
+            : "An unknown error occurred",
+      });
+    } finally {
+      setIsUpdatingLogo(false);
+    }
+  };
+
   return (
-    <Card
-      className={cn("mb-4 flex flex-col", className, isActive && "bg-muted/50")}
-    >
-      <CardHeader className="flex flex-row items-center">
-        <CardTitle className="text-lg">{personality.name}</CardTitle>
-      </CardHeader>
-      <CardContent className="flex-1 relative">
-        {(personality.logo && (
-          <img
-            src={personality.logo.replace(/\.[^.]+$/, "_t.webp")}
-            className={cn(
-              "rounded-md w-full cursor-pointer hover:scale-105 transition-all duration-200",
-              isUpdatingLogo && "opacity-30"
-            )}
-            alt={`${personality.name} logo`}
-            width={256}
-            height={256}
-            onClick={() => {
-              if (!isActive) {
-                handleActivate();
-              }
-              navigate(`/`);
-            }}
-          />
-        )) || (
-          <div
-            className={cn(
-              "mb-2 text-xs text-muted-foreground",
-              isUpdatingLogo && "opacity-30"
-            )}
-          >
-            {personality.description}
-          </div>
+    <>
+      <Card
+        className={cn(
+          "mb-4 relative overflow-hidden aspect-square group",
+          className,
+          isActive && "border-2 border-primary"
         )}
-        {isUpdatingLogo && (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <Loader2 className="size-8 animate-spin" />
-          </div>
-        )}
-      </CardContent>
-      <CardFooter className="flex gap-2 justify-end">
-        <EmbeddingsButton personalityId={personality.id} />
-        <EditPersonalityDialog personality={personality} />
-        <Tooltip delayDuration={0}>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              disabled={isUpdatingLogo}
-              onClick={async () => {
-                setIsUpdatingLogo(true);
-                try {
-                  await dispatch(
-                    updatePersonalityLogo(personality.id)
-                  ).unwrap();
-                  toast("Logo updated", {
-                    description: "Logo updated successfully",
-                  });
-                } catch (error) {
-                  toast.error("Failed to update logo", {
-                    description:
-                      error instanceof Error
-                        ? error.message
-                        : "An unknown error occurred",
-                  });
-                } finally {
-                  setIsUpdatingLogo(false);
+      >
+        {/* Logo/Background */}
+        <CardContent className="p-0 h-full relative">
+          {personality.logo ? (
+            <img
+              src={personality.logo.replace(/\.[^.]+$/, "_t.webp")}
+              className={cn(
+                "w-full h-full object-cover cursor-pointer transition-all duration-200 group-hover:scale-105",
+                isUpdatingLogo && "opacity-30"
+              )}
+              alt={`${personality.name} logo`}
+              onClick={() => {
+                if (!isActive) {
+                  handleActivate();
                 }
+                navigate(`/`);
+              }}
+            />
+          ) : (
+            <div
+              className={cn(
+                "w-full h-full flex items-center justify-center bg-muted text-center p-4 cursor-pointer",
+                isUpdatingLogo && "opacity-30"
+              )}
+              onClick={() => {
+                if (!isActive) {
+                  handleActivate();
+                }
+                navigate(`/`);
               }}
             >
-              <Image className="size-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom">Generate Logo</TooltipContent>
-        </Tooltip>
-        <Tooltip delayDuration={0}>
-          <TooltipTrigger asChild>
-            <Button variant="ghost" asChild size="icon">
-              <Link
-                className="text-foreground"
-                to={`/personality/${personality.id}`}
+              <p className="text-xs text-muted-foreground">
+                {personality.description}
+              </p>
+            </div>
+          )}
+
+          {/* Loading spinner overlay */}
+          {isUpdatingLogo && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+              <Loader2 className="size-8 animate-spin text-white" />
+            </div>
+          )}
+        </CardContent>
+
+        {/* Title overlay */}
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-3">
+          <CardTitle className="text-white text-sm font-bold truncate">
+            {personality.name}
+          </CardTitle>
+        </div>
+
+        {/* Dropdown menu overlay */}
+        <div className="absolute top-2 right-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="secondary"
+                size="icon"
+                className="h-8 w-8 bg-black/70 hover:bg-black/90 text-white shadow-sm backdrop-blur-sm"
               >
-                <Pencil className="size-4" />
-              </Link>
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom">Edit Context</TooltipContent>
-        </Tooltip>
-        <Button
-          variant={isActive ? "default" : "outline"}
-          onClick={(e) => {
-            e.preventDefault();
-            handleActivate();
-          }}
-        >
-          {isActive ? "Deactivate" : "Activate"}
-        </Button>
-      </CardFooter>
-    </Card>
+                <MoreHorizontal className="size-4" />
+                <span className="sr-only">More actions</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={() => handleActivate()}
+              >
+                {isActive ? (
+                  <>
+                    <Square className="size-4" />
+                    Deactivate
+                  </>
+                ) : (
+                  <>
+                    <Play className="size-4" />
+                    Activate
+                  </>
+                )}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link
+                  className="flex items-center gap-2 text-foreground"
+                  to={`/personality/${personality.id}`}
+                >
+                  <Pencil className="size-4" />
+                  Context Editor
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => handleUpdateLogo()}
+                disabled={isUpdatingLogo}
+              >
+                <Image className="size-4" />
+                Generate Logo
+              </DropdownMenuItem>
+              <EmbeddingsMenuItem personalityId={personality.id} />
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
+        {/* Active indicator */}
+        {isActive && (
+          <div className="absolute top-2 left-2">
+            <div className="bg-primary text-primary-foreground px-2 py-1 rounded text-xs font-medium h-8 flex items-center">
+              Active
+            </div>
+          </div>
+        )}
+      </Card>
+    </>
   );
 };
 
