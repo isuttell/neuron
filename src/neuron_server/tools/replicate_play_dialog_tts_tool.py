@@ -238,10 +238,7 @@ class ReplicatePlayDialogTool(BaseTool):
                 metadata=metadata,
             )
 
-            artifact = ToolMediaArtifact(
-                media_type="audio",
-                items=[artifact_item]
-            )
+            artifact = ToolMediaArtifact(media_type="audio", items=[artifact_item])
 
             return artifact.to_xml(), [artifact.model_dump()]
 

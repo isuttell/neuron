@@ -240,10 +240,7 @@ Returns an audio tag to be shown to the user so they can play it.
                     metadata=metadata,
                 )
 
-                artifact = ToolMediaArtifact(
-                    media_type="audio",
-                    items=[artifact_item]
-                )
+                artifact = ToolMediaArtifact(media_type="audio", items=[artifact_item])
 
                 return artifact.to_xml(), [artifact.model_dump()]
             # Handle case where audio URL was not present or download failed silently

@@ -104,7 +104,7 @@ export default function Thread() {
 
   return (
     <div className="flex flex-1 p-4 ipad-top-spacing flex-col flex-nowrap max-h-screen">
-      <div className="flex justify-between border-b">
+      <div className="flex justify-between mb-2 border-b pb-2 mobile-safe-top">
         <SidebarTrigger className="size-10 mr-2" />
         <h1 className="text-lg lg:text-2xl font-bold ">
           {thread.name || "Welcome..."}
@@ -125,7 +125,7 @@ export default function Thread() {
         <div className="flex flex-col flex-1">
           <div className="flex-1 overflow-y-auto relative">
             <div
-              className="h-5 w-full absolute top-0 z-10"
+              className="h-5 w-full absolute top-0 z-20"
               style={{
                 background:
                   "linear-gradient(180deg,rgba(9, 9, 11, 1) 0%, rgba(9,9,11, 0) 100%)",
@@ -155,7 +155,7 @@ export default function Thread() {
               </div>
             </div>
             <div
-              className="h-16 w-full absolute bottom-0"
+              className="h-16 w-full absolute bottom-0 z-20"
               style={{
                 background:
                   "linear-gradient(0deg,rgba(9,9,11, 1) 0%, rgba(9,9,11, 0) 100%)",

@@ -59,8 +59,6 @@ def _process_list_content_as_string(content: list) -> str:
     return "\n".join(text_parts)
 
 
-
-
 def _process_list_content_as_structured(content: list) -> list[dict[str, Any]] | None:
     """Process list content and return as structured content."""
     contents = []
@@ -301,6 +299,7 @@ def _clean_run_id(run_id: str) -> str:
 @dataclass
 class StatusEvent:
     """Represents a status change event for tracking."""
+
     timestamp: datetime
     event_type: Literal["start", "end"]
     operation: str
@@ -315,7 +314,6 @@ TOOL_DESCRIPTIONS = {
     "update_memory": "Updating memory",
     "read_thread_memory": "Reading thread memory",
     "set_thread_memory": "Updating thread memory",
-
     # Image generation/processing
     "replicate_image_generation": "Creating AI-generated image",
     "replicate_kontext_image_edit": "Editing image with AI",
@@ -325,7 +323,6 @@ TOOL_DESCRIPTIONS = {
     "inspect_image": "Analyzing image content",
     "inspect_webcam": "Capturing webcam image",
     "astro_finder_image": "Generating astronomy finder chart",
-
     # Audio/TTS/Music
     "replicate_audio_generation": "Creating AI-generated audio",
     "replicate_music_generation": "Generating music",
@@ -337,12 +334,10 @@ TOOL_DESCRIPTIONS = {
     "openai_tts": "Converting text to speech with OpenAI",
     "glados_tts": "Synthesizing GLaDOS voice",
     "whisper_stt": "Transcribing audio to text",
-
     # Video
     "replicate_video_generation": "Creating AI-generated video",
     "ffmpeg": "Processing media file",
     "ffprobe": "Analyzing media file",
-
     # Document/Graph operations
     "document_inspect": "Analyzing document",
     "query_documents": "Searching documents",
@@ -351,7 +346,6 @@ TOOL_DESCRIPTIONS = {
     "graph_import": "Importing to knowledge graph",
     "graph_arxiv_import": "Importing paper to graph",
     "graph_website_import": "Importing website to graph",
-
     # Search operations
     "arxiv_search": "Searching academic papers",
     "arxiv_summary": "Summarizing research paper",
@@ -359,7 +353,6 @@ TOOL_DESCRIPTIONS = {
     "arxiv_graph_import": "Importing paper to graph",
     "web_search": "Searching the web",
     "simbad_tap_search": "Searching astronomical database",
-
     # Astronomy tools
     "astro_coordinates": "Converting celestial coordinates",
     "astro_target_search": "Searching astronomical targets",
@@ -370,17 +363,14 @@ TOOL_DESCRIPTIONS = {
     "moon": "Getting moon information",
     "sun": "Getting sun information",
     "skyfield": "Computing astronomical positions",
-
     # Home automation
     "homeassistant_sensor": "Reading home sensor",
     "homeassistant_service": "Controlling home device",
     "security_camera": "Accessing security camera",
     "send_notification": "Sending notification",
-
     # Weather
     "openweathermap_forecast": "Getting weather forecast",
     "openweathermap_overview": "Getting weather overview",
-
     # Media lists
     "media_list_access": "Checking media list access",
     "media_list_add_item": "Adding to media list",
@@ -391,25 +381,20 @@ TOOL_DESCRIPTIONS = {
     "media_list_remove_item": "Removing from media list",
     "media_list_reorder_items": "Reordering media list",
     "media_list_update": "Updating media list",
-
     # Scheduling
     "schedule_prompt": "Scheduling task",
     "list_scheduled_prompts": "Listing scheduled tasks",
     "remove_scheduled_prompt": "Removing scheduled task",
-
     # Gaming
     "hd2_galactic_war_report": "Getting Helldivers 2 war status",
     "hd2_liberation_history": "Getting liberation history",
     "dice": "Rolling dice",
-
     # AI/Reasoning
     "deepseek_reasoning": "Deep reasoning analysis",
     "code_interpreter": "Executing code",
     "openai_compatible": "Running AI model",
-
     # Personality
     "personality_prompt": "Getting personality prompt",
-
     # System operations
     "thinking": "Processing your request",
     "streaming": "Writing response",
@@ -620,7 +605,7 @@ async def update_thread_status(
             status_agents[thread.id] = StatusAgent(
                 thread.id,
                 personality_name=personality_name,
-                personality_context=personality_context
+                personality_context=personality_context,
             )
 
         status_agent = status_agents[thread.id]
@@ -642,15 +627,14 @@ async def update_thread_status(
             timestamp=datetime.now(),
             event_type="start",
             operation=status,
-            description=description
+            description=description,
         )
         status_events[thread.id].append(event)
 
         # Get events since last update
         last_update_time = status_agent.last_execution_time or datetime.min
         recent_events = [
-            e for e in status_events[thread.id]
-            if e.timestamp > last_update_time
+            e for e in status_events[thread.id] if e.timestamp > last_update_time
         ]
 
         # Use status agent to generate intelligent status message
@@ -801,7 +785,7 @@ async def _handle_tool_event(ctx: ToolEventContext) -> None:
             timestamp=datetime.now(),
             event_type="end",
             operation=tool_name,
-            description=description
+            description=description,
         )
         status_events[thread.id].append(event)
 
@@ -888,27 +872,17 @@ async def _process_stream_events(ctx: StreamEventContext) -> str | None:
     )
     max_message_length = 1000
     if human_message_content and len(human_message_content) > max_message_length:
-        human_message_content = human_message_content[:max_message_length - 3] + "..."
+        human_message_content = human_message_content[: max_message_length - 3] + "..."
 
     # Store personality info for status agent
     thread_personalities[ctx["thread"].id] = (
         ctx["personality"].name,
-        ctx["personality"].context
-    )
-
-    # Create prefilled assistant message with metadata
-    prefilled_message = AIMessage(
-        id=str(uuid4()),
-        content=(
-            f"[{ctx['start_time'].strftime('%Y-%m-%d %H:%M:%S %Z')}] "
-            f"[{ctx['personality'].name}] "
-        ),
-        additional_kwargs={"hidden": True, "prefill": True},
+        ctx["personality"].context,
     )
 
     async for body in ctx["graph"].astream_events(
         {
-            "messages": [ctx["human_message"], prefilled_message],
+            "messages": [ctx["human_message"]],
             "personality": ctx["personality"].context,
             "title": ctx["thread"].name,
             "location": ctx["config"]["location"],

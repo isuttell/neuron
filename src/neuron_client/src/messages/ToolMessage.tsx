@@ -58,8 +58,15 @@ const ToolMessage: React.FC<ToolMessageProps> = ({
         {/* For admins: show both content and artifacts */}
         {showTools && (
           <>
+            {hasMediaArtifact && (
+              <MediaArtifacts
+                artifact={artifact}
+                preload={status === "streaming" ? "none" : "metadata"}
+                className=""
+              />
+            )}
             {textContent && textContent.trim().length > 0 && (
-              <div className="mb-4">
+              <div className="mt-4">
                 <details className="group">
                   <summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground">
                     Tool Output
@@ -69,13 +76,6 @@ const ToolMessage: React.FC<ToolMessageProps> = ({
                   </div>
                 </details>
               </div>
-            )}
-            {hasMediaArtifact && (
-              <MediaArtifacts
-                artifact={artifact}
-                preload={status === "streaming" ? "none" : "metadata"}
-                className=""
-              />
             )}
           </>
         )}

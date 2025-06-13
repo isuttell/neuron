@@ -245,10 +245,7 @@ text prompts with the stackadoc/stable-audio-open-1.0 model. Ideal for:
                 metadata=metadata,
             )
 
-            artifact = ToolMediaArtifact(
-                media_type="video",
-                items=[artifact_item]
-            )
+            artifact = ToolMediaArtifact(media_type="video", items=[artifact_item])
 
             return artifact.to_xml(), [artifact.model_dump()]
         except Exception as e:

@@ -201,7 +201,7 @@ async def process_artifacts(
             url=url,
             caption=file,
             description="",  # Code interpreter doesn't provide descriptions
-            metadata=ToolArtifactMetadata()  # Minimal metadata for code interpreter
+            metadata=ToolArtifactMetadata(),  # Minimal metadata for code interpreter
         )
 
         # Group by media type
@@ -214,10 +214,7 @@ async def process_artifacts(
     # Create ToolMediaArtifact objects for each media type
     artifacts: list[ToolMediaArtifact] = []
     for media_type, items in media_items_by_type.items():
-        artifact = ToolMediaArtifact(
-            media_type=media_type,
-            items=items
-        )
+        artifact = ToolMediaArtifact(media_type=media_type, items=items)
         artifacts.append(artifact)
 
     return process_output.strip() if process_output else "", artifacts

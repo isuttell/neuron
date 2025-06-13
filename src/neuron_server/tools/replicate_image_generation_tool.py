@@ -422,10 +422,7 @@ class ReplicateImageGenerationTool(BaseTool):
             metadata=metadata,
         )
 
-        artifact = ToolMediaArtifact(
-            media_type="image",
-            items=[artifact_item]
-        )
+        artifact = ToolMediaArtifact(media_type="image", items=[artifact_item])
 
         return artifact.to_xml(), artifact_item
 
@@ -509,7 +506,7 @@ class ReplicateImageGenerationTool(BaseTool):
 
             artifact = ToolMediaArtifact(
                 media_type="image",
-                items=artifact_items  # List of ToolMediaItem instances
+                items=artifact_items,  # List of ToolMediaItem instances
             )
 
             return artifact.to_xml(), [artifact.model_dump()]

@@ -38,8 +38,7 @@ and many others. Use print() statements to show results and progress.
 """.strip()
     )
     stateful: bool = Field(
-        default=True,
-        description="Whether to maintain state between executions"
+        default=True, description="Whether to maintain state between executions"
     )
 
 
@@ -81,7 +80,7 @@ For complex workflows requiring file generation, use the regular code_interprete
         self,
         python_code: str,
         stateful: bool = True,
-        config: RunnableConfig | None = None
+        config: RunnableConfig | None = None,
     ) -> tuple[str, list]:
         try:
             start_time = time.perf_counter()
@@ -104,7 +103,7 @@ For complex workflows requiring file generation, use the regular code_interprete
             result = await sandbox.execute(
                 python_code,
                 session_bytes=session_bytes,
-                session_metadata=session_metadata
+                session_metadata=session_metadata,
             )
 
             # Cache session state if stateful
@@ -112,7 +111,7 @@ For complex workflows requiring file generation, use the regular code_interprete
                 self._sandbox_cache[sandbox_key] = (
                     sandbox,
                     result.session_bytes,
-                    result.session_metadata
+                    result.session_metadata,
                 )
 
                 # Cancel existing cleanup task if any
@@ -151,7 +150,7 @@ For complex workflows requiring file generation, use the regular code_interprete
                     artifact_data = {
                         "type": "variables",
                         "data": variables,
-                        "execution_time": duration
+                        "execution_time": duration,
                     }
 
                     artifact = ToolMediaArtifact(
@@ -159,18 +158,17 @@ For complex workflows requiring file generation, use the regular code_interprete
                         items=[
                             ToolMediaItem(
                                 id="pyodide_variables",
-                                url="data:application/json;base64," +
-                                    json.dumps(artifact_data).encode().hex(),
+                                url="data:application/json;base64,"
+                                + json.dumps(artifact_data).encode().hex(),
                                 caption="Execution Variables",
                                 description=(
                                     f"Variables: {', '.join(variables.keys())}"
                                 ),
                                 metadata=ToolArtifactMetadata(
-                                    duration=duration,
-                                    output_format="json"
-                                )
+                                    duration=duration, output_format="json"
+                                ),
                             )
-                        ]
+                        ],
                     )
                     artifacts.append(artifact.model_dump())
 

@@ -22,19 +22,18 @@ async def get_media_duration(file_path: str | Path) -> Optional[float]:
     # Build ffprobe command
     command = [
         "ffprobe",
-        "-v", "error",
-        "-show_entries", "format=duration",
-        "-of", "default=noprint_wrappers=1:nokey=1",
-        file_path_str
+        "-v",
+        "error",
+        "-show_entries",
+        "format=duration",
+        "-of",
+        "default=noprint_wrappers=1:nokey=1",
+        file_path_str,
     ]
 
     try:
         # Run ffprobe command
-        process = await run_subprocess(
-            command,
-            capture_output=True,
-            text=True
-        )
+        process = await run_subprocess(command, capture_output=True, text=True)
 
         if process.returncode == 0 and process.stdout:
             # Parse duration from output

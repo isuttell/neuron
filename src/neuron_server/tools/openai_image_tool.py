@@ -368,7 +368,7 @@ class OpenAIImageGenerationTool(BaseTool):
 
             artifact = ToolMediaArtifact(
                 media_type="image",
-                items=artifact_items  # List of ToolMediaItem instances
+                items=artifact_items,  # List of ToolMediaItem instances
             )
 
             return full_llm_content, [artifact.model_dump()]

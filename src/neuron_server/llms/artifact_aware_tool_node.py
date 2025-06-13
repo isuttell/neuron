@@ -5,17 +5,21 @@ This module provides an enhanced ToolNode that ensures tools returning artifacts
 captured and passed through to ToolMessages.
 """
 
-from typing import Literal, Union, cast
+from typing import TYPE_CHECKING, Literal, Union, cast
 
 from langchain_core.messages import ToolMessage
 from langchain_core.runnables import RunnableConfig
-from langgraph.prebuilt import ToolNode
-from langgraph.prebuilt.tool_node import (
-    ToolCall,
-    _handle_tool_error,
-    _infer_handled_types,
-    msg_content_output,
-)
+from langgraph.prebuilt import ToolNode, tool_node
+
+if TYPE_CHECKING:
+    from langgraph.prebuilt.tool_node import ToolCall
+else:
+    ToolCall = tool_node.ToolCall
+
+# Import utility functions from tool_node module
+_handle_tool_error = tool_node._handle_tool_error
+_infer_handled_types = tool_node._infer_handled_types
+msg_content_output = tool_node.msg_content_output
 
 
 class ArtifactAwareToolNode(ToolNode):

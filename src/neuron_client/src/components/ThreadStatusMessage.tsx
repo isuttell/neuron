@@ -1,6 +1,5 @@
 import { cn } from "@/lib/utils";
 import { Thread } from "@/types/thread";
-import { Loader2 } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
 
 interface ThreadStatusMessageProps {
@@ -15,7 +14,6 @@ interface ThreadStatusMessageProps {
 export function ThreadStatusMessage({ thread, className }: ThreadStatusMessageProps) {
   const [displayedText, setDisplayedText] = useState("");
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [isVisible, setIsVisible] = useState(false);
   const previousStatusRef = useRef<string>("");
   const animationRef = useRef<number | null>(null);
 
@@ -44,12 +42,10 @@ export function ThreadStatusMessage({ thread, className }: ThreadStatusMessagePr
       previousStatusRef.current = "";
       setDisplayedText("");
       setCurrentIndex(0);
-      setIsVisible(false);
     } else if (currentStatus !== previousStatusRef.current) {
       previousStatusRef.current = currentStatus;
       setDisplayedText("");
       setCurrentIndex(0);
-      setIsVisible(true);
     }
   }, [currentStatus, thread]);
 
@@ -69,20 +65,17 @@ export function ThreadStatusMessage({ thread, className }: ThreadStatusMessagePr
     };
   }, [currentIndex, currentStatus]);
 
-  // // Only show status when thread is not idle
-  // if (!thread || thread.status === "idle") {
-  //   return null;
-  // }
+  if (!thread || thread.status === "idle") {
+    return null;
+  }
 
   return (
     <div
       className={cn(
         "flex items-center gap-2 text-sm text-muted-foreground ml-2 transition-opacity duration-300",
-        isVisible ? "opacity-100" : "opacity-0",
         className
       )}
     >
-      <Loader2 className="h-4 w-5 animate-spin" />
       <span className="inline-block">
         {displayedText}
         {currentIndex < currentStatus.length && (

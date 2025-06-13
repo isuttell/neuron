@@ -281,8 +281,8 @@ async def cleanup() -> None:
     for _category, tools in tool_sets.items():
         for tool in tools:
             # Check if tool has a cleanup method
-            if hasattr(tool, 'cleanup') and callable(tool.cleanup):
+            if hasattr(tool, "cleanup") and callable(tool.cleanup):
                 await tool.cleanup()
             # Also check for __del__ for backward compatibility
-            elif hasattr(tool, '__del__'):
+            elif hasattr(tool, "__del__"):
                 tool.__del__()

@@ -639,7 +639,11 @@ async def test_workflow_with_thinking_analysis() -> None:
     with (
         patch("neuron_server.llms.llm.config", MockConfig()),
         patch("neuron_server.llms.llm.default_tools", []),
+        patch("neuron_server.llms.llm.ArtifactAwareToolNode") as mock_tool_node,
     ):
+        # Mock the ArtifactAwareToolNode to avoid any side effect issues
+        mock_tool_node.return_value = MagicMock()
+
         llm = LLM(
             model=FakeRunnable(AIMessage(content="test")),
             model_id="claude-sonnet-4-20250514",

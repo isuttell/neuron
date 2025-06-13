@@ -285,5 +285,6 @@ async def shutdown() -> None:
 
     # Clean up tools
     from neuron_server.llms.tools import cleanup
+
     await cleanup()
     logger.info("Tools cleaned up")

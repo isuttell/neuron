@@ -75,7 +75,7 @@ class TestReplicateKokoroTTSTool:
     @patch(
         "neuron_server.util.media_utilities.get_media_duration",
         new_callable=AsyncMock,
-        return_value=5.2
+        return_value=5.2,
     )
     async def test_arun_bytes_output(
         self, mock_duration, mock_create, mock_save_output, mock_replicate
@@ -122,19 +122,22 @@ class TestReplicateKokoroTTSTool:
         xml_content, artifact = result
 
         # Check XML content
-        assert '<audio>' in xml_content
-        assert '<id>media_123</id>' in xml_content
-        assert '<caption>test audio</caption>' in xml_content
+        assert "<audio>" in xml_content
+        assert "<id>media_123</id>" in xml_content
+        assert "<caption>test audio</caption>" in xml_content
 
-        # Check artifact
-        assert isinstance(artifact, dict)
-        assert artifact["type"] == "media"
-        assert artifact["media_type"] == "audio"
-        assert len(artifact["items"]) == 1
-        assert artifact["items"][0]["id"] == "media_123"
-        assert artifact["items"][0]["caption"] == "test audio"
+        # Check artifact - it's returned as a list containing the artifact dict
+        assert isinstance(artifact, list)
+        assert len(artifact) == 1
+        artifact_dict = artifact[0]
+        assert isinstance(artifact_dict, dict)
+        assert artifact_dict["type"] == "media"
+        assert artifact_dict["media_type"] == "audio"
+        assert len(artifact_dict["items"]) == 1
+        assert artifact_dict["items"][0]["id"] == "media_123"
+        assert artifact_dict["items"][0]["caption"] == "test audio"
         # Check that duration is from ffprobe
-        assert artifact["items"][0]["metadata"]["duration"] == 5.2
+        assert artifact_dict["items"][0]["metadata"]["duration"] == 5.2
 
     def test_create_text_preview_short_text(self):
         """Test text preview with short text."""

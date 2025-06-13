@@ -200,9 +200,7 @@ class TestPyodideCodeInterpreterTool:
         tool._sandbox_cache[cache_key] = (MagicMock(), b"data", {})
 
         # Schedule cleanup with 0.1 second delay
-        cleanup_task = asyncio.create_task(
-            tool._schedule_cleanup(cache_key, delay=0.1)
-        )
+        cleanup_task = asyncio.create_task(tool._schedule_cleanup(cache_key, delay=0.1))
         tool._cleanup_tasks[cache_key] = cleanup_task
 
         # Wait for cleanup

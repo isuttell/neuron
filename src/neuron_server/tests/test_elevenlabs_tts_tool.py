@@ -110,7 +110,7 @@ class TestElevenLabsTTSTool:
             patch(
                 "neuron_server.util.media_utilities.get_media_duration",
                 new_callable=AsyncMock,
-                return_value=10.5
+                return_value=10.5,
             ),
         ):
             # Setup mocks
@@ -189,18 +189,21 @@ class TestElevenLabsTTSTool:
             xml_content, artifact = result
 
             # Check XML content
-            assert '<audio>' in xml_content
-            assert '<id>media_123</id>' in xml_content
-            assert '<url>http://localhost/static/' in xml_content
+            assert "<audio>" in xml_content
+            assert "<id>media_123</id>" in xml_content
+            assert "<url>http://localhost/static/" in xml_content
 
-            # Check artifact
-            assert isinstance(artifact, dict)
-            assert artifact["type"] == "media"
-            assert artifact["media_type"] == "audio"
-            assert len(artifact["items"]) == 1
-            assert artifact["items"][0]["id"] == "media_123"
+            # Check artifact - it's returned as a list containing the artifact dict
+            assert isinstance(artifact, list)
+            assert len(artifact) == 1
+            artifact_dict = artifact[0]
+            assert isinstance(artifact_dict, dict)
+            assert artifact_dict["type"] == "media"
+            assert artifact_dict["media_type"] == "audio"
+            assert len(artifact_dict["items"]) == 1
+            assert artifact_dict["items"][0]["id"] == "media_123"
             # Check that duration is from ffprobe, not estimated
-            assert artifact["items"][0]["metadata"]["duration"] == 10.5
+            assert artifact_dict["items"][0]["metadata"]["duration"] == 10.5
 
     @pytest.mark.asyncio
     async def test_arun_empty_script(
@@ -247,7 +250,7 @@ class TestElevenLabsTTSTool:
             patch(
                 "neuron_server.util.media_utilities.get_media_duration",
                 new_callable=AsyncMock,
-                return_value=8.3
+                return_value=8.3,
             ),
         ):
             # Setup mocks
