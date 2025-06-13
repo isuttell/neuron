@@ -13,7 +13,9 @@ jest.mock("@/hooks", () => ({
 
 // Mock sonner toast
 jest.mock("sonner", () => {
-  const mockToast = jest.fn();
+  const mockToast = jest.fn() as jest.MockedFunction<(...args: unknown[]) => void> & {
+    error: jest.MockedFunction<(...args: unknown[]) => void>;
+  };
   mockToast.error = jest.fn();
   return {
     toast: mockToast,

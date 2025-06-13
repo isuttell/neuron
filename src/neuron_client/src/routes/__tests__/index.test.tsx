@@ -7,7 +7,9 @@ import { MemoryRouter } from "react-router-dom";
 
 // Mock all external dependencies first
 jest.mock("sonner", () => {
-  const mockToast = jest.fn();
+  const mockToast = jest.fn() as jest.MockedFunction<(...args: unknown[]) => void> & {
+    error: jest.MockedFunction<(...args: unknown[]) => void>;
+  };
   mockToast.error = jest.fn();
   return {
     toast: mockToast,
