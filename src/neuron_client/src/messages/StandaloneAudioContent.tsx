@@ -10,7 +10,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { AudioBarVisualization } from "@/components/AudioBarVisualization";
 import { cn } from "@/lib/utils";
 import React, { useEffect, useState, memo, useRef, useId } from "react";
@@ -60,7 +60,6 @@ const StandaloneAudioContent: React.FC<StandaloneAudioContentProps> = memo(
     onEnded,
     onPause,
   }) => {
-    const { toast } = useToast();
     const [isPlaying, setIsPlaying] = useState(false);
     const [progress, setProgress] = useState(0);
     const [currentTime, setCurrentTime] = useState("0:00.00");
@@ -307,9 +306,7 @@ const StandaloneAudioContent: React.FC<StandaloneAudioContentProps> = memo(
                 onClick={(e) => {
                   e.preventDefault();
                   navigator.clipboard.writeText(url);
-                  toast({
-                    title: "Audio URL copied to clipboard",
-                  });
+                  toast("Audio URL copied to clipboard");
                 }}
               >
                 <Copy className="size-4" />

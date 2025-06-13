@@ -6,10 +6,13 @@ import { Provider } from "react-redux";
 import { MemoryRouter } from "react-router-dom";
 
 // Mock all external dependencies first
-jest.mock("@/hooks/use-toast", () => ({
-  useToast: () => ({ toast: jest.fn() }),
-  toast: jest.fn(),
-}));
+jest.mock("sonner", () => {
+  const mockToast = jest.fn();
+  mockToast.error = jest.fn();
+  return {
+    toast: mockToast,
+  };
+});
 
 jest.mock("@/assets/logo.svg", () => "logo.svg");
 

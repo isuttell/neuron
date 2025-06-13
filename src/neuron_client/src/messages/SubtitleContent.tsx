@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import Content from "@/messages/Content";
 import { Bot, Play, Pause, Copy, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import {
   Tooltip,
   TooltipContent,
@@ -28,7 +28,6 @@ export function SubtitleContent({
   onPauseClick,
   className,
 }: SubtitleContentProps) {
-  const { toast } = useToast();
   return (
     <div className={cn("cursor-pointer", className)} onClick={onClick}>
       <div className="p-3">
@@ -104,9 +103,7 @@ export function SubtitleContent({
               onClick={(e) => {
                 e.preventDefault();
                 navigator.clipboard.writeText(item.description || "");
-                toast({
-                  title: "Subtitle content copied to clipboard",
-                });
+                toast("Subtitle content copied to clipboard");
               }}
             >
               <Copy className="size-4" />

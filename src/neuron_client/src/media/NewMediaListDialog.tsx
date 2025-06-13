@@ -13,7 +13,7 @@ import {
   DialogTitle,
   DialogClose,
 } from "@/components/ui/dialog";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { createMediaList } from "@/slices/mediaListsSlice";
 import {
   Tooltip,
@@ -23,7 +23,6 @@ import {
 
 const NewMediaListDialog = () => {
   const dispatch = useAppDispatch();
-  const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -32,9 +31,7 @@ const NewMediaListDialog = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
-      toast({
-        variant: "destructive",
-        title: "Name required",
+      toast.error("Name required", {
         description: "Please enter a name for your list",
       });
       return;
@@ -43,17 +40,14 @@ const NewMediaListDialog = () => {
     setLoading(true);
     try {
       await dispatch(createMediaList({ name, description })).unwrap();
-      toast({
-        title: "Success",
+      toast("Success", {
         description: "Media list created successfully",
       });
       setOpen(false);
       setName("");
       setDescription("");
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Failed to create list",
+      toast.error("Failed to create list", {
         description:
           error instanceof Error
             ? error.message

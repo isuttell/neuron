@@ -9,7 +9,7 @@ import {
 } from "../slices/providerSlice";
 import { Button } from "@/components/ui/button";
 import { Atom } from "lucide-react";
-import { useToast } from "../hooks/use-toast";
+import { toast } from "sonner";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -28,7 +28,6 @@ const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
 
 export default function ProvidersPage() {
   const dispatch = useAppDispatch();
-  const { toast } = useToast();
   const providers = useAppSelector(selectProviders);
   const isLoading = useAppSelector(selectProvidersLoading);
   const activeProviderId = useAppSelector(selectActiveProviderId);
@@ -57,14 +56,9 @@ export default function ProvidersPage() {
   const handleSetup = async (providerId: string) => {
     try {
       await dispatch(setupProvider(providerId)).unwrap();
-      toast({
-        title: "Provider setup successful",
-      });
+      toast("Provider setup successful");
     } catch {
-      toast({
-        title: "Failed to setup provider",
-        variant: "destructive",
-      });
+      toast.error("Failed to setup provider");
     }
   };
 

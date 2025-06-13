@@ -14,7 +14,7 @@ import { ListPlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppDispatch, useAppSelector } from "@/hooks";
 import { selectAllMediaLists, addMediaToList } from "@/slices/mediaListsSlice";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { buttonVariants } from "@/components/ui/button";
 
 interface MediaListDropdownProps {
@@ -32,7 +32,6 @@ export function MediaListDropdown({
 }: MediaListDropdownProps) {
   const dispatch = useAppDispatch();
   const mediaLists = useAppSelector(selectAllMediaLists);
-  const { toast } = useToast();
 
   return (
     <DropdownMenu>
@@ -63,9 +62,7 @@ export function MediaListDropdown({
                   index: null,
                 })
               );
-              toast({
-                title: `Added to ${list.name}`,
-              });
+              toast(`Added to ${list.name}`);
             }}
           >
             {list.name}

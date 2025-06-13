@@ -19,7 +19,7 @@ import {
 import { updatePersonalityLogo } from "@/actions/personalityActions";
 import { cn } from "@/lib/utils";
 import { Link, useNavigate } from "react-router-dom";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import {
   Tooltip,
   TooltipTrigger,
@@ -36,7 +36,6 @@ const PersonalityItem: React.FC<PersonalityItemProps> = ({
   className,
   personality,
 }) => {
-  const { toast } = useToast();
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const activePersonality = useAppSelector(getActivePersonality);
@@ -46,9 +45,7 @@ const PersonalityItem: React.FC<PersonalityItemProps> = ({
   const handleActivate = () => {
     dispatch(setActivePersonality(isActive ? undefined : personality.id));
     if (!isActive) {
-      toast({
-        title: `${personality.name} activated`,
-      });
+      toast(`${personality.name} activated`);
     }
   };
 
@@ -108,18 +105,15 @@ const PersonalityItem: React.FC<PersonalityItemProps> = ({
                   await dispatch(
                     updatePersonalityLogo(personality.id)
                   ).unwrap();
-                  toast({
-                    title: "Logo updated",
+                  toast("Logo updated", {
                     description: "Logo updated successfully",
                   });
                 } catch (error) {
-                  toast({
-                    title: "Failed to update logo",
+                  toast.error("Failed to update logo", {
                     description:
                       error instanceof Error
                         ? error.message
                         : "An unknown error occurred",
-                    variant: "destructive",
                   });
                 } finally {
                   setIsUpdatingLogo(false);

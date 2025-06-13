@@ -13,7 +13,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { MediaItem } from "@/types/media";
 import { Copy, Download } from "lucide-react";
@@ -53,7 +53,6 @@ const ImageContent: React.FC<ImageContentProps> = ({
 }) => {
   const [imageLoaded, setImageLoaded] = useState(!preload);
   const [thumbnailLoaded, setThumbnailLoaded] = useState(false);
-  const { toast } = useToast();
   const thumbnailRef = useRef<HTMLImageElement>(null);
   const thumbnailUrl = url.endsWith(".gif")
     ? url
@@ -120,9 +119,7 @@ const ImageContent: React.FC<ImageContentProps> = ({
                     onClick={(e) => {
                       e.preventDefault();
                       navigator.clipboard.writeText(url);
-                      toast({
-                        title: "Image URL copied to clipboard",
-                      });
+                      toast("Image URL copied to clipboard");
                     }}
                   >
                     <Copy />
@@ -149,14 +146,9 @@ const ImageContent: React.FC<ImageContentProps> = ({
                         link.click();
                         document.body.removeChild(link);
                         window.URL.revokeObjectURL(blobUrl);
-                        toast({
-                          title: "Image downloaded",
-                        });
+                        toast("Image downloaded");
                       } catch {
-                        toast({
-                          title: "Download failed",
-                          variant: "destructive",
-                        });
+                        toast.error("Download failed");
                       }
                     }}
                   >
@@ -199,9 +191,7 @@ const ImageContent: React.FC<ImageContentProps> = ({
                     onClick={(e) => {
                       e.preventDefault();
                       navigator.clipboard.writeText(url);
-                      toast({
-                        title: "Image URL copied to clipboard",
-                      });
+                      toast("Image URL copied to clipboard");
                     }}
                   >
                     <Copy className="w-4 h-4" />
@@ -229,14 +219,9 @@ const ImageContent: React.FC<ImageContentProps> = ({
                         link.click();
                         document.body.removeChild(link);
                         window.URL.revokeObjectURL(blobUrl);
-                        toast({
-                          title: "Image downloaded",
-                        });
+                        toast("Image downloaded");
                       } catch {
-                        toast({
-                          title: "Download failed",
-                          variant: "destructive",
-                        });
+                        toast.error("Download failed");
                       }
                     }}
                   >

@@ -21,7 +21,7 @@ import {
   setActivePersonality,
   getActivePersonalityId,
 } from "@/slices/personalitiesSlice";
-import { useToast } from "../hooks/use-toast";
+import { toast } from "sonner";
 import { Spinner } from "@/components/ui/spinner";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { getPersonalities } from "@/slices/personalitiesSlice";
@@ -37,7 +37,6 @@ import {
 export default function PromptsPage() {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
-  const { toast } = useToast();
   const prompts = useAppSelector(selectPrompts);
   const activePersonalityId = useAppSelector(getActivePersonalityId);
   const isLoading = useAppSelector(selectPromptsLoading);
@@ -70,14 +69,9 @@ export default function PromptsPage() {
         })
       );
       setIsUpdating(false);
-      toast({
-        title: "Prompt created",
-      });
+      toast("Prompt created");
     } catch {
-      toast({
-        title: "Failed to create prompt",
-        variant: "destructive",
-      });
+      toast.error("Failed to create prompt");
     } finally {
       setIsUpdating(false);
     }
@@ -101,14 +95,9 @@ export default function PromptsPage() {
           })
         );
         setSelectedPrompt(null);
-        toast({
-          title: "Prompt updated",
-        });
+        toast("Prompt updated");
       } catch {
-        toast({
-          title: "Failed to update prompt",
-          variant: "destructive",
-        });
+        toast.error("Failed to update prompt");
       } finally {
         setIsUpdating(false);
       }
@@ -121,14 +110,9 @@ export default function PromptsPage() {
       try {
         await dispatch(deletePrompt(id));
         setIsUpdating(false);
-        toast({
-          title: "Prompt deleted",
-        });
+        toast("Prompt deleted");
       } catch {
-        toast({
-          title: "There was an error deleting the prompt",
-          variant: "destructive",
-        });
+        toast.error("There was an error deleting the prompt");
       } finally {
         setIsUpdating(false);
       }
@@ -236,10 +220,7 @@ export default function PromptsPage() {
                               const personalityId =
                                 prompt.personality_id || activePersonalityId;
                               if (!personalityId) {
-                                toast({
-                                  title: "No personality selected",
-                                  variant: "destructive",
-                                });
+                                toast.error("No personality selected");
                                 return;
                               }
                               dispatch(
@@ -258,9 +239,7 @@ export default function PromptsPage() {
                                   navigate(`/thread/${thread.id}`);
                                 })
                                 .catch((error) => {
-                                  toast({
-                                    variant: "destructive",
-                                    title: "Failed to create thread",
+                                  toast.error("Failed to create thread", {
                                     description:
                                       error?.message ||
                                       "An unexpected error occurred",

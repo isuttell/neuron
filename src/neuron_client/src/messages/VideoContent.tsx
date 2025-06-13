@@ -18,7 +18,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useMediaPlayer } from "@/hooks/useMediaPlayer";
 import { MediaItem } from "@/types/media";
 import { Copy, Download, Info } from "lucide-react";
@@ -50,7 +50,6 @@ const VideoContent: React.FC<VideoContentProps> = ({
   metadata,
   preload = "metadata",
 }) => {
-  const { toast } = useToast();
   const thumbnailId = useId();
   const dialogId = useId();
   const dialogVideoRef = useRef<HTMLVideoElement>(null);
@@ -112,9 +111,7 @@ const VideoContent: React.FC<VideoContentProps> = ({
                     onClick={(e) => {
                       e.preventDefault();
                       navigator.clipboard.writeText(url);
-                      toast({
-                        title: "Video URL copied to clipboard",
-                      });
+                      toast("Video URL copied to clipboard");
                     }}
                   >
                     <Copy />
@@ -242,9 +239,7 @@ const VideoContent: React.FC<VideoContentProps> = ({
             onClick={(e) => {
               e.preventDefault();
               navigator.clipboard.writeText(url);
-              toast({
-                title: "Video URL copied to clipboard",
-              });
+              toast("Video URL copied to clipboard");
             }}
           >
             <Copy /> Copy
