@@ -9,13 +9,9 @@ RUN apt-get update && \
   apt-get -y upgrade && \
   apt-get -y install \
   curl \
-  git \
-  unzip && \
+  git && \
   rm -rf /var/lib/apt/lists/*
 
-# Install Deno
-RUN curl -fsSL https://deno.land/install.sh | sh && \
-  mv ~/.deno/bin/deno /usr/local/bin/
 
 # Install Poetry
 RUN curl -sSL https://install.python-poetry.org | python3 - \
@@ -39,7 +35,7 @@ ENV PATH="/app/.venv/bin:$PATH"
 ENV PORT=5000
 
 RUN apt-get update && \
-  apt-get install -qy ca-certificates curl ffmpeg && \
+  apt-get install -qy ca-certificates curl ffmpeg unzip && \
   install -m 0755 -d /etc/apt/keyrings && \
   curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc && \
   chmod a+r /etc/apt/keyrings/docker.asc && \
@@ -49,6 +45,10 @@ RUN apt-get update && \
   apt-get -qy upgrade && \
   apt-get -qy install docker-ce docker-ce-cli containerd.io && \
   rm -rf /var/lib/apt/lists/*
+
+# Install Deno
+RUN curl -fsSL https://deno.land/install.sh | sh && \
+  mv ~/.deno/bin/deno /usr/local/bin/
 
 # Set working directory
 WORKDIR /app
