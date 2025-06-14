@@ -398,11 +398,11 @@ describe("MainSidebar", () => {
 
     it("hides Recent Media link when user is not admin", () => {
       // Mock permissions hook to deny admin access
-      (usePermissions.usePermissions as jest.Mock).mockReturnValue({
+      (usePermissions.usePermissions as vi.Mock).mockReturnValue({
         canAccessPrompts: false,
         canAccessProviders: false,
-        hasPermission: jest.fn(),
-        hasRole: jest.fn(),
+        hasPermission: vi.fn(),
+        hasRole: vi.fn(),
         isAdmin: false,
         permissions: [],
         roles: [],
