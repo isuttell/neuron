@@ -480,53 +480,77 @@ class TestPyodideCodeInterpreterTool:
     @pytest.mark.asyncio
     async def test_user_id_validation(self, tool: PyodideCodeInterpreterTool) -> None:
         """Test that user_id validation works properly."""
-        # Test with missing user_id
-        config_no_user = RunnableConfig(
-            configurable={
-                "thread_id": "test_thread_123",
-                # user_id missing
-            }
-        )
+        with patch(
+            "neuron_server.tools.pyodide_code_interpreter_tool.PyodideSandbox"
+        ) as mock_sandbox_class, patch(
+            "neuron_server.tools.pyodide_code_interpreter_tool.os.makedirs"
+        ), patch(
+            "neuron_server.tools.pyodide_code_interpreter_tool.aiofiles.open"
+        ) as mock_aio_open:
+            # Setup minimal mock for sandbox execution
+            mock_sandbox = AsyncMock()
+            mock_sandbox_class.return_value = mock_sandbox
 
-        result = await tool._arun(
-            python_code="print('hello')",
-            config=config_no_user,
-        )
-        content, artifacts = result
-        assert "Error: User ID is required" in content
-        assert len(artifacts) == 0
+            mock_result = MagicMock()
+            mock_result.stdout = "hello"
+            mock_result.stderr = ""
+            mock_result.session_bytes = b""
+            mock_result.session_metadata = {}
+            mock_sandbox.execute.return_value = mock_result
 
-        # Test with None user_id
-        config_none_user = RunnableConfig(
-            configurable={
-                "thread_id": "test_thread_123",
-                "user_id": None,
-            }
-        )
+            # Mock file operations
+            mock_file = AsyncMock()
+            mock_file.write = AsyncMock()
+            mock_aio_open.return_value.__aenter__ = AsyncMock(return_value=mock_file)
+            mock_aio_open.return_value.__aexit__ = AsyncMock()
 
-        result = await tool._arun(
-            python_code="print('hello')",
-            config=config_none_user,
-        )
-        content, artifacts = result
-        assert "Error: User ID is required" in content
-        assert len(artifacts) == 0
+            # Test with missing user_id
+            config_no_user = RunnableConfig(
+                configurable={
+                    "thread_id": "test_thread_123",
+                    # user_id missing
+                }
+            )
 
-        # Test with empty string user_id
-        config_empty_user = RunnableConfig(
-            configurable={
-                "thread_id": "test_thread_123",
-                "user_id": "",
-            }
-        )
+            result = await tool._arun(
+                python_code="print('hello')",
+                config=config_no_user,
+            )
+            content, artifacts = result
+            assert "Error: User ID is required" in content
+            assert len(artifacts) == 0
 
-        result = await tool._arun(
-            python_code="print('hello')",
-            config=config_empty_user,
-        )
-        content, artifacts = result
-        assert "Error: User ID is required" in content
-        assert len(artifacts) == 0
+            # Test with None user_id
+            config_none_user = RunnableConfig(
+                configurable={
+                    "thread_id": "test_thread_123",
+                    "user_id": None,
+                }
+            )
+
+            result = await tool._arun(
+                python_code="print('hello')",
+                config=config_none_user,
+            )
+            content, artifacts = result
+            assert "Error: User ID is required" in content
+            assert len(artifacts) == 0
+
+            # Test with empty string user_id
+            config_empty_user = RunnableConfig(
+                configurable={
+                    "thread_id": "test_thread_123",
+                    "user_id": "",
+                }
+            )
+
+            result = await tool._arun(
+                python_code="print('hello')",
+                config=config_empty_user,
+            )
+            content, artifacts = result
+            assert "Error: User ID is required" in content
+            assert len(artifacts) == 0
 
     def test_tool_metadata(self, tool: PyodideCodeInterpreterTool) -> None:
         """Test tool metadata and properties."""
