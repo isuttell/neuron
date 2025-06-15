@@ -39,13 +39,30 @@ import { getUsers } from "../slices/usersSlice";
 
 interface ThreadUsersDialogProps {
   threadId: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  trigger?: React.ReactNode;
 }
 
 export default function ThreadUsersDialog({
   threadId,
+  open: controlledOpen,
+  onOpenChange,
+  trigger,
 }: ThreadUsersDialogProps) {
   const dispatch = useAppDispatch();
-  const [open, setOpen] = useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+
+  // Use controlled open if provided, otherwise use internal state
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : uncontrolledOpen;
+
+  const handleOpenChange = (newOpen: boolean) => {
+    if (!isControlled) {
+      setUncontrolledOpen(newOpen);
+    }
+    onOpenChange?.(newOpen);
+  };
   const [loading, setLoading] = useState(false);
   const [addingUser, setAddingUser] = useState(false);
   const [email, setEmail] = useState("");
@@ -136,18 +153,22 @@ export default function ThreadUsersDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <DialogTrigger asChild>
-            <Button variant="ghost" size="icon">
-              <Users className="m-3" />
-              <span className="sr-only">Manage Thread Users</span>
-            </Button>
-          </DialogTrigger>
-        </TooltipTrigger>
-        <TooltipContent>Manage Thread Users</TooltipContent>
-      </Tooltip>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      {trigger !== undefined ? (
+        trigger
+      ) : (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DialogTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <Users className="m-3" />
+                <span className="sr-only">Manage Thread Users</span>
+              </Button>
+            </DialogTrigger>
+          </TooltipTrigger>
+          <TooltipContent>Manage Thread Users</TooltipContent>
+        </Tooltip>
+      )}
       <DialogContent className="max-w-[600px]">
         <DialogHeader className="mb-4">
           <DialogTitle>Manage Thread Users</DialogTitle>

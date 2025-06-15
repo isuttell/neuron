@@ -1,4 +1,5 @@
 import { Trash } from "lucide-react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAppDispatch } from "../hooks";
 import { toast } from "sonner";
@@ -20,29 +21,51 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-interface DeleteThreadButtonProps {
+interface DeleteThreadDialogProps {
   threadId: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  trigger?: React.ReactNode;
 }
 
-export default function DeleteThreadButton({
+export default function DeleteThreadDialog({
   threadId,
-}: DeleteThreadButtonProps) {
+  open: controlledOpen,
+  onOpenChange,
+  trigger,
+}: DeleteThreadDialogProps) {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+
+  // Use controlled open if provided, otherwise use internal state
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : uncontrolledOpen;
+
+  const handleOpenChange = (newOpen: boolean) => {
+    if (!isControlled) {
+      setUncontrolledOpen(newOpen);
+    }
+    onOpenChange?.(newOpen);
+  };
 
   return (
-    <Dialog>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <DialogTrigger asChild>
-            <Button variant="ghost" size="icon">
-              <Trash className="m-3" />
-              <span className="sr-only">Delete Thread</span>
-            </Button>
-          </DialogTrigger>
-        </TooltipTrigger>
-        <TooltipContent>Delete Thread</TooltipContent>
-      </Tooltip>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      {trigger !== undefined ? (
+        trigger
+      ) : (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DialogTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <Trash className="m-3" />
+                <span className="sr-only">Delete Thread</span>
+              </Button>
+            </DialogTrigger>
+          </TooltipTrigger>
+          <TooltipContent>Delete Thread</TooltipContent>
+        </Tooltip>
+      )}
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Are you absolutely sure?</DialogTitle>
