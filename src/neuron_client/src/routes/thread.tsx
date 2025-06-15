@@ -1,7 +1,7 @@
-import DeleteThreadButton from "@/components/DeleteThreadButton";
+import DeleteThreadDialog from "@/components/DeleteThreadDialog";
 import MediaPanelToggle from "@/components/MediaPanelToggle";
 import MediaTimeline from "@/components/MediaTimeline";
-import ToggleSystemMessages from "@/components/ToggleSystemMessages";
+import ThreadHeaderActions from "@/components/ThreadHeaderActions";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import {
   Dialog,
@@ -51,6 +51,24 @@ export default function Thread() {
     return isMobileView ? false : localStorage.getItem("mediaPanelVisible") === "true";
   });
   const [isMobile, setIsMobile] = useState(false);
+
+  // Dialog states
+  const [isEditPersonalityOpen, setIsEditPersonalityOpen] = useState(false);
+  const [isThreadUsersOpen, setIsThreadUsersOpen] = useState(false);
+  const [isDeleteThreadOpen, setIsDeleteThreadOpen] = useState(false);
+
+  // Handler for dialog open/close with pointer events fix
+  const createDialogHandler = (setter: (open: boolean) => void) => {
+    return (open: boolean) => {
+      setter(open);
+      if (!open) {
+        // Clear any stuck pointer-events on body
+        setTimeout(() => {
+          document.body.style.removeProperty('pointer-events');
+        }, 100);
+      }
+    };
+  };
 
   // Track screen size to determine if we should show dialog or sidebar
   useEffect(() => {
@@ -126,19 +144,41 @@ export default function Thread() {
           {thread.name || "Welcome..."}
         </h1>
         <div className="flex-1" />
-        <ToggleSystemMessages
-          showTools={showTools}
-          onToggle={() => setShowTools(!showTools)}
-        />
         <MediaPanelToggle
           isVisible={isMediaPanelVisible}
           onChange={setIsMediaPanelVisible}
         />
+        <ThreadHeaderActions
+          showTools={showTools}
+          onToggleTools={() => setShowTools(!showTools)}
+          onEditPersonality={() => setIsEditPersonalityOpen(true)}
+          onManageUsers={() => setIsThreadUsersOpen(true)}
+          onDeleteThread={() => setIsDeleteThreadOpen(true)}
+        />
+
+        {/* Controlled dialogs */}
         {activePersonality && (
-          <EditPersonalityDialog personality={activePersonality} />
+          <EditPersonalityDialog
+            personality={activePersonality}
+            open={isEditPersonalityOpen}
+            onOpenChange={createDialogHandler(setIsEditPersonalityOpen)}
+            trigger={<></>}
+          />
         )}
-        {threadId && <ThreadUsersDialog threadId={threadId} />}
-        <DeleteThreadButton threadId={thread.id} />
+        {threadId && (
+          <ThreadUsersDialog
+            threadId={threadId}
+            open={isThreadUsersOpen}
+            onOpenChange={createDialogHandler(setIsThreadUsersOpen)}
+            trigger={<></>}
+          />
+        )}
+        <DeleteThreadDialog
+          threadId={thread.id}
+          open={isDeleteThreadOpen}
+          onOpenChange={createDialogHandler(setIsDeleteThreadOpen)}
+          trigger={<></>}
+        />
       </div>
       <div className="flex flex-row flex-1">
         <div className="flex flex-col flex-1">

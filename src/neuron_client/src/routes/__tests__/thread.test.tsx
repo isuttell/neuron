@@ -125,23 +125,34 @@ vi.mock("@/personalities/EditPersonalityDialog", () => ({
   ),
 }));
 
-vi.mock("@/components/DeleteThreadButton", () => ({
+vi.mock("@/components/DeleteThreadDialog", () => ({
   __esModule: true,
-  default: () => <button data-testid="delete-thread">Delete Thread</button>,
+  default: () => <div data-testid="delete-thread-dialog">Delete Thread Dialog</div>,
 }));
 
-vi.mock("@/components/ToggleSystemMessages", () => ({
+vi.mock("@/components/ThreadHeaderActions", () => ({
   __esModule: true,
   default: ({
     showTools,
-    onToggle,
+    onToggleTools,
+    onEditPersonality,
+    onManageUsers,
+    onDeleteThread,
   }: {
     showTools: boolean;
-    onToggle: () => void;
+    onToggleTools: () => void;
+    onEditPersonality: () => void;
+    onManageUsers: () => void;
+    onDeleteThread: () => void;
   }) => (
-    <button data-testid="toggle-system" onClick={onToggle}>
-      {showTools ? "Hide" : "Show"} System Messages
-    </button>
+    <div data-testid="thread-header-actions">
+      <button data-testid="toggle-system" onClick={onToggleTools}>
+        {showTools ? "Hide" : "Show"} System Messages
+      </button>
+      <button onClick={onEditPersonality}>Edit Personality</button>
+      <button onClick={onManageUsers}>Manage Users</button>
+      <button onClick={onDeleteThread}>Delete Thread</button>
+    </div>
   ),
 }));
 
@@ -165,6 +176,11 @@ vi.mock("@/components/MediaPanelToggle", () => ({
       Toggle Media Panel
     </button>
   ),
+}));
+
+vi.mock("@/threads/ThreadUsersDialog", () => ({
+  __esModule: true,
+  default: () => <div data-testid="thread-users-dialog">Thread Users Dialog</div>,
 }));
 
 // Mock localStorage
@@ -672,9 +688,11 @@ describe("Thread", () => {
       };
 
       renderThread(initialState);
-      expect(
-        screen.getByRole("button", { name: /edit personality/i })
-      ).toBeInTheDocument();
+      // Check that the ThreadHeaderActions component is rendered
+      expect(screen.getByTestId("thread-header-actions")).toBeInTheDocument();
+      // Check that the standalone EditPersonalityDialog button is rendered
+      const editButtons = screen.getAllByRole("button", { name: /edit personality/i });
+      expect(editButtons).toHaveLength(2); // One in ThreadHeaderActions, one standalone
     });
   });
 });

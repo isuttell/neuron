@@ -33,6 +33,8 @@ interface EditPersonalityDialogProps {
   default_tools?: string[];
   triggerOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
+  open?: boolean;
+  trigger?: React.ReactNode;
 }
 
 const ToolSetLabels = {
@@ -64,13 +66,21 @@ export default function EditPersonalityDialog({
   default_tools = ["image", "search", "tts"],
   triggerOpen,
   onOpenChange: externalOnOpenChange,
+  open: controlledOpen,
+  trigger,
 }: EditPersonalityDialogProps) {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const [open, setOpen] = useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+
+  // Use controlled open if provided, otherwise use internal state
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : uncontrolledOpen;
 
   const handleOpenChange = (newOpen: boolean) => {
-    setOpen(newOpen);
+    if (!isControlled) {
+      setUncontrolledOpen(newOpen);
+    }
     externalOnOpenChange?.(newOpen);
   };
   const [loading, setLoading] = useState(false);
@@ -155,32 +165,36 @@ export default function EditPersonalityDialog({
   }, [personality, open]);
 
   useEffect(() => {
-    if (triggerOpen !== undefined) {
-      setOpen(triggerOpen);
+    if (triggerOpen !== undefined && !isControlled) {
+      setUncontrolledOpen(triggerOpen);
     }
-  }, [triggerOpen]);
+  }, [triggerOpen, isControlled]);
   const active_tools = tool_set.length > 0 ? tool_set : default_tools;
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <DialogTrigger asChild>
-            <Button variant="ghost" size="icon">
-              {personality ? (
-                <UserPen className="m-3" />
-              ) : (
-                <UserPlus className="m-3" />
-              )}
-              <span className="sr-only">
-                {personality ? "Edit" : "Create"} Personality
-              </span>
-            </Button>
-          </DialogTrigger>
-        </TooltipTrigger>
-        <TooltipContent>
-          {personality ? "Edit" : "Create"} Personality
-        </TooltipContent>
-      </Tooltip>
+      {trigger !== undefined ? (
+        trigger
+      ) : (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DialogTrigger asChild>
+              <Button variant="ghost" size="icon">
+                {personality ? (
+                  <UserPen className="m-3" />
+                ) : (
+                  <UserPlus className="m-3" />
+                )}
+                <span className="sr-only">
+                  {personality ? "Edit" : "Create"} Personality
+                </span>
+              </Button>
+            </DialogTrigger>
+          </TooltipTrigger>
+          <TooltipContent>
+            {personality ? "Edit" : "Create"} Personality
+          </TooltipContent>
+        </Tooltip>
+      )}
       <DialogContent className="max-w-[768px]">
         <form onSubmit={handleSubmit}>
           <DialogHeader className="mb-4">

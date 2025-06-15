@@ -3,7 +3,7 @@ import { screen, render, fireEvent, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { Provider } from "react-redux";
 import { configureStore } from "@reduxjs/toolkit";
-import DeleteThreadButton from "../DeleteThreadButton";
+import DeleteThreadDialog from "../DeleteThreadDialog";
 import * as threadActions from "../../actions/threadActions";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
@@ -45,7 +45,7 @@ vi.mock("sonner", () => {
   };
 });
 
-describe("DeleteThreadButton", () => {
+describe("DeleteThreadDialog", () => {
   const threadId = "thread-123";
   let store = createMockStore();
 
@@ -67,7 +67,7 @@ describe("DeleteThreadButton", () => {
       <Provider store={store}>
         <MemoryRouter>
           <TooltipProvider>
-            <DeleteThreadButton threadId={threadId} />
+            <DeleteThreadDialog threadId={threadId} />
           </TooltipProvider>
         </MemoryRouter>
       </Provider>
