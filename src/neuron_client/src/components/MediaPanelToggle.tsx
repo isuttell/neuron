@@ -1,4 +1,4 @@
-import { PanelRight } from "lucide-react";
+import { Images } from "lucide-react";
 import { Button } from "./ui/button";
 import {
   Tooltip,
@@ -25,7 +25,7 @@ export default function MediaPanelToggle({
     <Tooltip delayDuration={0}>
       <TooltipTrigger asChild>
         <Button variant="ghost" size="icon" onClick={toggleVisibility}>
-          <PanelRight className="size-6" />
+          <Images className="size-4" />
           <span className="sr-only">Toggle Media Panel</span>
         </Button>
       </TooltipTrigger>
