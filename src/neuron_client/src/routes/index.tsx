@@ -71,7 +71,7 @@ export default function Index() {
 
   return (
     <div className="flex flex-1 p-2 sm:p-4 ipad-top-spacing mobile-pwa-safe-top flex-col justify-center items-center flex-nowrap min-h-screen overflow-auto gap-2 relative">
-      <SidebarTrigger className="m-2 size-10 absolute left-2 top-2" />
+      <SidebarTrigger className="m-2 size-10 absolute left-2 safe-trigger-top" />
       <div className="flex flex-col w-full h-full justify-center items-center">
         <div className="flex justify-center items-center m-4 sm:m-6">
           <img src={logo} alt="Neuron" className="w-20 sm:w-[120px]" />
