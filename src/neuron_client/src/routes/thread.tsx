@@ -44,9 +44,12 @@ export default function Thread() {
     shallowEqual
   );
   const [showTools, setShowTools] = useState(false);
-  const [isMediaPanelVisible, setIsMediaPanelVisible] = useState(
-    localStorage.getItem("mediaPanelVisible") === "true"
-  );
+  const [isMediaPanelVisible, setIsMediaPanelVisible] = useState(() => {
+    // Desktop: sticky behavior (restore from localStorage)
+    // Mobile: always start hidden (dialog covers content)
+    const isMobileView = window.innerWidth < 1024;
+    return isMobileView ? false : localStorage.getItem("mediaPanelVisible") === "true";
+  });
   const [isMobile, setIsMobile] = useState(false);
 
   // Track screen size to determine if we should show dialog or sidebar
