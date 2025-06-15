@@ -204,32 +204,6 @@ describe("MainSidebar", () => {
       // The onInteractOutside handler is added to the SheetContent in sidebar.tsx at line 206
       // This ensures that clicking outside will close the sidebar on mobile
     });
-
-    it("closes sidebar on navigation when on mobile", async () => {
-      // This test verifies that the sidebar closes when navigating on mobile
-      // The behavior is implemented in sidebar.tsx with a useEffect that watches location.pathname
-
-      const { rerender } = renderComponent(true);
-
-      // Simulate navigation by changing the route
-      rerender(
-        <Provider store={configureStore({
-          reducer: {
-            app: (state = { sidebarImage: null }) => state,
-          },
-        })}>
-          <MemoryRouter initialEntries={["/personalities"]}>
-            <SidebarProvider>
-              <MainSidebar />
-            </SidebarProvider>
-          </MemoryRouter>
-        </Provider>
-      );
-
-      // The sidebar should close on navigation
-      // This is handled by the useEffect in sidebar.tsx that listens to location.pathname changes
-      expect(true).toBe(true); // The actual closing behavior is handled by the sidebar component
-    });
   });
 
   describe("Sidebar image", () => {
