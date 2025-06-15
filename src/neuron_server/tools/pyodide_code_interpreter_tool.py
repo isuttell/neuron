@@ -87,14 +87,18 @@ For complex workflows requiring file generation, use the regular code_interprete
         media_type: str,
         name: str,
         description: str,
-        config: RunnableConfig | None = None,
+        config: RunnableConfig,
     ) -> MediaItemModel:
         """Helper to create media item with config handling."""
+        user_id = config["configurable"].get("user_id")
+        if not user_id:
+            raise ValueError("User ID is required")
+
         params = MediaItemModel.CreateParams(
             url=url,
             media_type=media_type,
-            user_id=config["configurable"].get("user_id") if config else None,
-            thread_id=config["configurable"].get("thread_id") if config else None,
+            user_id=user_id,
+            thread_id=config["configurable"].get("thread_id"),
             name=name,
             description=description,
         )
@@ -242,8 +246,8 @@ For complex workflows requiring file generation, use the regular code_interprete
     async def _arun(
         self,
         python_code: str,
+        config: RunnableConfig,
         stateful: bool = True,
-        config: RunnableConfig | None = None,
     ) -> tuple[str, list]:
         try:
             start_time = time.perf_counter()

@@ -104,8 +104,8 @@ class TestPyodideCodeInterpreterTool:
             # Execute
             result = await tool._arun(
                 python_code="print(2 + 2)",
-                stateful=False,
                 config=mock_config,
+                stateful=False,
             )
 
             # Verify result format
@@ -156,8 +156,8 @@ class TestPyodideCodeInterpreterTool:
             # First execution
             await tool._arun(
                 python_code="x = 42",
-                stateful=True,
                 config=mock_config,
+                stateful=True,
             )
 
             # Check that session was cached
@@ -168,8 +168,8 @@ class TestPyodideCodeInterpreterTool:
             # Second execution should use cached sandbox
             await tool._arun(
                 python_code="print(x)",
-                stateful=True,
                 config=mock_config,
+                stateful=True,
             )
 
             # Sandbox should only be created once
@@ -204,8 +204,8 @@ class TestPyodideCodeInterpreterTool:
             # Execute with stateful=True
             await tool._arun(
                 python_code="x = 1",
-                stateful=True,
                 config=mock_config,
+                stateful=True,
             )
 
             # Check cleanup task was created
@@ -476,6 +476,57 @@ class TestPyodideCodeInterpreterTool:
             assert "seconds" in content
             # Should take at least 0.1 seconds
             assert duration >= 0.1
+
+    @pytest.mark.asyncio
+    async def test_user_id_validation(self, tool: PyodideCodeInterpreterTool) -> None:
+        """Test that user_id validation works properly."""
+        # Test with missing user_id
+        config_no_user = RunnableConfig(
+            configurable={
+                "thread_id": "test_thread_123",
+                # user_id missing
+            }
+        )
+
+        result = await tool._arun(
+            python_code="print('hello')",
+            config=config_no_user,
+        )
+        content, artifacts = result
+        assert "Error: User ID is required" in content
+        assert len(artifacts) == 0
+
+        # Test with None user_id
+        config_none_user = RunnableConfig(
+            configurable={
+                "thread_id": "test_thread_123",
+                "user_id": None,
+            }
+        )
+
+        result = await tool._arun(
+            python_code="print('hello')",
+            config=config_none_user,
+        )
+        content, artifacts = result
+        assert "Error: User ID is required" in content
+        assert len(artifacts) == 0
+
+        # Test with empty string user_id
+        config_empty_user = RunnableConfig(
+            configurable={
+                "thread_id": "test_thread_123",
+                "user_id": "",
+            }
+        )
+
+        result = await tool._arun(
+            python_code="print('hello')",
+            config=config_empty_user,
+        )
+        content, artifacts = result
+        assert "Error: User ID is required" in content
+        assert len(artifacts) == 0
 
     def test_tool_metadata(self, tool: PyodideCodeInterpreterTool) -> None:
         """Test tool metadata and properties."""
