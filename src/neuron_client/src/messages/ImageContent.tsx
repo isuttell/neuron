@@ -162,7 +162,7 @@ const ImageContent: React.FC<ImageContentProps> = ({
         </div>
       </DialogTrigger>
       <DialogContent className="max-w-[95vw] max-h-[95vh] w-full h-[90vh] p-0 overflow-hidden">
-        <div className="grid grid-cols-1 [@media(orientation:landscape)_and_(min-width:768px)]:grid-cols-[1fr,350px] [@media(min-width:1366px)]:grid-cols-[1fr,400px] h-full overflow-hidden">
+        <div className="grid grid-cols-1 [@media(orientation:landscape)_and_(min-width:768px)]:grid-cols-[1fr,350px] [@media(min-width:1366px)]:grid-cols-[1fr,400px] h-full max-h-full overflow-y-auto">
           {/* Image Section */}
           <div className="relative flex items-center justify-center bg-black/5 dark:bg-white/5 min-h-0">
             <img
@@ -173,7 +173,7 @@ const ImageContent: React.FC<ImageContentProps> = ({
           </div>
 
           {/* Details Section */}
-          <div className="flex flex-col border-t [@media(orientation:landscape)_and_(min-width:768px)]:border-t-0 [@media(orientation:landscape)_and_(min-width:768px)]:border-l [@media(min-width:1366px)]:border-t-0 [@media(min-width:1366px)]:border-l h-full [@media(orientation:landscape)_and_(min-width:768px)]:max-h-[90vh] [@media(min-width:1366px)]:max-h-[90vh] overflow-hidden">
+          <div className="flex flex-col border-t [@media(orientation:landscape)_and_(min-width:768px)]:border-t-0 [@media(orientation:landscape)_and_(min-width:768px)]:border-l [@media(min-width:1366px)]:border-t-0 [@media(min-width:1366px)]:border-l h-full min-h-0 [@media(orientation:landscape)_and_(min-width:768px)]:max-h-[90vh] [@media(min-width:1366px)]:max-h-[90vh]">
             <DialogHeader className="px-6 py-4 border-b shrink-0 text-left">
               <DialogTitle className="text-lg pr-8">{alt || "Image Details"}</DialogTitle>
             </DialogHeader>

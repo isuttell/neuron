@@ -138,7 +138,7 @@ export default function Thread() {
 
   return (
     <div className="flex flex-1 p-4 ipad-top-spacing flex-col flex-nowrap max-h-screen">
-      <div className="flex justify-between mb-2 border-b pb-2 mobile-safe-top">
+      <div className="flex items-center justify-between mb-2 border-b pb-2 mobile-safe-top">
         <SidebarTrigger className="size-10 mr-2" />
         <h1 className="text-lg lg:text-2xl font-bold ">
           {thread.name || "Welcome..."}
@@ -245,15 +245,16 @@ export default function Thread() {
             open={isMediaPanelVisible}
             onOpenChange={setIsMediaPanelVisible}
           >
-            <DialogContent className="max-w-[calc(100vw-2rem)] w-full h-[90vh] p-4 flex flex-col rounded-md">
-              <DialogHeader className="pb-4">
+            <DialogContent className="max-w-[calc(100vw-2rem)] md:max-w-4xl lg:max-w-5xl xl:max-w-6xl w-full h-[90vh] p-0 overflow-hidden grid grid-rows-[auto_1fr] rounded-md">
+              <DialogHeader className="p-4 pb-2">
                 <DialogTitle className="text-left">Media Timeline</DialogTitle>
               </DialogHeader>
-              <div className="flex flex-col flex-1 overflow-hidden h-full p-4">
+              <div className="overflow-y-auto min-h-0 px-4 pb-4">
                 {threadId ? (
                   <MediaTimeline
                     key={threadId}
                     threadId={threadId}
+                    layout="grid"
                   />
                 ) : null}
               </div>

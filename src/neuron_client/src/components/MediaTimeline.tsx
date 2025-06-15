@@ -12,9 +12,10 @@ import { FileLink } from "./FileLink";
 
 interface MediaTimelineProps {
   threadId: string;
+  layout?: 'column' | 'grid';
 }
 
-function MediaTimeline({ threadId }: MediaTimelineProps) {
+function MediaTimeline({ threadId, layout = 'column' }: MediaTimelineProps) {
   const mediaItems = useAppSelector(selectAllMedia);
   const [currentIndex, setCurrentIndex] = useState<number>(-1);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -286,9 +287,9 @@ function MediaTimeline({ threadId }: MediaTimelineProps) {
   return (
     <div className="flex flex-col h-full min-h-0">
       <div className="flex-1 overflow-y-auto min-h-0 h-full">
-        <div className="space-y-2">
+        <div className={layout === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 lg:gap-4' : 'space-y-2'}>
           {allItems.length === 0 ? (
-            <div className="text-center text-muted-foreground py-4">
+            <div className={`text-center text-muted-foreground py-4 ${layout === 'grid' ? 'col-span-full' : ''}`}>
               No media
             </div>
           ) : (
