@@ -2,16 +2,21 @@
 
 import asyncio
 import json
+import os
 import time
 from contextlib import suppress
 from typing import Any
+from uuid import uuid4
 
+import aiofiles
 from langchain.tools import BaseTool
 from langchain_core.runnables import RunnableConfig
 from langchain_sandbox import PyodideSandbox
 from pydantic import BaseModel, Field
 
+from neuron_server.config import config as neuron_config
 from neuron_server.logger import logger
+from neuron_server.models.media_item_model import MediaItemModel
 from neuron_server.tools.artifact_types import (
     ToolArtifactMetadata,
     ToolMediaArtifact,
@@ -76,6 +81,164 @@ For complex workflows requiring file generation, use the regular code_interprete
     def _run(self, *args: Any, **kwargs: Any) -> str:
         return asyncio.run(self._arun(*args, **kwargs))
 
+    async def _create_media_item(
+        self,
+        url: str,
+        media_type: str,
+        name: str,
+        description: str,
+        config: RunnableConfig | None = None,
+    ) -> MediaItemModel:
+        """Helper to create media item with config handling."""
+        params = MediaItemModel.CreateParams(
+            url=url,
+            media_type=media_type,
+            user_id=config["configurable"].get("user_id") if config else None,
+            thread_id=config["configurable"].get("thread_id") if config else None,
+            name=name,
+            description=description,
+        )
+        return await MediaItemModel.create(params)
+
+    async def _write_artifact_files(
+        self,
+        python_code: str,
+        stdout: str,
+        stderr: str,
+        execution_data: dict,
+        artifacts_folder: str,
+    ) -> tuple[str, str, str]:
+        """Write artifact files and return their URLs."""
+        folder_name = os.path.basename(artifacts_folder)
+        base_url = f"{neuron_config.static_content_url}/artifacts/{folder_name}"
+
+        # Save the Python code
+        code_filename = "source_code.py"
+        code_path = os.path.join(artifacts_folder, code_filename)
+        async with aiofiles.open(code_path, "w", encoding="utf-8") as f:
+            await f.write(python_code)
+        code_url = f"{base_url}/{code_filename}"
+
+        # Save the output if any
+        output_url = None
+        if stdout or stderr:
+            output_filename = "output.txt"
+            output_path = os.path.join(artifacts_folder, output_filename)
+            async with aiofiles.open(output_path, "w", encoding="utf-8") as f:
+                if stdout:
+                    await f.write("=== STDOUT ===\n")
+                    await f.write(stdout)
+                    if stderr:
+                        await f.write("\n\n")
+                if stderr:
+                    await f.write("=== STDERR ===\n")
+                    await f.write(stderr)
+            output_url = f"{base_url}/{output_filename}"
+
+        # Save execution metadata
+        metadata_filename = "execution_metadata.json"
+        metadata_path = os.path.join(artifacts_folder, metadata_filename)
+        async with aiofiles.open(metadata_path, "w", encoding="utf-8") as f:
+            await f.write(json.dumps(execution_data, indent=2))
+        metadata_url = f"{base_url}/{metadata_filename}"
+
+        return code_url, output_url, metadata_url
+
+    async def _create_artifacts(
+        self,
+        execution_info: dict,  # Contains python_code, stdout, stderr, duration
+        urls: tuple[str, str | None, str],  # code_url, output_url, metadata_url
+        execution_data: dict,
+        config: RunnableConfig | None = None,
+    ) -> list:
+        """Create artifact items for the execution."""
+        artifact_items = []
+        code_url, output_url, metadata_url = urls
+        python_code = execution_info["python_code"]
+        stdout = execution_info["stdout"]
+        stderr = execution_info["stderr"]
+        duration = execution_info["duration"]
+
+        # Create media item for code
+        code_media_item = await self._create_media_item(
+            url=code_url,
+            media_type="code",
+            name="source_code.py",
+            description=f"Python code ({len(python_code.splitlines())} lines)",
+            config=config,
+        )
+
+        artifact_items.append(
+            ToolMediaItem(
+                id=str(code_media_item.id),
+                url=code_url,
+                caption="Source Code",
+                description=f"Python code ({len(python_code.splitlines())} lines)",
+                metadata=ToolArtifactMetadata(
+                    output_format="python",
+                    code_lines=len(python_code.splitlines()),
+                ),
+            )
+        )
+
+        # Create media item for output if exists
+        if output_url:
+            output_media_item = await self._create_media_item(
+                url=output_url,
+                media_type="data",
+                name="output.txt",
+                description="Execution output",
+                config=config,
+            )
+
+            artifact_items.append(
+                ToolMediaItem(
+                    id=str(output_media_item.id),
+                    url=output_url,
+                    caption="Execution Output",
+                    description="stdout and stderr from execution",
+                    metadata=ToolArtifactMetadata(
+                        output_format="text",
+                        has_output=bool(stdout),
+                        has_errors=bool(stderr),
+                    ),
+                )
+            )
+
+        # Create media item for metadata
+        metadata_media_item = await self._create_media_item(
+            url=metadata_url,
+            media_type="data",
+            name="execution_metadata.json",
+            description="Execution metadata and variables",
+            config=config,
+        )
+
+        variables = execution_data.get("variables", {})
+        artifact_items.append(
+            ToolMediaItem(
+                id=str(metadata_media_item.id),
+                url=metadata_url,
+                caption="Execution Metadata",
+                description=(
+                    f"Variables: {', '.join(variables.keys())}"
+                    if variables
+                    else "Execution details"
+                ),
+                metadata=ToolArtifactMetadata(
+                    duration=duration,
+                    output_format="json",
+                ),
+            )
+        )
+
+        # Create the artifact
+        artifact = ToolMediaArtifact(
+            media_type="code",
+            items=artifact_items,
+        )
+        return [artifact.model_dump()]
+
     async def _arun(
         self,
         python_code: str,
@@ -93,9 +256,7 @@ For complex workflows requiring file generation, use the regular code_interprete
                 cached_data = self._sandbox_cache[sandbox_key]
                 sandbox, session_bytes, session_metadata = cached_data
             else:
-                sandbox = PyodideSandbox(
-                    allow_net=True,  # Allow network access for data fetching
-                )
+                sandbox = PyodideSandbox(allow_net=True)
                 session_bytes = None
                 session_metadata = None
 
@@ -139,87 +300,57 @@ For complex workflows requiring file generation, use the regular code_interprete
 
             combined_output = "\n\n".join(output_parts) if output_parts else "No output"
 
-            # Create artifacts from any returned data
-            artifacts = []
+            # Create artifacts
+            folder_name = f"pyodide_{uuid4().hex}"
+            artifacts_folder = os.path.join(
+                neuron_config.static_folder, "artifacts", folder_name
+            )
+            os.makedirs(artifacts_folder, exist_ok=True)
 
-            # If there's structured output or data, create a data artifact
+            # Prepare execution data
+            execution_data = {
+                "type": "pyodide_execution",
+                "execution_time": duration,
+                "stateful": stateful,
+                "timestamp": time.time(),
+            }
+
             if result.session_metadata and "variables" in result.session_metadata:
                 variables = result.session_metadata["variables"]
                 if variables:
-                    # Create a simple data artifact with variable info
-                    artifact_data = {
-                        "type": "variables",
-                        "data": variables,
-                        "execution_time": duration,
-                    }
+                    execution_data["variables"] = variables
 
-                    artifact = ToolMediaArtifact(
-                        media_type="data",
-                        items=[
-                            ToolMediaItem(
-                                id="pyodide_variables",
-                                url="data:application/json;base64,"
-                                + json.dumps(artifact_data).encode().hex(),
-                                caption="Execution Variables",
-                                description=(
-                                    f"Variables: {', '.join(variables.keys())}"
-                                ),
-                                metadata=ToolArtifactMetadata(
-                                    duration=duration, output_format="json"
-                                ),
-                            )
-                        ],
-                    )
-                    artifacts.append(artifact.model_dump())
+            # Write artifact files
+            code_url, output_url, metadata_url = await self._write_artifact_files(
+                python_code, stdout, stderr, execution_data, artifacts_folder
+            )
 
-            # Format markdown output
-            files_section = ""
-            if artifacts:
-                artifact_obj = ToolMediaArtifact(**artifacts[0])
-                files_section = artifact_obj.to_xml()
-            else:
-                files_section = "No structured data generated"
+            # Create artifacts
+            execution_info = {
+                "python_code": python_code,
+                "stdout": stdout,
+                "stderr": stderr,
+                "duration": duration,
+            }
+            artifacts = await self._create_artifacts(
+                execution_info,
+                (code_url, output_url, metadata_url),
+                execution_data,
+                config,
+            )
 
-            markdown_output = f"""# Pyodide Code Interpreter Results
+            logger.debug(f"Created Pyodide artifacts in {artifacts_folder}")
 
-## Output
+            # Format markdown output for LLM
+            markdown_output = f"""{combined_output}
 
-```
-{combined_output}
-```
-
-## Data
-
-{files_section}
-
-## Execution Time
-
-{duration:.3f} seconds (WebAssembly)"""
+Execution time: {duration:.3f} seconds"""
 
             return markdown_output.strip(), artifacts
 
         except Exception as e:
             logger.error(f"Pyodide execution error: {e}", exc_info=True)
-
-            # Return error as markdown
-            error_output = f"""# Pyodide Code Interpreter Error
-
-## Error Details
-
-```
-{str(e)}
-```
-
-The code execution failed. Common issues:
-- Package not available in Pyodide environment
-- Syntax errors in Python code
-- Attempts to access file system (not supported)
-- Memory limitations in WebAssembly
-
-Try simplifying the code or using the Docker-based code_interpreter tool
-for complex operations."""
-
-            return error_output.strip(), []
+            return f"Error: {str(e)}", []
 
     async def cleanup(self) -> None:
         """Clean up resources on shutdown."""
