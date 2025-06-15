@@ -1,3 +1,9 @@
+export interface PersonalityUser {
+  user_id: string;
+  personality_id: string;
+  role: string;
+}
+
 export interface Personality {
   id: string;
   name: string;
