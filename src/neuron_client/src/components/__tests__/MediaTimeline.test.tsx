@@ -97,7 +97,7 @@ describe("MediaTimeline", () => {
     expect(screen.getByText("No media")).toBeInTheDocument();
   });
 
-  it("renders image content with default thumbnail size when no widthMode", () => {
+  it("renders image content with consistent thumbnail size", () => {
     mockedUseAppSelector.mockReturnValue(mockMediaItems);
 
     render(<MediaTimeline threadId={mockThreadId} />);
@@ -105,35 +105,9 @@ describe("MediaTimeline", () => {
     const imageElements = screen.getAllByTestId("image-content");
     expect(imageElements).toHaveLength(2); // Two image items
 
-    // Both should use "l" (large) as default
+    // All should use "l" (large) as consistent size
     imageElements.forEach(element => {
       expect(element).toHaveAttribute("data-thumbnail-size", "l");
-    });
-  });
-
-  it("uses large thumbnail size for narrow width mode", () => {
-    mockedUseAppSelector.mockReturnValue(mockMediaItems);
-
-    render(<MediaTimeline threadId={mockThreadId} widthMode="narrow" />);
-
-    const imageElements = screen.getAllByTestId("image-content");
-    expect(imageElements).toHaveLength(2);
-
-    imageElements.forEach(element => {
-      expect(element).toHaveAttribute("data-thumbnail-size", "l");
-    });
-  });
-
-  it("uses extra-large thumbnail size for wide width mode", () => {
-    mockedUseAppSelector.mockReturnValue(mockMediaItems);
-
-    render(<MediaTimeline threadId={mockThreadId} widthMode="wide" />);
-
-    const imageElements = screen.getAllByTestId("image-content");
-    expect(imageElements).toHaveLength(2);
-
-    imageElements.forEach(element => {
-      expect(element).toHaveAttribute("data-thumbnail-size", "xl");
     });
   });
 
@@ -155,7 +129,7 @@ describe("MediaTimeline", () => {
 
     mockedUseAppSelector.mockReturnValue(mixedMediaItems);
 
-    render(<MediaTimeline threadId={mockThreadId} widthMode="wide" />);
+    render(<MediaTimeline threadId={mockThreadId} />);
 
     // Should only render images from the specified thread
     const imageElements = screen.getAllByTestId("image-content");

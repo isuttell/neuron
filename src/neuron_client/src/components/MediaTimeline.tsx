@@ -12,10 +12,9 @@ import { FileLink } from "./FileLink";
 
 interface MediaTimelineProps {
   threadId: string;
-  widthMode?: "narrow" | "wide" | "hidden";
 }
 
-function MediaTimeline({ threadId, widthMode }: MediaTimelineProps) {
+function MediaTimeline({ threadId }: MediaTimelineProps) {
   const mediaItems = useAppSelector(selectAllMedia);
   const [currentIndex, setCurrentIndex] = useState<number>(-1);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -69,17 +68,8 @@ function MediaTimeline({ threadId, widthMode }: MediaTimelineProps) {
     return indices;
   }, [allItems, audioItems]);
 
-  // Determine thumbnail size based on width mode
-  const thumbnailSize = useMemo(() => {
-    switch (widthMode) {
-      case "wide":
-        return "xl" as const;
-      case "narrow":
-        return "l" as const;
-      default:
-        return "l" as const;
-    }
-  }, [widthMode]);
+  // Use consistent thumbnail size
+  const thumbnailSize = "l" as const;
 
   // Initialize audio element
   useEffect(() => {
