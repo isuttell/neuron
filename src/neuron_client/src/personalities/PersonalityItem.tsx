@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Loader2, MoreHorizontal, Pencil, Image, Brain, Play, Square } from "lucide-react";
+import { Loader2, MoreHorizontal, Pencil, Image, Brain, Play, Square, UserPen } from "lucide-react";
 import {
   Card,
   CardTitle,
@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { withAdminAuth } from "@/components/hoc/withAdminAuth";
+import EditPersonalityDialog from "@/personalities/EditPersonalityDialog";
 
 interface PersonalityItemProps {
   personality: Personality;
@@ -56,6 +57,21 @@ const PersonalityItem: React.FC<PersonalityItemProps> = ({
   const activePersonality = useAppSelector(getActivePersonality);
   const isActive = activePersonality?.id === personality.id;
   const [isUpdatingLogo, setIsUpdatingLogo] = useState(false);
+  const [isEditPersonalityOpen, setIsEditPersonalityOpen] = useState(false);
+  const [open, setOpen] = useState(false);
+
+  // Handler for dialog open/close with pointer events fix
+  const createDialogHandler = (setter: (open: boolean) => void) => {
+    return (open: boolean) => {
+      setter(open);
+      if (!open) {
+        // Clear any stuck pointer-events on body
+        setTimeout(() => {
+          document.body.style.removeProperty('pointer-events');
+        }, 100);
+      }
+    };
+  };
 
   const handleActivate = () => {
     dispatch(setActivePersonality(isActive ? undefined : personality.id));
@@ -145,7 +161,7 @@ const PersonalityItem: React.FC<PersonalityItemProps> = ({
 
         {/* Dropdown menu overlay */}
         <div className="absolute top-2 right-2">
-          <DropdownMenu>
+          <DropdownMenu open={open} onOpenChange={setOpen}>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="secondary"
@@ -158,7 +174,11 @@ const PersonalityItem: React.FC<PersonalityItemProps> = ({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem
-                onClick={() => handleActivate()}
+                onSelect={(e) => {
+                  e.preventDefault();
+                  setOpen(false);
+                  handleActivate();
+                }}
               >
                 {isActive ? (
                   <>
@@ -173,6 +193,17 @@ const PersonalityItem: React.FC<PersonalityItemProps> = ({
                 )}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onSelect={(e) => {
+                  e.preventDefault();
+                  setOpen(false);
+                  // Small delay to ensure dropdown closes before dialog opens
+                  setTimeout(() => setIsEditPersonalityOpen(true), 0);
+                }}
+              >
+                <UserPen className="size-4" />
+                Edit Personality
+              </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link
                   className="flex items-center gap-2 text-foreground"
@@ -183,7 +214,11 @@ const PersonalityItem: React.FC<PersonalityItemProps> = ({
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem
-                onClick={() => handleUpdateLogo()}
+                onSelect={(e) => {
+                  e.preventDefault();
+                  setOpen(false);
+                  handleUpdateLogo();
+                }}
                 disabled={isUpdatingLogo}
               >
                 <Image className="size-4" />
@@ -203,6 +238,14 @@ const PersonalityItem: React.FC<PersonalityItemProps> = ({
           </div>
         )}
       </Card>
+
+      {/* Edit Personality Dialog */}
+      <EditPersonalityDialog
+        personality={personality}
+        open={isEditPersonalityOpen}
+        onOpenChange={createDialogHandler(setIsEditPersonalityOpen)}
+        trigger={<></>}
+      />
     </>
   );
 };
