@@ -145,24 +145,24 @@ vi.mock("@/components/ToggleSystemMessages", () => ({
   ),
 }));
 
-vi.mock("@/components/MediaPanelWidth", () => ({
+vi.mock("@/components/MediaPanelToggle", () => ({
   __esModule: true,
   default: ({
-    widthMode,
+    isVisible,
     onChange,
   }: {
-    widthMode: string;
-    onChange: (mode: "hidden" | "narrow") => void;
+    isVisible: boolean;
+    onChange: (visible: boolean) => void;
   }) => (
     <button
-      data-testid="media-panel-width"
+      data-testid="media-panel-toggle"
       onClick={() => {
-        const newMode = widthMode === "hidden" ? "narrow" : "hidden";
-        onChange(newMode);
-        localStorage.setItem("widthMode", newMode);
+        const newState = !isVisible;
+        onChange(newState);
+        localStorage.setItem("mediaPanelVisible", String(newState));
       }}
     >
-      Toggle Width
+      Toggle Media Panel
     </button>
   ),
 }));
@@ -594,7 +594,7 @@ describe("Thread", () => {
       localStorageMock.clear();
     });
 
-    it("should toggle media panel width", () => {
+    it("should toggle media panel visibility", () => {
       const initialState: Partial<AppState> = {
         messages: {
           messageMap: {},
@@ -609,36 +609,36 @@ describe("Thread", () => {
 
       renderThread(initialState);
 
-      const widthToggle = screen.getByTestId("media-panel-width");
+      const toggleButton = screen.getByTestId("media-panel-toggle");
 
       // Initially hidden
       const initialPanel = screen.getByRole("complementary");
-      expect(initialPanel).toHaveClass("hidden");
+      expect(initialPanel).toHaveClass("lg:hidden");
       expect(screen.queryByTestId("media-timeline")).not.toBeInTheDocument();
 
-      // Toggle to narrow
-      fireEvent.click(widthToggle);
+      // Toggle to visible
+      fireEvent.click(toggleButton);
       const mediaPanel = screen.getByRole("complementary");
-      expect(mediaPanel).toHaveClass("max-w-[512px]", "w-1/4");
+      expect(mediaPanel).toHaveClass("w-[512px]");
       expect(screen.getByTestId("media-timeline")).toBeInTheDocument();
 
       // Toggle back to hidden
-      fireEvent.click(widthToggle);
-      expect(mediaPanel).toHaveClass("hidden");
+      fireEvent.click(toggleButton);
+      expect(mediaPanel).toHaveClass("lg:hidden");
       expect(screen.queryByTestId("media-timeline")).not.toBeInTheDocument();
     });
 
-    it("should persist width mode in localStorage", async () => {
+    it("should persist panel visibility in localStorage", async () => {
       renderThread();
 
-      const widthToggle = screen.getByTestId("media-panel-width");
-      fireEvent.click(widthToggle);
+      const toggleButton = screen.getByTestId("media-panel-toggle");
+      fireEvent.click(toggleButton);
 
       expect(localStorageMock.setItem).toHaveBeenCalledWith(
-        "widthMode",
-        "narrow"
+        "mediaPanelVisible",
+        "true"
       );
-      expect(store["widthMode"]).toBe("narrow");
+      expect(store["mediaPanelVisible"]).toBe("true");
     });
   });
 

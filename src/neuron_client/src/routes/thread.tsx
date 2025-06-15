@@ -1,8 +1,14 @@
 import DeleteThreadButton from "@/components/DeleteThreadButton";
-import MediaPanelWidth, { WidthMode } from "@/components/MediaPanelWidth";
+import MediaPanelToggle from "@/components/MediaPanelToggle";
 import MediaTimeline from "@/components/MediaTimeline";
 import ToggleSystemMessages from "@/components/ToggleSystemMessages";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import Loading from "@/lib/loading";
 import { cn, debounce } from "@/lib/utils";
 import EditPersonalityDialog from "@/personalities/EditPersonalityDialog";
@@ -38,14 +44,21 @@ export default function Thread() {
     shallowEqual
   );
   const [showTools, setShowTools] = useState(false);
-
-  const [widthMode, setWidthMode] = useState<WidthMode>(
-    localStorage.getItem("widthMode") === "wide"
-      ? "wide"
-      : localStorage.getItem("widthMode") === "narrow"
-        ? "narrow"
-        : "hidden"
+  const [isMediaPanelVisible, setIsMediaPanelVisible] = useState(
+    localStorage.getItem("mediaPanelVisible") === "true"
   );
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Track screen size to determine if we should show dialog or sidebar
+  useEffect(() => {
+    const checkScreenSize = () => {
+      setIsMobile(window.innerWidth < 1024); // lg breakpoint
+    };
+
+    checkScreenSize();
+    window.addEventListener('resize', checkScreenSize);
+    return () => window.removeEventListener('resize', checkScreenSize);
+  }, []);
 
   const filteredMessages = messages
     .slice()
@@ -114,7 +127,10 @@ export default function Thread() {
           showTools={showTools}
           onToggle={() => setShowTools(!showTools)}
         />
-        <MediaPanelWidth widthMode={widthMode} onChange={setWidthMode} />
+        <MediaPanelToggle
+          isVisible={isMediaPanelVisible}
+          onChange={setIsMediaPanelVisible}
+        />
         {activePersonality && (
           <EditPersonalityDialog personality={activePersonality} />
         )}
@@ -167,23 +183,40 @@ export default function Thread() {
             <ThreadMessageForm thread={thread} className="w-full" />
           </div>
         </div>
+        {/* Desktop media panel */}
         <div
           role="complementary"
           className={cn(
-            "ml-4 pl-4 flex-shrink-0 border-l flex-col flex max-h-[calc(100vh-5em)]",
-            widthMode === "narrow" && "max-w-[512px] w-1/4",
-            widthMode === "wide" && "max-w-[1024px] w-1/2",
-            widthMode === "hidden" && "hidden"
+            "hidden lg:flex ml-4 pl-4 flex-shrink-0 border-l flex-col w-[512px] max-h-[calc(100vh-5em)]",
+            !isMediaPanelVisible && "lg:hidden"
           )}
         >
-          {widthMode !== "hidden" && threadId ? (
-            <MediaTimeline
-              key={threadId}
-              threadId={threadId}
-              widthMode={widthMode}
-            />
+          {isMediaPanelVisible && threadId ? (
+            <MediaTimeline key={threadId} threadId={threadId} />
           ) : null}
         </div>
+
+        {/* Mobile media dialog - only render on mobile */}
+        {isMobile && (
+          <Dialog
+            open={isMediaPanelVisible}
+            onOpenChange={setIsMediaPanelVisible}
+          >
+            <DialogContent className="max-w-[calc(100vw-2rem)] w-full h-[90vh] p-4 flex flex-col rounded-md">
+              <DialogHeader className="pb-4">
+                <DialogTitle className="text-left">Media Timeline</DialogTitle>
+              </DialogHeader>
+              <div className="flex flex-col flex-1 overflow-hidden h-full p-4">
+                {threadId ? (
+                  <MediaTimeline
+                    key={threadId}
+                    threadId={threadId}
+                  />
+                ) : null}
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
     </div>
   );
