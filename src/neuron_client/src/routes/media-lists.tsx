@@ -34,7 +34,7 @@ export default function MediaLists() {
 
   return (
     <MediaPlayerProvider>
-      <div className="flex flex-1 p-4 flex-col flex-nowrap max-h-screen overflow-auto">
+      <div className="flex flex-1 p-4 ipad-top-spacing mobile-safe-top flex-col flex-nowrap max-h-screen overflow-auto">
         <div className="flex justify-between mb-2 border-b pb-2">
           <SidebarTrigger className="size-10 mr-2" />
           <h1 className="text-2xl font-bold">Media Lists</h1>

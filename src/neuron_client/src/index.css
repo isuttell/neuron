@@ -124,4 +124,9 @@ li {
       }
     }
   }
+
+  /* Safe area aware absolute positioning for triggers */
+  .safe-trigger-top {
+    top: calc(env(safe-area-inset-top, 0px) + 0.5rem);
+  }
 }
