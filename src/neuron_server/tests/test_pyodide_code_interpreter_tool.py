@@ -72,8 +72,14 @@ class TestPyodideCodeInterpreterTool:
         """Test successful code execution."""
         with patch(
             "neuron_server.tools.pyodide_code_interpreter_tool.PyodideSandbox"
-        ) as mock_sandbox_class:
-            # Setup mock
+        ) as mock_sandbox_class, patch(
+            "neuron_server.tools.pyodide_code_interpreter_tool.os.makedirs"
+        ), patch(
+            "neuron_server.tools.pyodide_code_interpreter_tool.aiofiles.open"
+        ) as mock_aio_open, patch(
+            "neuron_server.tools.pyodide_code_interpreter_tool.MediaItemModel"
+        ) as mock_media_model:
+            # Setup mocks
             mock_sandbox = AsyncMock()
             mock_sandbox_class.return_value = mock_sandbox
 
@@ -83,6 +89,17 @@ class TestPyodideCodeInterpreterTool:
             mock_result.session_bytes = b"session_data"
             mock_result.session_metadata = {}
             mock_sandbox.execute.return_value = mock_result
+
+            # Mock file operations
+            mock_file = AsyncMock()
+            mock_file.write = AsyncMock()
+            mock_aio_open.return_value.__aenter__ = AsyncMock(return_value=mock_file)
+            mock_aio_open.return_value.__aexit__ = AsyncMock()
+
+            # Mock media item creation
+            mock_media_item = MagicMock()
+            mock_media_item.id = "test-media-id"
+            mock_media_model.create = AsyncMock(return_value=mock_media_item)
 
             # Execute
             result = await tool._arun(
@@ -97,13 +114,24 @@ class TestPyodideCodeInterpreterTool:
             content, artifacts = result
 
             # Check content
-            assert "Pyodide Code Interpreter Results" in content
             assert "42" in content
-            assert "WebAssembly" in content
+            assert "Execution time:" in content
+            assert "seconds" in content
 
             # Check artifacts
             assert isinstance(artifacts, list)
-            assert len(artifacts) == 0  # No variables returned
+            assert len(artifacts) == 1  # Always creates execution artifact
+
+            # Check artifact content
+            artifact = artifacts[0]
+            assert artifact["media_type"] == "code"
+            assert len(artifact["items"]) == 3  # code, output, metadata
+
+            # Check that we have the expected items
+            captions = [item["caption"] for item in artifact["items"]]
+            assert "Source Code" in captions
+            assert "Execution Output" in captions
+            assert "Execution Metadata" in captions
 
             # Verify sandbox was called correctly
             mock_sandbox_class.assert_called_once_with(allow_net=True)
@@ -217,7 +245,13 @@ class TestPyodideCodeInterpreterTool:
         """Test artifact generation when variables are returned."""
         with patch(
             "neuron_server.tools.pyodide_code_interpreter_tool.PyodideSandbox"
-        ) as mock_sandbox_class:
+        ) as mock_sandbox_class, patch(
+            "neuron_server.tools.pyodide_code_interpreter_tool.os.makedirs"
+        ), patch(
+            "neuron_server.tools.pyodide_code_interpreter_tool.aiofiles.open"
+        ) as mock_aio_open, patch(
+            "neuron_server.tools.pyodide_code_interpreter_tool.MediaItemModel"
+        ) as mock_media_model:
             # Setup mock with variables
             mock_sandbox = AsyncMock()
             mock_sandbox_class.return_value = mock_sandbox
@@ -235,6 +269,17 @@ class TestPyodideCodeInterpreterTool:
             }
             mock_sandbox.execute.return_value = mock_result
 
+            # Mock file operations
+            mock_file = AsyncMock()
+            mock_file.write = AsyncMock()
+            mock_aio_open.return_value.__aenter__ = AsyncMock(return_value=mock_file)
+            mock_aio_open.return_value.__aexit__ = AsyncMock()
+
+            # Mock media item creation
+            mock_media_item = MagicMock()
+            mock_media_item.id = "test-media-id"
+            mock_media_model.create = AsyncMock(return_value=mock_media_item)
+
             # Execute
             result = await tool._arun(
                 python_code="result = 42; data = [1,2,3]; name = 'test'",
@@ -247,13 +292,21 @@ class TestPyodideCodeInterpreterTool:
             assert len(artifacts) == 1
             artifact = artifacts[0]
 
-            assert artifact["media_type"] == "data"
-            assert len(artifact["items"]) == 1
+            assert artifact["media_type"] == "code"
+            assert len(artifact["items"]) == 3  # code, output, metadata
 
-            item = artifact["items"][0]
-            assert item["id"] == "pyodide_variables"
-            assert item["caption"] == "Execution Variables"
-            assert "result, data, name" in item["description"]
+            # Check we have all expected items
+            captions = [item["caption"] for item in artifact["items"]]
+            assert "Source Code" in captions
+            assert "Execution Output" in captions
+            assert "Execution Metadata" in captions
+
+            # Find metadata item and check it mentions variables
+            metadata_item = next(
+                item for item in artifact["items"]
+                if item["caption"] == "Execution Metadata"
+            )
+            assert "result, data, name" in metadata_item["description"]
 
     @pytest.mark.asyncio
     async def test_execution_error_handling(
@@ -279,9 +332,8 @@ class TestPyodideCodeInterpreterTool:
             content, artifacts = result
 
             # Check error content
-            assert "Pyodide Code Interpreter Error" in content
+            assert "Error:" in content
             assert "Execution failed: syntax error" in content
-            assert "Common issues:" in content
             assert len(artifacts) == 0
 
     @pytest.mark.asyncio
@@ -325,7 +377,13 @@ class TestPyodideCodeInterpreterTool:
         """Test handling of stderr output."""
         with patch(
             "neuron_server.tools.pyodide_code_interpreter_tool.PyodideSandbox"
-        ) as mock_sandbox_class:
+        ) as mock_sandbox_class, patch(
+            "neuron_server.tools.pyodide_code_interpreter_tool.os.makedirs"
+        ), patch(
+            "neuron_server.tools.pyodide_code_interpreter_tool.aiofiles.open"
+        ) as mock_aio_open, patch(
+            "neuron_server.tools.pyodide_code_interpreter_tool.MediaItemModel"
+        ) as mock_media_model:
             # Setup mock with stderr
             mock_sandbox = AsyncMock()
             mock_sandbox_class.return_value = mock_sandbox
@@ -337,6 +395,17 @@ class TestPyodideCodeInterpreterTool:
             mock_result.session_metadata = {}
             mock_sandbox.execute.return_value = mock_result
 
+            # Mock file operations
+            mock_file = AsyncMock()
+            mock_file.write = AsyncMock()
+            mock_aio_open.return_value.__aenter__ = AsyncMock(return_value=mock_file)
+            mock_aio_open.return_value.__aexit__ = AsyncMock()
+
+            # Mock media item creation
+            mock_media_item = MagicMock()
+            mock_media_item.id = "test-media-id"
+            mock_media_model.create = AsyncMock(return_value=mock_media_item)
+
             # Execute
             result = await tool._arun(
                 python_code="import warnings; warnings.warn('deprecated')",
@@ -346,10 +415,9 @@ class TestPyodideCodeInterpreterTool:
             content, _ = result
 
             # Check both stdout and stderr are included
-            assert "Output:" in content
             assert "Success" in content
-            assert "Warnings/Errors:" in content
             assert "deprecated function" in content
+            assert "Execution time:" in content
 
     @pytest.mark.asyncio
     async def test_execution_timing(
@@ -358,7 +426,13 @@ class TestPyodideCodeInterpreterTool:
         """Test that execution time is tracked."""
         with patch(
             "neuron_server.tools.pyodide_code_interpreter_tool.PyodideSandbox"
-        ) as mock_sandbox_class:
+        ) as mock_sandbox_class, patch(
+            "neuron_server.tools.pyodide_code_interpreter_tool.os.makedirs"
+        ), patch(
+            "neuron_server.tools.pyodide_code_interpreter_tool.aiofiles.open"
+        ) as mock_aio_open, patch(
+            "neuron_server.tools.pyodide_code_interpreter_tool.MediaItemModel"
+        ) as mock_media_model:
             # Setup mock
             mock_sandbox = AsyncMock()
             mock_sandbox_class.return_value = mock_sandbox
@@ -368,6 +442,17 @@ class TestPyodideCodeInterpreterTool:
             mock_result.stderr = ""
             mock_result.session_bytes = b""
             mock_result.session_metadata = {}
+
+            # Mock file operations
+            mock_file = AsyncMock()
+            mock_file.write = AsyncMock()
+            mock_aio_open.return_value.__aenter__ = AsyncMock(return_value=mock_file)
+            mock_aio_open.return_value.__aexit__ = AsyncMock()
+
+            # Mock media item creation
+            mock_media_item = MagicMock()
+            mock_media_item.id = "test-media-id"
+            mock_media_model.create = AsyncMock(return_value=mock_media_item)
 
             # Add delay to simulate execution time
             async def delayed_execute(*args, **kwargs):
@@ -387,8 +472,8 @@ class TestPyodideCodeInterpreterTool:
             content, _ = result
 
             # Check execution time is reported
-            assert "Execution Time" in content
-            assert "seconds (WebAssembly)" in content
+            assert "Execution time:" in content
+            assert "seconds" in content
             # Should take at least 0.1 seconds
             assert duration >= 0.1
 
