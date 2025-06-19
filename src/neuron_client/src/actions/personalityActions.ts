@@ -1,7 +1,8 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import { Embedding } from "@/slices/embeddingsSlice";
-import type { Personality } from "../slices/personalitiesSlice.d";
+import type { Personality, UserWithRole } from "../slices/personalitiesSlice.d";
 import { api } from "@/lib/api";
+import { User } from "@/types/user";
 
 export const fetchPersonality = createAsyncThunk(
   "personalities/fetchPersonality",
@@ -173,6 +174,89 @@ export const updatePersonalityLogo = createAsyncThunk(
     try {
       const response = await api.post<{ personalities: Personality[]; logo: string; response: string }>(`/personalities/${personalityId}/logo`, {});
       return { personalities: response.personalities };
+    } catch (error) {
+      if (error instanceof Error) {
+        return thunkAPI.rejectWithValue(error.message);
+      }
+      return thunkAPI.rejectWithValue("An unknown error occurred");
+    }
+  }
+);
+
+export const fetchPersonalityUsers = createAsyncThunk(
+  "personalities/fetchUsers",
+  async (personalityId: string, thunkAPI) => {
+    try {
+      const response = await api.get<{ users: UserWithRole[] }>(`/personalities/${personalityId}/users`);
+      return { personalityId, users: response.users };
+    } catch (error) {
+      if (error instanceof Error) {
+        return thunkAPI.rejectWithValue(error.message);
+      }
+      return thunkAPI.rejectWithValue("An unknown error occurred");
+    }
+  }
+);
+
+export const addPersonalityUser = createAsyncThunk(
+  "personalities/addUser",
+  async ({ personalityId, email }: { personalityId: string; email: string }, thunkAPI) => {
+    try {
+      // First, get the user by email
+      const userResponse = await api.get<{ users: User[] }>(`/users?email=${encodeURIComponent(email)}`);
+      if (!userResponse.users || userResponse.users.length === 0) {
+        throw new Error("User not found");
+      }
+      const user = userResponse.users[0];
+
+      // Then add the user to the personality
+      await api.post(`/personalities/${personalityId}/users`, {
+        user_id: user.id,
+        role: "user"
+      });
+
+      // Fetch updated users list
+      const response = await api.get<{ users: UserWithRole[] }>(`/personalities/${personalityId}/users`);
+      return { personalityId, users: response.users };
+    } catch (error) {
+      if (error instanceof Error) {
+        return thunkAPI.rejectWithValue(error.message);
+      }
+      return thunkAPI.rejectWithValue("An unknown error occurred");
+    }
+  }
+);
+
+export const updatePersonalityUserRole = createAsyncThunk(
+  "personalities/updateUserRole",
+  async ({ personalityId, userId, role }: { personalityId: string; userId: string; role: string }, thunkAPI) => {
+    try {
+      await api.put(`/personalities/${personalityId}/users/${userId}`, {
+        user_id: userId,
+        role
+      });
+
+      // Fetch updated users list
+      const response = await api.get<{ users: UserWithRole[] }>(`/personalities/${personalityId}/users`);
+      return { personalityId, users: response.users };
+    } catch (error) {
+      if (error instanceof Error) {
+        return thunkAPI.rejectWithValue(error.message);
+      }
+      return thunkAPI.rejectWithValue("An unknown error occurred");
+    }
+  }
+);
+
+export const removePersonalityUser = createAsyncThunk(
+  "personalities/removeUser",
+  async ({ personalityId, userId }: { personalityId: string; userId: string }, thunkAPI) => {
+    try {
+      await api.delete(`/personalities/${personalityId}/users/${userId}`);
+
+      // Fetch updated users list
+      const response = await api.get<{ users: UserWithRole[] }>(`/personalities/${personalityId}/users`);
+      return { personalityId, users: response.users };
     } catch (error) {
       if (error instanceof Error) {
         return thunkAPI.rejectWithValue(error.message);

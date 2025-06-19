@@ -16,6 +16,7 @@ import type {
 const initialState: PersonalityState = {
   activePersonalityId: localStorage.getItem("activePersonalityId") || undefined,
   personalities: [],
+  personalityUsers: {},
   loading: false,
   error: null,
   hasInitiallyFetched: false,
@@ -196,6 +197,22 @@ export const personalitiesSlice = createSlice({
       .addCase(actions.updatePersonalityLogo.rejected, (state, action) => {
         state.loading = false;
         state.error = action.error.message || "Failed to update logo";
+      })
+      // Fetch personality users
+      .addCase(actions.fetchPersonalityUsers.fulfilled, (state, action) => {
+        state.personalityUsers[action.payload.personalityId] = action.payload.users;
+      })
+      // Add personality user
+      .addCase(actions.addPersonalityUser.fulfilled, (state, action) => {
+        state.personalityUsers[action.payload.personalityId] = action.payload.users;
+      })
+      // Update personality user role
+      .addCase(actions.updatePersonalityUserRole.fulfilled, (state, action) => {
+        state.personalityUsers[action.payload.personalityId] = action.payload.users;
+      })
+      // Remove personality user
+      .addCase(actions.removePersonalityUser.fulfilled, (state, action) => {
+        state.personalityUsers[action.payload.personalityId] = action.payload.users;
       });
   },
 });
@@ -231,5 +248,8 @@ export const getPersonalitiesLoading = (state: RootState) =>
 
 export const getPersonalitiesError = (state: RootState) =>
   state.personalities.error;
+
+export const getPersonalityUsers = (state: RootState, personalityId: string) =>
+  state.personalities.personalityUsers[personalityId] || [];
 
 export default personalitiesSlice.reducer;

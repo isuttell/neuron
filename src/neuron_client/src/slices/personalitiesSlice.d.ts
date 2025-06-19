@@ -1,3 +1,10 @@
+import type { User } from "../types/user";
+
+// User with role for personality users
+export interface UserWithRole extends User {
+  role: string;
+}
+
 export interface Personality {
   id: string;
   name: string;
@@ -23,6 +30,7 @@ export interface IncomingPersonalitiesEvent {
 export interface PersonalityState {
   activePersonalityId?: string;
   personalities: Personality[];
+  personalityUsers: Record<string, UserWithRole[]>; // personalityId -> users with role
   loading: boolean;
   error: string | null;
   hasInitiallyFetched: boolean;

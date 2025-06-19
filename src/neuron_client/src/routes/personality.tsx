@@ -19,6 +19,7 @@ import {
   deletePersonality,
 } from "../actions/personalityActions";
 import EditPersonalityDialog from "../personalities/EditPersonalityDialog";
+import PersonalityUsersDialog from "../personalities/PersonalityUsersDialog";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 
@@ -131,6 +132,7 @@ export default function Personality() {
           )}
         </h1>
         <div className="flex-1" />
+        <PersonalityUsersDialog personalityId={personality.id} />
         <EditPersonalityDialog personality={personality} />
         <Button
           variant="ghost"

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Loader2, MoreHorizontal, Pencil, Image, Brain, Play, Square, UserPen } from "lucide-react";
+import { Loader2, MoreHorizontal, Pencil, Image, Brain, Play, Square, UserPen, Users } from "lucide-react";
 import {
   Card,
   CardTitle,
@@ -25,28 +25,125 @@ import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { withAdminAuth } from "@/components/hoc/withAdminAuth";
 import EditPersonalityDialog from "@/personalities/EditPersonalityDialog";
+import PersonalityUsersDialog from "@/personalities/PersonalityUsersDialog";
 
 interface PersonalityItemProps {
   personality: Personality;
   className?: string;
 }
 
-// Create admin-protected embeddings menu item
-const EmbeddingsMenuItemComponent: React.FC<{ personalityId: string }> = ({
-  personalityId,
+// Create admin-protected dropdown menu
+const PersonalityDropdownMenu: React.FC<{
+  personality: Personality;
+  open: boolean;
+  setOpen: (open: boolean) => void;
+  handleActivate: () => void;
+  isActive: boolean;
+  setIsEditPersonalityOpen: (open: boolean) => void;
+  setIsUsersDialogOpen: (open: boolean) => void;
+  handleUpdateLogo: () => void;
+  isUpdatingLogo: boolean;
+}> = ({
+  personality,
+  open,
+  setOpen,
+  handleActivate,
+  isActive,
+  setIsEditPersonalityOpen,
+  setIsUsersDialogOpen,
+  handleUpdateLogo,
+  isUpdatingLogo,
 }) => (
-  <DropdownMenuItem asChild>
-    <Link
-      className="flex items-center gap-2 text-foreground"
-      to={`/personality/${personalityId}/embeddings`}
-    >
-      <Brain className="size-4" />
-      View Embeddings
-    </Link>
-  </DropdownMenuItem>
+  <div className="absolute top-2 right-2">
+    <DropdownMenu open={open} onOpenChange={setOpen}>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="secondary"
+          size="icon"
+          className="h-8 w-8 bg-black/70 hover:bg-black/90 text-white shadow-sm backdrop-blur-sm"
+        >
+          <MoreHorizontal className="size-4" />
+          <span className="sr-only">More actions</span>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem
+          onSelect={(e) => {
+            e.preventDefault();
+            setOpen(false);
+            handleActivate();
+          }}
+        >
+          {isActive ? (
+            <>
+              <Square className="size-4" />
+              Deactivate
+            </>
+          ) : (
+            <>
+              <Play className="size-4" />
+              Activate
+            </>
+          )}
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          onSelect={(e) => {
+            e.preventDefault();
+            setOpen(false);
+            // Small delay to ensure dropdown closes before dialog opens
+            setTimeout(() => setIsEditPersonalityOpen(true), 0);
+          }}
+        >
+          <UserPen className="size-4" />
+          Edit Personality
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onSelect={(e) => {
+            e.preventDefault();
+            setOpen(false);
+            // Small delay to ensure dropdown closes before dialog opens
+            setTimeout(() => setIsUsersDialogOpen(true), 0);
+          }}
+        >
+          <Users className="size-4" />
+          Manage Users
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link
+            className="flex items-center gap-2 text-foreground"
+            to={`/personality/${personality.id}`}
+          >
+            <Pencil className="size-4" />
+            Context Editor
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onSelect={(e) => {
+            e.preventDefault();
+            setOpen(false);
+            handleUpdateLogo();
+          }}
+          disabled={isUpdatingLogo}
+        >
+          <Image className="size-4" />
+          Generate Logo
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link
+            className="flex items-center gap-2 text-foreground"
+            to={`/personality/${personality.id}/embeddings`}
+          >
+            <Brain className="size-4" />
+            View Embeddings
+          </Link>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  </div>
 );
 
-const EmbeddingsMenuItem = withAdminAuth(EmbeddingsMenuItemComponent);
+const AdminPersonalityDropdown = withAdminAuth(PersonalityDropdownMenu);
 
 const PersonalityItem: React.FC<PersonalityItemProps> = ({
   className,
@@ -58,6 +155,7 @@ const PersonalityItem: React.FC<PersonalityItemProps> = ({
   const isActive = activePersonality?.id === personality.id;
   const [isUpdatingLogo, setIsUpdatingLogo] = useState(false);
   const [isEditPersonalityOpen, setIsEditPersonalityOpen] = useState(false);
+  const [isUsersDialogOpen, setIsUsersDialogOpen] = useState(false);
   const [open, setOpen] = useState(false);
 
   // Handler for dialog open/close with pointer events fix
@@ -159,75 +257,18 @@ const PersonalityItem: React.FC<PersonalityItemProps> = ({
           </CardTitle>
         </div>
 
-        {/* Dropdown menu overlay */}
-        <div className="absolute top-2 right-2">
-          <DropdownMenu open={open} onOpenChange={setOpen}>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="secondary"
-                size="icon"
-                className="h-8 w-8 bg-black/70 hover:bg-black/90 text-white shadow-sm backdrop-blur-sm"
-              >
-                <MoreHorizontal className="size-4" />
-                <span className="sr-only">More actions</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                onSelect={(e) => {
-                  e.preventDefault();
-                  setOpen(false);
-                  handleActivate();
-                }}
-              >
-                {isActive ? (
-                  <>
-                    <Square className="size-4" />
-                    Deactivate
-                  </>
-                ) : (
-                  <>
-                    <Play className="size-4" />
-                    Activate
-                  </>
-                )}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onSelect={(e) => {
-                  e.preventDefault();
-                  setOpen(false);
-                  // Small delay to ensure dropdown closes before dialog opens
-                  setTimeout(() => setIsEditPersonalityOpen(true), 0);
-                }}
-              >
-                <UserPen className="size-4" />
-                Edit Personality
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link
-                  className="flex items-center gap-2 text-foreground"
-                  to={`/personality/${personality.id}`}
-                >
-                  <Pencil className="size-4" />
-                  Context Editor
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onSelect={(e) => {
-                  e.preventDefault();
-                  setOpen(false);
-                  handleUpdateLogo();
-                }}
-                disabled={isUpdatingLogo}
-              >
-                <Image className="size-4" />
-                Generate Logo
-              </DropdownMenuItem>
-              <EmbeddingsMenuItem personalityId={personality.id} />
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+        {/* Dropdown menu overlay - Admin only */}
+        <AdminPersonalityDropdown
+          personality={personality}
+          open={open}
+          setOpen={setOpen}
+          handleActivate={handleActivate}
+          isActive={isActive}
+          setIsEditPersonalityOpen={setIsEditPersonalityOpen}
+          setIsUsersDialogOpen={setIsUsersDialogOpen}
+          handleUpdateLogo={handleUpdateLogo}
+          isUpdatingLogo={isUpdatingLogo}
+        />
 
         {/* Active indicator */}
         {isActive && (
@@ -244,6 +285,14 @@ const PersonalityItem: React.FC<PersonalityItemProps> = ({
         personality={personality}
         open={isEditPersonalityOpen}
         onOpenChange={createDialogHandler(setIsEditPersonalityOpen)}
+        trigger={<></>}
+      />
+
+      {/* Manage Users Dialog */}
+      <PersonalityUsersDialog
+        personalityId={personality.id}
+        open={isUsersDialogOpen}
+        onOpenChange={createDialogHandler(setIsUsersDialogOpen)}
         trigger={<></>}
       />
     </>
