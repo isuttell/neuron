@@ -200,10 +200,10 @@ export default function PersonalityUsersDialog({
           ) : (
             <div className="space-y-2">
               {personalityUsers.map((personalityUser: UserWithRole) => {
-                const user = getUserDetails(personalityUser.id || personalityUser.user_id);
+                const user = getUserDetails(personalityUser.id);
                 return (
                   <div
-                    key={personalityUser.id || personalityUser.user_id}
+                    key={personalityUser.id}
                     className="flex items-center justify-between p-2 border rounded-md"
                   >
                     <div className="flex items-center gap-2">
@@ -228,7 +228,7 @@ export default function PersonalityUsersDialog({
                       <Select
                         defaultValue={personalityUser.role}
                         onValueChange={(value) =>
-                          handleRoleChange(personalityUser.id || personalityUser.user_id, value)
+                          handleRoleChange(personalityUser.id, value)
                         }
                       >
                         <SelectTrigger className="w-[100px]">
@@ -242,7 +242,7 @@ export default function PersonalityUsersDialog({
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => handleRemoveUser(personalityUser.id || personalityUser.user_id)}
+                        onClick={() => handleRemoveUser(personalityUser.id)}
                       >
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
