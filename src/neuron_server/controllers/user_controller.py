@@ -12,6 +12,23 @@ from neuron_server.type_defs.request_proxy import request
 user_bp = Blueprint("user", __name__)
 
 
+@user_bp.route("/", methods=["GET"])
+@requires_auth
+async def search_users() -> Response:
+    """Search for users by email."""
+    email = request.args.get("email")
+
+    if not email:
+        return jsonify({"users": []}), 200
+
+    user = await UserModel.get_by_email(email)
+
+    if user:
+        return jsonify({"users": [user.model_dump()]}), 200
+
+    return jsonify({"users": []}), 200
+
+
 @user_bp.route("/login", methods=["POST"])
 @requires_auth
 async def login_user() -> Response:  # Add return type hint
