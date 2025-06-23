@@ -1,0 +1,48 @@
+{
+  "mcpServers": {
+    "gitea": {
+      "type": "stdio",
+      "command": "gitea-mcp",
+      "args": [
+        "-t",
+        "stdio",
+        "-host",
+        "https://gitea.zaks.io"
+      ]
+    },
+    "loki": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "grafana-loki-mcp",
+        "-u",
+        "https://lapetus.zaks.io/grafana"
+      ]
+    },
+    "playwright": {
+      "command": "npx",
+      "args": [
+        "@playwright/mcp@latest"
+      ]
+    },
+    "github": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-github@latest"
+      ]
+    },
+    "postgres-localhost": {
+      "command": "postgres-mcp",
+      "args": [
+        "--access-mode=unrestricted"
+      ]
+    },
+    "postgres-neuron": {
+      "command": "postgres-mcp",
+      "args": [
+        "--access-mode=unrestricted"
+      ]
+    }
+  }
+}
