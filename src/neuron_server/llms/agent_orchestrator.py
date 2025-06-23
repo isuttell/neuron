@@ -1,12 +1,14 @@
 """Agent orchestration functionality."""
 
 import asyncio
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 from uuid import UUID, uuid4
 
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+from langgraph.graph import StateGraph
 
 from neuron_server.controllers.events.message_events import MessageEvent, ThreadMessage
 from neuron_server.database import pool
@@ -22,6 +24,18 @@ from neuron_server.models.personality_model import PersonalityModel
 from neuron_server.models.provider_model import ProviderModelModel
 from neuron_server.models.thread_model import ThreadModel
 from neuron_server.pubsub import pubsub
+
+
+@dataclass
+class StreamProcessingConfig:
+    """Configuration for stream processing with cancellation."""
+
+    thread: ThreadModel
+    graph: StateGraph
+    human_message: HumanMessage
+    personality: PersonalityModel
+    config: dict[str, Any]
+    start_time: datetime
 
 
 class AgentOrchestrator:
@@ -137,7 +151,7 @@ class AgentOrchestrator:
         human_message: HumanMessage,
         config: dict[str, Any],
         start_time: datetime,
-    ) -> tuple[LLM, Any]:
+    ) -> tuple[LLM, StateGraph]:
         """Set up stream processing components.
 
         Args:
@@ -172,57 +186,55 @@ class AgentOrchestrator:
 
     async def _process_stream_with_cancellation(
         self,
-        thread: ThreadModel,
-        graph: Any,
-        human_message: HumanMessage,
-        personality: PersonalityModel,
-        config: dict[str, Any],
-        start_time: datetime,
+        stream_config: StreamProcessingConfig,
     ) -> str | None:
         """Process stream events with cancellation support.
 
         Args:
-            thread: Thread model instance
-            graph: LLM workflow graph
-            human_message: Human message to process
-            personality: Personality model instance
-            config: Stream configuration
-            start_time: Processing start time
+            stream_config: Configuration for stream processing
 
         Returns:
             Final message content or None if cancelled
         """
         # Extract human message content for status updates (limit to 1000 chars)
-        human_message_content = get_message_content(
-            human_message, format_as_string=True
+        human_message_content_raw = get_message_content(
+            stream_config.human_message, format_as_string=True
         )
         max_message_length = 1000
-        if human_message_content and len(human_message_content) > max_message_length:
-            human_message_content = (
-                human_message_content[: max_message_length - 3] + "..."
-            )
+        human_message_content: str | None = None
+        if human_message_content_raw and isinstance(human_message_content_raw, str):
+            if len(human_message_content_raw) > max_message_length:
+                human_message_content = (
+                    human_message_content_raw[:max_message_length - 3] + "..."
+                )
+            else:
+                human_message_content = human_message_content_raw
 
         # Store personality info for status agent
         self.status_manager.set_personality_info(
-            thread.id, personality.name, personality.context
+            stream_config.thread.id,
+            stream_config.personality.name,
+            stream_config.personality.context
         )
 
         # Create event stream
-        event_stream = graph.astream_events(
+        event_stream = stream_config.graph.astream_events(
             {
-                "messages": [human_message],
-                "personality": personality.context,
-                "title": thread.name,
-                "location": config["location"],
-                "now": start_time.astimezone().isoformat(timespec="seconds"),
+                "messages": [stream_config.human_message],
+                "personality": stream_config.personality.context,
+                "title": stream_config.thread.name,
+                "location": stream_config.config["location"],
+                "now": stream_config.start_time.astimezone().isoformat(
+                    timespec="seconds"
+                ),
             },
             config={
                 "run_name": "message",
                 "configurable": {
-                    "thread_id": str(thread.id),
-                    "personality_id": str(config["personality_id"]),
-                    "username": config["username"],
-                    "user_id": str(config["user_id"]),
+                    "thread_id": str(stream_config.thread.id),
+                    "personality_id": str(stream_config.config["personality_id"]),
+                    "username": stream_config.config["username"],
+                    "user_id": str(stream_config.config["user_id"]),
                 },
             },
             version="v2",
@@ -230,11 +242,157 @@ class AgentOrchestrator:
 
         # Process events
         await self.stream_processor.process_stream_events(
-            thread, event_stream, human_message_content, start_time
+            stream_config.thread,
+            event_stream,
+            human_message_content,
+            stream_config.start_time
         )
 
         # Get final state
-        return await self._get_final_state(config["thread_id"])
+        return await self._get_final_state(stream_config.config["thread_id"])
+
+    async def _validate_and_prepare_thread(self, config: dict[str, Any]) -> ThreadModel:
+        """Validate and prepare thread for processing.
+
+        Args:
+            config: Stream configuration
+
+        Returns:
+            Thread model instance
+
+        Raises:
+            Exception: If thread is not found
+        """
+        thread = await ThreadModel.get(config["thread_id"])
+        if not thread:
+            raise Exception("Thread not found")
+        if thread.status not in {"idle", "error"}:
+            await self._wait_for_idle(config["thread_id"])
+
+        await self.status_manager.update_thread_status(
+            thread, "thinking", human_message=config["prompt"]
+        )
+        return thread
+
+    async def _create_and_publish_message(
+        self, thread: ThreadModel, config: dict[str, Any], args: dict[str, Any]
+    ) -> HumanMessage:
+        """Create and publish human message.
+
+        Args:
+            thread: Thread model instance
+            config: Stream configuration
+            args: Original arguments
+
+        Returns:
+            Created human message
+        """
+        human_message = HumanMessage(
+            id=str(uuid4()),
+            user_id=config["user_id"],
+            content=f"<|AI|>User: {config['username']}<|AI|>\n{config['prompt']}",
+            created_at=datetime.now().astimezone().isoformat(),
+        )
+
+        message_data = human_message.model_dump()
+        # Include temp_id if provided for optimistic updates
+        if args.get("temp_id"):
+            message_data["temp_id"] = args["temp_id"]
+
+        await pubsub.publish(
+            "app",
+            MessageEvent(
+                message=ThreadMessage(
+                    **message_data,
+                    thread_id=thread.id,
+                )
+            ),
+        )
+        return human_message
+
+    async def _setup_stream_tasks(
+        self,
+        thread: ThreadModel,
+        personality: PersonalityModel,
+        human_message: HumanMessage,
+        config: dict[str, Any],
+        start_time: datetime
+    ) -> tuple[asyncio.Task, asyncio.Task]:
+        """Set up stream processing and cancellation tasks.
+
+        Args:
+            thread: Thread model instance
+            personality: Personality model instance
+            human_message: Human message to process
+            config: Stream configuration
+            start_time: Processing start time
+
+        Returns:
+            Tuple of (stream_task, cancel_task)
+        """
+        # Set up stream processing
+        llm, graph = await self._setup_stream_processing(
+            thread, personality, human_message, config, start_time
+        )
+
+        # Create cancellation event and start listener
+        cancel_event = asyncio.Event()
+
+        # Create tasks for stream processing and cancellation listening
+        stream_config = StreamProcessingConfig(
+            thread=thread,
+            graph=graph,
+            human_message=human_message,
+            personality=personality,
+            config=config,
+            start_time=start_time
+        )
+        stream_task = asyncio.create_task(
+            self._process_stream_with_cancellation(stream_config)
+        )
+
+        cancel_task = asyncio.create_task(
+            self.cancellation_manager.listen_for_cancellation(
+                config["thread_id"], cancel_event
+            )
+        )
+
+        return stream_task, cancel_task
+
+    async def _handle_stream_completion(
+        self,
+        stream_task: asyncio.Task,
+        cancel_task: asyncio.Task,
+        thread: ThreadModel,
+        config: dict[str, Any]
+    ) -> str | None:
+        """Handle stream completion and cancellation.
+
+        Args:
+            stream_task: Stream processing task
+            cancel_task: Cancellation listening task
+            thread: Thread model instance
+            config: Stream configuration
+
+        Returns:
+            Final result or None if cancelled
+        """
+        # Handle cancellation or completion
+        was_cancelled, result = await self.cancellation_manager.handle_cancellation(
+            stream_task, cancel_task, config["thread_id"]
+        )
+
+        if was_cancelled:
+            logger.info(f"Thread {config['thread_id']} cancelled and reset to idle")
+            await self.status_manager.reset_cancelled_thread(thread)
+            result = None
+
+        # Clean up pending tasks
+        await self.cancellation_manager.cleanup_pending_tasks(
+            {stream_task, cancel_task}
+        )
+
+        return result
 
     async def execute_stream(self, args: dict[str, Any]) -> str | None:
         """Execute agent stream with full orchestration.
@@ -262,16 +420,8 @@ class AgentOrchestrator:
         result: str | None = None
 
         try:
-            # Get and validate thread
-            thread = await ThreadModel.get(config["thread_id"])
-            if not thread:
-                raise Exception("Thread not found")
-            if thread.status not in {"idle", "error"}:
-                await self._wait_for_idle(config["thread_id"])
-
-            await self.status_manager.update_thread_status(
-                thread, "thinking", human_message=config["prompt"]
-            )
+            # Validate and prepare thread
+            thread = await self._validate_and_prepare_thread(config)
 
             # Get personality
             personality = await PersonalityModel.get(config["personality_id"])
@@ -279,62 +429,16 @@ class AgentOrchestrator:
                 raise Exception("Personality not found")
 
             # Create and publish human message
-            human_message = HumanMessage(
-                id=str(uuid4()),
-                user_id=config["user_id"],
-                content=f"<|AI|>User: {config['username']}<|AI|>\n{config['prompt']}",
-                created_at=datetime.now().astimezone().isoformat(),
-            )
+            human_message = await self._create_and_publish_message(thread, config, args)
 
-            message_data = human_message.model_dump()
-            # Include temp_id if provided for optimistic updates
-            if args.get("temp_id"):
-                message_data["temp_id"] = args["temp_id"]
-
-            await pubsub.publish(
-                "app",
-                MessageEvent(
-                    message=ThreadMessage(
-                        **message_data,
-                        thread_id=thread.id,
-                    )
-                ),
-            )
-
-            # Set up stream processing
-            llm, graph = await self._setup_stream_processing(
+            # Set up stream processing and cancellation tasks
+            stream_task, cancel_task = await self._setup_stream_tasks(
                 thread, personality, human_message, config, start_time
             )
 
-            # Create cancellation event and start listener
-            cancel_event = asyncio.Event()
-
-            # Create tasks for stream processing and cancellation listening
-            stream_task = asyncio.create_task(
-                self._process_stream_with_cancellation(
-                    thread, graph, human_message, personality, config, start_time
-                )
-            )
-
-            cancel_task = asyncio.create_task(
-                self.cancellation_manager.listen_for_cancellation(
-                    config["thread_id"], cancel_event
-                )
-            )
-
-            # Handle cancellation or completion
-            was_cancelled, result = await self.cancellation_manager.handle_cancellation(
-                stream_task, cancel_task, config["thread_id"]
-            )
-
-            if was_cancelled:
-                logger.info(f"Thread {config['thread_id']} cancelled and reset to idle")
-                await self.status_manager.reset_cancelled_thread(thread)
-                result = None
-
-            # Clean up pending tasks
-            await self.cancellation_manager.cleanup_pending_tasks(
-                {stream_task, cancel_task}
+            # Handle completion and cleanup
+            result = await self._handle_stream_completion(
+                stream_task, cancel_task, thread, config
             )
 
         except asyncio.CancelledError:

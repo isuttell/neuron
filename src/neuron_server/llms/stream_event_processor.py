@@ -1,6 +1,7 @@
 """Stream event processing functionality."""
 
 from collections.abc import AsyncIterator
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, TypedDict
 
@@ -27,6 +28,32 @@ class ChainEventData(TypedDict):
     data: dict[str, Any]
     run_id: str
     active_runs: dict[str, str]
+
+
+@dataclass
+class ChatModelStreamContext:
+    """Context for chat model streaming events."""
+
+    thread: ThreadModel
+    chunk: AIMessage
+    run_id: str
+    node: str | None
+    start_time: datetime
+    index: int
+    human_message_content: str | None
+
+
+@dataclass
+class ChatModelEndContext:
+    """Context for chat model end events."""
+
+    thread: ThreadModel
+    output: AIMessage
+    run_id: str
+    node: str | None
+    start_time: datetime
+    active_runs: dict[str, str]
+    human_message_content: str | None
 
 
 class ChainEvent(TypedDict):
@@ -162,36 +189,24 @@ class StreamEventProcessor:
 
     async def _handle_chat_model_stream(
         self,
-        thread: ThreadModel,
-        chunk: AIMessage,
-        run_id: str,
-        node: str | None,
-        start_time: datetime,
-        index: int,
-        human_message_content: str | None,
+        context: ChatModelStreamContext,
     ) -> int:
         """Handle chat model streaming events.
 
         Args:
-            thread: Thread model instance
-            chunk: AI message chunk
-            run_id: Run ID for the message
-            node: Graph node identifier
-            start_time: Start time for the message
-            index: Current streaming index
-            human_message_content: Human message content for status updates
+            context: Context for chat model streaming
 
         Returns:
             Updated index
         """
-        content = get_message_content(chunk)
+        content = get_message_content(context.chunk)
 
         # Handle content which can now be a list of Content objects or a string
-        if content and not chunk.additional_kwargs.get("hidden", False):
+        if content and not context.chunk.additional_kwargs.get("hidden", False):
             await self.status_manager.update_thread_status(
-                thread, "streaming", human_message=human_message_content
+                context.thread, "streaming", human_message=context.human_message_content
             )
-            index += 1
+            context.index += 1
 
             # If content is still a string (for backward compatibility),
             # convert it to a Content object
@@ -202,58 +217,46 @@ class StreamEventProcessor:
                 "app",
                 PartialMessageEvent(
                     message=PartialMessage(
-                        id=self._clean_run_id(run_id),  # Clean run_id to remove prefix
+                        id=self._clean_run_id(context.run_id),
                         type="ai",
                         content=content,
-                        thread_id=thread.id,
-                        index=index,
+                        thread_id=context.thread.id,
+                        index=context.index,
                         status="streaming",
-                        node=node,
-                        created_at=start_time.isoformat(),
+                        node=context.node,
+                        created_at=context.start_time.isoformat(),
                     )
                 ),
             )
-        return index
+        return context.index
 
     async def _handle_chat_model_end(
         self,
-        thread: ThreadModel,
-        output: AIMessage,
-        run_id: str,
-        node: str | None,
-        start_time: datetime,
-        active_runs: dict[str, str],
-        human_message_content: str | None,
+        context: ChatModelEndContext,
     ) -> None:
         """Handle chat model end events.
 
         Args:
-            thread: Thread model instance
-            output: Final AI message
-            run_id: Run ID for the message
-            node: Graph node identifier
-            start_time: Start time for the message
-            active_runs: Currently active runs
-            human_message_content: Human message content for status updates
+            context: Context for chat model end events
         """
         if (
-            "update_title" not in active_runs.values()
-            and not output.additional_kwargs.get("hidden", False)
+            "update_title" not in context.active_runs.values()
+            and not context.output.additional_kwargs.get("hidden", False)
         ):
             # Use the run_id as the message ID to match streaming messages
-            message_data = output.model_dump()
-            message_data["id"] = self._clean_run_id(run_id)
+            message_data = context.output.model_dump()
+            message_data["id"] = self._clean_run_id(context.run_id)
 
             message = ThreadMessage(
                 **message_data,
-                thread_id=thread.id,
-                node=node,
+                thread_id=context.thread.id,
+                node=context.node,
             )
             if not message.created_at:
-                message.created_at = start_time.isoformat()
+                message.created_at = context.start_time.isoformat()
             await pubsub.publish("app", MessageEvent(message=message))
         await self.status_manager.update_thread_status(
-            thread, "thinking", human_message=human_message_content
+            context.thread, "thinking", human_message=context.human_message_content
         )
 
     async def process_stream_events(
@@ -317,27 +320,29 @@ class StreamEventProcessor:
                 data["chunk"], AIMessage
             ):
                 chunk = data["chunk"]
-                index = await self._handle_chat_model_stream(
-                    thread,
-                    chunk,
-                    run_id,
-                    node,
-                    start_time,
-                    index,
-                    human_message_content,
+                context = ChatModelStreamContext(
+                    thread=thread,
+                    chunk=chunk,
+                    run_id=run_id,
+                    node=node,
+                    start_time=start_time,
+                    index=index,
+                    human_message_content=human_message_content,
                 )
+                index = await self._handle_chat_model_stream(context)
 
             elif kind == "on_chat_model_end":
                 output: AIMessage = data["output"]
-                await self._handle_chat_model_end(
-                    thread,
-                    output,
-                    run_id,
-                    node,
-                    start_time,
-                    active_runs,
-                    human_message_content,
+                context = ChatModelEndContext(
+                    thread=thread,
+                    output=output,
+                    run_id=run_id,
+                    node=node,
+                    start_time=start_time,
+                    active_runs=active_runs,
+                    human_message_content=human_message_content,
                 )
+                await self._handle_chat_model_end(context)
 
             elif kind == "error":
                 logger.error(data)
