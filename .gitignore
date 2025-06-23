@@ -34,3 +34,6 @@ tsconfig.node.tsbuildinfo
 
 # mpy
 .mypy_cache/
+
+# MCPs
+.mcp.local.json
