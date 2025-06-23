@@ -11,10 +11,12 @@ services:
       - .env-docker
     environment:
       - SERVE_CLIENT=true
+      - NEO4J_PASSWORD=${NEO4J_PASSWORD}
+      - NEO4J_URL=bolt://neo4j:7687
     ports:
       - 5000:5000
     volumes:
-      - ./static:/neuron/static
+      - ./static:/app/static
       - ./src/neuron_server:/app/src/neuron_server
 
   db:

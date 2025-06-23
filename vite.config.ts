@@ -21,16 +21,16 @@ export default defineConfig(({ mode }) => ({
     port: 5176,
     proxy: {
       "/api": {
-        target: "http://localhost:5003",
+        target: "http://localhost:5000",
       },
       "/static": {
-        target: "http://localhost:5003",
+        target: "http://localhost:5000",
       },
       "/logo.svg": {
-        target: "http://localhost:5003",
+        target: "http://localhost:5000",
       },
       "/ws": {
-        target: "ws://localhost:5003",
+        target: "ws://localhost:5000",
         ws: true,
         rewriteWsOrigin: true,
       },
