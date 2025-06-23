@@ -34,3 +34,8 @@ class UpdateThread(IncomingEvent):
     thread_id: UUID
     name: str
     context: str
+
+
+class CancelRequestEvent(OutgoingEvent):
+    type: Literal["cancel_request"] = "cancel_request"
+    thread_id: UUID

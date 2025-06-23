@@ -185,18 +185,20 @@ class StatusAgent:
                 event_context = "Recent activity:\n" + "\n".join(event_lines) + "\n\n"
 
             # Get description for current operation
-            from neuron_server.llms.agent import TOOL_DESCRIPTIONS
+            from neuron_server.llms.thread_status_manager import ThreadStatusManager
+
+            tool_descriptions = ThreadStatusManager.TOOL_DESCRIPTIONS
 
             # Handle comma-separated tools
             if "," in current_status:
                 tools = [t.strip() for t in current_status.split(",")]
                 descriptions = []
                 for tool in tools:
-                    desc = TOOL_DESCRIPTIONS.get(tool, f"Running {tool}")
+                    desc = tool_descriptions.get(tool, f"Running {tool}")
                     descriptions.append(desc)
                 current_description = f"Multiple operations: {', '.join(descriptions)}"
             else:
-                current_description = TOOL_DESCRIPTIONS.get(
+                current_description = tool_descriptions.get(
                     current_status, f"Running {current_status}"
                 )
 
@@ -273,7 +275,7 @@ class StatusAgent:
     def _format_simple_status(self, status: str) -> str:
         """Simple fallback formatting."""
         # Import here to avoid circular import
-        from neuron_server.llms.agent import TOOL_DESCRIPTIONS
+        from neuron_server.llms.thread_status_manager import ThreadStatusManager
 
         # Handle comma-separated tools first
         if "," in status:
@@ -281,8 +283,9 @@ class StatusAgent:
             return f"Working on {len(tools)} tasks"
 
         # Use tool description if available
-        if status in TOOL_DESCRIPTIONS:
-            return TOOL_DESCRIPTIONS[status]
+        tool_descriptions = ThreadStatusManager.TOOL_DESCRIPTIONS
+        if status in tool_descriptions:
+            return tool_descriptions[status]
 
         # Default
         return f"Processing {status}"

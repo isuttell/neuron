@@ -398,7 +398,7 @@ lean towards "low" or "medium".""",
             if isinstance(msg, AIMessage) and not msg.content and i < len(messages) - 1:
                 # Log the full message being filtered
                 logger.warning(
-                    f"Filtering out empty AIMessage at index {i}/{len(messages)-1}: "
+                    f"Filtering out empty AIMessage at index {i}/{len(messages) - 1}: "
                     f"{msg.model_dump()}"
                 )
             else:

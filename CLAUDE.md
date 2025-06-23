@@ -22,7 +22,7 @@ Neuron is a realtime chat application built with LangChain and LangGraph that pr
 - Accessible via `mcp__postgres-neuron__*` MCP tools
 
 ### Local Development Environment
-- Docker-based setup on local machine using docker-compose
+- Docker-based setup on local machine using docker compose
 - Has separate database instance for local development
 - Accessible via `mcp__postgres-localhost__*` MCP tools (connects to localhost:5432)
 

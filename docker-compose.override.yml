@@ -16,7 +16,7 @@ services:
     ports:
       - 5000:5000
     volumes:
-      - ./static:/app/static
+      - static-data:/app/static
       - ./src/neuron_server:/app/src/neuron_server
 
   db:
@@ -56,3 +56,4 @@ volumes:
   database-data:
   redis-data:
   neo4j-data:
+  static-data:

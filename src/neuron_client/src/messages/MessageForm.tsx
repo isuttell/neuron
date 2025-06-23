@@ -3,10 +3,9 @@ import { AudioRecorder } from "@/components/AudioRecorder";
 import { PromptDropdown } from "@/components/PromptDropdown";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { CornerDownLeft, Upload } from "lucide-react";
+import { CornerDownLeft, Upload, X } from "lucide-react";
 import { useState, useRef, useEffect, ReactNode } from "react";
 
 /**
@@ -37,6 +36,10 @@ interface MessageFormProps {
    * Callback fired when a file attachment is removed
    */
   onFileRemove?: () => void;
+  /**
+   * Callback fired when the cancel button is clicked (during loading state)
+   */
+  onCancel?: () => void;
 
   /**
    * Optional children to render to the left of the buttons
@@ -78,6 +81,7 @@ export default function MessageForm({
   onSubmit,
   onFileAdd,
   onFileRemove,
+  onCancel,
   children = undefined,
 }: MessageFormProps) {
   const [value, setValue] = useState("");
@@ -214,21 +218,22 @@ export default function MessageForm({
           accept=".png,.jpg,.jpeg,.gif,.webp,.pdf,.md,.txt,.csv,.srt,.vtt,.mp3,.wav,.mp4,.heic,.heif"
         />
         <Button
-          onClick={() => handleSubmit()}
-          type="submit"
+          onClick={() => isLoading ? onCancel?.() : handleSubmit()}
+          type={isLoading ? "button" : "submit"}
           size="sm"
-          data-testid="submit-button"
-          disabled={isSubmitDisabled || isDisabled}
+          data-testid={isLoading ? "cancel-button" : "submit-button"}
+          disabled={!isLoading && (isSubmitDisabled || isDisabled)}
           className={cn(
             "size-10 flex-shrink-0",
-            isLoading && "cursor-progress",
-            isSubmitDisabled || isDisabled
+            isLoading
+              ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              : isSubmitDisabled || isDisabled
               ? "bg-muted text-muted-foreground cursor-not-allowed"
               : "bg-accent text-accent-foreground"
           )}
         >
           {isLoading ? (
-            <Spinner className="size-3.5" />
+            <X className="size-3.5" />
           ) : (
             <CornerDownLeft className="size-3.5" />
           )}

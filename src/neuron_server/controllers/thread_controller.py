@@ -7,6 +7,7 @@ from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 from neuron_server.controllers.auth import requires_auth
 from neuron_server.controllers.csrf import requires_csrf
+from neuron_server.controllers.events.thread_events import CancelRequestEvent
 from neuron_server.controllers.message_controller import process_message_request
 from neuron_server.decorators import rate_limit
 from neuron_server.event_router import EventRouter
@@ -15,6 +16,7 @@ from neuron_server.models.personality_model import PersonalityModel
 from neuron_server.models.thread_model import ThreadModel
 from neuron_server.models.thread_user_model import ThreadUserModel
 from neuron_server.models.user_model import UserModel
+from neuron_server.pubsub import pubsub
 from neuron_server.type_defs.request_proxy import request
 
 blueprint = Blueprint("thread", __name__)
@@ -443,3 +445,21 @@ async def update_thread_user(thread_id: UUID, user_id: str) -> dict[str, dict]:
         raise NotFound("User not found in thread") from err
 
     return {"thread_user": thread_user.model_dump()}
+
+
+@blueprint.post("/<uuid:thread_id>/cancel")
+@requires_auth
+@requires_csrf
+async def cancel_thread(thread_id: UUID) -> Response:
+    """Cancel a running agent task for a thread.
+
+    Returns:
+        204 No Content
+    """
+    # Check if user has access to the thread
+    await check_thread_access(thread_id=thread_id, user_id=request.token.user_id)
+
+    # Publish cancellation event to the pubsub system
+    await pubsub.publish("app", CancelRequestEvent(thread_id=thread_id))
+
+    return Response(status=204)
