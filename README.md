@@ -226,7 +226,7 @@ npm run dev
 Neuron can be deployed using Docker and Docker Compose:
 
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
 This will start the following services:
@@ -245,13 +245,13 @@ To build the Docker images locally:
 
 ```bash
 # Build both client and server
-docker-compose build
+docker compose build
 
 # Build only the client
-docker-compose build client
+docker compose build client
 
 # Build only the server
-docker-compose build server
+docker compose build server
 ```
 
 #### Production Deployment

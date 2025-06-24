@@ -70,15 +70,18 @@ class TestPyodideCodeInterpreterTool:
         self, tool: PyodideCodeInterpreterTool, mock_config: RunnableConfig
     ) -> None:
         """Test successful code execution."""
-        with patch(
-            "neuron_server.tools.pyodide_code_interpreter_tool.PyodideSandbox"
-        ) as mock_sandbox_class, patch(
-            "neuron_server.tools.pyodide_code_interpreter_tool.os.makedirs"
-        ), patch(
-            "neuron_server.tools.pyodide_code_interpreter_tool.aiofiles.open"
-        ) as mock_aio_open, patch(
-            "neuron_server.tools.pyodide_code_interpreter_tool.MediaItemModel"
-        ) as mock_media_model:
+        with (
+            patch(
+                "neuron_server.tools.pyodide_code_interpreter_tool.PyodideSandbox"
+            ) as mock_sandbox_class,
+            patch("neuron_server.tools.pyodide_code_interpreter_tool.os.makedirs"),
+            patch(
+                "neuron_server.tools.pyodide_code_interpreter_tool.aiofiles.open"
+            ) as mock_aio_open,
+            patch(
+                "neuron_server.tools.pyodide_code_interpreter_tool.MediaItemModel"
+            ) as mock_media_model,
+        ):
             # Setup mocks
             mock_sandbox = AsyncMock()
             mock_sandbox_class.return_value = mock_sandbox
@@ -243,15 +246,18 @@ class TestPyodideCodeInterpreterTool:
         self, tool: PyodideCodeInterpreterTool, mock_config: RunnableConfig
     ) -> None:
         """Test artifact generation when variables are returned."""
-        with patch(
-            "neuron_server.tools.pyodide_code_interpreter_tool.PyodideSandbox"
-        ) as mock_sandbox_class, patch(
-            "neuron_server.tools.pyodide_code_interpreter_tool.os.makedirs"
-        ), patch(
-            "neuron_server.tools.pyodide_code_interpreter_tool.aiofiles.open"
-        ) as mock_aio_open, patch(
-            "neuron_server.tools.pyodide_code_interpreter_tool.MediaItemModel"
-        ) as mock_media_model:
+        with (
+            patch(
+                "neuron_server.tools.pyodide_code_interpreter_tool.PyodideSandbox"
+            ) as mock_sandbox_class,
+            patch("neuron_server.tools.pyodide_code_interpreter_tool.os.makedirs"),
+            patch(
+                "neuron_server.tools.pyodide_code_interpreter_tool.aiofiles.open"
+            ) as mock_aio_open,
+            patch(
+                "neuron_server.tools.pyodide_code_interpreter_tool.MediaItemModel"
+            ) as mock_media_model,
+        ):
             # Setup mock with variables
             mock_sandbox = AsyncMock()
             mock_sandbox_class.return_value = mock_sandbox
@@ -303,7 +309,8 @@ class TestPyodideCodeInterpreterTool:
 
             # Find metadata item and check it mentions variables
             metadata_item = next(
-                item for item in artifact["items"]
+                item
+                for item in artifact["items"]
                 if item["caption"] == "Execution Metadata"
             )
             assert "result, data, name" in metadata_item["description"]
@@ -375,15 +382,18 @@ class TestPyodideCodeInterpreterTool:
         self, tool: PyodideCodeInterpreterTool, mock_config: RunnableConfig
     ) -> None:
         """Test handling of stderr output."""
-        with patch(
-            "neuron_server.tools.pyodide_code_interpreter_tool.PyodideSandbox"
-        ) as mock_sandbox_class, patch(
-            "neuron_server.tools.pyodide_code_interpreter_tool.os.makedirs"
-        ), patch(
-            "neuron_server.tools.pyodide_code_interpreter_tool.aiofiles.open"
-        ) as mock_aio_open, patch(
-            "neuron_server.tools.pyodide_code_interpreter_tool.MediaItemModel"
-        ) as mock_media_model:
+        with (
+            patch(
+                "neuron_server.tools.pyodide_code_interpreter_tool.PyodideSandbox"
+            ) as mock_sandbox_class,
+            patch("neuron_server.tools.pyodide_code_interpreter_tool.os.makedirs"),
+            patch(
+                "neuron_server.tools.pyodide_code_interpreter_tool.aiofiles.open"
+            ) as mock_aio_open,
+            patch(
+                "neuron_server.tools.pyodide_code_interpreter_tool.MediaItemModel"
+            ) as mock_media_model,
+        ):
             # Setup mock with stderr
             mock_sandbox = AsyncMock()
             mock_sandbox_class.return_value = mock_sandbox
@@ -424,15 +434,18 @@ class TestPyodideCodeInterpreterTool:
         self, tool: PyodideCodeInterpreterTool, mock_config: RunnableConfig
     ) -> None:
         """Test that execution time is tracked."""
-        with patch(
-            "neuron_server.tools.pyodide_code_interpreter_tool.PyodideSandbox"
-        ) as mock_sandbox_class, patch(
-            "neuron_server.tools.pyodide_code_interpreter_tool.os.makedirs"
-        ), patch(
-            "neuron_server.tools.pyodide_code_interpreter_tool.aiofiles.open"
-        ) as mock_aio_open, patch(
-            "neuron_server.tools.pyodide_code_interpreter_tool.MediaItemModel"
-        ) as mock_media_model:
+        with (
+            patch(
+                "neuron_server.tools.pyodide_code_interpreter_tool.PyodideSandbox"
+            ) as mock_sandbox_class,
+            patch("neuron_server.tools.pyodide_code_interpreter_tool.os.makedirs"),
+            patch(
+                "neuron_server.tools.pyodide_code_interpreter_tool.aiofiles.open"
+            ) as mock_aio_open,
+            patch(
+                "neuron_server.tools.pyodide_code_interpreter_tool.MediaItemModel"
+            ) as mock_media_model,
+        ):
             # Setup mock
             mock_sandbox = AsyncMock()
             mock_sandbox_class.return_value = mock_sandbox
@@ -480,13 +493,15 @@ class TestPyodideCodeInterpreterTool:
     @pytest.mark.asyncio
     async def test_user_id_validation(self, tool: PyodideCodeInterpreterTool) -> None:
         """Test that user_id validation works properly."""
-        with patch(
-            "neuron_server.tools.pyodide_code_interpreter_tool.PyodideSandbox"
-        ) as mock_sandbox_class, patch(
-            "neuron_server.tools.pyodide_code_interpreter_tool.os.makedirs"
-        ), patch(
-            "neuron_server.tools.pyodide_code_interpreter_tool.aiofiles.open"
-        ) as mock_aio_open:
+        with (
+            patch(
+                "neuron_server.tools.pyodide_code_interpreter_tool.PyodideSandbox"
+            ) as mock_sandbox_class,
+            patch("neuron_server.tools.pyodide_code_interpreter_tool.os.makedirs"),
+            patch(
+                "neuron_server.tools.pyodide_code_interpreter_tool.aiofiles.open"
+            ) as mock_aio_open,
+        ):
             # Setup minimal mock for sandbox execution
             mock_sandbox = AsyncMock()
             mock_sandbox_class.return_value = mock_sandbox

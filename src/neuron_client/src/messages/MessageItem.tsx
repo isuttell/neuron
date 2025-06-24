@@ -46,12 +46,18 @@ const MessageItem: React.FC<MessageItemProps> = ({
     content,
     isOptimistic,
     error,
+    isCancelled,
   } = message;
 
   // Get the message user from the users slice if available
   const messageUser = useAppSelector((state) =>
     user_id ? getUser(state, user_id) : null
   );
+
+  // Don't render cancelled messages
+  if (isCancelled) {
+    return null;
+  }
 
   const isTool = role === "tool" || node === "tools";
   const showToolOutput = isTool && toolOutput && toolOutput.includes(name ?? "");

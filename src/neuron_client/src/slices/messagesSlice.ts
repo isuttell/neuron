@@ -140,6 +140,7 @@ export interface Message extends Omit<IncomingMessage, "created_at"> {
   isOptimistic?: boolean;
   tempId?: string;
   error?: string;
+  isCancelled?: boolean;
 }
 
 interface IncomingPartialMessage extends Omit<IncomingMessage, "status"> {
@@ -321,6 +322,13 @@ export const messagesSlice = createSlice({
       delete state.messageMap[tempId];
       state.messageIds = state.messageIds.filter((id) => id !== tempId);
     },
+    markMessageCancelled: (state, action: PayloadAction<string>) => {
+      const messageId = action.payload;
+      const message = state.messageMap[messageId];
+      if (message) {
+        message.isCancelled = true;
+      }
+    },
     upsertMessage: (state, action: PayloadAction<IncomingMessageEvent>) => {
       const incomingMessage = action.payload.message;
 
@@ -406,6 +414,7 @@ export const {
   addOptimisticMessage,
   markMessageFailed,
   removeOptimisticMessage,
+  markMessageCancelled,
   upsertMessage,
   upsertMessages,
   partialMessage,

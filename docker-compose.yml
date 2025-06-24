@@ -11,10 +11,6 @@ services:
     restart: unless-stopped
     image: gitea.zaks.io/isuttell/neuron-server:latest
     build: .
-    depends_on:
-      - db
-      - neo4j
-      - redis
 
   db:
     restart: unless-stopped

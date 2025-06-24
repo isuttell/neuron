@@ -14,6 +14,22 @@ Note: This local directory may be named differently (e.g., neuron-02), but the a
 
 Neuron is a realtime chat application built with LangChain and LangGraph that provides an extensible platform for testing and experimenting with various LLM models and tool capabilities.
 
+## Environment Information
+
+### Production Environment
+- Hosted on Lapetus homelab server (neuron.zaks.io)
+- Contains the production database with all configured AI providers
+- Accessible via `mcp__postgres-neuron__*` MCP tools
+
+### Local Development Environment
+- Docker-based setup on local machine using docker compose
+- Has separate database instance for local development
+- Accessible via `mcp__postgres-localhost__*` MCP tools (connects to localhost:5432)
+
+### MCP Tool Usage
+- `mcp__postgres-neuron__*` tools connect to the production database on Lapetus
+- `mcp__postgres-localhost__*` tools connect to the local Docker database
+
 ## Architecture
 
 Neuron consists of several key components:

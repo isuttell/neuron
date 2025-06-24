@@ -69,19 +69,19 @@ backend-lint-fix:
 
 # Build all Docker images
 docker-build:
-    docker-compose build
+    docker compose build
 
 # Start all services with Docker Compose
 docker-up:
-    docker-compose up -d
+    docker compose up -d
 
 # Stop all services
 docker-down:
-    docker-compose down
+    docker compose down
 
 # View Docker logs
 docker-logs:
-    docker-compose logs -f
+    docker compose logs -f
 
 # ========== Pre-commit Commands ==========
 

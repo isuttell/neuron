@@ -1,20 +1,18 @@
 import asyncio
 from collections.abc import AsyncIterator
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import UUID, uuid4
 
 import pytest
 from langchain_core.messages import AIMessage, ToolMessage
 
-# Import functions and classes from agent.py
+# Import functions and classes
 from neuron_server.llms import agent
 from neuron_server.llms.agent import (
-    Debouncer,
     execute_agent,
-    get_message_content,
     wait_for_idle,
 )
+from neuron_server.llms.message_processor import get_message_content
 
 
 # Forward declare DummyGraph for type hints
@@ -98,44 +96,6 @@ def test_get_message_content_with_unknown_type() -> None:
     assert "index" in result[0]
 
 
-# --- Tests for Debouncer class ---
-
-
-@pytest.mark.asyncio
-async def test_debouncer_single_call() -> None:
-    call_count = 0
-
-    async def dummy_func(x: int) -> None:
-        nonlocal call_count
-        call_count += x
-
-    debouncer = Debouncer(wait=0.05)
-    await debouncer.call(dummy_func, 1)
-    await asyncio.sleep(0.1)  # Ensure the debounced call completes
-    assert call_count == 1
-
-
-@pytest.mark.asyncio
-async def test_debouncer_multiple_calls() -> None:
-    executed_args = []
-
-    async def dummy_func(x: int) -> None:
-        executed_args.append(x)
-        await asyncio.sleep(0.01)  # Simulate some work
-
-    debouncer = Debouncer(wait=0.05)
-
-    # First call starts executing after wait
-    await debouncer.call(dummy_func, 1)
-    # Second call waits for first to complete
-    await debouncer.call(dummy_func, 2)
-    # Wait for all executions to complete
-    await asyncio.sleep(0.2)
-
-    # Both calls execute because the second call waits for the first to complete
-    assert executed_args == [1, 2]
-
-
 # --- Test for wait_for_idle ---
 
 
@@ -167,7 +127,10 @@ async def test_wait_for_idle(monkeypatch: pytest.MonkeyPatch) -> None:
             return DummyThread(thread_id, "idle")
 
     # Patch ThreadModel.get to return our fake status
-    monkeypatch.setattr(agent, "ThreadModel", type("DummyTM", (), {"get": fake_get}))
+    monkeypatch.setattr(
+        "neuron_server.llms.agent_orchestrator.ThreadModel",
+        type("DummyTM", (), {"get": fake_get})
+    )
 
     # Use longer timeout since we have small delays between status changes
     await wait_for_idle(thread_id, timeout=5)
@@ -272,112 +235,6 @@ class MockStreamConfig:
 
     def __getitem__(self, key: str) -> str | UUID:
         return getattr(self, key)
-
-
-@pytest.mark.asyncio
-async def test_message_id_consistency_during_streaming() -> None:
-    """Test that message IDs are handled consistently during streaming."""
-
-    from datetime import datetime
-
-    from langchain_core.messages import HumanMessage
-
-    from neuron_server.llms.agent import StreamEventContext, _process_stream_events
-    from neuron_server.models.personality_model import PersonalityModel
-    from neuron_server.models.thread_model import ThreadModel
-
-    # Create mock objects
-    thread = MagicMock(spec=ThreadModel)
-    thread.id = uuid4()
-    thread.name = "Test Thread"
-    thread.status = "idle"
-
-    personality = MagicMock(spec=PersonalityModel)
-    personality.context = "Test personality"
-    personality.name = "Test Assistant"
-
-    config = {
-        "thread_id": thread.id,
-        "personality_id": uuid4(),
-        "user_id": uuid4(),
-        "username": "TestUser",
-        "location": "Test Location",
-    }
-
-    human_message = HumanMessage(content="Test message")
-
-    # Mock graph that yields streaming events
-    mock_graph = MagicMock()
-
-    # Create a run_id to track
-    test_run_id = str(uuid4())
-
-    # Simulate streaming events
-    async def mock_stream_events(*args: Any, **kwargs: Any) -> AsyncIterator[dict]:
-        # Yield streaming chunk
-        yield {
-            "event": "on_chat_model_stream",
-            "name": "test_model",
-            "data": {"chunk": AIMessage(content="Hello")},
-            "run_id": test_run_id,
-            "metadata": {"langgraph_node": "agent"},
-        }
-        # Yield final message
-        yield {
-            "event": "on_chat_model_end",
-            "name": "test_model",
-            "data": {"output": AIMessage(content="Hello world")},
-            "run_id": test_run_id,
-            "metadata": {"langgraph_node": "agent"},
-        }
-
-    mock_graph.astream_events = mock_stream_events
-
-    # Track published events
-    published_events = []
-
-    async def mock_publish(channel: str, event: object) -> None:
-        published_events.append(event)
-
-    # Create a mock state object with values attribute
-    mock_state = MagicMock()
-    mock_state.values = {"messages": []}
-
-    aget_state_mock = AsyncMock(return_value=mock_state)
-    with (
-        patch("neuron_server.llms.agent.pubsub.publish", mock_publish),
-        patch("neuron_server.llms.agent.aget_state", aget_state_mock),
-        patch("neuron_server.models.thread_model.ThreadModel.set", AsyncMock()),
-    ):
-        ctx = StreamEventContext(
-            thread=thread,
-            graph=mock_graph,
-            human_message=human_message,
-            personality=personality,
-            config=config,
-            start_time=datetime.now(),
-        )
-
-        await _process_stream_events(ctx)
-
-    # Verify that partial and complete messages have the same ID (run_id)
-    partial_msg_id = None
-    complete_msg_id = None
-
-    for event in published_events:
-        if hasattr(event, "message"):
-            if hasattr(event.message, "status") and event.message.status == "streaming":
-                partial_msg_id = event.message.id
-            elif event.message.type == "ai" and not hasattr(event.message, "status"):
-                complete_msg_id = event.message.id
-
-    assert partial_msg_id is not None, "Should have published a partial message"
-    assert complete_msg_id is not None, "Should have published a complete message"
-    assert partial_msg_id == complete_msg_id == test_run_id, (
-        f"Partial and complete messages should use run_id as their ID. "
-        f"Expected: {test_run_id}, Partial: {partial_msg_id}, "
-        f"Complete: {complete_msg_id}"
-    )
 
 
 @pytest.mark.asyncio

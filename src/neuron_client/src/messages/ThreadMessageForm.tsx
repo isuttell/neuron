@@ -1,7 +1,7 @@
 import { useAppDispatch } from "@/hooks";
 import { toast } from "sonner";
 import { useParams } from "react-router-dom";
-import { postMessageByThread } from "../actions/messageActions";
+import { postMessageByThread, cancelThreadMessages } from "../actions/messageActions";
 import { Thread } from "../types/thread";
 import MessageForm from "./MessageForm";
 import { ThreadStatusMessage } from "@/components/ThreadStatusMessage";
@@ -92,6 +92,24 @@ export default function ThreadMessageForm({
     toast("Attachment removed");
   };
 
+  /**
+   * Handles thread cancellation by dispatching cancel action
+   */
+  const handleCancel = () => {
+    if (!threadId) return;
+
+    dispatch(cancelThreadMessages(threadId))
+      .unwrap()
+      .then(() => {
+        toast.success("Message cancelled");
+      })
+      .catch((error) => {
+        toast.error("Failed to cancel message", {
+          description: error || "An unexpected error occurred",
+        });
+      });
+  };
+
   const isLoading = thread ? thread.status !== "idle" : false;
 
   return (
@@ -100,6 +118,7 @@ export default function ThreadMessageForm({
       onSubmit={handleSubmit}
       onFileAdd={handleFileAdd}
       onFileRemove={handleFileRemove}
+      onCancel={handleCancel}
       isLoading={isLoading}
     >
       <ThreadStatusMessage

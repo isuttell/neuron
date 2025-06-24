@@ -58,6 +58,11 @@ class ApiClient {
       throw new Error(`API Error: ${response.statusText}`);
     }
 
+    // Handle 204 No Content responses (empty body)
+    if (response.status === 204) {
+      return {} as T;
+    }
+
     const data = await response.json();
 
     // Handle new CSRF token from response headers (preferred) or body (legacy)

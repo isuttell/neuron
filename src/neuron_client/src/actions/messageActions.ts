@@ -4,6 +4,8 @@ import { createAsyncThunk } from "@reduxjs/toolkit";
 import {
   addOptimisticMessage,
   markMessageFailed,
+  markMessageCancelled,
+  getMessages,
 } from "../slices/messagesSlice";
 import { getSocket } from "../slices/socketSlice";
 import { RootState } from "../store";
@@ -125,6 +127,41 @@ export const sendMessage = createAsyncThunk(
         return rejectWithValue(error.message);
       }
       return rejectWithValue("An unknown error occurred");
+    }
+  }
+);
+
+export const cancelThreadMessages = createAsyncThunk(
+  "messages/cancelThreadMessages",
+  async (threadId: string, thunkAPI) => {
+    try {
+      await api.post(`/threads/${threadId}/cancel`, {});
+
+      // Mark any in-progress assistant messages for this thread as cancelled
+      const state = thunkAPI.getState() as RootState;
+      const messages = getMessages(state);
+
+      // Find in-progress assistant messages for this thread
+      const inProgressMessages = messages.filter(
+        (message) =>
+          message.thread_id === threadId &&
+          message.type === "ai" &&
+          !message.isOptimistic &&
+          !message.isCancelled &&
+          (!message.status || message.status !== "completed")
+      );
+
+      // Mark each in-progress message as cancelled
+      inProgressMessages.forEach((message) => {
+        thunkAPI.dispatch(markMessageCancelled(message.id));
+      });
+
+      return threadId;
+    } catch (error) {
+      if (error instanceof Error) {
+        return thunkAPI.rejectWithValue(error.message);
+      }
+      return thunkAPI.rejectWithValue("An unknown error occurred");
     }
   }
 );
