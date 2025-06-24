@@ -71,7 +71,30 @@ async def get_thread(thread_id: UUID) -> dict[str, list[dict]]:
     thread = await check_thread_access(
         thread_id=thread_id, user_id=request.token.user_id
     )
-    return {"threads": [thread.model_dump()]}
+
+    # Get thread users
+    thread_users = await ThreadUserModel.get_thread_users(thread_id=thread_id)
+
+    # Check if thread owner is included in thread_users
+    owner_in_thread_users = any(tu.user_id == thread.user_id for tu in thread_users)
+    if not owner_in_thread_users:
+        # Create a special entry for the thread owner with admin role
+        owner_thread_user = {
+            "user_id": thread.user_id,
+            "thread_id": str(thread.id),
+            "role": "admin",  # Thread owner is always admin
+        }
+    else:
+        owner_thread_user = None
+
+    return {
+        "threads": [thread.model_dump()],
+        "thread_users": [
+            {"user_id": tu.user_id, "thread_id": str(tu.thread_id), "role": tu.role}
+            for tu in thread_users
+        ]
+        + ([owner_thread_user] if owner_thread_user else []),
+    }
 
 
 @blueprint.get("/personality/<uuid:personality_id>")
@@ -102,20 +125,35 @@ async def get_threads(personality_id: UUID) -> dict[str, list[dict]]:
         if thread.id not in all_threads:
             all_threads[thread.id] = thread
 
-    return {"threads": [thread.model_dump() for thread in all_threads.values()]}
+    # Get thread_users for all threads
+    all_thread_users = []
+    for thread in all_threads.values():
+        thread_users_for_thread = await ThreadUserModel.get_thread_users(
+            thread_id=thread.id
+        )
 
+        # Check if thread owner is included in thread_users
+        owner_in_thread_users = any(
+            tu.user_id == thread.user_id for tu in thread_users_for_thread
+        )
+        if not owner_in_thread_users:
+            # Create a special entry for the thread owner with admin role
+            owner_thread_user = {
+                "user_id": thread.user_id,
+                "thread_id": str(thread.id),
+                "role": "admin",  # Thread owner is always admin
+            }
+            all_thread_users.append(owner_thread_user)
 
-@blueprint.get("/recent")
-@requires_auth
-async def get_recent_threads() -> dict[str, list[dict]]:
-    threads = await ThreadModel.get_recent_threads(
-        hours=24, user_id=request.token.user_id
-    )
-    personality_ids = {thread.personality_id for thread in threads}
-    personalities = await PersonalityModel.get_many(list(personality_ids))
+        # Add all thread users
+        for tu in thread_users_for_thread:
+            all_thread_users.append(
+                {"user_id": tu.user_id, "thread_id": str(tu.thread_id), "role": tu.role}
+            )
+
     return {
-        "threads": [thread.model_dump() for thread in threads],
-        "personalities": [personality.model_dump() for personality in personalities],
+        "threads": [thread.model_dump() for thread in all_threads.values()],
+        "thread_users": all_thread_users,
     }
 
 
@@ -269,7 +307,7 @@ async def get_thread_users(thread_id: UUID) -> dict[str, list[dict]]:
                 break
         else:
             # If not found in thread_users, must be the owner
-            if user.id == thread.user_id:
+            if thread and user.id == thread.user_id:
                 user_dict["role"] = "admin"
 
         result.append(user_dict)

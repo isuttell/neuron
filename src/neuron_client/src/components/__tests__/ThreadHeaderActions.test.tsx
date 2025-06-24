@@ -4,8 +4,42 @@ import userEvent from '@testing-library/user-event';
 import ThreadHeaderActions from '../ThreadHeaderActions';
 import { TooltipProvider } from '@/components/ui/tooltip';
 
+// Mock the useThreadPermissions hook
+vi.mock('@/hooks/useThreadPermissions', () => ({
+  useThreadPermissions: vi.fn(() => ({
+    thread: { id: 'test-thread-id', personality_id: 'test-personality-id' },
+    canManage: true,
+    canManageUsers: true,
+    canDelete: true,
+    canViewSystemMessages: true,
+    hasAnyActions: true,
+  })),
+}));
+
+// Mock the usePersonalityPermissions hook
+vi.mock('@/hooks/usePersonalityPermissions', () => ({
+  usePersonalityPermissions: vi.fn(() => ({
+    canManage: true,
+    canManageUsers: true,
+    canDelete: true,
+    canUse: true,
+    hasAnyActions: true,
+    shouldShowComponent: true,
+    isAdmin: false,
+    hasAccess: true,
+    userRole: 'admin',
+    personality: undefined,
+  })),
+}));
+
+import { useThreadPermissions } from '@/hooks/useThreadPermissions';
+import { usePersonalityPermissions } from '@/hooks/usePersonalityPermissions';
+const mockUseThreadPermissions = vi.mocked(useThreadPermissions);
+const mockUsePersonalityPermissions = vi.mocked(usePersonalityPermissions);
+
 describe('ThreadHeaderActions', () => {
   const mockProps = {
+    threadId: 'test-thread-id',
     showTools: false,
     onToggleTools: vi.fn(),
     onEditPersonality: vi.fn(),
@@ -15,6 +49,27 @@ describe('ThreadHeaderActions', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // Reset to default mock values
+    mockUseThreadPermissions.mockReturnValue({
+      thread: { id: 'test-thread-id', personality_id: 'test-personality-id' },
+      canManage: true,
+      canManageUsers: true,
+      canDelete: true,
+      canViewSystemMessages: true,
+      hasAnyActions: true,
+    });
+    mockUsePersonalityPermissions.mockReturnValue({
+      canManage: true,
+      canManageUsers: true,
+      canDelete: true,
+      canUse: true,
+      hasAnyActions: true,
+      shouldShowComponent: true,
+      isAdmin: false,
+      hasAccess: true,
+      userRole: 'admin',
+      personality: undefined,
+    });
   });
 
   const renderComponent = (props = mockProps) => {
@@ -159,5 +214,146 @@ describe('ThreadHeaderActions', () => {
 
     const deleteItem = screen.getByText(/delete thread/i).closest('[role="menuitem"]');
     expect(deleteItem).toHaveClass('text-destructive');
+  });
+
+  describe('Permission-based visibility', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+      // Reset personality permissions to default (can manage)
+      mockUsePersonalityPermissions.mockReturnValue({
+        canManage: true,
+        canManageUsers: true,
+        canDelete: true,
+        canUse: true,
+        hasAnyActions: true,
+        shouldShowComponent: true,
+        isAdmin: false,
+        hasAccess: true,
+        userRole: 'admin',
+        personality: undefined,
+      });
+    });
+
+    it('hides edit personality when user cannot manage personality', async () => {
+      mockUsePersonalityPermissions.mockReturnValue({
+        canManage: false, // Cannot manage personality
+        canManageUsers: false,
+        canDelete: false,
+        canUse: true,
+        hasAnyActions: false,
+        shouldShowComponent: false,
+        isAdmin: false,
+        hasAccess: true,
+        userRole: 'user',
+        personality: undefined,
+      });
+
+      const user = userEvent.setup();
+      renderComponent();
+
+      const trigger = screen.getByRole('button', { name: /more actions/i });
+      await user.click(trigger);
+
+      expect(screen.getByText(/show system messages/i)).toBeInTheDocument();
+      expect(screen.queryByText(/edit personality/i)).not.toBeInTheDocument();
+      expect(screen.getByText(/manage users/i)).toBeInTheDocument();
+      expect(screen.getByText(/delete thread/i)).toBeInTheDocument();
+    });
+
+    it('hides manage users when user cannot manage users', async () => {
+      mockUseThreadPermissions.mockReturnValue({
+        thread: { id: 'test-thread-id', personality_id: 'test-personality-id' },
+        canManage: true,
+        canManageUsers: false,
+        canDelete: true,
+        canViewSystemMessages: true,
+        hasAnyActions: true,
+      });
+
+      const user = userEvent.setup();
+      renderComponent();
+
+      const trigger = screen.getByRole('button', { name: /more actions/i });
+      await user.click(trigger);
+
+      expect(screen.getByText(/show system messages/i)).toBeInTheDocument();
+      expect(screen.getByText(/edit personality/i)).toBeInTheDocument();
+      expect(screen.queryByText(/manage users/i)).not.toBeInTheDocument();
+      expect(screen.getByText(/delete thread/i)).toBeInTheDocument();
+    });
+
+    it('hides delete thread when user cannot delete', async () => {
+      mockUseThreadPermissions.mockReturnValue({
+        thread: { id: 'test-thread-id', personality_id: 'test-personality-id' },
+        canManage: true,
+        canManageUsers: true,
+        canDelete: false,
+        canViewSystemMessages: true,
+        hasAnyActions: true,
+      });
+
+      const user = userEvent.setup();
+      renderComponent();
+
+      const trigger = screen.getByRole('button', { name: /more actions/i });
+      await user.click(trigger);
+
+      expect(screen.getByText(/show system messages/i)).toBeInTheDocument();
+      expect(screen.getByText(/edit personality/i)).toBeInTheDocument();
+      expect(screen.getByText(/manage users/i)).toBeInTheDocument();
+      expect(screen.queryByText(/delete thread/i)).not.toBeInTheDocument();
+    });
+
+    it('hides system messages when user cannot view them', async () => {
+      mockUseThreadPermissions.mockReturnValue({
+        thread: { id: 'test-thread-id', personality_id: 'test-personality-id' },
+        canManage: true,
+        canManageUsers: true,
+        canDelete: true,
+        canViewSystemMessages: false,
+        hasAnyActions: true,
+      });
+
+      const user = userEvent.setup();
+      renderComponent();
+
+      const trigger = screen.getByRole('button', { name: /more actions/i });
+      await user.click(trigger);
+
+      expect(screen.queryByText(/show system messages/i)).not.toBeInTheDocument();
+      expect(screen.getByText(/edit personality/i)).toBeInTheDocument();
+      expect(screen.getByText(/manage users/i)).toBeInTheDocument();
+      expect(screen.getByText(/delete thread/i)).toBeInTheDocument();
+    });
+
+    it('hides entire component when user has no permissions', async () => {
+      // User has no thread permissions
+      mockUseThreadPermissions.mockReturnValue({
+        thread: { id: 'test-thread-id', personality_id: 'test-personality-id' },
+        canManage: false,
+        canManageUsers: false,
+        canDelete: false,
+        canViewSystemMessages: false,
+        hasAnyActions: false,
+      });
+
+      // User also has no personality permissions
+      mockUsePersonalityPermissions.mockReturnValue({
+        canManage: false,
+        canManageUsers: false,
+        canDelete: false,
+        canUse: false,
+        hasAnyActions: false,
+        shouldShowComponent: false,
+        isAdmin: false,
+        hasAccess: false,
+        userRole: null,
+        personality: undefined,
+      });
+
+      renderComponent();
+
+      expect(screen.queryByRole('button', { name: /more actions/i })).not.toBeInTheDocument();
+    });
   });
 });

@@ -129,7 +129,7 @@ async def test_wait_for_idle(monkeypatch: pytest.MonkeyPatch) -> None:
     # Patch ThreadModel.get to return our fake status
     monkeypatch.setattr(
         "neuron_server.llms.agent_orchestrator.ThreadModel",
-        type("DummyTM", (), {"get": fake_get})
+        type("DummyTM", (), {"get": fake_get}),
     )
 
     # Use longer timeout since we have small delays between status changes
