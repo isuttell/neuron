@@ -7,16 +7,35 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 // Mock the useThreadPermissions hook
 vi.mock('@/hooks/useThreadPermissions', () => ({
   useThreadPermissions: vi.fn(() => ({
+    thread: { id: 'test-thread-id', personality_id: 'test-personality-id' },
     canManage: true,
     canManageUsers: true,
     canDelete: true,
     canViewSystemMessages: true,
+    hasAnyActions: true,
+  })),
+}));
+
+// Mock the usePersonalityPermissions hook
+vi.mock('@/hooks/usePersonalityPermissions', () => ({
+  usePersonalityPermissions: vi.fn(() => ({
+    canManage: true,
+    canManageUsers: true,
+    canDelete: true,
+    canUse: true,
+    hasAnyActions: true,
     shouldShowComponent: true,
+    isAdmin: false,
+    hasAccess: true,
+    userRole: 'admin',
+    personality: undefined,
   })),
 }));
 
 import { useThreadPermissions } from '@/hooks/useThreadPermissions';
+import { usePersonalityPermissions } from '@/hooks/usePersonalityPermissions';
 const mockUseThreadPermissions = vi.mocked(useThreadPermissions);
+const mockUsePersonalityPermissions = vi.mocked(usePersonalityPermissions);
 
 describe('ThreadHeaderActions', () => {
   const mockProps = {
@@ -30,6 +49,27 @@ describe('ThreadHeaderActions', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // Reset to default mock values
+    mockUseThreadPermissions.mockReturnValue({
+      thread: { id: 'test-thread-id', personality_id: 'test-personality-id' },
+      canManage: true,
+      canManageUsers: true,
+      canDelete: true,
+      canViewSystemMessages: true,
+      hasAnyActions: true,
+    });
+    mockUsePersonalityPermissions.mockReturnValue({
+      canManage: true,
+      canManageUsers: true,
+      canDelete: true,
+      canUse: true,
+      hasAnyActions: true,
+      shouldShowComponent: true,
+      isAdmin: false,
+      hasAccess: true,
+      userRole: 'admin',
+      personality: undefined,
+    });
   });
 
   const renderComponent = (props = mockProps) => {
@@ -179,15 +219,33 @@ describe('ThreadHeaderActions', () => {
   describe('Permission-based visibility', () => {
     beforeEach(() => {
       vi.clearAllMocks();
-    });
-
-    it('hides edit personality when user cannot manage thread', async () => {
-      mockUseThreadPermissions.mockReturnValue({
-        canManage: false,
+      // Reset personality permissions to default (can manage)
+      mockUsePersonalityPermissions.mockReturnValue({
+        canManage: true,
         canManageUsers: true,
         canDelete: true,
-        canViewSystemMessages: true,
+        canUse: true,
+        hasAnyActions: true,
         shouldShowComponent: true,
+        isAdmin: false,
+        hasAccess: true,
+        userRole: 'admin',
+        personality: undefined,
+      });
+    });
+
+    it('hides edit personality when user cannot manage personality', async () => {
+      mockUsePersonalityPermissions.mockReturnValue({
+        canManage: false, // Cannot manage personality
+        canManageUsers: false,
+        canDelete: false,
+        canUse: true,
+        hasAnyActions: false,
+        shouldShowComponent: false,
+        isAdmin: false,
+        hasAccess: true,
+        userRole: 'user',
+        personality: undefined,
       });
 
       const user = userEvent.setup();
@@ -204,11 +262,12 @@ describe('ThreadHeaderActions', () => {
 
     it('hides manage users when user cannot manage users', async () => {
       mockUseThreadPermissions.mockReturnValue({
+        thread: { id: 'test-thread-id', personality_id: 'test-personality-id' },
         canManage: true,
         canManageUsers: false,
         canDelete: true,
         canViewSystemMessages: true,
-        shouldShowComponent: true,
+        hasAnyActions: true,
       });
 
       const user = userEvent.setup();
@@ -225,11 +284,12 @@ describe('ThreadHeaderActions', () => {
 
     it('hides delete thread when user cannot delete', async () => {
       mockUseThreadPermissions.mockReturnValue({
+        thread: { id: 'test-thread-id', personality_id: 'test-personality-id' },
         canManage: true,
         canManageUsers: true,
         canDelete: false,
         canViewSystemMessages: true,
-        shouldShowComponent: true,
+        hasAnyActions: true,
       });
 
       const user = userEvent.setup();
@@ -246,11 +306,12 @@ describe('ThreadHeaderActions', () => {
 
     it('hides system messages when user cannot view them', async () => {
       mockUseThreadPermissions.mockReturnValue({
+        thread: { id: 'test-thread-id', personality_id: 'test-personality-id' },
         canManage: true,
         canManageUsers: true,
         canDelete: true,
         canViewSystemMessages: false,
-        shouldShowComponent: true,
+        hasAnyActions: true,
       });
 
       const user = userEvent.setup();
@@ -266,12 +327,28 @@ describe('ThreadHeaderActions', () => {
     });
 
     it('hides entire component when user has no permissions', async () => {
+      // User has no thread permissions
       mockUseThreadPermissions.mockReturnValue({
+        thread: { id: 'test-thread-id', personality_id: 'test-personality-id' },
         canManage: false,
         canManageUsers: false,
         canDelete: false,
         canViewSystemMessages: false,
+        hasAnyActions: false,
+      });
+
+      // User also has no personality permissions
+      mockUsePersonalityPermissions.mockReturnValue({
+        canManage: false,
+        canManageUsers: false,
+        canDelete: false,
+        canUse: false,
+        hasAnyActions: false,
         shouldShowComponent: false,
+        isAdmin: false,
+        hasAccess: false,
+        userRole: null,
+        personality: undefined,
       });
 
       renderComponent();

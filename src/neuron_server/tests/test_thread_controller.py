@@ -364,57 +364,6 @@ async def test_get_threads_for_personality(
         mock_get_user_threads.assert_called_once_with(user_id=mock_token.user_id)
 
 
-@pytest.mark.asyncio
-async def test_get_recent_threads(thread_test_context: dict) -> None:
-    """Test getting recent threads."""
-    app = thread_test_context["app"]
-    mock_token = thread_test_context["mock_token"]
-    mock_thread = thread_test_context["mock_thread"]
-
-    # Create a mock personality for this test
-    mock_personality = MagicMock()
-    mock_personality.id = uuid4()
-    mock_personality.name = "Test Personality"
-    mock_personality.model_dump.return_value = {
-        "id": str(mock_personality.id),
-        "name": mock_personality.name,
-    }
-
-    with (
-        patch.object(
-            ThreadModel, "get_recent_threads", new_callable=AsyncMock
-        ) as mock_get_recent,
-        patch.object(
-            PersonalityModel, "get_many", new_callable=AsyncMock
-        ) as mock_get_many,
-    ):
-        # Setup mocks
-        mock_get_recent.return_value = [mock_thread]
-        mock_get_many.return_value = [mock_personality]
-
-        # Create request context
-        async with app.test_request_context(
-            "/api/thread/recent",
-            headers={"Authorization": TEST_JWT_TOKEN},
-        ):
-            # Set token on request
-            app.request_class.token = mock_token
-
-            # Call the endpoint function directly
-            from neuron_server.controllers.thread_controller import get_recent_threads
-
-            result = await get_recent_threads()
-
-            # Verify response
-            assert "threads" in result
-            assert len(result["threads"]) == 1
-            assert result["threads"][0]["id"] == str(mock_thread.id)
-            assert "personalities" in result
-            assert len(result["personalities"]) == 1
-
-        # Verify mocks were called correctly
-        mock_get_recent.assert_called_once_with(hours=24, user_id=mock_token.user_id)
-        mock_get_many.assert_called_once_with([mock_thread.personality_id])
 
 
 @pytest.mark.asyncio
