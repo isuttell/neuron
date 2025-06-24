@@ -275,17 +275,25 @@ mock_scheduler.get_event = AsyncMock()
 # Don't mock the entire API module, just patch the scheduler inside the tests
 # We need to maintain the actual Quart app for the API tests
 
-# Create mock SQLAlchemy session
+# Create mock SQLAlchemy session with proper result mocking
 mock_session = AsyncMock(spec=AsyncSession)
 mock_session.__aenter__.return_value = mock_session
 mock_session.__aexit__.return_value = None
 mock_session.commit = AsyncMock()
 mock_session.rollback = AsyncMock()
 mock_session.close = AsyncMock()
-mock_session.execute = AsyncMock()
 mock_session.flush = AsyncMock()
 mock_session.refresh = AsyncMock()
 mock_session.scalar = AsyncMock()
+
+# Create a proper mock for query results
+mock_result = Mock()
+mock_scalars = Mock()
+mock_scalars.all.return_value = []  # Return empty list by default
+mock_scalars.first.return_value = None
+mock_result.scalars.return_value = mock_scalars
+mock_result.first.return_value = None
+mock_session.execute.return_value = mock_result
 
 # Create mock engine
 mock_engine = Mock()
@@ -296,12 +304,53 @@ mock_engine.dispose = AsyncMock()
 @pytest.fixture(autouse=True)
 def mock_database() -> None:
     """Mock database connections for all tests."""
-    # Apply patches
+    # Apply comprehensive patches to prevent any database connections
     with (
+        # Mock the engine creation function
         patch("sqlalchemy.ext.asyncio.create_async_engine", return_value=mock_engine),
+        # Mock the session maker and session creation
         patch("neuron_server.database.get_session", return_value=mock_session),
+        patch(
+            "neuron_server.database.sessionmaker",
+            return_value=lambda *args, **kwargs: lambda: mock_session,
+        ),
+        # Mock the actual engine and pool objects
         patch("neuron_server.database.engine", mock_engine),
+        patch("neuron_server.database.pool", Mock()),
+        # Mock the start function
         patch("neuron_server.database.start", AsyncMock()),
+        # Mock LangGraph PostgresSaver to prevent connection attempts
+        patch("langgraph.checkpoint.postgres.aio.AsyncPostgresSaver"),
+        # Mock psycopg_pool to prevent real connection pool creation
+        patch("psycopg_pool.AsyncNullConnectionPool", return_value=Mock()),
+        # Mock any direct SQLAlchemy imports in tests
+        patch("sqlalchemy.ext.asyncio.AsyncSession", return_value=mock_session),
+        # Mock psycopg connection to prevent real database connections
+        patch("psycopg.AsyncConnection.connect", return_value=AsyncMock(), create=True),
+        patch("psycopg.connect", return_value=Mock(), create=True),
+        # Mock all model-level database operations (create=True if they don't exist)
+        patch(
+            "neuron_server.models.thread_model.get_session",
+            return_value=mock_session,
+            create=True,
+        ),
+        patch(
+            "neuron_server.models.personality_model.get_session",
+            return_value=mock_session,
+            create=True,
+        ),
+        patch(
+            "neuron_server.models.user_model.get_session",
+            return_value=mock_session,
+            create=True,
+        ),
+        patch(
+            "neuron_server.models.thread_user_model.get_session",
+            return_value=mock_session,
+            create=True,
+        ),
+        # Mock the connection string building to prevent connection attempts
+        patch("neuron_server.database.DB_URI", "postgresql://test:test@localhost/test"),
     ):
         yield
 
