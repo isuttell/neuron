@@ -203,7 +203,7 @@ export const addPersonalityUser = createAsyncThunk(
   async ({ personalityId, email }: { personalityId: string; email: string }, thunkAPI) => {
     try {
       // First, get the user by email
-      const userResponse = await api.get<{ users: User[] }>(`/users?email=${encodeURIComponent(email)}`);
+      const userResponse = await api.get<{ users: User[] }>(`/users/?email=${encodeURIComponent(email)}`);
       if (!userResponse.users || userResponse.users.length === 0) {
         throw new Error("User not found");
       }
