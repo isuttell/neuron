@@ -92,6 +92,8 @@ Features:
                 "include_raw_content": include_raw_content,
             }
 
+            if time_range:
+                tavily_params["time_range"] = time_range
             if include_domains:
                 tavily_params["include_domains"] = include_domains
             if exclude_domains:

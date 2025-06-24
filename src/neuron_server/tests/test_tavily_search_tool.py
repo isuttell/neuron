@@ -224,6 +224,7 @@ class TestTavilySearchTool:
                 max_results=10,
                 search_depth="advanced",
                 topic="news",
+                time_range="week",
                 include_answer=True,
                 include_raw_content=True,
                 include_domains=["python.org"],
@@ -253,6 +254,37 @@ class TestTavilySearchTool:
             assert parsed_result == sample_search_results
 
             # Verify TavilySearchResults was called without domain parameters
+            mock_tavily.assert_called_once_with(
+                max_results=5,
+                search_depth="basic",
+                topic="general",
+                include_answer=False,
+                include_raw_content=False,
+            )
+
+    @pytest.mark.asyncio
+    async def test_search_with_time_range_none(
+        self, tool: TavilySearchTool, sample_search_results: list[dict]
+    ) -> None:
+        """Test search with time_range=None does not pass time_range parameter."""
+        with patch(
+            "neuron_server.tools.tavily_search_tool.TavilySearchResults"
+        ) as mock_tavily:
+            # Mock TavilySearchResults
+            mock_instance = AsyncMock()
+            mock_instance.ainvoke.return_value = sample_search_results
+            mock_tavily.return_value = mock_instance
+
+            # Execute search with explicit time_range=None
+            result = await tool._arun(
+                query="test query", time_range=None
+            )
+
+            # Verify result is valid JSON
+            parsed_result = json.loads(result)
+            assert parsed_result == sample_search_results
+
+            # Verify TavilySearchResults was called without time_range parameter
             mock_tavily.assert_called_once_with(
                 max_results=5,
                 search_depth="basic",
