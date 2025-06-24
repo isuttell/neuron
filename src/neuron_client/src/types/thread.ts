@@ -6,6 +6,7 @@ export interface ThreadUser {
 
 export interface Thread {
   id: string;
+  user_id: string;
   name: string;
   context: string;
   memory: string;
@@ -19,8 +20,10 @@ export interface Thread {
 
 export interface ThreadResponse {
   thread: Thread;
+  thread_users?: ThreadUser[];
 }
 
 export interface ThreadsResponse {
   threads: Thread[];
+  thread_users?: ThreadUser[];
 }

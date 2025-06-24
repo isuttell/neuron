@@ -23,7 +23,9 @@ import { updatePersonalityLogo } from "@/actions/personalityActions";
 import { cn } from "@/lib/utils";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { withAdminAuth } from "@/components/hoc/withAdminAuth";
+import { usePersonalityPermissions } from "@/hooks/usePersonalityPermissions";
+import { isAdmin } from "@/lib/auth";
+import { useAuth0 } from "@auth0/auth0-react";
 import EditPersonalityDialog from "@/personalities/EditPersonalityDialog";
 import PersonalityUsersDialog from "@/personalities/PersonalityUsersDialog";
 
@@ -32,7 +34,7 @@ interface PersonalityItemProps {
   className?: string;
 }
 
-// Create admin-protected dropdown menu
+// Personality dropdown menu with permission-based visibility
 const PersonalityDropdownMenu: React.FC<{
   personality: Personality;
   open: boolean;
@@ -53,7 +55,17 @@ const PersonalityDropdownMenu: React.FC<{
   setIsUsersDialogOpen,
   handleUpdateLogo,
   isUpdatingLogo,
-}) => (
+}) => {
+  const { user } = useAuth0();
+  const { canManage, canManageUsers, canUse } = usePersonalityPermissions(personality.id);
+  const isSystemAdmin = isAdmin(user);
+
+  // Don't show dropdown if user has no actions available
+  if (!canUse && !canManage && !canManageUsers && !isSystemAdmin) {
+    return null;
+  }
+
+  return (
   <div className="absolute top-2 right-2">
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
@@ -67,83 +79,114 @@ const PersonalityDropdownMenu: React.FC<{
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem
-          onSelect={(e) => {
-            e.preventDefault();
-            setOpen(false);
-            handleActivate();
-          }}
-        >
-          {isActive ? (
-            <>
-              <Square className="size-4" />
-              Deactivate
-            </>
-          ) : (
-            <>
-              <Play className="size-4" />
-              Activate
-            </>
-          )}
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
-          onSelect={(e) => {
-            e.preventDefault();
-            setOpen(false);
-            // Small delay to ensure dropdown closes before dialog opens
-            setTimeout(() => setIsEditPersonalityOpen(true), 0);
-          }}
-        >
-          <UserPen className="size-4" />
-          Edit Personality
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          onSelect={(e) => {
-            e.preventDefault();
-            setOpen(false);
-            // Small delay to ensure dropdown closes before dialog opens
-            setTimeout(() => setIsUsersDialogOpen(true), 0);
-          }}
-        >
-          <Users className="size-4" />
-          Manage Users
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link
-            className="flex items-center gap-2 text-foreground"
-            to={`/personality/${personality.id}`}
+        {/* Activate/Deactivate - available to anyone who can use the personality */}
+        {canUse && (
+          <DropdownMenuItem
+            onSelect={(e) => {
+              e.preventDefault();
+              setOpen(false);
+              handleActivate();
+            }}
           >
-            <Pencil className="size-4" />
-            Context Editor
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          onSelect={(e) => {
-            e.preventDefault();
-            setOpen(false);
-            handleUpdateLogo();
-          }}
-          disabled={isUpdatingLogo}
-        >
-          <Image className="size-4" />
-          Generate Logo
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link
-            className="flex items-center gap-2 text-foreground"
-            to={`/personality/${personality.id}/embeddings`}
+            {isActive ? (
+              <>
+                <Square className="size-4" />
+                Deactivate
+              </>
+            ) : (
+              <>
+                <Play className="size-4" />
+                Activate
+              </>
+            )}
+          </DropdownMenuItem>
+        )}
+
+        {/* Separator if we have both user actions and admin actions */}
+        {canUse && (canManage || canManageUsers || isSystemAdmin) && (
+          <DropdownMenuSeparator />
+        )}
+
+        {/* Edit Personality - personality admins only */}
+        {canManage && (
+          <DropdownMenuItem
+            onSelect={(e) => {
+              e.preventDefault();
+              setOpen(false);
+              // Small delay to ensure dropdown closes before dialog opens
+              setTimeout(() => setIsEditPersonalityOpen(true), 0);
+            }}
           >
-            <Brain className="size-4" />
-            View Embeddings
-          </Link>
-        </DropdownMenuItem>
+            <UserPen className="size-4" />
+            Edit Personality
+          </DropdownMenuItem>
+        )}
+
+        {/* Manage Users - personality admins only */}
+        {canManageUsers && (
+          <DropdownMenuItem
+            onSelect={(e) => {
+              e.preventDefault();
+              setOpen(false);
+              // Small delay to ensure dropdown closes before dialog opens
+              setTimeout(() => setIsUsersDialogOpen(true), 0);
+            }}
+          >
+            <Users className="size-4" />
+            Manage Users
+          </DropdownMenuItem>
+        )}
+
+        {/* Context Editor - personality admins only */}
+        {canManage && (
+          <DropdownMenuItem asChild>
+            <Link
+              className="flex items-center gap-2 text-foreground"
+              to={`/personality/${personality.id}`}
+            >
+              <Pencil className="size-4" />
+              Context Editor
+            </Link>
+          </DropdownMenuItem>
+        )}
+
+        {/* Generate Logo - personality admins only */}
+        {canManage && (
+          <DropdownMenuItem
+            onSelect={(e) => {
+              e.preventDefault();
+              setOpen(false);
+              handleUpdateLogo();
+            }}
+            disabled={isUpdatingLogo}
+          >
+            <Image className="size-4" />
+            Generate Logo
+          </DropdownMenuItem>
+        )}
+
+        {/* View Embeddings - system admins only */}
+        {isSystemAdmin && (
+          <>
+            {(canUse || canManage || canManageUsers) && (
+              <DropdownMenuSeparator />
+            )}
+            <DropdownMenuItem asChild>
+              <Link
+                className="flex items-center gap-2 text-foreground"
+                to={`/personality/${personality.id}/embeddings`}
+              >
+                <Brain className="size-4" />
+                View Embeddings
+              </Link>
+            </DropdownMenuItem>
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   </div>
-);
-
-const AdminPersonalityDropdown = withAdminAuth(PersonalityDropdownMenu);
+  );
+};
 
 const PersonalityItem: React.FC<PersonalityItemProps> = ({
   className,
@@ -257,8 +300,8 @@ const PersonalityItem: React.FC<PersonalityItemProps> = ({
           </CardTitle>
         </div>
 
-        {/* Dropdown menu overlay - Admin only */}
-        <AdminPersonalityDropdown
+        {/* Dropdown menu overlay - Permission based */}
+        <PersonalityDropdownMenu
           personality={personality}
           open={open}
           setOpen={setOpen}

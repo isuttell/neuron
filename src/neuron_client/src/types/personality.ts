@@ -14,4 +14,5 @@ export interface Personality {
   logo?: string;
   created_at: string;
   updated_at: string;
+  personality_users?: PersonalityUser[];
 }

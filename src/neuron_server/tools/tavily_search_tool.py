@@ -41,6 +41,7 @@ class TavilySearchToolArgs(BaseModel):
         default=False,
     )
 
+
 class TavilySearchTool(BaseTool):
     name: str = "tavily_search"
     description: str = """
@@ -102,9 +103,11 @@ Features:
             tavily_tool = TavilySearchResults(**tavily_params)
 
             # Execute the search with dynamic parameters
-            results = await tavily_tool.ainvoke({
-                "query": query,
-            })
+            results = await tavily_tool.ainvoke(
+                {
+                    "query": query,
+                }
+            )
 
             # Return raw JSON results
             return json.dumps(results, indent=2)

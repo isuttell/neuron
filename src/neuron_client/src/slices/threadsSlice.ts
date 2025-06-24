@@ -70,8 +70,24 @@ export const threadsSlice = createSlice({
       })
       .addCase(
         actions.fetchThread.fulfilled,
-        (state, action: PayloadAction<IncomingThreadEvent>) => {
-          upsert(state, action.payload.thread);
+        (state, action) => {
+          if (action.payload?.thread) {
+            // Create a copy of the thread to add thread_users if available
+            const threadWithUsers = { ...action.payload.thread };
+
+            // If thread_users are available in the payload, add them to the thread
+            if (action.payload.thread_users) {
+              const threadUsers = action.payload.thread_users.filter(
+                (tu: { thread_id: string; user_id: string; role: string }) =>
+                  tu.thread_id === action.payload.thread.id
+              );
+              if (threadUsers.length > 0) {
+                threadWithUsers.thread_users = threadUsers;
+              }
+            }
+
+            upsert(state, threadWithUsers);
+          }
           state.loading = false;
           state.error = null;
         }
@@ -86,9 +102,25 @@ export const threadsSlice = createSlice({
       })
       .addCase(
         actions.fetchThreadsByPersonality.fulfilled,
-        (state, action: PayloadAction<IncomingThreadsEvent>) => {
-          for (const thread of action.payload.threads) {
-            upsert(state, thread);
+        (state, action) => {
+          if (action.payload?.threads) {
+            for (const thread of action.payload.threads) {
+              // Create a copy of the thread to add thread_users if available
+              const threadWithUsers = { ...thread };
+
+              // If thread_users are available in the payload, add them to the thread
+              if (action.payload.thread_users) {
+                const threadUsers = action.payload.thread_users.filter(
+                  (tu: { thread_id: string; user_id: string; role: string }) =>
+                    tu.thread_id === thread.id
+                );
+                if (threadUsers.length > 0) {
+                  threadWithUsers.thread_users = threadUsers;
+                }
+              }
+
+              upsert(state, threadWithUsers);
+            }
           }
           state.loading = false;
           state.error = null;

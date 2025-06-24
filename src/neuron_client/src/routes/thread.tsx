@@ -149,6 +149,7 @@ export default function Thread() {
           onChange={setIsMediaPanelVisible}
         />
         <ThreadHeaderActions
+          threadId={thread.id}
           showTools={showTools}
           onToggleTools={() => setShowTools(!showTools)}
           onEditPersonality={() => setIsEditPersonalityOpen(true)}

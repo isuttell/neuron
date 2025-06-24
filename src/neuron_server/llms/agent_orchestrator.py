@@ -205,7 +205,7 @@ class AgentOrchestrator:
         if human_message_content_raw and isinstance(human_message_content_raw, str):
             if len(human_message_content_raw) > max_message_length:
                 human_message_content = (
-                    human_message_content_raw[:max_message_length - 3] + "..."
+                    human_message_content_raw[: max_message_length - 3] + "..."
                 )
             else:
                 human_message_content = human_message_content_raw
@@ -214,7 +214,7 @@ class AgentOrchestrator:
         self.status_manager.set_personality_info(
             stream_config.thread.id,
             stream_config.personality.name,
-            stream_config.personality.context
+            stream_config.personality.context,
         )
 
         # Create event stream
@@ -245,7 +245,7 @@ class AgentOrchestrator:
             stream_config.thread,
             event_stream,
             human_message_content,
-            stream_config.start_time
+            stream_config.start_time,
         )
 
         # Get final state
@@ -316,7 +316,7 @@ class AgentOrchestrator:
         personality: PersonalityModel,
         human_message: HumanMessage,
         config: dict[str, Any],
-        start_time: datetime
+        start_time: datetime,
     ) -> tuple[asyncio.Task, asyncio.Task]:
         """Set up stream processing and cancellation tasks.
 
@@ -345,7 +345,7 @@ class AgentOrchestrator:
             human_message=human_message,
             personality=personality,
             config=config,
-            start_time=start_time
+            start_time=start_time,
         )
         stream_task = asyncio.create_task(
             self._process_stream_with_cancellation(stream_config)
@@ -364,7 +364,7 @@ class AgentOrchestrator:
         stream_task: asyncio.Task,
         cancel_task: asyncio.Task,
         thread: ThreadModel,
-        config: dict[str, Any]
+        config: dict[str, Any],
     ) -> str | None:
         """Handle stream completion and cancellation.
 

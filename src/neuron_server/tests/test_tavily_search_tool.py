@@ -276,9 +276,7 @@ class TestTavilySearchTool:
             mock_tavily.return_value = mock_instance
 
             # Execute search with explicit time_range=None
-            result = await tool._arun(
-                query="test query", time_range=None
-            )
+            result = await tool._arun(query="test query", time_range=None)
 
             # Verify result is valid JSON
             parsed_result = json.loads(result)
