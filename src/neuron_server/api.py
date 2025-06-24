@@ -87,6 +87,18 @@ app = Quart(
 )
 app.request_class = NeuronRequest
 
+@app.before_request
+async def fix_scheme() -> None:
+    """Fix scheme detection when behind reverse proxy.
+
+    Ensures that redirects use the correct protocol (https) when the app
+    is deployed behind a reverse proxy that sets X-Forwarded-Proto header.
+    Without this, redirects may incorrectly use http instead of https.
+    """
+    from quart import request
+    forwarded_proto = request.headers.get("X-Forwarded-Proto")
+    if forwarded_proto == "https":
+        request.scheme = "https"
 
 blueprint = Blueprint(
     "neuron",
