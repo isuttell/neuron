@@ -1,5 +1,4 @@
 from langchain.tools import BaseTool
-from langchain_community.tools.tavily_search import TavilySearchResults
 
 from neuron_server.config import config
 from neuron_server.tools.app_image_tool import AppImageTool
@@ -91,6 +90,7 @@ from neuron_server.tools.security_camera_tool import SecurityCameraTool
 from neuron_server.tools.send_notification_tool import SendNotificationTool
 from neuron_server.tools.set_thread_memory_tool import SetThreadMemoryTool
 from neuron_server.tools.sun_tool import SunTool
+from neuron_server.tools.tavily_search_tool import TavilySearchTool
 from neuron_server.tools.whisper_stt_tool import WhisperSTTTool
 
 homeassistant_api = HomeAssistantAPI(token=config.homeassistant.token)
@@ -152,9 +152,8 @@ tool_sets: dict[str, list[BaseTool]] = {
         WhisperSTTTool(),
     ],
     "search": [
-        TavilySearchResults(
-            max_results=5, include_raw_content=True, search_depth="advanced"
-        ),
+        TavilySearchTool(),
+        InspectDocumentTool(),
     ],
     "arxiv": [
         ArxivSearchTool(),
