@@ -3,6 +3,7 @@ import MediaPanelToggle from "@/components/MediaPanelToggle";
 import MediaTimeline from "@/components/MediaTimeline";
 import ThreadHeaderActions from "@/components/ThreadHeaderActions";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { Spinner } from "@/components/ui/spinner";
 import {
   Dialog,
   DialogContent,
@@ -206,6 +207,11 @@ export default function Thread() {
                     />
                   </div>
                 ))}
+                {thread.status !== "idle" && (
+                  <div className="flex my-4 pl-5">
+                    <Spinner size={48} strokeWidth={2} className="text-muted-foreground" />
+                  </div>
+                )}
                 {thread.message_count === 0 && messages.length === 0 ? (
                   <div className="m-4 text-center text-muted-foreground">
                     No messages
