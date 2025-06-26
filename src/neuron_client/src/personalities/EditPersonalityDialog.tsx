@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { UserPen, UserPlus } from "lucide-react";
-import { useAppDispatch } from "../hooks";
+import { useAppDispatch, useAppSelector } from "../hooks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { Personality } from "../slices/personalitiesSlice.d";
@@ -27,6 +27,9 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useAuth0 } from "@auth0/auth0-react";
+import { getUserRoles } from "../lib/auth";
+import { getProtectedToolSets } from "../slices/appSlice";
 
 interface EditPersonalityDialogProps {
   personality?: Personality;
@@ -57,6 +60,7 @@ const ToolSetLabels = {
   weather: "Weather",
 };
 
+
 interface ApiError extends Error {
   message: string;
 }
@@ -71,6 +75,8 @@ export default function EditPersonalityDialog({
 }: EditPersonalityDialogProps) {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const { user } = useAuth0();
+  const protectedToolSets = useAppSelector(getProtectedToolSets);
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
 
   // Use controlled open if provided, otherwise use internal state
@@ -94,6 +100,21 @@ export default function EditPersonalityDialog({
   const [tool_set, setToolSet] = useState(
     (personality?.tool_set || "").split("+")
   );
+
+  // Filter tool sets based on user roles
+  const availableToolSets = useMemo(() => {
+    const userRoles = getUserRoles(user);
+    const filteredLabels: Record<string, string> = {};
+
+    Object.entries(ToolSetLabels).forEach(([key, label]) => {
+      const requiredRole = protectedToolSets?.[key];
+      if (!requiredRole || userRoles.includes(requiredRole)) {
+        filteredLabels[key] = label;
+      }
+    });
+
+    return filteredLabels;
+  }, [user, protectedToolSets]);
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (loading) {
@@ -246,12 +267,12 @@ export default function EditPersonalityDialog({
                 setToolSet(
                   value.filter(
                     (val) =>
-                      val !== "" && Object.keys(ToolSetLabels).includes(val)
+                      val !== "" && Object.keys(availableToolSets).includes(val)
                   )
                 );
               }}
             >
-              {Object.keys(ToolSetLabels).map((option) => (
+              {Object.keys(availableToolSets).map((option) => (
                 <ToggleGroupItem
                   key={option}
                   value={option}
@@ -260,7 +281,7 @@ export default function EditPersonalityDialog({
                     default_tools.includes(option) ? "default" : "outline"
                   }
                 >
-                  {ToolSetLabels[option as keyof typeof ToolSetLabels]}
+                  {availableToolSets[option]}
                 </ToggleGroupItem>
               ))}
             </ToggleGroup>

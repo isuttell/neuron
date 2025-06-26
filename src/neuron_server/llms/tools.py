@@ -272,6 +272,75 @@ async def get_tools(query: str) -> list[BaseTool]:
     return list({tool.name: tool for tool in ts}.values())
 
 
+def get_available_tool_sets() -> list[str]:
+    """Get list of all available tool set keys.
+
+    Returns:
+        List of tool set names that can be used in personality configurations
+    """
+    return list(tool_sets.keys())
+
+
+def get_protected_tool_sets() -> dict[str, str]:
+    """Get mapping of protected tool sets to their required roles.
+
+    Returns:
+        Dictionary mapping tool set names to required role names
+    """
+    return {
+        "homeassistant": "tool-homeassistant",
+        "kepler": "tool-kepler",
+    }
+
+
+def validate_tool_set_keys(tool_set_string: str) -> list[str]:
+    """Validate tool set keys and return list of invalid keys.
+
+    Args:
+        tool_set_string: Tool set string with categories separated by '+'
+
+    Returns:
+        List of invalid tool set keys that don't exist in tool_sets
+    """
+    if not tool_set_string or not tool_set_string.strip():
+        return []
+
+    available_sets = get_available_tool_sets()
+    categories = tool_set_string.strip("+").split("+")
+    requested_sets = [name.strip() for name in categories if name.strip()]
+
+    return [name for name in requested_sets if name not in available_sets]
+
+
+def get_missing_tool_permissions(
+    tool_set_string: str, user_roles: list[str]
+) -> list[str]:
+    """Get list of tool sets that require permissions the user doesn't have.
+
+    Args:
+        tool_set_string: Tool set string with categories separated by '+'
+        user_roles: List of roles the user has
+
+    Returns:
+        List of tool set names the user cannot access due to missing roles
+    """
+    if not tool_set_string or not tool_set_string.strip():
+        return []
+
+    protected_sets = get_protected_tool_sets()
+    categories = tool_set_string.strip("+").split("+")
+    requested_sets = [name.strip() for name in categories if name.strip()]
+
+    missing_permissions = []
+    for tool_set in requested_sets:
+        if tool_set in protected_sets:
+            required_role = protected_sets[tool_set]
+            if required_role not in user_roles:
+                missing_permissions.append(tool_set)
+
+    return missing_permissions
+
+
 async def cleanup() -> None:
     """Clean up resources for all tools on shutdown."""
     # Iterate through all tool categories

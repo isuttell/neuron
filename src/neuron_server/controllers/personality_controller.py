@@ -23,7 +23,9 @@ from neuron_server.llms.tools import (
     AppImageTool,
     ReplicateImageGenerationTool,
     default_tools,
+    get_missing_tool_permissions,
     get_tools,
+    validate_tool_set_keys,
 )
 from neuron_server.models import PersonalityModel
 from neuron_server.models.embedding_model import EmbeddingModel
@@ -63,6 +65,36 @@ class MissingContextError(Exception):
 
     def __str__(self) -> str:
         return f"MissingContextError: {self.message}\nResponse:\n{self.response}"
+
+
+def validate_tool_set_permissions(tool_set: str | None, user_roles: list[str]) -> None:
+    """Validate that user has permission to use requested tool sets.
+
+    Args:
+        tool_set: Tool set string with categories separated by '+'
+        user_roles: List of roles the user has from JWT token
+
+    Raises:
+        BadRequest: If tool set contains invalid tool names
+        Forbidden: If user lacks required permissions for protected tools
+    """
+    if not tool_set:
+        return
+
+    # Validate all tool set keys exist
+    invalid_keys = validate_tool_set_keys(tool_set)
+    if invalid_keys:
+        raise BadRequest(f"Invalid tool set keys: {', '.join(invalid_keys)}")
+
+    # Check permissions for protected tool sets
+    missing_permissions = get_missing_tool_permissions(tool_set, user_roles)
+    if missing_permissions:
+        tools_list = ", ".join(missing_permissions)
+        roles_list = ", ".join(f"tool-{ts}" for ts in missing_permissions)
+        raise Forbidden(
+            f"Insufficient permissions for tool sets: {tools_list}. "
+            f"Required roles: {roles_list}"
+        )
 
 
 async def ainvoke_update_personality(
@@ -211,6 +243,10 @@ async def create_personality() -> dict[str, dict]:
 
     body = await request.get_json()
     payload = CreatePersonality(**body)
+
+    # Validate tool set permissions
+    validate_tool_set_permissions(payload.tool_set, request.token.roles)
+
     create_params = PersonalityModel.CreateParams(
         name=payload.name,
         description=payload.description,
@@ -240,6 +276,9 @@ async def update_personality(personality_id: UUID) -> dict[str, dict]:
 
     body = await request.get_json()
     payload = UpdatePersonality(**body)
+
+    # Validate tool set permissions
+    validate_tool_set_permissions(payload.tool_set, request.token.roles)
 
     llm: LLM = await ProviderModelModel.get_active_llm()
 
