@@ -70,15 +70,15 @@ describe("Privacy Route Component", () => {
       renderComponent();
 
       // Find header by class since it doesn't have role="banner"
-      const header = document.querySelector(".flex.items-center.justify-between.mb-2.border-b.pb-2.mobile-safe-top");
+      const header = document.querySelector(".flex.items-center.justify-between.mb-6.border-b.pb-4.mobile-safe-top");
       expect(header).toBeInTheDocument();
       expect(header).toHaveClass(
         "flex",
         "items-center",
         "justify-between",
-        "mb-2",
+        "mb-6",
         "border-b",
-        "pb-2",
+        "pb-4",
         "mobile-safe-top"
       );
     });
