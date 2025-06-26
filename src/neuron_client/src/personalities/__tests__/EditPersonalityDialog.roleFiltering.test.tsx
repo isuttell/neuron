@@ -3,6 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { Provider } from "react-redux";
 import { configureStore } from "@reduxjs/toolkit";
 import { useAuth0 } from "@auth0/auth0-react";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import EditPersonalityDialog from "../EditPersonalityDialog";
 import { appSlice } from "../../slices/appSlice";
 import { personalitiesSlice } from "../../slices/personalitiesSlice";
@@ -62,6 +63,16 @@ const mockUser = (roles: string[]) => {
   });
 };
 
+const renderWithProviders = (component: React.ReactElement, store: ReturnType<typeof configureStore>) => {
+  return render(
+    <Provider store={store}>
+      <TooltipProvider>
+        {component}
+      </TooltipProvider>
+    </Provider>
+  );
+};
+
 describe("EditPersonalityDialog Role-Based Filtering", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -76,10 +87,9 @@ describe("EditPersonalityDialog Role-Based Filtering", () => {
         kepler: "tool-kepler",
       });
 
-      render(
-        <Provider store={store}>
-          <EditPersonalityDialog open={true} onOpenChange={() => {}} />
-        </Provider>
+      renderWithProviders(
+        <EditPersonalityDialog open={true} onOpenChange={() => {}} />,
+        store
       );
 
       await waitFor(() => {
@@ -99,10 +109,9 @@ describe("EditPersonalityDialog Role-Based Filtering", () => {
         kepler: "tool-kepler",
       });
 
-      render(
-        <Provider store={store}>
-          <EditPersonalityDialog open={true} onOpenChange={() => {}} />
-        </Provider>
+      renderWithProviders(
+        <EditPersonalityDialog open={true} onOpenChange={() => {}} />,
+        store
       );
 
       await waitFor(() => {
@@ -124,10 +133,9 @@ describe("EditPersonalityDialog Role-Based Filtering", () => {
         kepler: "tool-kepler",
       });
 
-      render(
-        <Provider store={store}>
-          <EditPersonalityDialog open={true} onOpenChange={() => {}} />
-        </Provider>
+      renderWithProviders(
+        <EditPersonalityDialog open={true} onOpenChange={() => {}} />,
+        store
       );
 
       await waitFor(() => {
@@ -148,10 +156,9 @@ describe("EditPersonalityDialog Role-Based Filtering", () => {
 
       const store = createMockStore({});
 
-      render(
-        <Provider store={store}>
-          <EditPersonalityDialog open={true} onOpenChange={() => {}} />
-        </Provider>
+      renderWithProviders(
+        <EditPersonalityDialog open={true} onOpenChange={() => {}} />,
+        store
       );
 
       await waitFor(() => {
@@ -168,10 +175,9 @@ describe("EditPersonalityDialog Role-Based Filtering", () => {
 
       const store = createMockStore(undefined);
 
-      render(
-        <Provider store={store}>
-          <EditPersonalityDialog open={true} onOpenChange={() => {}} />
-        </Provider>
+      renderWithProviders(
+        <EditPersonalityDialog open={true} onOpenChange={() => {}} />,
+        store
       );
 
       await waitFor(() => {
@@ -193,10 +199,9 @@ describe("EditPersonalityDialog Role-Based Filtering", () => {
         kepler: "tool-kepler",
       });
 
-      render(
-        <Provider store={store}>
-          <EditPersonalityDialog open={true} onOpenChange={() => {}} />
-        </Provider>
+      renderWithProviders(
+        <EditPersonalityDialog open={true} onOpenChange={() => {}} />,
+        store
       );
 
       await waitFor(() => {
@@ -222,10 +227,9 @@ describe("EditPersonalityDialog Role-Based Filtering", () => {
         kepler: "tool-kepler",
       });
 
-      render(
-        <Provider store={store}>
-          <EditPersonalityDialog open={true} onOpenChange={() => {}} />
-        </Provider>
+      renderWithProviders(
+        <EditPersonalityDialog open={true} onOpenChange={() => {}} />,
+        store
       );
 
       await waitFor(() => {
@@ -253,10 +257,9 @@ describe("EditPersonalityDialog Role-Based Filtering", () => {
         kepler: "tool-kepler",
       });
 
-      render(
-        <Provider store={store}>
-          <EditPersonalityDialog open={true} onOpenChange={() => {}} />
-        </Provider>
+      renderWithProviders(
+        <EditPersonalityDialog open={true} onOpenChange={() => {}} />,
+        store
       );
 
       await waitFor(() => {
@@ -277,10 +280,9 @@ describe("EditPersonalityDialog Role-Based Filtering", () => {
         homeassistant: "tool-homeassistant",
       });
 
-      const { rerender } = render(
-        <Provider store={store}>
-          <EditPersonalityDialog open={true} onOpenChange={() => {}} />
-        </Provider>
+      const { rerender } = renderWithProviders(
+        <EditPersonalityDialog open={true} onOpenChange={() => {}} />,
+        store
       );
 
       await waitFor(() => {
@@ -303,7 +305,9 @@ describe("EditPersonalityDialog Role-Based Filtering", () => {
 
       rerender(
         <Provider store={store}>
-          <EditPersonalityDialog open={true} onOpenChange={() => {}} />
+          <TooltipProvider>
+            <EditPersonalityDialog open={true} onOpenChange={() => {}} />
+          </TooltipProvider>
         </Provider>
       );
 
@@ -323,10 +327,9 @@ describe("EditPersonalityDialog Role-Based Filtering", () => {
         kepler: "tool-kepler",
       });
 
-      render(
-        <Provider store={store}>
-          <EditPersonalityDialog open={true} onOpenChange={() => {}} />
-        </Provider>
+      renderWithProviders(
+        <EditPersonalityDialog open={true} onOpenChange={() => {}} />,
+        store
       );
 
       await waitFor(() => {
@@ -354,10 +357,9 @@ describe("EditPersonalityDialog Role-Based Filtering", () => {
         kepler: "tool-kepler",
       });
 
-      render(
-        <Provider store={store}>
-          <EditPersonalityDialog open={true} onOpenChange={() => {}} />
-        </Provider>
+      renderWithProviders(
+        <EditPersonalityDialog open={true} onOpenChange={() => {}} />,
+        store
       );
 
       await waitFor(() => {
