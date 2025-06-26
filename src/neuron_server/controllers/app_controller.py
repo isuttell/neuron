@@ -4,6 +4,7 @@ from quart import Blueprint
 
 from neuron_server.cache import get_cache_key
 from neuron_server.config import config
+from neuron_server.llms.tools import get_protected_tool_sets
 
 blueprint = Blueprint(
     "app",
@@ -31,4 +32,5 @@ async def get_config() -> dict[str, Any]:
             "clientId": config.auth0_client_id,
             "audience": config.auth0_api_audience,
         },
+        "protectedToolSets": get_protected_tool_sets(),
     }

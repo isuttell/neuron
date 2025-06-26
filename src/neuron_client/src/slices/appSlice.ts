@@ -12,6 +12,7 @@ interface Config {
     baseUrl: string;
     wsEndpoint: string;
   };
+  protectedToolSets?: Record<string, string>;
 }
 
 // Define a type for the slice state
@@ -21,6 +22,7 @@ interface AppState {
     baseUrl: string;
     wsEndpoint: string;
   };
+  protectedToolSets?: Record<string, string>;
   isLoading: boolean;
   error: string | null;
   currentUser: User | null; // Add currentUser state
@@ -39,6 +41,7 @@ const loadInitialState = (): AppState => {
   return {
     sidebar_image: "",
     api: undefined,
+    protectedToolSets: undefined,
     isLoading: false,
     error: null,
     currentUser: null, // Initialize currentUser
@@ -81,6 +84,7 @@ export const appSlice = createSlice({
         state.isLoading = false;
         state.sidebar_image = action.payload.sidebar_image;
         state.api = action.payload.api;
+        state.protectedToolSets = action.payload.protectedToolSets;
         saveState(state);
       })
       .addCase(fetchConfig.rejected, (state, action) => {
@@ -95,6 +99,7 @@ export const { setSidebarImage, setCurrentUser } = appSlice.actions; // Export n
 
 export const getSidebarImage = (state: RootState) => state.app.sidebar_image;
 export const getApiConfig = (state: RootState) => state.app.api;
+export const getProtectedToolSets = (state: RootState) => state.app.protectedToolSets;
 export const getConfigLoadingState = (state: RootState) => state.app.isLoading;
 export const getConfigError = (state: RootState) => state.app.error;
 export const getCurrentUser = (state: RootState) => state.app.currentUser; // Export new selector

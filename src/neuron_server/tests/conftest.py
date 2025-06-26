@@ -44,6 +44,9 @@ mock_cache = Mock()
 # Handle ttl parameter
 mock_cache.cache_response = lambda func=None, ttl=None: lambda f: f
 mock_cache.ClientCache = Mock()
+# Mock the async cache functions
+mock_cache.get_cache_key = AsyncMock(return_value=None)
+mock_cache.set_cache_key = AsyncMock()
 sys.modules["neuron_server.cache"] = mock_cache
 
 # Mock the pubsub module

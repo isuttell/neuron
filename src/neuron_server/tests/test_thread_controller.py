@@ -364,8 +364,6 @@ async def test_get_threads_for_personality(
         mock_get_user_threads.assert_called_once_with(user_id=mock_token.user_id)
 
 
-
-
 @pytest.mark.asyncio
 async def test_create_thread(thread_test_context: dict) -> None:
     """Test creating a new thread."""
