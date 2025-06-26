@@ -21,9 +21,11 @@ import {
   ChevronUp,
   CircleUser,
   FileText,
+  HelpCircle,
   Home,
   LayoutGrid,
   LogOut,
+  Shield,
 } from "lucide-react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 
@@ -179,6 +181,24 @@ export function MainSidebar() {
                 {canAccessProviders && (
                   <ProvidersMenuItem className="text-gray-300 hover:text-accent-foreground flex items-center gap-2" />
                 )}
+                <DropdownMenuItem asChild>
+                  <NavLink
+                    to="/help"
+                    className="text-gray-300 hover:text-accent-foreground flex items-center gap-2"
+                  >
+                    <HelpCircle className="h-4 w-4" />
+                    <span>Help</span>
+                  </NavLink>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <NavLink
+                    to="/privacy"
+                    className="text-gray-300 hover:text-accent-foreground flex items-center gap-2"
+                  >
+                    <Shield className="h-4 w-4" />
+                    <span>Privacy</span>
+                  </NavLink>
+                </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => {
                     logout();

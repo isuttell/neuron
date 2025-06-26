@@ -38,16 +38,7 @@
         "--access-mode=unrestricted"
       ],
       "env": {
-         "DATABASE_URI": ""
-      }
-    },
-    "postgres-neuron": {
-      "command": "postgres-mcp",
-      "args": [
-        "--access-mode=unrestricted"
-      ],
-      "env": {
-        "DATABASE_URI": ""
+        "DATABASE_URI": "postgresql://neuron:postgres@localhost:5432/neuron"
       }
     }
   }

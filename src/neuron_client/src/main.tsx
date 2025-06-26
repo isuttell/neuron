@@ -12,10 +12,12 @@ import ErrorPage from "./error-page.tsx";
 import NotFoundPage from "./not-found-page.tsx";
 import RecentMedia from "./routes/RecentMedia.tsx";
 import CodeViewer from "./routes/code-viewer.tsx";
+import Help from "./routes/help.tsx";
 import Index from "./routes/index.tsx";
 import MediaLists from "./routes/media-lists.tsx";
 import Personalities from "./routes/personalities.tsx";
 import Personality from "./routes/personality.tsx";
+import Privacy from "./routes/privacy.tsx";
 import Prompts from "./routes/prompts.tsx";
 import ProvidersPage from "./routes/providers";
 import Root from "./routes/root.tsx";
@@ -81,6 +83,14 @@ const router = createBrowserRouter(
         {
           path: "/providers",
           element: <ProvidersPage />,
+        },
+        {
+          path: "/help",
+          element: <Help />,
+        },
+        {
+          path: "/privacy",
+          element: <Privacy />,
         },
       ],
     },
