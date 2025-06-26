@@ -359,7 +359,7 @@ async def test_get_threads_for_personality(
 
         # Verify mocks were called correctly
         mock_list.assert_called_once_with(
-            personality_id=personality_id, user_id=mock_token.user_id
+            personality_id=personality_id, user_id=mock_token.user_id, limit=50
         )
         mock_get_user_threads.assert_called_once_with(user_id=mock_token.user_id)
 

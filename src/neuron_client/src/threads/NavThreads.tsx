@@ -48,7 +48,7 @@ export default function NavThreads({ activePathname }: NavThreadsProps) {
     setLoading(true);
     Promise.all([
       dispatch(fetchPersonality(activePersonalityId)),
-      dispatch(fetchThreadsByPersonality(activePersonalityId)),
+      dispatch(fetchThreadsByPersonality({ personalityId: activePersonalityId })),
     ]).finally(() => {
       setLoading(false);
     });
@@ -64,7 +64,14 @@ export default function NavThreads({ activePathname }: NavThreadsProps) {
 
   return (
     <SidebarGroup>
-      <SidebarGroupLabel>{activePersonality.name}</SidebarGroupLabel>
+      <SidebarGroupLabel>
+        {activePersonality.name}
+        {threads.length >= 50 && (
+          <span className="text-xs text-muted-foreground ml-2">
+            (showing {threads.length} most recent)
+          </span>
+        )}
+      </SidebarGroupLabel>
       <NewThreadButton />
       <SidebarGroupContent className="space-y-2">
         {loading && threads.length === 0 && (
