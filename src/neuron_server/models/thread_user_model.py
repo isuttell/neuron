@@ -82,6 +82,26 @@ class ThreadUserModel(BaseModel):
             ]
 
     @classmethod
+    async def get_bulk_thread_users(cls, thread_ids: list[UUID]) -> list[Self]:
+        """Get all thread users for multiple threads in a single query.
+
+        Args:
+            thread_ids: List of thread IDs to get users for
+
+        Returns:
+            List of ThreadUserModel instances for all the threads
+        """
+        if not thread_ids:
+            return []
+
+        async with get_session() as session:
+            stmt = select(ThreadUser).where(ThreadUser.thread_id.in_(thread_ids))
+            result = await session.execute(stmt)
+            return [
+                cls(**thread_user.__dict__) for thread_user in result.scalars().all()
+            ]
+
+    @classmethod
     async def get(cls, thread_id: UUID, user_id: str) -> Self | None:
         """Get a specific thread user association.
 

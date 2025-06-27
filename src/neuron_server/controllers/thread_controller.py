@@ -120,15 +120,18 @@ async def get_threads(personality_id: UUID) -> dict[str, list[dict]]:
     thread_users = await ThreadUserModel.get_user_threads(user_id=request.token.user_id)
     thread_ids = [tu.thread_id for tu in thread_users]
 
-    # Get shared threads more efficiently (bulk fetch with filtering)
+    # Get shared threads efficiently using bulk query with WHERE IN
     shared_threads = []
     if thread_ids:
-        # Get all shared threads in one query and filter by personality_id
-        all_shared = await ThreadModel.list(personality_id=personality_id, limit=limit)
+        shared_threads = await ThreadModel.get_by_ids(
+            thread_ids=thread_ids,
+            personality_id=personality_id,
+            limit=limit
+        )
+        # Filter out threads owned by the current user
         shared_threads = [
-            thread
-            for thread in all_shared
-            if thread.id in thread_ids and thread.user_id != request.token.user_id
+            thread for thread in shared_threads
+            if thread.user_id != request.token.user_id
         ]
 
     # Combine and deduplicate threads
@@ -142,16 +145,26 @@ async def get_threads(personality_id: UUID) -> dict[str, list[dict]]:
         all_threads.values(), key=lambda t: t.updated_at, reverse=True
     )[:limit]
 
-    # Get thread_users for all final threads efficiently
+    # Get thread_users for all final threads efficiently with bulk query
     final_thread_ids = [t.id for t in sorted_threads]
     all_thread_users = []
 
     if final_thread_ids:
-        # Batch fetch thread users for all threads
+        # Bulk fetch thread users for all threads in a single query
+        bulk_thread_users = await ThreadUserModel.get_bulk_thread_users(
+            final_thread_ids
+        )
+
+        # Group thread users by thread_id for easier processing
+        thread_users_by_thread = {}
+        for tu in bulk_thread_users:
+            if tu.thread_id not in thread_users_by_thread:
+                thread_users_by_thread[tu.thread_id] = []
+            thread_users_by_thread[tu.thread_id].append(tu)
+
+        # Process each thread to add thread users and owners
         for thread in sorted_threads:
-            thread_users_for_thread = await ThreadUserModel.get_thread_users(
-                thread_id=thread.id
-            )
+            thread_users_for_thread = thread_users_by_thread.get(thread.id, [])
 
             # Check if thread owner is included in thread_users
             owner_in_thread_users = any(
