@@ -56,6 +56,8 @@ WORKDIR /app
 COPY --from=server-builder /app/.venv /app/.venv
 COPY src/neuron_server /app/src/neuron_server
 COPY pyproject.toml /app/pyproject.toml
+COPY alembic.ini /app/alembic.ini
+COPY alembic /app/alembic
 
 RUN pip install -e .
 
