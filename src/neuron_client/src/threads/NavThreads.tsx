@@ -67,8 +67,8 @@ export default function NavThreads({ activePathname }: NavThreadsProps) {
       <SidebarGroupLabel>
         {activePersonality.name}
         {threads.length >= 50 && (
-          <span className="text-xs text-muted-foreground ml-2">
-            (showing {threads.length} most recent)
+          <span className="text-xs text-muted-foreground/60 ml-2 italic">
+            recent
           </span>
         )}
       </SidebarGroupLabel>
