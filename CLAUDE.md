@@ -65,6 +65,28 @@ When this is enabled, you can run just the server container without the separate
 - Redis is used for caching and pub/sub messaging
 - The system supports various LLM providers including OpenAI, Anthropic, Cohere, and Google
 
+### Database Migrations
+
+The project uses Alembic for database schema versioning and migrations:
+
+- **Migration files**: Located in `alembic/versions/`
+- **Configuration**: `alembic.ini` (project root)
+- **Utilities**: `src/neuron_server/migrations.py` provides async migration functions
+- **Auto-run**: Migrations execute automatically on server startup
+- **Docker**: Ensure `alembic.ini` and `alembic/` directory are copied to container
+
+Common migration commands:
+```bash
+# Create new migration
+poetry run alembic revision --autogenerate -m "description"
+
+# Run migrations manually
+poetry run alembic upgrade head
+
+# Check current revision
+poetry run alembic current
+```
+
 ## Key Development Commands
 
 ### Frontend Development
