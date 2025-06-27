@@ -105,11 +105,21 @@ class ThreadModel(BaseModel):
             return None
 
     @classmethod
-    async def list(cls, personality_id: UUID, user_id: str | None = None) -> list[Self]:
+    async def list(
+        cls, personality_id: UUID, user_id: str | None = None, limit: int | None = None
+    ) -> list[Self]:
         async with get_session() as session:
             query = select(Thread).where(Thread.personality_id == personality_id)
             if user_id:
                 query = query.where(Thread.user_id == user_id)
+
+            # Order by updated_at DESC to show most recent threads first
+            query = query.order_by(Thread.updated_at.desc())
+
+            # Apply limit if specified
+            if limit:
+                query = query.limit(limit)
+
             results = await session.execute(query)
             return [cls(**thread.__dict__) for thread in results.scalars().all()]
 
@@ -142,6 +152,41 @@ class ThreadModel(BaseModel):
             session.add(thread)
             await session.commit()
             return cls(**thread.__dict__)
+
+    @classmethod
+    async def get_by_ids(
+        cls,
+        thread_ids: builtins.list[UUID],
+        personality_id: UUID | None = None,
+        limit: int | None = None,
+    ) -> builtins.list[Self]:
+        """Get threads by their IDs with optional filtering.
+
+        Args:
+            thread_ids: List of thread IDs to fetch
+            personality_id: Optional personality ID to filter by
+            limit: Optional limit on number of results
+
+        Returns:
+            List of ThreadModel instances matching the criteria
+        """
+        if not thread_ids:
+            return []
+
+        async with get_session() as session:
+            query = select(Thread).where(Thread.id.in_(thread_ids))
+
+            if personality_id:
+                query = query.where(Thread.personality_id == personality_id)
+
+            # Order by updated_at DESC to show most recent threads first
+            query = query.order_by(Thread.updated_at.desc())
+
+            if limit:
+                query = query.limit(limit)
+
+            results = await session.execute(query)
+            return [cls(**thread.__dict__) for thread in results.scalars().all()]
 
     @classmethod
     async def get_recent_threads(

@@ -24,11 +24,13 @@ export const fetchThread = createAsyncThunk(
 
 export const fetchThreadsByPersonality = createAsyncThunk(
   "threads/fetchThreadsByPersonality",
-  async (personalityId: string, thunkAPI) => {
+  async (
+    { personalityId, limit = 50 }: { personalityId: string; limit?: number },
+    thunkAPI
+  ) => {
     try {
-      return await api.get<ThreadsResponse>(
-        `/threads/personality/${personalityId}`
-      );
+      const url = `/threads/personality/${personalityId}?limit=${limit}`;
+      return await api.get<ThreadsResponse>(url);
     } catch (error) {
       if (error instanceof Error) {
         return thunkAPI.rejectWithValue(error.message);

@@ -22,6 +22,10 @@ from neuron_server.type_defs.request_proxy import request
 blueprint = Blueprint("thread", __name__)
 router = EventRouter()
 
+# Thread limits for performance
+DEFAULT_THREAD_LIMIT = 50
+MAX_THREAD_LIMIT = 500
+
 
 class UpdateThread(BaseModel):
     name: str
@@ -100,24 +104,35 @@ async def get_thread(thread_id: UUID) -> dict[str, list[dict]]:
 @blueprint.get("/personality/<uuid:personality_id>")
 @requires_auth
 async def get_threads(personality_id: UUID) -> dict[str, list[dict]]:
-    # Get threads owned by the user
+    # Get optional limit parameter from query string
+    limit = request.args.get("limit", default=DEFAULT_THREAD_LIMIT, type=int)
+
+    # Validate limit parameter
+    if limit < 1 or limit > MAX_THREAD_LIMIT:
+        raise BadRequest(f"Limit must be between 1 and {MAX_THREAD_LIMIT}")
+
+    # Get threads owned by the user (with limit and sorting)
     owned_threads = await ThreadModel.list(
-        personality_id=personality_id, user_id=request.token.user_id
+        personality_id=personality_id, user_id=request.token.user_id, limit=limit
     )
 
     # Get threads the user has access to via thread_users
     thread_users = await ThreadUserModel.get_user_threads(user_id=request.token.user_id)
     thread_ids = [tu.thread_id for tu in thread_users]
 
-    # Filter thread_users by personality_id
+    # Get shared threads efficiently using bulk query with WHERE IN
+    shared_threads = []
     if thread_ids:
-        shared_threads = []
-        for thread_id in thread_ids:
-            thread = await ThreadModel.get(thread_id=thread_id)
-            if thread and thread.personality_id == personality_id:
-                shared_threads.append(thread)
-    else:
-        shared_threads = []
+        shared_threads = await ThreadModel.get_by_ids(
+            thread_ids=thread_ids,
+            personality_id=personality_id,
+            limit=limit
+        )
+        # Filter out threads owned by the current user
+        shared_threads = [
+            thread for thread in shared_threads
+            if thread.user_id != request.token.user_id
+        ]
 
     # Combine and deduplicate threads
     all_threads = {thread.id: thread for thread in owned_threads}
@@ -125,34 +140,57 @@ async def get_threads(personality_id: UUID) -> dict[str, list[dict]]:
         if thread.id not in all_threads:
             all_threads[thread.id] = thread
 
-    # Get thread_users for all threads
+    # Sort all threads by updated_at DESC and apply final limit
+    sorted_threads = sorted(
+        all_threads.values(), key=lambda t: t.updated_at, reverse=True
+    )[:limit]
+
+    # Get thread_users for all final threads efficiently with bulk query
+    final_thread_ids = [t.id for t in sorted_threads]
     all_thread_users = []
-    for thread in all_threads.values():
-        thread_users_for_thread = await ThreadUserModel.get_thread_users(
-            thread_id=thread.id
+
+    if final_thread_ids:
+        # Bulk fetch thread users for all threads in a single query
+        bulk_thread_users = await ThreadUserModel.get_bulk_thread_users(
+            final_thread_ids
         )
 
-        # Check if thread owner is included in thread_users
-        owner_in_thread_users = any(
-            tu.user_id == thread.user_id for tu in thread_users_for_thread
-        )
-        if not owner_in_thread_users:
-            # Create a special entry for the thread owner with admin role
-            owner_thread_user = {
-                "user_id": thread.user_id,
-                "thread_id": str(thread.id),
-                "role": "admin",  # Thread owner is always admin
-            }
-            all_thread_users.append(owner_thread_user)
+        # Group thread users by thread_id for easier processing
+        thread_users_by_thread = {}
+        for tu in bulk_thread_users:
+            if tu.thread_id not in thread_users_by_thread:
+                thread_users_by_thread[tu.thread_id] = []
+            thread_users_by_thread[tu.thread_id].append(tu)
 
-        # Add all thread users
-        for tu in thread_users_for_thread:
-            all_thread_users.append(
-                {"user_id": tu.user_id, "thread_id": str(tu.thread_id), "role": tu.role}
+        # Process each thread to add thread users and owners
+        for thread in sorted_threads:
+            thread_users_for_thread = thread_users_by_thread.get(thread.id, [])
+
+            # Check if thread owner is included in thread_users
+            owner_in_thread_users = any(
+                tu.user_id == thread.user_id for tu in thread_users_for_thread
             )
+            if not owner_in_thread_users:
+                # Create a special entry for the thread owner with admin role
+                owner_thread_user = {
+                    "user_id": thread.user_id,
+                    "thread_id": str(thread.id),
+                    "role": "admin",  # Thread owner is always admin
+                }
+                all_thread_users.append(owner_thread_user)
+
+            # Add all thread users
+            for tu in thread_users_for_thread:
+                all_thread_users.append(
+                    {
+                        "user_id": tu.user_id,
+                        "thread_id": str(tu.thread_id),
+                        "role": tu.role,
+                    }
+                )
 
     return {
-        "threads": [thread.model_dump() for thread in all_threads.values()],
+        "threads": [thread.model_dump() for thread in sorted_threads],
         "thread_users": all_thread_users,
     }
 
