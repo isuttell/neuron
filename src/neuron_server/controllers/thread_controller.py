@@ -124,13 +124,12 @@ async def get_threads(personality_id: UUID) -> dict[str, list[dict]]:
     shared_threads = []
     if thread_ids:
         shared_threads = await ThreadModel.get_by_ids(
-            thread_ids=thread_ids,
-            personality_id=personality_id,
-            limit=limit
+            thread_ids=thread_ids, personality_id=personality_id, limit=limit
         )
         # Filter out threads owned by the current user
         shared_threads = [
-            thread for thread in shared_threads
+            thread
+            for thread in shared_threads
             if thread.user_id != request.token.user_id
         ]
 

@@ -290,6 +290,9 @@ def get_protected_tool_sets() -> dict[str, str]:
     return {
         "homeassistant": "tool-homeassistant",
         "kepler": "tool-kepler",
+        "video": "tool-video",
+        "reasoning": "tool-reasoning",
+        "notifications": "tool-notifications",
     }
 
 

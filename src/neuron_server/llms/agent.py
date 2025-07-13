@@ -41,7 +41,7 @@ class StreamArgs(TypedDict, total=False):
     temp_id: str | None
 
 
-# Default location for backward compatibility
+# Default location for backward compatibility @TODO make dynamic
 DEFAULT_LOCATION = "San Diego, California at -117.1860 W and 32.84 N."
 
 
