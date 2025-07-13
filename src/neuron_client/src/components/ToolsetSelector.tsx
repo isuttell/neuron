@@ -32,7 +32,7 @@ export default function ToolsetSelector({
     Object.entries(ToolSetLabels).forEach(([key, label]) => {
       const requiredRole = protectedToolSets?.[key];
       if (!requiredRole || userRoles.includes(requiredRole)) {
-        filteredLabels[key] = label;
+        filteredLabels[key] = label as string;
       }
     });
 
