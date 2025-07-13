@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Loader2, MoreHorizontal, Pencil, Image, Brain, Play, Square, UserPen, Users } from "lucide-react";
+import { Loader2, MoreHorizontal, Image, Brain, Play, Square, UserPen, Users } from "lucide-react";
 import {
   Card,
   CardTitle,
@@ -26,7 +26,6 @@ import { toast } from "sonner";
 import { usePersonalityPermissions } from "@/hooks/usePersonalityPermissions";
 import { isAdmin } from "@/lib/auth";
 import { useAuth0 } from "@auth0/auth0-react";
-import EditPersonalityDialog from "@/personalities/EditPersonalityDialog";
 import PersonalityUsersDialog from "@/personalities/PersonalityUsersDialog";
 
 interface PersonalityItemProps {
@@ -41,7 +40,6 @@ const PersonalityDropdownMenu: React.FC<{
   setOpen: (open: boolean) => void;
   handleActivate: () => void;
   isActive: boolean;
-  setIsEditPersonalityOpen: (open: boolean) => void;
   setIsUsersDialogOpen: (open: boolean) => void;
   handleUpdateLogo: () => void;
   isUpdatingLogo: boolean;
@@ -51,7 +49,6 @@ const PersonalityDropdownMenu: React.FC<{
   setOpen,
   handleActivate,
   isActive,
-  setIsEditPersonalityOpen,
   setIsUsersDialogOpen,
   handleUpdateLogo,
   isUpdatingLogo,
@@ -109,16 +106,14 @@ const PersonalityDropdownMenu: React.FC<{
 
         {/* Edit Personality - personality admins only */}
         {canManage && (
-          <DropdownMenuItem
-            onSelect={(e) => {
-              e.preventDefault();
-              setOpen(false);
-              // Small delay to ensure dropdown closes before dialog opens
-              setTimeout(() => setIsEditPersonalityOpen(true), 0);
-            }}
-          >
-            <UserPen className="size-4" />
-            Edit Personality
+          <DropdownMenuItem asChild>
+            <Link
+              className="flex items-center gap-2 text-foreground"
+              to={`/personality/${personality.id}`}
+            >
+              <UserPen className="size-4" />
+              Edit Personality
+            </Link>
           </DropdownMenuItem>
         )}
 
@@ -137,18 +132,6 @@ const PersonalityDropdownMenu: React.FC<{
           </DropdownMenuItem>
         )}
 
-        {/* Context Editor - personality admins only */}
-        {canManage && (
-          <DropdownMenuItem asChild>
-            <Link
-              className="flex items-center gap-2 text-foreground"
-              to={`/personality/${personality.id}`}
-            >
-              <Pencil className="size-4" />
-              Context Editor
-            </Link>
-          </DropdownMenuItem>
-        )}
 
         {/* Generate Logo - personality admins only */}
         {canManage && (
@@ -197,7 +180,6 @@ const PersonalityItem: React.FC<PersonalityItemProps> = ({
   const activePersonality = useAppSelector(getActivePersonality);
   const isActive = activePersonality?.id === personality.id;
   const [isUpdatingLogo, setIsUpdatingLogo] = useState(false);
-  const [isEditPersonalityOpen, setIsEditPersonalityOpen] = useState(false);
   const [isUsersDialogOpen, setIsUsersDialogOpen] = useState(false);
   const [open, setOpen] = useState(false);
 
@@ -307,7 +289,6 @@ const PersonalityItem: React.FC<PersonalityItemProps> = ({
           setOpen={setOpen}
           handleActivate={handleActivate}
           isActive={isActive}
-          setIsEditPersonalityOpen={setIsEditPersonalityOpen}
           setIsUsersDialogOpen={setIsUsersDialogOpen}
           handleUpdateLogo={handleUpdateLogo}
           isUpdatingLogo={isUpdatingLogo}
@@ -323,13 +304,6 @@ const PersonalityItem: React.FC<PersonalityItemProps> = ({
         )}
       </Card>
 
-      {/* Edit Personality Dialog */}
-      <EditPersonalityDialog
-        personality={personality}
-        open={isEditPersonalityOpen}
-        onOpenChange={createDialogHandler(setIsEditPersonalityOpen)}
-        trigger={<></>}
-      />
 
       {/* Manage Users Dialog */}
       <PersonalityUsersDialog

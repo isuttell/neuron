@@ -22,6 +22,7 @@ import EditPersonalityDialog from "../personalities/EditPersonalityDialog";
 import PersonalityUsersDialog from "../personalities/PersonalityUsersDialog";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
+import ToolsetSelector from "../components/ToolsetSelector";
 
 const selectPersonality = (state: RootState, personalityId?: string) =>
   state.personalities.personalities.find((per) => per.id === personalityId);
@@ -29,6 +30,7 @@ const selectPersonality = (state: RootState, personalityId?: string) =>
 export default function Personality() {
   const [updatedContext, setUpdatedContext] = useState("");
   const [updatedName, setUpdatedName] = useState("");
+  const [updatedToolSet, setUpdatedToolSet] = useState<string[]>([]);
   const [prompt, setPrompt] = useState("");
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
@@ -54,6 +56,7 @@ export default function Personality() {
     }
     setUpdatedContext(personality.context);
     setUpdatedName(personality.name);
+    setUpdatedToolSet(personality.tool_set ? personality.tool_set.split("+") : []);
   }, [personality]);
 
   const handleSave = async (e: React.FormEvent) => {
@@ -62,18 +65,24 @@ export default function Personality() {
       return;
     }
     setIsSaving(true);
-    await dispatch(
-      updatePersonality({
-        id: personality.id,
-        name: updatedName,
-        description: personality.description,
-        context: updatedContext,
-        memory: personality.memory,
-        tool_set: personality.tool_set,
-        logo: personality.logo,
-      })
-    );
-    setIsSaving(false);
+    try {
+      await dispatch(
+        updatePersonality({
+          id: personality.id,
+          name: updatedName,
+          description: personality.description,
+          context: updatedContext,
+          memory: personality.memory,
+          tool_set: updatedToolSet.length > 0 ? updatedToolSet.join("+") : undefined,
+          logo: personality.logo,
+        })
+      ).unwrap();
+      toast.success("Personality saved successfully");
+    } catch {
+      toast.error("Failed to save personality");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleSubmitPrompt = async (
@@ -124,7 +133,7 @@ export default function Personality() {
           >
             <ArrowLeft className="size-4" />
           </Button>
-          {personality.name}
+          Edit {personality.name}
           {activePersonalityId === personality.id && (
             <span className="ml-2 text-xs text-muted-foreground">
               (active personality)
@@ -160,6 +169,11 @@ export default function Personality() {
               onChange={(e) => setUpdatedName(e.target.value)}
             />
           </div>
+          <ToolsetSelector
+            className="mb-2"
+            value={updatedToolSet}
+            onChange={setUpdatedToolSet}
+          />
           <div className="flex-1 flex">
             <Label htmlFor="context" className="sr-only">
               Context
@@ -180,29 +194,52 @@ export default function Personality() {
           className="flex flex-col gap-2 max-w-[1170px] mx-auto"
           onSubmit={handleSubmitPrompt}
         >
-          <Label htmlFor="prompt" className="sr-only">
-            Prompt
-          </Label>
-          <Textarea
-            id="prompt"
-            placeholder="Type your prompt here..."
-            className="flex min-h-[60px] w-full rounded-md border border-input bg-transparent text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 p-4"
-            value={prompt}
-            disabled={isLoading}
-            onChange={(e) => setPrompt(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                handleSubmitPrompt(e);
-              }
-            }}
-          />
+          <div className="flex gap-2">
+            <Label htmlFor="prompt" className="sr-only">
+              Prompt
+            </Label>
+            <Textarea
+              id="prompt"
+              placeholder="Ask Neuron to update the personality context for you..."
+              className="flex-1 min-h-[60px] rounded-md border border-input bg-transparent text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 p-4"
+              value={prompt}
+              disabled={isLoading}
+              onChange={(e) => setPrompt(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  handleSubmitPrompt(e);
+                }
+              }}
+            />
+            <Button
+              onClick={handleSubmitPrompt}
+              type="submit"
+              size="default"
+              disabled={isLoading || prompt.trim().length === 0}
+              className="self-start"
+            >
+              {isLoading ? (
+                <>
+                  <Spinner className="size-4" />
+                </>
+              ) : (
+                <>
+                  Prompt
+                  <CornerDownLeft className="size-4 ml-1" />
+                </>
+              )}
+            </Button>
+          </div>
           <div className="flex flex-row gap-2 pt-2">
             <Button
-              className="ml-auto gap-1.5"
+              className="gap-1.5"
               variant={isActive ? "default" : "secondary"}
               onClick={() => {
                 dispatch(
                   setActivePersonality(isActive ? undefined : personality.id)
+                );
+                toast.success(
+                  isActive ? "Personality deactivated" : "Personality activated"
                 );
               }}
             >
@@ -210,27 +247,11 @@ export default function Personality() {
             </Button>
             <div className="flex-1" />
             <Button
-              onClick={handleSubmitPrompt}
-              type="submit"
-              size="sm"
-              disabled={isLoading || prompt.trim().length === 0}
-              className="ml-auto gap-1.5"
-            >
-              {isLoading ? (
-                <>
-                  <Spinner className="size-3.5" />
-                </>
-              ) : (
-                <>
-                  Prompt
-                  <CornerDownLeft className="size-3.5" />
-                </>
-              )}
-            </Button>
-            <Button
               onClick={() => {
                 setUpdatedContext(personality.context);
                 setUpdatedName(personality.name);
+                setUpdatedToolSet(personality.tool_set ? personality.tool_set.split("+") : []);
+                toast("Changes reset");
               }}
               type="reset"
               size="sm"
@@ -238,7 +259,8 @@ export default function Personality() {
               disabled={
                 isLoading ||
                 (personality?.name === updatedName &&
-                  personality?.context === updatedContext)
+                  personality?.context === updatedContext &&
+                  personality?.tool_set === (updatedToolSet.length > 0 ? updatedToolSet.join("+") : ""))
               }
               className="ml-auto gap-1.5"
             >
@@ -252,7 +274,8 @@ export default function Personality() {
                 isSaving ||
                 isLoading ||
                 (personality?.name === updatedName &&
-                  personality?.context === updatedContext)
+                  personality?.context === updatedContext &&
+                  personality?.tool_set === (updatedToolSet.length > 0 ? updatedToolSet.join("+") : ""))
               }
               className="ml-auto gap-1.5"
             >

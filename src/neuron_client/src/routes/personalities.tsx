@@ -4,7 +4,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { getPersonalities } from "../slices/personalitiesSlice";
 import PersonalityItem from "../personalities/PersonalityItem";
 import PersonalitySearch from "../personalities/PersonalitySearch";
-import EditPersonalityDialog from "../personalities/EditPersonalityDialog";
+import CreatePersonalityDialog from "../personalities/CreatePersonalityDialog";
 import { useAppDispatch } from "../hooks";
 import { fetchPersonalities } from "../actions/personalityActions";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -65,7 +65,7 @@ export default function Personalities() {
         <SidebarTrigger className="size-10 mr-2" />
         <h1 className="text-2xl font-bold">Personalities</h1>
         <div className="flex-1" />
-        <EditPersonalityDialog />
+        <CreatePersonalityDialog />
       </div>
 
       {/* Search Bar */}

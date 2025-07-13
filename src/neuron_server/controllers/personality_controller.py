@@ -1,3 +1,4 @@
+import json
 import re
 from uuid import UUID
 
@@ -16,6 +17,7 @@ from neuron_server.event_router import EventRouter
 from neuron_server.llms.llm import LLM
 from neuron_server.llms.prompts import (
     personality_description_prompt,
+    personality_generation_prompt,
     personality_update_logo_prompt,
     personality_update_prompt,
 )
@@ -50,6 +52,11 @@ class CreatePersonality(BaseModel):
 
 class UpdatePersonality(CreatePersonality):
     pass
+
+
+class GeneratePersonality(BaseModel):
+    prompt: str
+    tool_set: str | None = None
 
 
 class PersonalityUserPayload(BaseModel):
@@ -118,6 +125,42 @@ async def ainvoke_description(llm: LLM, context: str) -> str:
     chain = personality_description_prompt | llm.model | StrOutputParser()
     content: str = await chain.ainvoke({"context": context})
     return re.sub(r"```(?:\w+)?\s*|\s*```", "", content.strip()).strip()
+
+
+async def ainvoke_generate_personality(llm: LLM, prompt: str) -> dict[str, str]:
+    """Generate a complete personality from a user prompt using LLM.
+
+    Args:
+        llm: The LLM instance to use for generation
+        prompt: User's description of the desired personality
+
+    Returns:
+        Dict containing name, description, context, and memory fields
+
+    Raises:
+        MissingContextError: If the LLM response doesn't contain valid personality data
+    """
+    chain = personality_generation_prompt | llm.model | StrOutputParser()
+    content: str = await chain.ainvoke({"prompt": prompt})
+
+    # Extract personality data from response
+    match = re.search(r"<\|personality\|>(.*?)</?\|personality\|>", content, re.DOTALL)
+    if not match:
+        raise MissingContextError("No personality tags found in response", content)
+
+    try:
+        personality_data = json.loads(match.group(1).strip())
+
+        # Validate required fields
+        required_fields = ["name", "description", "context", "memory"]
+        for field in required_fields:
+            if field not in personality_data:
+                raise MissingContextError(f"Missing required field: {field}", content)
+
+        return personality_data
+    except json.JSONDecodeError as e:
+        msg = f"Invalid JSON in personality response: {e}"
+        raise MissingContextError(msg, content) from e
 
 
 @blueprint.get("/<uuid:personality_id>")
@@ -255,6 +298,44 @@ async def create_personality() -> dict[str, dict]:
         logo=payload.logo,
         tool_set=payload.tool_set,
         creator_id=user_id,  # Pass the creator_id
+    )
+    personality = await PersonalityModel.create(params=create_params)
+    return {"personality": personality.model_dump()}
+
+
+@blueprint.post("/generate")
+@requires_auth
+@requires_csrf
+@rate_limit()
+async def generate_personality() -> dict[str, dict]:
+    """Generate a complete personality from a user prompt using AI."""
+    assert isinstance(request.token, TokenPayload)
+    user_id = request.token.user_id
+
+    body = await request.get_json()
+    payload = GeneratePersonality(**body)
+
+    # Validate tool set permissions
+    validate_tool_set_permissions(payload.tool_set, request.token.roles)
+
+    # Get LLM instance
+    llm: LLM = await ProviderModelModel.get_active_llm()
+
+    # Generate personality data using LLM
+    personality_data = await ainvoke_generate_personality(
+        llm=llm,
+        prompt=payload.prompt,
+    )
+
+    # Create the personality using generated data
+    create_params = PersonalityModel.CreateParams(
+        name=personality_data["name"],
+        description=personality_data["description"],
+        context=personality_data["context"],
+        memory=personality_data["memory"],
+        logo=None,  # Can be generated later if needed
+        tool_set=payload.tool_set,
+        creator_id=user_id,
     )
     personality = await PersonalityModel.create(params=create_params)
     return {"personality": personality.model_dump()}

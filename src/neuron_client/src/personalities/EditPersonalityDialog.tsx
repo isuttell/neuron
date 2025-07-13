@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useMemo } from "react";
-import { UserPen, UserPlus } from "lucide-react";
-import { useAppDispatch, useAppSelector } from "../hooks";
+import React, { useState, useEffect } from "react";
+import { UserPen } from "lucide-react";
+import { useAppDispatch } from "../hooks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { Personality } from "../slices/personalitiesSlice.d";
@@ -19,7 +19,6 @@ import {
   updatePersonality,
   deletePersonality,
 } from "../actions/personalityActions";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import {
@@ -27,9 +26,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useAuth0 } from "@auth0/auth0-react";
-import { getUserRoles } from "../lib/auth";
-import { getProtectedToolSets } from "../slices/appSlice";
+import ToolsetSelector from "../components/ToolsetSelector";
 
 interface EditPersonalityDialogProps {
   personality?: Personality;
@@ -39,27 +36,6 @@ interface EditPersonalityDialogProps {
   open?: boolean;
   trigger?: React.ReactNode;
 }
-
-const ToolSetLabels = {
-  astro: "Astro",
-  audio: "Audio Generation",
-  code_interpreter: "Code Interpreter",
-  dice: "Dice",
-  glados: "GLaDOS",
-  graph: "Knowledge Graph",
-  hd2: "Hell Divers 2",
-  homeassistant: "Smart Home",
-  image: "Image Generation",
-  inspect: "Inspect",
-  kepler: "Kepler",
-  notifications: "Notifications",
-  reasoning: "Reasoning",
-  search: "Search",
-  tts: "Text to Speech",
-  video: "Video Generation",
-  weather: "Weather",
-};
-
 
 interface ApiError extends Error {
   message: string;
@@ -75,8 +51,6 @@ export default function EditPersonalityDialog({
 }: EditPersonalityDialogProps) {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const { user } = useAuth0();
-  const protectedToolSets = useAppSelector(getProtectedToolSets);
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
 
   // Use controlled open if provided, otherwise use internal state
@@ -97,24 +71,9 @@ export default function EditPersonalityDialog({
   const [context, setContext] = useState(personality?.context || "");
 
   const [logo, setLogo] = useState(personality?.logo || "");
-  const [tool_set, setToolSet] = useState(
-    (personality?.tool_set || "").split("+")
+  const [tool_set, setToolSet] = useState<string[]>(
+    personality?.tool_set ? personality.tool_set.split("+") : []
   );
-
-  // Filter tool sets based on user roles
-  const availableToolSets = useMemo(() => {
-    const userRoles = getUserRoles(user);
-    const filteredLabels: Record<string, string> = {};
-
-    Object.entries(ToolSetLabels).forEach(([key, label]) => {
-      const requiredRole = protectedToolSets?.[key];
-      if (!requiredRole || userRoles.includes(requiredRole)) {
-        filteredLabels[key] = label;
-      }
-    });
-
-    return filteredLabels;
-  }, [user, protectedToolSets]);
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (loading) {
@@ -190,7 +149,6 @@ export default function EditPersonalityDialog({
       setUncontrolledOpen(triggerOpen);
     }
   }, [triggerOpen, isControlled]);
-  const active_tools = tool_set.length > 0 ? tool_set : default_tools;
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       {trigger !== undefined ? (
@@ -200,19 +158,15 @@ export default function EditPersonalityDialog({
           <TooltipTrigger asChild>
             <DialogTrigger asChild>
               <Button variant="ghost" size="icon">
-                {personality ? (
-                  <UserPen className="m-3" />
-                ) : (
-                  <UserPlus className="m-3" />
-                )}
+                <UserPen className="m-3" />
                 <span className="sr-only">
-                  {personality ? "Edit" : "Create"} Personality
+                  Edit Personality Details
                 </span>
               </Button>
             </DialogTrigger>
           </TooltipTrigger>
           <TooltipContent>
-            {personality ? "Edit" : "Create"} Personality
+            Edit Personality Details
           </TooltipContent>
         </Tooltip>
       )}
@@ -220,7 +174,7 @@ export default function EditPersonalityDialog({
         <form onSubmit={handleSubmit}>
           <DialogHeader className="mb-4">
             <DialogTitle>
-              {personality ? "Edit" : "Create"} Personality
+              Edit Personality Details
             </DialogTitle>
           </DialogHeader>
           <div className="mb-4">
@@ -255,37 +209,12 @@ export default function EditPersonalityDialog({
               rows={10}
             />
           </div>
-          <div className="mb-4">
-            <div className="text-sm text-muted-foreground mb-2">Toolsets</div>
-
-            <ToggleGroup
-              className="flex-wrap gap-2 justify-start"
-              type="multiple"
-              variant="outline"
-              defaultValue={active_tools}
-              onValueChange={(value) => {
-                setToolSet(
-                  value.filter(
-                    (val) =>
-                      val !== "" && Object.keys(availableToolSets).includes(val)
-                  )
-                );
-              }}
-            >
-              {Object.keys(availableToolSets).map((option) => (
-                <ToggleGroupItem
-                  key={option}
-                  value={option}
-                  defaultChecked={active_tools.includes(option)}
-                  variant={
-                    default_tools.includes(option) ? "default" : "outline"
-                  }
-                >
-                  {availableToolSets[option]}
-                </ToggleGroupItem>
-              ))}
-            </ToggleGroup>
-          </div>
+          <ToolsetSelector
+            className="mb-4"
+            value={tool_set}
+            defaultValue={default_tools}
+            onChange={setToolSet}
+          />
           <DialogFooter className="flex justify-end">
             <Button
               variant="destructive"

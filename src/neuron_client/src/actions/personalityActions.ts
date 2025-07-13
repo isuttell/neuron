@@ -43,12 +43,32 @@ interface CreatePersonality {
   logo?: string;
 }
 
+interface GeneratePersonality {
+  prompt: string;
+  tool_set?: string;
+}
+
 export const createPersonality = createAsyncThunk(
   "personalities/createPersonality",
   async (personality: CreatePersonality, thunkAPI) => {
     try {
-      const createdPersonality = await api.post<Personality>(`/personalities/`, personality as unknown as Record<string, string | undefined>);
-      return { personality: createdPersonality };
+      const response = await api.post<{personality: Personality}>(`/personalities/`, personality as unknown as Record<string, string | undefined>);
+      return response;
+    } catch (error) {
+      if (error instanceof Error) {
+        return thunkAPI.rejectWithValue(error.message);
+      }
+      return thunkAPI.rejectWithValue("An unknown error occurred");
+    }
+  }
+);
+
+export const generatePersonality = createAsyncThunk(
+  "personalities/generatePersonality",
+  async (personality: GeneratePersonality, thunkAPI) => {
+    try {
+      const response = await api.post<{personality: Personality}>(`/personalities/generate`, personality as unknown as Record<string, string | undefined>);
+      return response;
     } catch (error) {
       if (error instanceof Error) {
         return thunkAPI.rejectWithValue(error.message);
