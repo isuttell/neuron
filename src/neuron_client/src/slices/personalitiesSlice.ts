@@ -135,6 +135,12 @@ export const personalitiesSlice = createSlice({
         }
       )
       .addCase(
+        actions.generatePersonality.fulfilled,
+        (state, action: PayloadAction<IncomingPersonalityEvent>) => {
+          upsert(state, action.payload.personality);
+        }
+      )
+      .addCase(
         actions.updatePersonality.fulfilled,
         (state, action: PayloadAction<IncomingPersonalityEvent>) => {
           upsert(state, action.payload.personality);
