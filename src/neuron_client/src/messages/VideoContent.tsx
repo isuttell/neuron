@@ -1,28 +1,10 @@
-import { MediaListDropdown } from "@/components/MediaListDropdown";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { toast } from "sonner";
+import MediaDialog from "@/components/MediaDialog";
+import { MediaActions } from "@/components/media/MediaActions";
+import { VideoRenderer } from "@/components/media/VideoRenderer";
 import { useMediaPlayer } from "@/hooks/useMediaPlayer";
 import { MediaItem } from "@/types/media";
-import { Copy, Download, Info } from "lucide-react";
 import React, { memo, useEffect, useId, useRef } from "react";
+
 interface VideoContentProps {
   url: string;
   autoPlay?: boolean;
@@ -35,6 +17,7 @@ interface VideoContentProps {
   duration?: number;
   metadata?: Record<string, unknown>;
   preload?: "none" | "metadata" | "auto";
+  className?: string;
 }
 
 const VideoContent: React.FC<VideoContentProps> = ({
@@ -49,8 +32,8 @@ const VideoContent: React.FC<VideoContentProps> = ({
   duration,
   metadata,
   preload = "metadata",
+  className,
 }) => {
-  const thumbnailId = useId();
   const dialogId = useId();
   const dialogVideoRef = useRef<HTMLVideoElement>(null);
   const { registerPlayer, unregisterPlayer, playPlayer } = useMediaPlayer();
@@ -68,197 +51,64 @@ const VideoContent: React.FC<VideoContentProps> = ({
         unregisterPlayer(dialogId, url);
       }
     };
-  }, [
-    thumbnailId,
-    dialogId,
-    registerPlayer,
-    unregisterPlayer,
-    playPlayer,
-    url,
-  ]);
+  }, [dialogId, registerPlayer, unregisterPlayer, playPlayer, url]);
+
+  const fileName = url.split("/").pop() || "video.mp4";
 
   return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <div className="relative max-h-[400px] max-w-[500px] w-fit">
-          <video
-            className="rounded-lg w-full h-full object-contain cursor-pointer"
-            src={url}
+    <MediaDialog
+      trigger={
+        <div className={className || "relative max-h-[400px] max-w-[500px] w-fit"}>
+          <VideoRenderer
+            url={url}
             autoPlay={autoPlay}
-            muted={true}
             controls={controls}
             loop={loop}
+            muted={true}
             preload={preload}
+            duration={duration}
+            isThumbnail={true}
           />
-          {duration && (
-            <div className="absolute top-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
-              {Math.floor(duration / 60)}:{(Math.floor(duration) % 60).toString().padStart(2, '0')}
-            </div>
-          )}
           {showControls && (
             <div className="absolute bottom-2 right-2 space-x-2">
-              {mediaItem && (
-                <MediaListDropdown
-                  variant="outline"
-                  mediaItemId={mediaItem.id}
-                />
-              )}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    className=""
-                    variant="outline"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      navigator.clipboard.writeText(url);
-                      toast("Video URL copied to clipboard");
-                    }}
-                  >
-                    <Copy />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Copy video URL</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="outline"
-                    asChild
-                    onClick={(e) => {
-                      e.stopPropagation();
-                    }}
-                  >
-                    <a
-                      className="text-primary"
-                      href={url}
-                      download
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <Download />
-                    </a>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Download video</TooltipContent>
-              </Tooltip>
-              {metadata && Object.keys(metadata).length > 0 && (
-                <Popover>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                          }}
-                        >
-                          <Info />
-                        </Button>
-                      </PopoverTrigger>
-                    </TooltipTrigger>
-                    <TooltipContent>View metadata</TooltipContent>
-                  </Tooltip>
-                  <PopoverContent className="w-80">
-                    <div className="space-y-2">
-                      <h4 className="font-medium text-sm">Generation Details</h4>
-                      <div className="text-sm space-y-1">
-                        {metadata.model ? (
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Model:</span>
-                            <span className="font-mono text-xs">
-                            {String(metadata.model)}
-                          </span>
-                          </div>
-                        ) : null}
-                        {metadata.duration ? (
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Duration:</span>
-                            <span>{Math.floor((metadata.duration as number) / 60)}:{(Math.floor(metadata.duration as number) % 60).toString().padStart(2, '0')}</span>
-                          </div>
-                        ) : null}
-                        {metadata.fps ? (
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">FPS:</span>
-                            <span>
-                            {String(metadata.fps)}
-                          </span>
-                          </div>
-                        ) : null}
-                        {metadata.format ? (
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Format:</span>
-                            <span>
-                            {String(metadata.format)}
-                          </span>
-                          </div>
-                        ) : null}
-                        {metadata.seed ? (
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Seed:</span>
-                            <span className="font-mono text-xs">
-                            {String(metadata.seed)}
-                          </span>
-                          </div>
-                        ) : null}
-                      </div>
-                    </div>
-                  </PopoverContent>
-                </Popover>
-              )}
+              <MediaActions
+                url={url}
+                mediaItem={mediaItem}
+                variant="outline"
+                copyLabel="Video URL"
+                downloadFileName={fileName}
+              />
             </div>
           )}
         </div>
-      </DialogTrigger>
-      <DialogContent className="max-w-[95vw] max-h-[95vh] mx-auto box-border h-full flex-1 flex flex-col">
-        <DialogHeader>
-          <DialogTitle>{caption || mediaItem?.name || "Video Details"}</DialogTitle>
-          {(description || mediaItem?.description) && (
-            <DialogDescription>{description || mediaItem?.description}</DialogDescription>
-          )}
-        </DialogHeader>
-        <div className="flex-1 overflow-hidden">
-          <video
-            ref={dialogVideoRef}
-            className="w-full h-full rounded-md object-contain"
-            autoPlay={true}
-            controls={true}
-            loop={true}
-            playsInline
-            muted={false}
-          >
-            <source src={url} type="video/mp4" />
-          </video>
-        </div>
-        <div className="flex justify-end gap-2">
-          {mediaItem && (
-            <MediaListDropdown variant="outline" mediaItemId={mediaItem.id} />
-          )}
-          <Button
-            variant="outline"
-            onClick={(e) => {
-              e.preventDefault();
-              navigator.clipboard.writeText(url);
-              toast("Video URL copied to clipboard");
-            }}
-          >
-            <Copy /> Copy
-          </Button>
-          <Button variant="outline" asChild>
-            <a
-              className="text-primary"
-              href={url}
-              download
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <Download className="w-4 h-4" />
-              Download
-            </a>
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+      }
+      title={caption || mediaItem?.name || "Video Details"}
+      actions={
+        <MediaActions
+          url={url}
+          mediaItem={mediaItem}
+          variant="ghost"
+          size="default"
+          copyLabel="Video URL"
+          downloadLabel="Download video"
+          downloadFileName={fileName}
+        />
+      }
+      metadata={metadata}
+      description={description || mediaItem?.description}
+    >
+      <VideoRenderer
+        ref={dialogVideoRef}
+        url={url}
+        autoPlay={true}
+        controls={true}
+        loop={true}
+        muted={false}
+        preload="auto"
+        isThumbnail={false}
+        className="w-full h-full"
+      />
+    </MediaDialog>
   );
 };
 
