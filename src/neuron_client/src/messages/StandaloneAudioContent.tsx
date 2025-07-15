@@ -188,7 +188,7 @@ const StandaloneAudioContent: React.FC<StandaloneAudioContentProps> = memo(
             {duration}
           </div>
           <AudioBarVisualization
-            src={url}
+            src={url.replace("5000", "5176")}
             progress={progress}
             className={cn(
               "w-full rounded-md transition-opacity",

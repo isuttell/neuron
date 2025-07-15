@@ -1,0 +1,36 @@
+http:
+  routers:
+    neuron-client:
+      entryPoints:
+        - "public"
+        - "https"
+      rule: "Host(`neuron.zaks.io`) && PathPrefix(`/`)"
+      priority: 1
+      service: "neuron-client"
+
+    neuron-api:
+      entryPoints:
+        - "public"
+        - "https"
+      rule: "Host(`neuron.zaks.io`) && (PathPrefix(`/api`) || PathPrefix(`/ws`) || PathPrefix(`/static`))"
+      priority: 10
+      service: "neuron-api"
+
+  services:
+    neuron-client:
+      loadBalancer:
+        servers:
+          - url: "http://neuron_client:80"
+        healthCheck:
+          path: "/health"
+          interval: "30s"
+          timeout: "10s"
+
+    neuron-api:
+      loadBalancer:
+        servers:
+          - url: "http://neuron_server:5000"
+        healthCheck:
+          path: "/status"
+          interval: "30s"
+          timeout: "10s"
