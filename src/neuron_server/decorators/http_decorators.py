@@ -38,17 +38,14 @@ def cors(
         if config.debug:
             # Allow localhost origins in debug mode
             allowed_origins = [
-                "http://localhost:3000",
-                "http://localhost:5173",
-                "http://localhost:5174",
-                "http://127.0.0.1:3000",
-                "http://127.0.0.1:5173",
-                "http://127.0.0.1:5174",
+                "http://localhost:5000",
+                "http://localhost:5176",
                 "https://neuron.zaks.io",
             ]
         else:
             # Production: only allow specific domain
             allowed_origins = ["https://neuron.zaks.io"]
+
     if allowed_methods is None:
         allowed_methods = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
     if allowed_headers is None:
