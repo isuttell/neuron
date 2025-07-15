@@ -12,14 +12,10 @@ services:
     restart: unless-stopped
     depends_on:
       - neuron_server
+    ports:
+      - 4998:80
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.neuron-client.entrypoints=https"
-      - "traefik.http.routers.neuron-client.rule=Host(`neuron.zaks.io`) && PathPrefix(`/`)"
-      - "traefik.http.routers.neuron-client.priority=1"
-      - "traefik.http.services.neuron-client.loadbalancer.server.port=80"
-      - "traefik.http.services.neuron-client.loadbalancer.healthcheck.path=/health"
-      - "traefik.http.services.neuron-client.loadbalancer.healthcheck.timeout=30s"
       - "com.centurylinklabs.watchtower.enable=true"
 
   neuron_server:
@@ -39,7 +35,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.neuron-api.entrypoints=https"
+      - "traefik.http.routers.neuron-api.entrypoints=public,https"
       - "traefik.http.routers.neuron-api.rule=Host(`neuron.zaks.io`) && (PathPrefix(`/api`) || PathPrefix(`/ws`) || PathPrefix(`/static`))"
       - "traefik.http.routers.neuron-api.priority=10"
       - "traefik.http.services.neuron-api.loadbalancer.server.port=5000"
