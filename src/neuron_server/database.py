@@ -344,21 +344,9 @@ pool = AsyncNullConnectionPool(
 
 
 async def start() -> None:
-    import logging
-
-    logger = logging.getLogger(__name__)
-
-    try:
-        # Try to use migrations if available
-        from neuron_server.migrations import run_migrations
-
-        logger.info("Using Alembic migrations for database initialization")
-        await run_migrations()
-    except ImportError as e:
-        # Fallback to create_all if Alembic is not available (e.g., in Docker)
-        logger.info(f"Alembic not available ({e}), using create_all fallback")
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
+    # Disable migrations due to logging conflicts - use create_all instead
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
 
     await pool.open(wait=True)
     checkpointer = AsyncPostgresSaver(pool)
