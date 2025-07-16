@@ -40,6 +40,14 @@
       "env": {
         "DATABASE_URI": "postgresql://neuron:postgres@localhost:5432/neuron"
       }
+    },
+    "neo4j-localhost": {
+      "command": "uvx",
+      "args": [
+        "mcp-neo4j-cypher",
+        "--db-url", "bolt://localhost:7687",
+        "--user", "neo4j"
+      ]
     }
   }
 }
