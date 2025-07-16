@@ -123,7 +123,7 @@ class Config(BaseModel):
         description="Astrospheric API key",
     )
     log_level: str = Field(
-        default=os.environ.get("LOG_LEVEL", "DEBUG"), description="Log level"
+        default=os.environ.get("LOG_LEVEL", "DEBUG").strip(), description="Log level"
     )
     host: str = Field(default=os.environ.get("HOST", "0.0.0.0"), description="Host")
     port: int = Field(default=int(os.environ.get("PORT", "5000")), description="Port")
