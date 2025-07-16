@@ -1,6 +1,6 @@
 import React from "react";
 import { getMediaContent, type AudioContent, type VideoContent, type ImageContent, type Content } from "@/slices/messagesSlice";
-import StandaloneAudioContent from "./StandaloneAudioContent";
+import AudioContentComponent from "./AudioContent";
 import VideoContentComponent from "./VideoContent";
 import ImageContentComponent from "./ImageContent";
 import { FileLink } from "@/components/FileLink";
@@ -41,12 +41,11 @@ const MediaArtifacts: React.FC<MediaArtifactsProps> = ({
               switch (artifactGroup.media_type) {
                 case "audio":
                   return (
-                    <StandaloneAudioContent
+                    <AudioContentComponent
                       key={item.id}
                       url={item.url}
                       title={item.caption}
                       description={item.description}
-                      preload={preload}
                       duration={item.duration}
                       metadata={item.metadata}
                       mediaItem={{
@@ -129,12 +128,11 @@ const MediaArtifacts: React.FC<MediaArtifactsProps> = ({
         switch (item.type) {
           case "audio":
             return (
-              <StandaloneAudioContent
+              <AudioContentComponent
                 key={item.id}
                 url={item.url}
                 title={item.caption}
                 description={(item as AudioContent).description || ""}
-                preload={preload}
                 duration={item.duration}
                 metadata={item.metadata}
                 mediaItem={{
