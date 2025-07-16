@@ -237,7 +237,7 @@ export default function Thread() {
         <div
           role="complementary"
           className={cn(
-            "hidden lg:flex ml-4 pl-4 flex-shrink-0 border-l flex-col w-[512px] max-h-[calc(100vh-5em)]",
+            "hidden lg:flex ml-4 pl-4 flex-shrink-0 border-l flex-col max-w-[512px] w-1/3 max-h-[calc(100vh-5em)]",
             !isMediaPanelVisible && "lg:hidden"
           )}
         >
