@@ -1,10 +1,13 @@
 import asyncio
 import json
 import time
-from typing import Any, Literal
+from typing import Literal
+from uuid import uuid4
 
 from langchain.tools import BaseTool
+from langchain_core.documents import Document
 from langchain_core.runnables import RunnableConfig
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from pydantic import BaseModel, Field
 
 from neuron_server.logger import logger
@@ -14,6 +17,8 @@ from neuron_server.tools.document_utils import (
 from neuron_server.tools.document_utils import (
     load_document_from_url,
 )
+from neuron_server.tools.memory_recall_tool import MemoryStats
+from neuron_server.vectorstores import memories_store
 
 
 class InspectDocumentToolError(BaseDocumentError):
@@ -37,15 +42,26 @@ class InspectDocumentToolArgs(BaseModel):
             "Only used when importing websites."
         ),
     )
+    memorize: bool = Field(
+        False,
+        description=(
+            "Whether to save the document content to memory for later retrieval. "
+            "Documents will be chunked and stored in the agent's memory for RAG. "
+            "Use this when you want to remember the document for future conversations."
+        ),
+    )
 
 
 class InspectDocumentTool(BaseTool):
     name: str = "document_inspect"
     description: str = """
-This tool downloads documents, scapes websites, extracts transcripts from youtube
+This tool downloads documents, scrapes websites, extracts transcripts from youtube
 videos, and returns the raw text.
 
 Use this to answer questions about a website or document.
+
+You can optionally set memorize=true to save the document content to memory for
+later retrieval through RAG. Documents will be automatically chunked and stored.
 
 Supported document types:
 txt
@@ -58,21 +74,28 @@ youtube
 """.strip()
     args_schema: type[InspectDocumentToolArgs] = InspectDocumentToolArgs
 
-    def _run(self, *args: tuple[Any, ...], **kwargs: dict[str, Any]) -> str:
-        return asyncio.run(self._arun(*args, **kwargs))
+    def _run(
+        self,
+        url: str,
+        config: RunnableConfig,
+        mode: str | None = None,
+        memorize: bool = False,
+    ) -> str:
+        return asyncio.run(self._arun(url, config, mode, memorize))
 
     async def _arun(
         self,
         url: str,
         config: RunnableConfig,
         mode: str | None = None,
+        memorize: bool = False,
     ) -> str:
         try:
             # Record the start time for performance measurement
             start_time = time.perf_counter()
             logger.debug(f"Processing '{url}'")
 
-            docs = await load_document_from_url(
+            loaded_docs = await load_document_from_url(
                 url,
                 mode=mode,
                 metadata={
@@ -86,11 +109,11 @@ youtube
                     ),
                 },
             )
-            if len(docs) == 0:
+            if len(loaded_docs) == 0:
                 raise InspectDocumentToolError("No documents found")
 
             results = []
-            for index, doc in enumerate(docs):
+            for index, doc in enumerate(loaded_docs):
                 metadata_str = json.dumps(doc.metadata or {}, indent=2)
                 results.append(
                     f"""\
@@ -102,6 +125,10 @@ youtube
 """
                 )
 
+            # Store documents in memory if requested
+            if memorize:
+                await self._store_in_memory(loaded_docs, url, config)
+
             duration = time.perf_counter() - start_time
             logger.debug(f"Processed '{url}' - {duration:.2f}s")
             docs = "\n\n".join(results)
@@ -109,6 +136,63 @@ youtube
         except Exception as e:
             logger.error(e, exc_info=True)
             raise e
+
+    async def _store_in_memory(
+        self,
+        documents: list[Document],
+        url: str,
+        config: RunnableConfig,
+    ) -> None:
+        """Store documents in memory with chunking for RAG."""
+        try:
+            text_splitter = RecursiveCharacterTextSplitter(
+                chunk_size=1000,
+                chunk_overlap=200,
+            )
+
+            memory_documents = []
+            for doc_index, doc in enumerate(documents):
+                # Split document content into chunks
+                chunks = text_splitter.split_text(doc.page_content)
+
+                for chunk_index, chunk in enumerate(chunks):
+                    memory_metadata = {
+                        "thread_id": config.get("configurable", {}).get("thread_id"),
+                        "personality_id": config.get("configurable", {}).get(
+                            "personality_id"
+                        ),
+                        "user_id": config.get("configurable", {}).get("user_id"),
+                        "source": url,
+                        "document_index": doc_index,
+                        "chunk_index": chunk_index,
+                        "total_chunks": len(chunks),
+                        "access_count": 0,
+                        "created_at": int(time.time()),
+                        "stats": MemoryStats(
+                            useful=0,
+                            total=0,
+                            last_useful_at=None,
+                            last_recall_at=0,
+                            scores=[],
+                        ),
+                    }
+
+                    memory_doc = Document(
+                        page_content=chunk,
+                        id=str(uuid4()),
+                        metadata=memory_metadata,
+                    )
+                    memory_documents.append(memory_doc)
+
+            # Store all chunks in memory
+            if memory_documents:
+                await memories_store.aadd_documents(memory_documents)
+                logger.debug(
+                    f"Stored {len(memory_documents)} memory chunks from '{url}'"
+                )
+        except Exception as e:
+            logger.error(f"Failed to store document in memory: {e}", exc_info=True)
+            # Don't raise - memory storage failure shouldn't break document inspection
 
 
 if __name__ == "__main__":
