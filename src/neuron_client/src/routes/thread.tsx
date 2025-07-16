@@ -230,7 +230,7 @@ export default function Thread() {
             />
           </div>
           <div className="bottom-0">
-            <ThreadMessageForm thread={thread} className="w-full" />
+            <ThreadMessageForm thread={thread} className="max-w-[1170px] w-full mx-auto mt-2" />
           </div>
         </div>
         {/* Desktop media panel */}
