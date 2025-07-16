@@ -92,10 +92,6 @@ const AudioPlayer: React.FC<AudioPlayerProps> = memo(
       };
 
       const handlePlay = () => {
-        if (audioRef.current?.paused) {
-          setIsPlaying(false);
-          return;
-        }
         setIsPlaying(true);
         if (onPlay) onPlay();
       };

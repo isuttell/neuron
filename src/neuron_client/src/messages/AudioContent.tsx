@@ -49,10 +49,6 @@ const AudioContent: React.FC<AudioContentProps> = ({
   onEnded,
   onPause,
 }) => {
-  const handleExpand = () => {
-    // Let the event bubble up to trigger the dialog
-    // The AudioRenderer is inside the DialogTrigger, so this will open the dialog
-  };
 
   const trigger = (
     <div
@@ -71,7 +67,6 @@ const AudioContent: React.FC<AudioContentProps> = ({
         muted={muted}
         preload={preload}
         isThumbnail={true}
-        onExpand={handleExpand}
       />
       {showControls && (
         <div className="absolute bottom-2 right-2 space-x-2">

@@ -82,7 +82,6 @@ export const AudioRenderer = forwardRef<HTMLAudioElement, AudioRendererProps>(
       };
 
       const handleLoadedMetadata = () => {
-        setAudioDuration(audio.duration);
         initializeState();
       };
 
