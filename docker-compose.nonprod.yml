@@ -7,6 +7,15 @@
 # DO NOT use this for local development - use docker-compose.yml and docker-compose.override.yml instead.
 
 services:
+  neuron_migration:
+    image: gitea.zaks.io/isuttell/neuron-server:latest
+    restart: "no"
+    env_file:
+      - .env
+    command: ["python", "-m", "neuron_server", "--migration"]
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+
   neuron_client:
     image: gitea.zaks.io/isuttell/neuron-client:latest
     restart: unless-stopped
@@ -33,6 +42,9 @@ services:
       - /opt/services/network-services/config/homepage/images/:/images/homepage
       - /opt/services/homeassistant/config/www:/images/homeassistant
       - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      neuron_migration:
+        condition: service_completed_successfully
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.neuron-api.entrypoints=public,https"
