@@ -176,6 +176,7 @@ async def get_personality(personality_id: UUID) -> dict[str, dict]:
         raise NotFound(
             f"Personality with id {personality_id} not found or you don't have access"
         )
+
     return {"personality": personality.model_dump()}
 
 
@@ -272,6 +273,7 @@ async def get_personalities() -> dict[str, list[dict]]:
 
     # Get personalities the user has access to
     personalities = await PersonalityModel.list_for_user(user_id=user_id)
+
     return {
         "personalities": [personality.model_dump() for personality in personalities]
     }
