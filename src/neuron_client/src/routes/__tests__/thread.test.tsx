@@ -8,6 +8,16 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import * as hooks from "../../hooks";
 import Thread from "../thread";
 
+// Mock react-router-dom
+const mockNavigate = vi.fn();
+vi.mock("react-router-dom", async () => {
+  const actual = await vi.importActual("react-router-dom");
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+  };
+});
+
 // Mock action creators
 vi.mock("../../actions/messageActions", () => ({
   fetchMessagesByThread: vi.fn((threadId) => ({
@@ -118,12 +128,6 @@ vi.mock("@/components/ui/sidebar", () => ({
   ),
 }));
 
-vi.mock("@/personalities/EditPersonalityDialog", () => ({
-  __esModule: true,
-  default: () => (
-    <button aria-label="Edit Personality">Edit Personality</button>
-  ),
-}));
 
 vi.mock("@/components/DeleteThreadDialog", () => ({
   __esModule: true,
@@ -313,6 +317,7 @@ describe("Thread", () => {
     mockScrollIntoView = vi.fn();
     originalScrollIntoView = window.HTMLElement.prototype.scrollIntoView;
     window.HTMLElement.prototype.scrollIntoView = mockScrollIntoView;
+    mockNavigate.mockClear();
   });
 
   afterEach(() => {
@@ -666,7 +671,7 @@ describe("Thread", () => {
       ).toBeInTheDocument();
     });
 
-    it("should render edit personality dialog when active personality exists", () => {
+    it("should navigate to personality edit page when edit personality is clicked", async () => {
       const mockPersonality: Personality = {
         id: "personality-1",
         name: "Test Personality",
@@ -688,11 +693,16 @@ describe("Thread", () => {
       };
 
       renderThread(initialState);
+
       // Check that the ThreadHeaderActions component is rendered
       expect(screen.getByTestId("thread-header-actions")).toBeInTheDocument();
-      // Check that the standalone EditPersonalityDialog button is rendered
-      const editButtons = screen.getAllByRole("button", { name: /edit personality/i });
-      expect(editButtons).toHaveLength(2); // One in ThreadHeaderActions, one standalone
+
+      // Click the edit personality button
+      const editButton = screen.getByRole("button", { name: /edit personality/i });
+      fireEvent.click(editButton);
+
+      // Verify navigation was called with correct path
+      expect(mockNavigate).toHaveBeenCalledWith("/personalities/personality-1");
     });
   });
 });
