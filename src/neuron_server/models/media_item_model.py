@@ -9,7 +9,7 @@ from sqlalchemy import and_, desc, select
 
 from neuron_server.controllers.events.media_events import MediaEvent
 from neuron_server.database import MediaItem, get_session
-from neuron_server.pubsub import pubsub
+from neuron_server.secure_pubsub import secure_pubsub
 
 
 class MediaItemModel(BaseModel):
@@ -48,7 +48,7 @@ class MediaItemModel(BaseModel):
             session.add(media_item)
             await session.commit()
             result = cls(**media_item.__dict__)
-            await pubsub.publish("app", MediaEvent(media=[result]))
+            await secure_pubsub.publish_media_event(MediaEvent(media=[result]))
             return result
 
     @classmethod

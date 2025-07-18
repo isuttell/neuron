@@ -9,7 +9,7 @@ from neuron_server.controllers.events.thread_events import GetThreadResponse
 from neuron_server.llms.status_agent import StatusAgent
 from neuron_server.logger import logger
 from neuron_server.models.thread_model import ThreadModel
-from neuron_server.pubsub import pubsub
+from neuron_server.secure_pubsub import secure_pubsub
 
 
 @dataclass
@@ -241,7 +241,9 @@ class ThreadStatusManager:
                 # Update the thread status to idle
                 thread.status = "idle"
                 await ThreadModel.set(thread.id, "status", thread.status)
-                await pubsub.publish("app", GetThreadResponse(thread=thread))
+                await secure_pubsub.publish_thread_update(
+                    GetThreadResponse(thread=thread)
+                )
 
                 # Clean up the status agent and related data
                 await self.cleanup_thread(thread.id)
@@ -267,7 +269,7 @@ class ThreadStatusManager:
         # Set thread status to idle after cleaning up status agents
         thread.status = "idle"
         await ThreadModel.set(thread.id, "status", thread.status)
-        await pubsub.publish("app", GetThreadResponse(thread=thread))
+        await secure_pubsub.publish_thread_update(GetThreadResponse(thread=thread))
 
 
 # Global instance for backward compatibility

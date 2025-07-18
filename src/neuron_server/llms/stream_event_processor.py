@@ -17,7 +17,7 @@ from neuron_server.llms.message_processor import get_message_content
 from neuron_server.llms.thread_status_manager import ThreadStatusManager
 from neuron_server.logger import logger
 from neuron_server.models.thread_model import ThreadModel
-from neuron_server.pubsub import pubsub
+from neuron_server.secure_pubsub import secure_pubsub
 
 
 class ChainEventData(TypedDict):
@@ -178,7 +178,9 @@ class StreamEventProcessor:
             )
             # Filter out hidden messages
             if not output.additional_kwargs.get("hidden", False):
-                await pubsub.publish("app", MessageEvent(message=message))
+                await secure_pubsub.publish_thread_message(
+                    MessageEvent(message=message)
+                )
 
         values = list(set(ctx["active_runs"].values()))
         await self.status_manager.update_thread_status(
@@ -213,8 +215,7 @@ class StreamEventProcessor:
             if isinstance(content, str):
                 content = [{"type": "text", "text": content, "index": 0}]
 
-            await pubsub.publish(
-                "app",
+            await secure_pubsub.publish_partial_message(
                 PartialMessageEvent(
                     message=PartialMessage(
                         id=self._clean_run_id(context.run_id),
@@ -226,7 +227,7 @@ class StreamEventProcessor:
                         node=context.node,
                         created_at=context.start_time.isoformat(),
                     )
-                ),
+                )
             )
         return context.index
 
@@ -254,7 +255,7 @@ class StreamEventProcessor:
             )
             if not message.created_at:
                 message.created_at = context.start_time.isoformat()
-            await pubsub.publish("app", MessageEvent(message=message))
+            await secure_pubsub.publish_thread_message(MessageEvent(message=message))
         await self.status_manager.update_thread_status(
             context.thread, "thinking", human_message=context.human_message_content
         )

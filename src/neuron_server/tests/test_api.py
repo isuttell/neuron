@@ -48,6 +48,7 @@ def mock_scheduler() -> AsyncMock:
         mock.get_event = AsyncMock()
         mock.delete_event = AsyncMock()
         mock.list_events = AsyncMock(return_value=[])
+        mock.schedule_session_cleanup = AsyncMock()
         yield mock
 
 
@@ -69,6 +70,7 @@ async def test_health_check(
 async def test_startup(app: Quart, mock_scheduler: MagicMock) -> None:
     await app.startup()
     mock_scheduler.start.assert_called_once()
+    mock_scheduler.schedule_session_cleanup.assert_called_once_with(interval_hours=1)
 
 
 @pytest.mark.asyncio

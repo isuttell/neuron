@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 
 from neuron_server.controllers.events.prompt_events import GetPromptResponse
 from neuron_server.models.prompt_model import PromptModel
-from neuron_server.pubsub import pubsub
+from neuron_server.secure_pubsub import secure_pubsub
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +44,10 @@ user has explicitly asked for it."""
                     personality_id=personality_id,
                 )
             )
-            await pubsub.publish("app", GetPromptResponse(prompt=model))
+            # Send prompt response to users with access to this personality
+            await secure_pubsub.publish_personality_event(
+                personality_id, GetPromptResponse(prompt=model)
+            )
             logger.debug(f"Prompt saved: {model.name}")
             return f"Prompt saved: {model.name}"
         except Exception as e:

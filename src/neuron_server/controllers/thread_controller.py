@@ -16,7 +16,7 @@ from neuron_server.models.personality_model import PersonalityModel
 from neuron_server.models.thread_model import ThreadModel
 from neuron_server.models.thread_user_model import ThreadUserModel
 from neuron_server.models.user_model import UserModel
-from neuron_server.pubsub import pubsub
+from neuron_server.secure_pubsub import secure_pubsub
 from neuron_server.type_defs.request_proxy import request
 
 blueprint = Blueprint("thread", __name__)
@@ -534,7 +534,9 @@ async def cancel_thread(thread_id: UUID) -> Response:
     # Check if user has access to the thread
     await check_thread_access(thread_id=thread_id, user_id=request.token.user_id)
 
-    # Publish cancellation event to the pubsub system
-    await pubsub.publish("app", CancelRequestEvent(thread_id=thread_id))
+    # Publish cancellation event to users with access to the thread
+    await secure_pubsub.publish_thread_cancellation(
+        CancelRequestEvent(thread_id=thread_id)
+    )
 
     return Response(status=204)

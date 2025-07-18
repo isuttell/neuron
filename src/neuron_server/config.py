@@ -57,6 +57,10 @@ class RedisConfig(BaseModel):
     password: str | None = Field(
         default=os.environ.get("REDIS_PASSWORD"), description="Redis password"
     )
+    session_ttl: int = Field(
+        default=int(os.environ.get("REDIS_SESSION_TTL", "86400")),
+        description="Session TTL in seconds (default: 24 hours)",
+    )
 
 
 class HomeAssistantConfig(BaseModel):
