@@ -7,6 +7,8 @@ from pydantic import BaseModel, Field
 
 from neuron_server.logger import logger
 
+MAX_SEARCH_RESULTS_LENGTH = 25_000
+
 
 class TavilySearchToolArgs(BaseModel):
     query: str = Field(
@@ -35,10 +37,6 @@ class TavilySearchToolArgs(BaseModel):
     )
     include_answer: bool = Field(
         description="Whether to include a direct answer to the query", default=False
-    )
-    include_raw_content: bool = Field(
-        description="Whether to include cleaned HTML content from search results",
-        default=False,
     )
 
 
@@ -74,7 +72,6 @@ Features:
         max_results = kwargs.get("max_results", 5)
         search_depth = kwargs.get("search_depth", "basic")
         include_answer = kwargs.get("include_answer", False)
-        include_raw_content = kwargs.get("include_raw_content", False)
 
         try:
             logger.debug(
@@ -90,7 +87,6 @@ Features:
                 "search_depth": search_depth,
                 "topic": topic,
                 "include_answer": include_answer,
-                "include_raw_content": include_raw_content,
             }
 
             if time_range:
@@ -110,7 +106,14 @@ Features:
             )
 
             # Return raw JSON results
-            return json.dumps(results, indent=2)
+            final = json.dumps(results, indent=2)
+
+            if len(final) > MAX_SEARCH_RESULTS_LENGTH:
+                raise ValueError(
+                    f"Search results exceeded {MAX_SEARCH_RESULTS_LENGTH} characters. "
+                    "Try again with a more specific query."
+                )
+            return final
 
         except Exception as e:
             logger.error(f"Tavily search error: {e}", exc_info=True)
