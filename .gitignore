@@ -37,6 +37,7 @@ venv.bak/
 .cache/
 /tmp
 /static
+src/neuron_server/static/artifacts/
 *.bsp
 *.dat
 

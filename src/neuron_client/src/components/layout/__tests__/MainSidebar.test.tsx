@@ -25,6 +25,7 @@ vi.mock("@auth0/auth0-react", () => ({
 // Mock the hooks
 vi.mock("@/hooks", () => ({
   useAppSelector: vi.fn(),
+  useAppDispatch: vi.fn(),
 }));
 
 // Mock use-mobile hook
@@ -58,6 +59,12 @@ vi.mock("../ProvidersMenuItem", () => ({
   ProvidersMenuItem: () => <div data-testid="providers-menu-item">ProvidersMenuItem</div>,
 }));
 
+// Mock FavoritePersonalities component
+vi.mock("@/components/sidebar/FavoritePersonalities", () => ({
+  __esModule: true,
+  default: () => <div data-testid="favorite-personalities">FavoritePersonalities</div>,
+}));
+
 // Import real sidebar components for testing
 import { SidebarProvider } from "@/components/ui/sidebar";
 
@@ -88,8 +95,9 @@ describe("MainSidebar", () => {
       handleRedirectCallback: vi.fn(),
     } as Auth0ContextInterface<User>);
 
-    // Mock hooks
+    // Mock hooks - now only needs to handle sidebar image since FavoritePersonalities is mocked
     (hooks.useAppSelector as unknown as vi.Mock).mockReturnValue(null); // Default no sidebar image
+    (hooks.useAppDispatch as vi.Mock).mockReturnValue(vi.fn()); // Mock dispatch function
     (useMobile.useIsMobile as vi.Mock).mockReturnValue(false); // Default to desktop
 
     // Mock permissions hook to allow access to all features by default

@@ -7,6 +7,7 @@ import { fetchConfig } from "@/slices/appSlice";
 import { fetchMediaLists } from "@/slices/mediaListsSlice";
 import { fetchProviders, setupProvider, selectProviders, selectActiveProviderId } from "@/slices/providerSlice";
 import { fetchPersonalities } from "@/actions/personalityActions";
+import { fetchFavorites } from "@/actions/favoritesActions";
 import { useAuth0, withAuthenticationRequired } from "@auth0/auth0-react";
 import { useEffect, useState } from "react"; // Import useState
 import { Outlet } from "react-router-dom";
@@ -46,6 +47,7 @@ export function RootComponent() {
       dispatch(fetchMediaLists());
       dispatch(fetchProviders());
       dispatch(fetchPersonalities());
+      dispatch(fetchFavorites());
 
       // --- Add the user sync logic here ---
       // Only sync if authenticated and not already synced

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Loader2, MoreHorizontal, Image, Brain, Play, Square, UserPen, Users } from "lucide-react";
+import { Loader2, MoreHorizontal, Image, Brain, Play, Square, UserPen, Users, Heart } from "lucide-react";
 import {
   Card,
   CardTitle,
@@ -20,6 +20,8 @@ import {
   getActivePersonality,
 } from "@/slices/personalitiesSlice";
 import { updatePersonalityLogo } from "@/actions/personalityActions";
+import { toggleFavorite } from "@/actions/favoritesActions";
+import { isFavorite } from "@/slices/favoritesSlice";
 import { cn } from "@/lib/utils";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -43,6 +45,9 @@ const PersonalityDropdownMenu: React.FC<{
   setIsUsersDialogOpen: (open: boolean) => void;
   handleUpdateLogo: () => void;
   isUpdatingLogo: boolean;
+  handleToggleFavorite: () => void;
+  isTogglingFavorite: boolean;
+  isPersonalityFavorite: boolean;
 }> = ({
   personality,
   open,
@@ -52,15 +57,13 @@ const PersonalityDropdownMenu: React.FC<{
   setIsUsersDialogOpen,
   handleUpdateLogo,
   isUpdatingLogo,
+  handleToggleFavorite,
+  isTogglingFavorite,
+  isPersonalityFavorite,
 }) => {
   const { user } = useAuth0();
   const { canManage, canManageUsers, canUse } = usePersonalityPermissions(personality.id);
   const isSystemAdmin = isAdmin(user);
-
-  // Don't show dropdown if user has no actions available
-  if (!canUse && !canManage && !canManageUsers && !isSystemAdmin) {
-    return null;
-  }
 
   return (
   <div className="absolute top-2 right-2">
@@ -76,31 +79,45 @@ const PersonalityDropdownMenu: React.FC<{
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        {/* Activate/Deactivate - available to anyone who can use the personality */}
-        {canUse && (
-          <DropdownMenuItem
-            onSelect={(e) => {
-              e.preventDefault();
-              setOpen(false);
-              handleActivate();
-            }}
-          >
-            {isActive ? (
-              <>
-                <Square className="size-4" />
-                Deactivate
-              </>
-            ) : (
-              <>
-                <Play className="size-4" />
-                Activate
-              </>
-            )}
-          </DropdownMenuItem>
-        )}
+        {/* Activate/Deactivate - available to everyone */}
+        <DropdownMenuItem
+          onSelect={(e) => {
+            e.preventDefault();
+            setOpen(false);
+            handleActivate();
+          }}
+        >
+          {isActive ? (
+            <>
+              <Square className="size-4" />
+              Deactivate
+            </>
+          ) : (
+            <>
+              <Play className="size-4" />
+              Activate
+            </>
+          )}
+        </DropdownMenuItem>
 
-        {/* Separator if we have both user actions and admin actions */}
-        {canUse && (canManage || canManageUsers || isSystemAdmin) && (
+        {/* Favorite/Unfavorite - available to everyone */}
+        <DropdownMenuItem
+          onSelect={(e) => {
+            e.preventDefault();
+            setOpen(false);
+            handleToggleFavorite();
+          }}
+          disabled={isTogglingFavorite}
+        >
+          <Heart className={cn(
+            "size-4",
+            isPersonalityFavorite ? "fill-current" : "text-muted-foreground"
+          )} />
+          {isPersonalityFavorite ? "Remove from Favorites" : "Add to Favorites"}
+        </DropdownMenuItem>
+
+        {/* Separator if we have admin actions */}
+        {(canManage || canManageUsers || isSystemAdmin) && (
           <DropdownMenuSeparator />
         )}
 
@@ -179,8 +196,10 @@ const PersonalityItem: React.FC<PersonalityItemProps> = ({
   const navigate = useNavigate();
   const activePersonality = useAppSelector(getActivePersonality);
   const isActive = activePersonality?.id === personality.id;
+  const isPersonalityFavorite = useAppSelector(state => isFavorite(state, personality.id));
   const [isUpdatingLogo, setIsUpdatingLogo] = useState(false);
   const [isUsersDialogOpen, setIsUsersDialogOpen] = useState(false);
+  const [isTogglingFavorite, setIsTogglingFavorite] = useState(false);
   const [open, setOpen] = useState(false);
 
   // Handler for dialog open/close with pointer events fix
@@ -219,6 +238,27 @@ const PersonalityItem: React.FC<PersonalityItemProps> = ({
       });
     } finally {
       setIsUpdatingLogo(false);
+    }
+  };
+
+  const handleToggleFavorite = async () => {
+    setIsTogglingFavorite(true);
+    try {
+      const result = await dispatch(toggleFavorite(personality.id)).unwrap();
+      toast(result.added ? "Added to favorites" : "Removed from favorites", {
+        description: result.added
+          ? `${personality.name} added to favorites`
+          : `${personality.name} removed from favorites`,
+      });
+    } catch (error) {
+      toast.error("Failed to update favorite", {
+        description:
+          error instanceof Error
+            ? error.message
+            : "An unknown error occurred",
+      });
+    } finally {
+      setIsTogglingFavorite(false);
     }
   };
 
@@ -292,6 +332,9 @@ const PersonalityItem: React.FC<PersonalityItemProps> = ({
           setIsUsersDialogOpen={setIsUsersDialogOpen}
           handleUpdateLogo={handleUpdateLogo}
           isUpdatingLogo={isUpdatingLogo}
+          handleToggleFavorite={handleToggleFavorite}
+          isTogglingFavorite={isTogglingFavorite}
+          isPersonalityFavorite={isPersonalityFavorite}
         />
 
         {/* Active indicator */}

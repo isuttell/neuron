@@ -2,6 +2,7 @@ import { configureStore } from "@reduxjs/toolkit";
 import websocketMiddleware from "./middleware/websocketMiddleware";
 import app from "./slices/appSlice";
 import embeddingsReducer from "./slices/embeddingsSlice";
+import favoritesReducer from "./slices/favoritesSlice";
 import images from "./slices/imagesSlice";
 import mediaListsReducer from "./slices/mediaListsSlice";
 import mediaReducer from "./slices/mediaSlice";
@@ -23,6 +24,7 @@ export const store = configureStore({
     threads,
     socket,
     personalities,
+    favorites: favoritesReducer,
     images,
     prompts: promptsReducer,
     embeddings: embeddingsReducer,

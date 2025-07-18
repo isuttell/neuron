@@ -7,6 +7,7 @@ import { configureStore } from "@reduxjs/toolkit";
 import PersonalityItem from "../PersonalityItem";
 import { Personality } from "@/slices/personalitiesSlice.d";
 import personalitiesReducer from "@/slices/personalitiesSlice";
+import favoritesReducer from "@/slices/favoritesSlice";
 
 // Mock Auth0
 vi.mock("@auth0/auth0-react", () => ({
@@ -50,6 +51,15 @@ vi.mock("sonner", () => ({
     error: vi.fn(),
   }),
 }));
+
+// Mock favorites slice selectors to avoid state issues
+vi.mock("@/slices/favoritesSlice", async () => {
+  const actual = await vi.importActual("@/slices/favoritesSlice");
+  return {
+    ...actual,
+    isFavorite: vi.fn(() => false), // Always return false for tests
+  };
+});
 
 // Mock react-router-dom's useNavigate
 const mockNavigate = vi.fn();
@@ -108,6 +118,7 @@ const renderPersonalityItem = (
   const store = configureStore({
     reducer: {
       personalities: personalitiesReducer,
+      favorites: favoritesReducer,
     },
     preloadedState: {
       personalities: {
@@ -116,6 +127,12 @@ const renderPersonalityItem = (
         loading: false,
         error: null,
         personalityUsers: {},
+        hasInitiallyFetched: true,
+      },
+      favorites: {
+        favorites: [],
+        loading: false,
+        error: null,
       },
     },
   });
@@ -210,13 +227,13 @@ describe("PersonalityItem", () => {
   });
 
   describe("Permission-based Dropdown Visibility", () => {
-    it("hides dropdown when user has no permissions", () => {
+    it("shows dropdown even when user has no permissions", () => {
       renderPersonalityItem(mockPersonality, {
         shouldShowComponent: false,
       });
 
       expect(screen.getByText("Test Personality")).toBeInTheDocument();
-      expect(screen.queryByRole("button", { name: /more actions/i })).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /more actions/i })).toBeInTheDocument();
     });
 
     it("shows dropdown when user can use personality", () => {
@@ -305,13 +322,13 @@ describe("PersonalityItem", () => {
       expect(mockUsePersonalityPermissions).toHaveBeenCalledWith("test-personality-id");
     });
 
-    it("respects permission flags for component visibility", () => {
-      // Test that the component respects the shouldShowComponent flag
+    it("shows dropdown regardless of permission flags", () => {
+      // Test that the component shows dropdown regardless of shouldShowComponent flag
       const { rerender } = renderPersonalityItem(mockPersonality, {
         shouldShowComponent: false,
       });
 
-      expect(screen.queryByRole("button", { name: /more actions/i })).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /more actions/i })).toBeInTheDocument();
 
       // Change permissions to show component
       mockUsePersonalityPermissions.mockReturnValue({
@@ -415,7 +432,7 @@ describe("PersonalityItem", () => {
         userRole: null,
       });
 
-      expect(screen.queryByRole("button", { name: /more actions/i })).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /more actions/i })).toBeInTheDocument();
     });
   });
 
@@ -483,7 +500,7 @@ describe("PersonalityItem", () => {
       expect(screen.getByRole("button", { name: /more actions/i })).toBeInTheDocument();
     });
 
-    it("user with no personality access sees no dropdown", () => {
+    it("user with no personality access still sees dropdown", () => {
       mockIsAdmin.mockReturnValue(false);
       renderPersonalityItem(mockPersonality, {
         canManage: false,
@@ -497,8 +514,8 @@ describe("PersonalityItem", () => {
         userRole: null,
       });
 
-      // No access user should not see dropdown at all
-      expect(screen.queryByRole("button", { name: /more actions/i })).not.toBeInTheDocument();
+      // User with no access should still see dropdown (component always shows it)
+      expect(screen.getByRole("button", { name: /more actions/i })).toBeInTheDocument();
     });
 
     it("maintains thread and personality permission separation", () => {

@@ -219,7 +219,7 @@ export const personalitiesSlice = createSlice({
       // Remove personality user
       .addCase(actions.removePersonalityUser.fulfilled, (state, action) => {
         state.personalityUsers[action.payload.personalityId] = action.payload.users;
-      });
+      })
   },
 });
 

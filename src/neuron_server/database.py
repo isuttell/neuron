@@ -329,6 +329,36 @@ class PersonalityUser(Base):
     user: Mapped["User"] = relationship("User", back_populates="personality_users")
 
 
+class PersonalityFavorite(Base):
+    __tablename__ = "personality_favorites"
+
+    id = Column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    personality_id = Column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("personalities.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    user_id = Column(
+        String,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Ensure each user can only favorite a personality once
+    __table_args__ = (
+        UniqueConstraint(
+            "personality_id", "user_id", name="unique_personality_favorite"
+        ),
+    )
+
+    # Relationships
+    personality: Mapped["Personality"] = relationship("Personality")
+    user: Mapped["User"] = relationship("User")
+
+
 # Create async session maker
 get_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 

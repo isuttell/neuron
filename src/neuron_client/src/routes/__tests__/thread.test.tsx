@@ -635,7 +635,7 @@ describe("Thread", () => {
       // Toggle to visible
       fireEvent.click(toggleButton);
       const mediaPanel = screen.getByRole("complementary");
-      expect(mediaPanel).toHaveClass("w-[512px]");
+      expect(mediaPanel).toHaveClass("w-1/3");
       expect(screen.getByTestId("media-timeline")).toBeInTheDocument();
 
       // Toggle back to hidden

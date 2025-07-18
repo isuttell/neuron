@@ -26,6 +26,7 @@ interface AppState {
   isLoading: boolean;
   error: string | null;
   currentUser: User | null; // Add currentUser state
+  favoritePersonalitiesCollapsed: boolean; // Add collapsed state for favorites
 }
 
 // Load initial state from localStorage
@@ -45,6 +46,7 @@ const loadInitialState = (): AppState => {
     isLoading: false,
     error: null,
     currentUser: null, // Initialize currentUser
+    favoritePersonalitiesCollapsed: true, // Default to closed
   };
 };
 
@@ -73,6 +75,10 @@ export const appSlice = createSlice({
       state.currentUser = action.payload;
       // No need to save user to localStorage, Auth0 handles session
     },
+    setFavoritePersonalitiesCollapsed: (state, action: PayloadAction<boolean>) => {
+      state.favoritePersonalitiesCollapsed = action.payload;
+      saveState(state);
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -95,7 +101,7 @@ export const appSlice = createSlice({
   },
 });
 
-export const { setSidebarImage, setCurrentUser } = appSlice.actions; // Export new action
+export const { setSidebarImage, setCurrentUser, setFavoritePersonalitiesCollapsed } = appSlice.actions; // Export new action
 
 export const getSidebarImage = (state: RootState) => state.app.sidebar_image;
 export const getApiConfig = (state: RootState) => state.app.api;
@@ -103,5 +109,6 @@ export const getProtectedToolSets = (state: RootState) => state.app.protectedToo
 export const getConfigLoadingState = (state: RootState) => state.app.isLoading;
 export const getConfigError = (state: RootState) => state.app.error;
 export const getCurrentUser = (state: RootState) => state.app.currentUser; // Export new selector
+export const getFavoritePersonalitiesCollapsed = (state: RootState) => state.app.favoritePersonalitiesCollapsed;
 
 export default appSlice.reducer;

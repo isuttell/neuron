@@ -18,6 +18,9 @@ from neuron_server.controllers.csrf import create_session_cookie
 from neuron_server.controllers.embedding_controller import (
     blueprint as embedding_blueprint,
 )
+from neuron_server.controllers.favorites_controller import (
+    blueprint as favorites_blueprint,
+)
 from neuron_server.controllers.graph_controller import (
     blueprint as graph_blueprint,
 )
@@ -218,6 +221,7 @@ app.register_blueprint(webhook_blueprint, url_prefix="/api/webhooks")
 app.register_blueprint(thread_blueprint, url_prefix="/api/threads")
 app.register_blueprint(message_blueprint, url_prefix="/api/messages")
 app.register_blueprint(personality_blueprint, url_prefix="/api/personalities")
+app.register_blueprint(favorites_blueprint, url_prefix="/api/favorites")
 app.register_blueprint(image_blueprint, url_prefix="/api/images")
 app.register_blueprint(graph_blueprint, url_prefix="/api/graph")
 app.register_blueprint(prompt_blueprint, url_prefix="/api/prompts")
