@@ -702,7 +702,7 @@ describe("Thread", () => {
       fireEvent.click(editButton);
 
       // Verify navigation was called with correct path
-      expect(mockNavigate).toHaveBeenCalledWith("/personalities/personality-1");
+      expect(mockNavigate).toHaveBeenCalledWith("/personality/personality-1");
     });
   });
 });
