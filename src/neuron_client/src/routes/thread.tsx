@@ -152,7 +152,7 @@ export default function Thread() {
           threadId={thread.id}
           showTools={showTools}
           onToggleTools={() => setShowTools(!showTools)}
-          onEditPersonality={() => navigate(`/personalities/${activePersonality?.id}`)}
+          onEditPersonality={() => navigate(`/personality/${activePersonality?.id}`)}
           onManageUsers={() => setIsThreadUsersOpen(true)}
           onDeleteThread={() => setIsDeleteThreadOpen(true)}
         />
