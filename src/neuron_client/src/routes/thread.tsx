@@ -12,11 +12,10 @@ import {
 } from "@/components/ui/dialog";
 import Loading from "@/lib/loading";
 import { cn, debounce } from "@/lib/utils";
-import EditPersonalityDialog from "@/personalities/EditPersonalityDialog";
 import ThreadUsersDialog from "@/threads/ThreadUsersDialog";
 import { useEffect, useRef, useState } from "react";
 import { shallowEqual } from "react-redux";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import {
   fetchMessagesByThread,
   postMessageByThread,
@@ -32,6 +31,7 @@ import { getActivePersonality } from "../slices/personalitiesSlice";
 import { selectThread } from "../slices/threadsSlice";
 export default function Thread() {
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   const activePersonality = useAppSelector(getActivePersonality);
   const lastMessageRef = useRef<HTMLDivElement | null>(null);
   const { threadId } = useParams();
@@ -54,7 +54,6 @@ export default function Thread() {
   const [isMobile, setIsMobile] = useState(false);
 
   // Dialog states
-  const [isEditPersonalityOpen, setIsEditPersonalityOpen] = useState(false);
   const [isThreadUsersOpen, setIsThreadUsersOpen] = useState(false);
   const [isDeleteThreadOpen, setIsDeleteThreadOpen] = useState(false);
 
@@ -153,20 +152,12 @@ export default function Thread() {
           threadId={thread.id}
           showTools={showTools}
           onToggleTools={() => setShowTools(!showTools)}
-          onEditPersonality={() => setIsEditPersonalityOpen(true)}
+          onEditPersonality={() => navigate(`/personalities/${activePersonality?.id}`)}
           onManageUsers={() => setIsThreadUsersOpen(true)}
           onDeleteThread={() => setIsDeleteThreadOpen(true)}
         />
 
         {/* Controlled dialogs */}
-        {activePersonality && (
-          <EditPersonalityDialog
-            personality={activePersonality}
-            open={isEditPersonalityOpen}
-            onOpenChange={createDialogHandler(setIsEditPersonalityOpen)}
-            trigger={<></>}
-          />
-        )}
         {threadId && (
           <ThreadUsersDialog
             threadId={threadId}
