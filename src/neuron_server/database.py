@@ -344,7 +344,7 @@ pool = AsyncNullConnectionPool(
 
 
 async def start() -> None:
-    # Disable migrations due to logging conflicts - use create_all instead
+    # Database connection setup - migrations handled by separate container
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
