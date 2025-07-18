@@ -38,9 +38,7 @@ if sys.platform.startswith("win"):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Neuron Server")
     parser.add_argument(
-        "--migration",
-        action="store_true",
-        help="Run database migrations and exit"
+        "--migration", action="store_true", help="Run database migrations and exit"
     )
     args = parser.parse_args()
 
@@ -54,7 +52,7 @@ if __name__ == "__main__":
                 debug=config.debug,
                 host=config.host,
                 port=config.port,
-                use_reloader=False
+                use_reloader=False,
             )
         else:
             hypercorn_config = Config()

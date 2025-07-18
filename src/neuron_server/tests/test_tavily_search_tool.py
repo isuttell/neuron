@@ -7,6 +7,7 @@ import pytest
 from pydantic import ValidationError
 
 from neuron_server.tools.tavily_search_tool import (
+    MAX_SEARCH_RESULTS_LENGTH,
     TavilySearchTool,
     TavilySearchToolArgs,
 )
@@ -25,7 +26,6 @@ class TestTavilySearchToolArgs:
         assert args.max_results == 5  # default
         assert args.search_depth == "basic"  # default
         assert args.include_answer is False  # default
-        assert args.include_raw_content is False  # default
 
     def test_all_parameters(self) -> None:
         """Test all parameters with valid values."""
@@ -38,7 +38,6 @@ class TestTavilySearchToolArgs:
             max_results=10,
             search_depth="advanced",
             include_answer=True,
-            include_raw_content=True,
         )
         assert args.query == "Python programming"
         assert args.topic == "news"
@@ -48,7 +47,6 @@ class TestTavilySearchToolArgs:
         assert args.max_results == 10
         assert args.search_depth == "advanced"
         assert args.include_answer is True
-        assert args.include_raw_content is True
 
     def test_topic_validation(self) -> None:
         """Test topic parameter validation."""
@@ -183,7 +181,6 @@ class TestTavilySearchTool:
                 search_depth="basic",
                 topic="general",
                 include_answer=False,
-                include_raw_content=False,
             )
             mock_instance.ainvoke.assert_called_once_with(
                 {"query": "Python programming"}
@@ -226,7 +223,6 @@ class TestTavilySearchTool:
                 topic="news",
                 time_range="week",
                 include_answer=True,
-                include_raw_content=True,
                 include_domains=["python.org"],
                 exclude_domains=["spam.com"],
             )
@@ -259,7 +255,6 @@ class TestTavilySearchTool:
                 search_depth="basic",
                 topic="general",
                 include_answer=False,
-                include_raw_content=False,
             )
 
     @pytest.mark.asyncio
@@ -288,7 +283,6 @@ class TestTavilySearchTool:
                 search_depth="basic",
                 topic="general",
                 include_answer=False,
-                include_raw_content=False,
             )
 
     @pytest.mark.asyncio
@@ -390,7 +384,6 @@ class TestTavilySearchTool:
                 search_depth="basic",  # default
                 topic="general",  # default
                 include_answer=False,  # default
-                include_raw_content=False,  # default
             )
 
     @pytest.mark.asyncio
@@ -424,3 +417,65 @@ class TestTavilySearchTool:
                 assert "time_range='week'" in debug_call_args
                 assert "max_results=10" in debug_call_args
                 assert "search_depth='advanced'" in debug_call_args
+
+    @pytest.mark.asyncio
+    async def test_response_length_limit_exceeded(self, tool: TavilySearchTool) -> None:
+        """Test handling when search results exceed MAX_SEARCH_RESULTS_LENGTH."""
+        # Create a large search result that exceeds the limit
+        large_content = "x" * (MAX_SEARCH_RESULTS_LENGTH + 1000)
+        large_results = [
+            {
+                "title": "Large Result",
+                "url": "https://example.com/large",
+                "content": large_content,
+                "score": 0.9,
+            }
+        ]
+
+        with patch(
+            "neuron_server.tools.tavily_search_tool.TavilySearchResults"
+        ) as mock_tavily:
+            # Mock TavilySearchResults to return large results
+            mock_instance = AsyncMock()
+            mock_instance.ainvoke.return_value = large_results
+            mock_tavily.return_value = mock_instance
+
+            # Execute search
+            result = await tool._arun(query="test query")
+
+            # Verify error message is returned
+            assert result.startswith("Search error:")
+            assert f"exceeded {MAX_SEARCH_RESULTS_LENGTH} characters" in result
+            assert "Try again with a more specific query" in result
+
+    @pytest.mark.asyncio
+    async def test_response_length_limit_within_bounds(
+        self, tool: TavilySearchTool
+    ) -> None:
+        """Test that results within the length limit are returned normally."""
+        # Create results that are just under the limit
+        content_size = MAX_SEARCH_RESULTS_LENGTH // 4  # Leave room for JSON formatting
+        normal_results = [
+            {
+                "title": "Normal Result",
+                "url": "https://example.com/normal",
+                "content": "x" * content_size,
+                "score": 0.9,
+            }
+        ]
+
+        with patch(
+            "neuron_server.tools.tavily_search_tool.TavilySearchResults"
+        ) as mock_tavily:
+            # Mock TavilySearchResults
+            mock_instance = AsyncMock()
+            mock_instance.ainvoke.return_value = normal_results
+            mock_tavily.return_value = mock_instance
+
+            # Execute search
+            result = await tool._arun(query="test query")
+
+            # Verify result is valid JSON (not an error message)
+            parsed_result = json.loads(result)
+            assert parsed_result == normal_results
+            assert len(result) <= MAX_SEARCH_RESULTS_LENGTH
