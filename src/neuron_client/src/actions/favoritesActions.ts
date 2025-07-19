@@ -6,7 +6,7 @@ export const fetchFavorites = createAsyncThunk(
   "favorites/fetchFavorites",
   async (_, thunkAPI) => {
     try {
-      const response = await api.get<{ favorites: PersonalityFavorite[] }>("/favorites");
+      const response = await api.get<{ favorites: PersonalityFavorite[] }>("/favorites/");
       return response;
     } catch (error) {
       if (error instanceof Error) {
@@ -21,7 +21,7 @@ export const addFavorite = createAsyncThunk(
   "favorites/addFavorite",
   async (personalityId: string, thunkAPI) => {
     try {
-      const response = await api.post<{ favorite: PersonalityFavorite }>("/favorites", {
+      const response = await api.post<{ favorite: PersonalityFavorite }>("/favorites/", {
         personality_id: personalityId,
       });
       return response;
@@ -38,7 +38,7 @@ export const removeFavorite = createAsyncThunk(
   "favorites/removeFavorite",
   async (personalityId: string, thunkAPI) => {
     try {
-      await api.delete(`/favorites/${personalityId}`);
+      await api.delete(`/favorites/${personalityId}/`);
       return { personalityId };
     } catch (error) {
       if (error instanceof Error) {
@@ -56,7 +56,7 @@ export const toggleFavorite = createAsyncThunk(
       const response = await api.post<{
         added: boolean;
         favorite?: PersonalityFavorite;
-      }>(`/favorites/${personalityId}/toggle`, {});
+      }>(`/favorites/${personalityId}/toggle/`, {});
       return {
         personalityId,
         added: response.added,
