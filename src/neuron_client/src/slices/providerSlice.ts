@@ -32,23 +32,45 @@ const initialState: ProvidersState = {
 
 export const fetchProviders = createAsyncThunk(
   "providers/fetchProviders",
-  async () => {
-    const data = await api.get<{
-      providers: Provider[];
-      active_provider_id: string | null;
-    }>("/providers/");
-    return {
-      providers: data.providers,
-      activeProviderId: data.active_provider_id,
-    };
+  async (_, { rejectWithValue }) => {
+    try {
+      const data = await api.get<{
+        providers: Provider[];
+        active_provider_id: string | null;
+      }>("/providers/");
+      return {
+        providers: data.providers,
+        activeProviderId: data.active_provider_id,
+      };
+    } catch (error: unknown) {
+      // Handle permission errors gracefully
+      if (error && typeof error === 'object' && 'response' in error) {
+        const apiError = error as { response?: { status?: number } };
+        if (apiError.response?.status === 403) {
+          return rejectWithValue("Admin access required");
+        }
+      }
+      throw error;
+    }
   }
 );
 
 export const setupProvider = createAsyncThunk(
   "providers/setupProvider",
-  async (providerId: string) => {
-    await api.post(`/providers/${providerId}/activate`, {});
-    return providerId;
+  async (providerId: string, { rejectWithValue }) => {
+    try {
+      await api.post(`/providers/${providerId}/activate`, {});
+      return providerId;
+    } catch (error: unknown) {
+      // Handle permission errors gracefully
+      if (error && typeof error === 'object' && 'response' in error) {
+        const apiError = error as { response?: { status?: number } };
+        if (apiError.response?.status === 403) {
+          return rejectWithValue("Admin access required");
+        }
+      }
+      throw error;
+    }
   }
 );
 

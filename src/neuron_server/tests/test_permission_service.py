@@ -129,10 +129,8 @@ class TestPermissionServiceUsage:
             thread_result = await permission_service.user_has_thread_access(
                 user_id, thread_id
             )
-            personality_result = (
-                await permission_service.user_has_personality_access(
-                    user_id, personality_id
-                )
+            personality_result = await permission_service.user_has_personality_access(
+                user_id, personality_id
             )
 
             assert thread_result is True

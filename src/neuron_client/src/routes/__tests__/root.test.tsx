@@ -76,7 +76,11 @@ describe("RootComponent", () => {
       getIdTokenClaims: vi.fn(),
       loginWithPopup: vi.fn(),
       handleRedirectCallback: vi.fn(),
-      user: { nickname: "testuser", picture: "https://example.com/avatar.png" } as User,
+      user: {
+        nickname: "testuser",
+        picture: "https://example.com/avatar.png",
+        "neuron/roles": ["admin"] // Admin role needed for provider access
+      } as User,
     } as Auth0ContextInterface<User>);
   };
 
@@ -262,6 +266,48 @@ describe("RootComponent", () => {
     expect(mockDispatch).toHaveBeenCalledWith(expect.any(Function)); // fetchMediaLists
     expect(mockDispatch).toHaveBeenCalledWith(expect.any(Function)); // fetchProviders
     expect(mockDispatch).toHaveBeenCalledWith(expect.any(Function)); // fetchPersonalities
+  });
+
+  it("does not fetch providers when user is not admin", async () => {
+    // Setup non-admin user
+    const useAuth0Mock = vi.spyOn(auth0React, "useAuth0");
+    useAuth0Mock.mockReturnValue({
+      isAuthenticated: true,
+      isLoading: false,
+      error: undefined,
+      getAccessTokenSilently: mockGetAccessTokenSilently,
+      loginWithRedirect: vi.fn(),
+      logout: vi.fn(),
+      getAccessTokenWithPopup: vi.fn(),
+      getIdTokenClaims: vi.fn(),
+      loginWithPopup: vi.fn(),
+      handleRedirectCallback: vi.fn(),
+      user: {
+        nickname: "testuser",
+        picture: "https://example.com/avatar.png",
+        "neuron/roles": [] // No admin role
+      } as User,
+    } as Auth0ContextInterface<User>);
+
+    setupApiMock(true);
+
+    // Use act to handle async state updates
+    await act(async () => {
+      renderComponent(true);
+    });
+
+    expect(mockDispatch).toHaveBeenCalledWith({ type: "socket/connect" });
+    expect(mockDispatch).toHaveBeenCalledWith(expect.any(Function)); // fetchConfig
+    expect(mockDispatch).toHaveBeenCalledWith(expect.any(Function)); // fetchMediaLists
+    expect(mockDispatch).toHaveBeenCalledWith(expect.any(Function)); // fetchPersonalities
+
+    // Verify fetchProviders was NOT called
+    const dispatchCalls = mockDispatch.mock.calls;
+    const hasProviderCall = dispatchCalls.some(call => {
+      const action = call[0];
+      return typeof action === 'function' && action.toString().includes('fetchProviders');
+    });
+    expect(hasProviderCall).toBe(false);
   });
 
   // Test specifically for the userSynced state transitions and effects on rendering
