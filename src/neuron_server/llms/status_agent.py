@@ -12,7 +12,7 @@ from neuron_server.llms.llm import LLM
 from neuron_server.logger import logger
 from neuron_server.models.provider_model import ProviderModelModel
 from neuron_server.models.thread_model import ThreadModel
-from neuron_server.pubsub import pubsub
+from neuron_server.secure_pubsub import secure_pubsub
 
 
 class StatusMessage(BaseModel):
@@ -162,7 +162,7 @@ class StatusAgent:
     async def _publish_status_update(self, thread: ThreadModel) -> None:
         """Publish the thread status update."""
         await ThreadModel.set(thread.id, "status", thread.status)
-        await pubsub.publish("app", GetThreadResponse(thread=thread))
+        await secure_pubsub.publish_thread_update(GetThreadResponse(thread=thread))
 
     async def _generate_status_message(
         self, current_status: str, recent_events: list, human_message: str | None = None

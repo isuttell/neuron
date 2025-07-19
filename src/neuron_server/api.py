@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import re
+import uuid
 from typing import Any
 
 import openai
@@ -71,6 +72,7 @@ from neuron_server.pubsub import client
 from neuron_server.task_scheduler import TaskScheduler
 from neuron_server.type_defs.request import NeuronRequest
 from neuron_server.util.image_utilities import create_thumbnails
+from neuron_server.websocket_session_manager import session_manager
 
 logger = logging.getLogger(__name__)
 
@@ -166,22 +168,40 @@ async def get_static(path: str) -> Response:
     return await send_from_directory(config.static_folder, path)
 
 
-async def sending() -> None:
+async def sending(session_id: str, user_id: str) -> None:
+    """Handle outgoing messages for a specific user session."""
     async with client.pubsub() as pubsub:
-        await pubsub.subscribe("app")
+        # Subscribe to user-specific channel
+        user_channel = f"user:{user_id}"
+        await pubsub.subscribe(user_channel)
+
         while True:
             message = await pubsub.get_message(
                 ignore_subscribe_messages=True, timeout=None
             )
             if message is not None:
-                await websocket.send(message["data"].decode("utf-8"))
+                # Get current session to ensure it's still active
+                session = await session_manager.get_session(session_id)
+                if session:
+                    await websocket.send(message["data"].decode("utf-8"))
+                else:
+                    # Session no longer exists, break out of loop
+                    logger.warning(
+                        f"Session {session_id} no longer active, stopping sender"
+                    )
+                    break
 
 
-async def receiving() -> None:
+async def receiving(session_id: str) -> None:
+    """Handle incoming messages for a specific user session."""
     while True:
         try:
             data = await websocket.receive()
             body = json.loads(data)
+
+            # Add session context to the event
+            body["_session_id"] = session_id
+
             await router.dispatch(body)
         except Exception as e:
             logger.error(e, exc_info=True)
@@ -192,21 +212,33 @@ async def ws() -> None:
     # First message is the access token
     data = await websocket.receive()
     token = None
+    session_id = None
     try:
         # Verify the access token
         access_token = data.split("=")[-1]
         token = await decode_token(access_token)
-        logger.info(f"Connected ({token.user_id})")
-        # Start the producer and consumer
-        producer = asyncio.create_task(sending())
-        consumer = asyncio.create_task(receiving())
+
+        # Create unique session ID for this connection
+        session_id = str(uuid.uuid4())
+
+        # Register session with session manager
+        await session_manager.add_session(websocket, token, session_id)
+
+        logger.info(f"Connected ({token.user_id}) - Session: {session_id}")
+
+        # Start the producer and consumer with session context
+        producer = asyncio.create_task(sending(session_id, token.user_id))
+        consumer = asyncio.create_task(receiving(session_id))
         await asyncio.gather(producer, consumer)
     except Exception as e:
         await websocket.close(401, str(e))
         logger.error(e)
     finally:
+        # Clean up session
+        if session_id:
+            await session_manager.remove_session(session_id)
         if token:
-            logger.info(f"Disconnected ({token.user_id})")
+            logger.info(f"Disconnected ({token.user_id}) - Session: {session_id}")
 
 
 @app.get("/status")
@@ -293,6 +325,10 @@ scheduler = TaskScheduler(host=config.redis.host, port=config.redis.port, db=2)
 async def startup() -> None:
     await scheduler.start()
     logger.debug("Task scheduler started")
+
+    # Schedule session cleanup to run every hour
+    await scheduler.schedule_session_cleanup(interval_hours=1)
+
     connection_manager.initialize()
     logger.debug("Neo4j initialized")
 

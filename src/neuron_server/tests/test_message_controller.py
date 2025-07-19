@@ -1,6 +1,6 @@
 from collections.abc import AsyncGenerator
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 from uuid import UUID, uuid4
 
 import pytest
@@ -468,13 +468,24 @@ async def test_apost_message() -> None:
     thread_id: UUID = uuid4()
     personality_id: UUID = uuid4()
     personality_id_str: str = str(personality_id)
+    user_id = "test_user_123"
+
+    # Create mock session
+    mock_session = Mock()
+    mock_session.user_id = user_id
+    mock_session.nickname = "testuser"
 
     with (
         patch("neuron_server.controllers.message_controller.UUID") as mock_uuid,
         patch("neuron_server.controllers.message_controller.agent") as mock_agent,
+        patch(
+            "neuron_server.controllers.message_controller.permission_service"
+        ) as mock_perm,
     ):
         mock_uuid.return_value = personality_id
         mock_agent.astream = AsyncMock()
+        mock_perm.user_has_thread_access = AsyncMock(return_value=True)
+        mock_perm.user_has_personality_access = AsyncMock(return_value=True)
 
         event = PostMessage(
             type="message",
@@ -483,13 +494,14 @@ async def test_apost_message() -> None:
             prompt="Test message",
         )
 
-        await message_controller.apost_message(event)
+        await message_controller.apost_message(event, session=mock_session)
 
         mock_agent.astream.assert_called_once_with(
             {
                 "thread_id": thread_id,
                 "personality_id": personality_id,
-                "user_id": None,
+                "user_id": user_id,
+                "username": "testuser",
                 "prompt": "Test message",
             }
         )
@@ -498,14 +510,27 @@ async def test_apost_message() -> None:
 @pytest.mark.asyncio
 async def test_acancel_message() -> None:
     """Test CancelMessage event handler."""
-    event = CancelMessage(type="cancel", thread_id=uuid4())
+    thread_id = uuid4()
+    user_id = "test_user_123"
 
-    with patch("neuron_server.controllers.message_controller.pubsub") as mock_pubsub:
+    # Create mock session
+    mock_session = Mock()
+    mock_session.user_id = user_id
+
+    event = CancelMessage(type="cancel", thread_id=thread_id)
+
+    with (
+        patch("neuron_server.controllers.message_controller.pubsub") as mock_pubsub,
+        patch(
+            "neuron_server.controllers.message_controller.permission_service"
+        ) as mock_perm,
+    ):
         mock_pubsub.publish = AsyncMock()
+        mock_perm.user_has_thread_access = AsyncMock(return_value=True)
 
-        await message_controller.acancel_message(event)
+        await message_controller.acancel_message(event, session=mock_session)
 
-        mock_pubsub.publish.assert_called_once_with("cancel", event.thread_id)
+        mock_pubsub.publish.assert_called_once_with("cancel", thread_id)
 
 
 if __name__ == "__main__":

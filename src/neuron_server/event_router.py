@@ -6,6 +6,7 @@ from typing import Any, Literal, Self
 from pydantic import BaseModel, Field
 
 from neuron_server.logger import logger
+from neuron_server.websocket_session_manager import session_manager
 
 
 class Event(BaseModel):
@@ -51,6 +52,20 @@ class EventRouter:
             raise ValueError("Event type is required")
         if event_type not in self.routes:
             raise ValueError(f"No route for event type: {event_type}")
+
+        # Extract session context if present
+        session_id = event.pop("_session_id", None)
+        session = None
+        if session_id:
+            session = await session_manager.get_session(session_id)
+
         model, func = self.routes[event_type]
-        logger.debug(f"incoming={event_type}")
-        asyncio.create_task(func(model(**event)))
+        user_id = session.user_id if session else 'unknown'
+        logger.debug(f"incoming={event_type} from user={user_id}")
+
+        # Pass session context to the handler
+        if session:
+            asyncio.create_task(func(model(**event), session=session))
+        else:
+            # Fallback for handlers without session context
+            asyncio.create_task(func(model(**event)))

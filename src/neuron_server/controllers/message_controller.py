@@ -21,9 +21,11 @@ from neuron_server.models import ThreadModel
 from neuron_server.models.media_item_model import MediaItemModel
 from neuron_server.models.thread_user_model import ThreadUserModel
 from neuron_server.models.user_model import UserModel
+from neuron_server.permission_service import permission_service
 from neuron_server.pubsub import pubsub
 from neuron_server.type_defs.request_proxy import request
 from neuron_server.util.file_utilities import process_uploaded_file
+from neuron_server.websocket_session_manager import WebSocketSession
 
 logger = logging.getLogger(__name__)
 
@@ -178,19 +180,67 @@ async def post_thread_message(thread_id: UUID) -> tuple[dict[str, str], int]:
 
 
 @router.on(PostMessage)
-async def apost_message(event: PostMessage) -> None:
+async def apost_message(
+    event: PostMessage, session: WebSocketSession | None = None
+) -> None:
+    """Handle posting a message to a thread with permission checking."""
+    if not session:
+        logger.error("PostMessage event received without session context")
+        return
+
+    # Check if user has access to the thread
+    has_access = await permission_service.user_has_thread_access(
+        session.user_id, event.thread_id
+    )
+    if not has_access:
+        logger.warning(
+            f"User {session.user_id} attempted to post to thread "
+            f"{event.thread_id} without access"
+        )
+        return
+
+    # Check if user has access to the personality
+    has_personality_access = await permission_service.user_has_personality_access(
+        session.user_id, event.personality_id
+    )
+    if not has_personality_access:
+        logger.warning(
+            f"User {session.user_id} attempted to use personality "
+            f"{event.personality_id} without access"
+        )
+        return
+
     await agent.astream(
         {
             "thread_id": event.thread_id,
             "personality_id": event.personality_id,
-            "user_id": None,
+            "user_id": session.user_id,
+            "username": session.nickname,
             "prompt": event.prompt,
         }
     )
 
 
 @router.on(CancelMessage)
-async def acancel_message(event: CancelMessage) -> None:
+async def acancel_message(
+    event: CancelMessage, session: WebSocketSession | None = None
+) -> None:
+    """Handle cancelling a message with permission checking."""
+    if not session:
+        logger.error("CancelMessage event received without session context")
+        return
+
+    # Check if user has access to the thread
+    has_access = await permission_service.user_has_thread_access(
+        session.user_id, event.thread_id
+    )
+    if not has_access:
+        logger.warning(
+            f"User {session.user_id} attempted to cancel thread "
+            f"{event.thread_id} without access"
+        )
+        return
+
     await pubsub.publish(
         "cancel",
         event.thread_id,

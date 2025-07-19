@@ -23,7 +23,7 @@ from neuron_server.logger import logger
 from neuron_server.models.personality_model import PersonalityModel
 from neuron_server.models.provider_model import ProviderModelModel
 from neuron_server.models.thread_model import ThreadModel
-from neuron_server.pubsub import pubsub
+from neuron_server.secure_pubsub import secure_pubsub
 
 
 @dataclass
@@ -299,14 +299,13 @@ class AgentOrchestrator:
         if args.get("temp_id"):
             message_data["temp_id"] = args["temp_id"]
 
-        await pubsub.publish(
-            "app",
+        await secure_pubsub.publish_thread_message(
             MessageEvent(
                 message=ThreadMessage(
                     **message_data,
                     thread_id=thread.id,
                 )
-            ),
+            )
         )
         return human_message
 
@@ -455,7 +454,14 @@ class AgentOrchestrator:
                 await self.status_manager.update_thread_status(
                     thread, status="error", human_message=config.get("prompt")
                 )
-            await pubsub.publish("app", ErrorEvent(message=str(e)))
+            # Send error to the specific user who triggered the action
+            user_id = config.get("user_id")
+            if user_id and user_id != "Unknown":
+                await secure_pubsub.publish_error_to_user(
+                    user_id, ErrorEvent(message=str(e))
+                )
+            else:
+                logger.warning("Could not send error to user: user_id not available")
 
         finally:
             if thread:

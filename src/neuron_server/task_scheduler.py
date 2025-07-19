@@ -48,7 +48,13 @@ class TaskScheduler(AbstractAsyncRedisEventScheduler):
         )
 
     async def on_event(self, event_id: str, metadata: dict[str, Any]) -> None:
-        """Handle scheduled events by creating a new thread and streaming response."""
+        """Handle scheduled events."""
+        # Handle session cleanup events
+        if metadata.get("task_type") == "session_cleanup":
+            await self._handle_session_cleanup()
+            return
+
+        # Handle stream events by creating a new thread and streaming response
         from neuron_server.llms.agent import astream
 
         try:
@@ -111,3 +117,39 @@ class TaskScheduler(AbstractAsyncRedisEventScheduler):
             logger.error(f"Error processing event {event_id}: {str(e)}", exc_info=True)
             # Do not propagate the exception so that recurring events are rescheduled
             return
+
+    async def _handle_session_cleanup(self) -> None:
+        """Handle session cleanup task."""
+        try:
+            from neuron_server.websocket_session_manager import session_manager
+
+            timestamp = datetime.now(self.timezone).isoformat()
+            logger.debug(f"Running session cleanup at {timestamp} UTC")
+
+            cleanup_count = await session_manager.cleanup_sessions()
+
+            if cleanup_count > 0:
+                logger.info(
+                    f"Session cleanup completed: {cleanup_count} sessions cleaned"
+                )
+            else:
+                logger.debug("Session cleanup completed: no sessions to clean")
+
+        except Exception as e:
+            logger.error(f"Error during session cleanup: {str(e)}", exc_info=True)
+
+    async def schedule_session_cleanup(self, interval_hours: int = 1) -> None:
+        """Schedule recurring session cleanup task.
+
+        Args:
+            interval_hours: How often to run cleanup (default: 1 hour)
+        """
+        pattern = RecurringPattern(interval=interval_hours, unit="hours")
+
+        await self.schedule_event(
+            event_id="session_cleanup",
+            event_data={"task_type": "session_cleanup", "user_id": "system"},
+            recurring_pattern=pattern,
+        )
+
+        logger.info(f"Session cleanup scheduled to run every {interval_hours} hour(s)")

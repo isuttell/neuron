@@ -274,6 +274,31 @@ mock_scheduler.update_event = AsyncMock()
 mock_scheduler.delete_event = AsyncMock()
 mock_scheduler.list_events = AsyncMock(return_value=[])
 mock_scheduler.get_event = AsyncMock()
+mock_scheduler.schedule_session_cleanup = AsyncMock()
+
+# Mock session manager
+mock_session_manager = Mock()
+mock_session_manager.add_session = AsyncMock()
+mock_session_manager.remove_session = AsyncMock()
+mock_session_manager.get_session = AsyncMock()
+mock_session_manager.get_user_sessions = AsyncMock(return_value=[])
+mock_session_manager.get_active_users = AsyncMock(return_value=set())
+mock_session_manager.cleanup_sessions = AsyncMock(return_value=0)
+
+# Mock permission service
+mock_permission_service = Mock()
+mock_permission_service.user_has_thread_access = AsyncMock(return_value=True)
+mock_permission_service.user_has_personality_access = AsyncMock(return_value=True)
+mock_permission_service.get_users_with_thread_access = AsyncMock(return_value=[])
+mock_permission_service.get_users_with_personality_access = AsyncMock(return_value=[])
+
+# Mock secure pubsub
+mock_secure_pubsub = Mock()
+mock_secure_pubsub.publish_to_user = AsyncMock()
+mock_secure_pubsub.publish_thread_message = AsyncMock()
+mock_secure_pubsub.publish_thread_update = AsyncMock()
+mock_secure_pubsub.publish_thread_cancellation = AsyncMock()
+mock_secure_pubsub.publish_error_to_user = AsyncMock()
 
 # Don't mock the entire API module, just patch the scheduler inside the tests
 # We need to maintain the actual Quart app for the API tests
@@ -457,6 +482,21 @@ sys.modules["neuron_server.tools.openai_tts_tool.openai"] = mock_openai_simple
 sys.modules["neuron_server.tools.whisper_stt_tool.openai"] = mock_openai_simple
 sys.modules["neuron_server.llms.agent.openai"] = mock_openai_simple
 sys.modules["neuron_server.llms.embeddings.openai"] = mock_openai_full
+
+# Mock new session and permission modules
+mock_websocket_session_module = Mock()
+mock_websocket_session_module.session_manager = mock_session_manager
+# Add WebSocketSession class mock to prevent type annotation issues
+mock_websocket_session_module.WebSocketSession = Mock
+sys.modules["neuron_server.websocket_session_manager"] = mock_websocket_session_module
+
+mock_permission_module = Mock()
+mock_permission_module.permission_service = mock_permission_service
+sys.modules["neuron_server.permission_service"] = mock_permission_module
+
+mock_secure_pubsub_module = Mock()
+mock_secure_pubsub_module.secure_pubsub = mock_secure_pubsub
+sys.modules["neuron_server.secure_pubsub"] = mock_secure_pubsub_module
 
 
 @pytest.fixture(autouse=True)

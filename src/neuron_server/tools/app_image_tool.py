@@ -16,7 +16,7 @@ from neuron_server.config import config as neuron_config
 from neuron_server.controllers.events.app_events import SidebarImageEvent
 from neuron_server.controllers.events.personality_events import GetPersonalityResponse
 from neuron_server.models.personality_model import PersonalityModel
-from neuron_server.pubsub import pubsub
+from neuron_server.secure_pubsub import secure_pubsub
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +55,8 @@ class AppImageTool(BaseTool):
                     key,
                     url,
                 )
-                await pubsub.publish("app", SidebarImageEvent(url=url))
+                # Sidebar image is a global UI update, broadcast to all users
+                await secure_pubsub.broadcast_to_all_users(SidebarImageEvent(url=url))
             elif key == "dashboard_image":
                 tmp_upload_file = os.path.join(neuron_config.temp_folder, uuid4().hex)
                 required_extension = neuron_config.tablet_image_filename.rsplit(".")[-1]
@@ -100,8 +101,9 @@ class AppImageTool(BaseTool):
                 personality = await PersonalityModel.set(
                     personality_id=personality_id, key="logo", value=url
                 )
-                await pubsub.publish(
-                    "personality", GetPersonalityResponse(personality=personality)
+                # Send personality update to users with access to this personality
+                await secure_pubsub.publish_personality_event(
+                    personality_id, GetPersonalityResponse(personality=personality)
                 )
             else:
                 raise ValueError(f"Invalid key: {key}")
