@@ -97,7 +97,7 @@ describe("Root Component - Default Provider Selection", () => {
       },
     });
 
-    // Mock Auth0 as authenticated
+    // Mock Auth0 as authenticated admin user
     (useAuth0 as vi.Mock).mockReturnValue({
       isAuthenticated: true,
       isLoading: false,
@@ -105,6 +105,11 @@ describe("Root Component - Default Provider Selection", () => {
       getAccessTokenSilently: mockGetAccessTokenSilently,
       loginWithRedirect: vi.fn(),
       logout: vi.fn(),
+      user: {
+        "neuron/roles": ["admin"], // Admin role needed for provider access
+        nickname: "testadmin",
+        picture: "https://example.com/avatar.png"
+      },
     });
 
     // Mock socket as connected

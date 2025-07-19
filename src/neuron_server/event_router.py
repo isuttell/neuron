@@ -60,7 +60,7 @@ class EventRouter:
             session = await session_manager.get_session(session_id)
 
         model, func = self.routes[event_type]
-        user_id = session.user_id if session else 'unknown'
+        user_id = session.user_id if session else "unknown"
         logger.debug(f"incoming={event_type} from user={user_id}")
 
         # Pass session context to the handler

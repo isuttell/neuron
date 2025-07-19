@@ -14,6 +14,7 @@ import { Outlet } from "react-router-dom";
 import { setGetAccessTokenSilently } from "../actions/getToken";
 import { useAppDispatch, useAppSelector } from "../hooks";
 import { api } from "../lib/api"; // Re-add api client import
+import { isAdmin } from "../lib/auth";
 import { getConnectionStatus } from "../slices/socketSlice";
 
 export function RootComponent() {
@@ -24,6 +25,7 @@ export function RootComponent() {
     error,
     getAccessTokenSilently,
     logout,
+    user,
   } = useAuth0();
 
   const isConnected = useAppSelector(getConnectionStatus);
@@ -45,7 +47,12 @@ export function RootComponent() {
       dispatch({ type: "socket/connect" });
       dispatch(fetchConfig());
       dispatch(fetchMediaLists());
-      dispatch(fetchProviders());
+
+      // Only fetch providers if user is system admin
+      if (isAdmin(user)) {
+        dispatch(fetchProviders());
+      }
+
       dispatch(fetchPersonalities());
       dispatch(fetchFavorites());
 
@@ -74,6 +81,7 @@ export function RootComponent() {
     loginWithRedirect,
     getAccessTokenSilently,
     userSynced,
+    user,
   ]);
 
   useEffect(() => {
@@ -82,15 +90,15 @@ export function RootComponent() {
     }
   }, [getAccessTokenSilently]);
 
-  // Set default provider if no active provider is set
+  // Set default provider if no active provider is set (only for admins)
   useEffect(() => {
-    if (providers.length > 0 && !activeProviderId) {
+    if (isAdmin(user) && providers.length > 0 && !activeProviderId) {
       const defaultProvider = providers.find(p => p.default);
       if (defaultProvider) {
         dispatch(setupProvider(defaultProvider.id));
       }
     }
-  }, [providers, activeProviderId, dispatch]);
+  }, [user, providers, activeProviderId, dispatch]);
 
   useEffect(() => {
     if (error && error.message === "Invalid state") {
