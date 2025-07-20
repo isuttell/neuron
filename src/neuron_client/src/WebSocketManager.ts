@@ -150,6 +150,14 @@ export default class WebSocketManager {
     this.events.on(event, wrappedListener);
   }
 
+  // Handle internal events that are not WebSocket messages
+  onInternal(event: string, listener: () => void) {
+    this.events.on(event, listener);
+    return {
+      remove: () => this.events.off(event, listener),
+    };
+  }
+
   sendMessage(action: Action) {
     if (this.socket && this.socket.readyState === WebSocket.OPEN) {
       const message = {

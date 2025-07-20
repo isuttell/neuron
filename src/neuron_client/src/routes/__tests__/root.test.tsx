@@ -169,17 +169,23 @@ describe("RootComponent", () => {
     expect(screen.getByText("Error: Auth error")).toBeInTheDocument();
   });
 
-  it("keeps showing spinner when authenticated but not connected", async () => {
+  it("renders content even when not connected (WebSocket disconnection should not unmount app)", async () => {
     setupAuth0Mock({ isAuthenticated: true, isLoading: false });
     setupApiMock(true);
 
-    // Connection status is false
+    // Mock state to simulate the userSynced state being true
+    const useStateMock = vi.spyOn(React, 'useState');
+    useStateMock.mockImplementationOnce(() => {
+      return [true, vi.fn()]; // Simulate userSynced=true
+    });
+
+    // Connection status is false, but app should still render
     await act(async () => {
       renderComponent(false);
     });
 
-    expect(screen.getByTestId("spinner")).toBeInTheDocument();
-    expect(screen.queryByTestId("main-sidebar")).not.toBeInTheDocument();
+    // Should render content even when disconnected (no more unmounting on WebSocket disconnect)
+    expect(screen.getByTestId("main-sidebar")).toBeInTheDocument();
   });
 
   it("shows spinner when not fully synced with backend", async () => {
@@ -204,7 +210,7 @@ describe("RootComponent", () => {
   });
 
   // Verify that content only renders when all required conditions are met
-  it("renders content only when authenticated, connected, and user is synced", async () => {
+  it("renders content only when authenticated and user is synced (connection no longer required)", async () => {
     // Mock auth and API
     setupAuth0Mock({ isAuthenticated: true, isLoading: false });
     const apiMock = apiModule.api;

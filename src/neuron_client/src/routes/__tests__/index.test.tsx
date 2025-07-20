@@ -105,6 +105,9 @@ vi.mock("../../hooks", () => ({
         threads: {},
         loading: false,
         error: null
+      },
+      socket: {
+        connected: true  // Mock WebSocket as connected by default
       }
     };
 
@@ -203,6 +206,9 @@ describe("Index Route", () => {
             threads: {},
             loading: false,
             error: null
+          },
+          socket: {
+            connected: true  // Add socket state
           }
         };
 
@@ -228,6 +234,9 @@ describe("Index Route", () => {
             threads: {},
             loading: false,
             error: null
+          },
+          socket: {
+            connected: true  // Add socket state
           }
         };
 

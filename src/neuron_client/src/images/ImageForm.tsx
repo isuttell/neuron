@@ -4,7 +4,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { CornerDownLeft } from "lucide-react";
 import { useState } from "react";
 import { useAppSelector } from "../hooks";
-import { getSocket } from "../slices/socketSlice";
+import { getSocket, getConnectionStatus } from "../slices/socketSlice";
 import { WebSocketPayload } from "../types/websocket";
 
 interface ImageFormProps {
@@ -19,6 +19,7 @@ export default function ImageForm({
   className = "",
 }: ImageFormProps) {
   const socket = useAppSelector(getSocket);
+  const isConnected = useAppSelector(getConnectionStatus);
   const [value, setValue] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -29,7 +30,7 @@ export default function ImageForm({
       | React.KeyboardEvent<HTMLTextAreaElement>
   ) => {
     e.preventDefault();
-    if (!socket || value.trim().length === 0 || isSubmitting) {
+    if (!socket || !isConnected || value.trim().length === 0 || isSubmitting) {
       return;
     }
     setIsSubmitting(true);
@@ -53,7 +54,7 @@ export default function ImageForm({
         className="min-h-12 bg-secondary resize-none border-0 p-3 shadow-none focus-visible:ring-0"
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        disabled={isLoading}
+        disabled={isLoading || !isConnected}
         onKeyDown={(e) => {
           if (e.key === "Enter" && !e.shiftKey) {
             handleSubmit(e);
@@ -66,7 +67,7 @@ export default function ImageForm({
           type="submit"
           size="sm"
           className="ml-auto gap-1.5"
-          disabled={isSubmitting}
+          disabled={isSubmitting || !isConnected}
         >
           Submit
           <CornerDownLeft className="size-3.5" />

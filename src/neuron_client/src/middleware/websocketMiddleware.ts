@@ -21,6 +21,9 @@ import type {
 } from "../types/websocket";
 import WebSocketManager from "../WebSocketManager";
 
+// Store persistent disconnection toast ID
+let disconnectionToastId: string | number | undefined;
+
 const websocketMiddleware =
   (socket: WebSocketManager) =>
   ({ dispatch }: MiddlewareAPI) =>
@@ -59,18 +62,44 @@ const websocketMiddleware =
           dispatch(upsertPrompt({ type: "prompt", prompt: event.prompt }));
         });
 
-        socket.on("open", () => {
+        socket.onInternal("open", () => {
           // Dispatch an action when connected
           dispatch(connect(socket));
-          toast("Connected", {
-            duration: 1000,
+
+          // Dismiss persistent disconnection toast if it exists
+          if (disconnectionToastId) {
+            toast.dismiss(disconnectionToastId);
+            disconnectionToastId = undefined;
+          }
+
+          toast.success("Connected", {
+            duration: 1500,
           });
         });
 
-        socket.on("close", () => {
+        socket.onInternal("close", () => {
           // Dispatch an action when disconnected
           dispatch(disconnect());
-          toast("Disconnected. Attempting to reconnect...");
+
+          // Create persistent disconnection indicator
+          disconnectionToastId = toast.warning("Disconnected", {
+            description: "Attempting to reconnect...",
+            duration: Infinity,
+            closeButton: false,
+          });
+        });
+
+        socket.onInternal("give_up", () => {
+          // Update existing persistent toast to error state
+          if (disconnectionToastId) {
+            toast.dismiss(disconnectionToastId);
+          }
+
+          disconnectionToastId = toast.error("Connection Failed", {
+            description: "Unable to reconnect after multiple attempts",
+            duration: Infinity,
+            closeButton: true,
+          });
         });
 
         socket.on("personality", (event: PersonalityEvent) => {

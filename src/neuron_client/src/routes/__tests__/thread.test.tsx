@@ -264,6 +264,9 @@ interface AppState {
     personalities: Personality[];
     activePersonalityId: string | null;
   };
+  socket: {
+    connected: boolean;
+  };
 }
 
 // Mock messages data for MessageItem component
@@ -344,6 +347,9 @@ describe("Thread", () => {
         personalities: [],
         activePersonalityId: null,
       },
+      socket: {
+        connected: true,
+      },
     }
   ) => {
     const store = configureStore({
@@ -352,6 +358,7 @@ describe("Thread", () => {
         media: (state = initialState.media!) => state,
         threads: (state = initialState.threads!) => state,
         personalities: (state = initialState.personalities!) => state,
+        socket: (state = initialState.socket || { connected: true }) => state,
       },
     });
 
@@ -385,6 +392,7 @@ describe("Thread", () => {
         media: { items: [] },
         threads: { threads: [mockThread], loading: false, error: null },
         personalities: { personalities: [], activePersonalityId: null },
+        socket: { connected: true },
       };
 
       renderThread(initialState);

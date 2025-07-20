@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { fetchPersonalities } from "../actions/personalityActions";
 import MessageForm from "../messages/MessageForm";
+import { getConnectionStatus } from "../slices/socketSlice";
 
 
 export default function Index() {
@@ -22,6 +23,7 @@ export default function Index() {
   const activePersonalityId = useAppSelector(getActivePersonalityId);
   const activePersonality = useAppSelector(getActivePersonality);
   const personalities = useAppSelector(getPersonalities);
+  const isConnected = useAppSelector(getConnectionStatus);
 
   const personalitiesLoading = useAppSelector(
     (state) => state.personalities.loading
@@ -79,10 +81,12 @@ export default function Index() {
         <div className="flex flex-col gap-2 max-w-[768px] mx-auto w-full">
           <MessageForm
             onSubmit={handleSubmit}
-            disabled={!activePersonalityId}
+            disabled={!activePersonalityId || !isConnected}
             isLoading={isLoading}
             placeholder={
-              activePersonality
+              !isConnected
+                ? "WebSocket disconnected - please wait for reconnection"
+                : activePersonality
                 ? "Type your prompt here..."
                 : "Select a personality first"
             }

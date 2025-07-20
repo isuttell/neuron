@@ -15,7 +15,6 @@ import { setGetAccessTokenSilently } from "../actions/getToken";
 import { useAppDispatch, useAppSelector } from "../hooks";
 import { api } from "../lib/api"; // Re-add api client import
 import { isAdmin } from "../lib/auth";
-import { getConnectionStatus } from "../slices/socketSlice";
 
 export function RootComponent() {
   const {
@@ -28,7 +27,6 @@ export function RootComponent() {
     user,
   } = useAuth0();
 
-  const isConnected = useAppSelector(getConnectionStatus);
   const dispatch = useAppDispatch();
   const [userSynced, setUserSynced] = useState(false); // Add state variable
   const providers = useAppSelector(selectProviders);
@@ -128,8 +126,8 @@ export function RootComponent() {
     );
   }
 
-  // Check if all authentication and connection conditions are met
-  const isFullyAuthenticated = !isLoading && isAuthenticated && isConnected && userSynced;
+  // Check if all authentication conditions are met (removed isConnected check)
+  const isFullyAuthenticated = !isLoading && isAuthenticated && userSynced;
 
   return (
     <SidebarProvider>
