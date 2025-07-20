@@ -55,9 +55,6 @@ class SecurePubSub:
 
         # Send to authorized users only
         await self.publish_to_users(authorized_users, message_event)
-        logger.debug(
-            f"Published thread message to {len(authorized_users)} authorized users"
-        )
 
     async def publish_partial_message(self, partial_event: PartialMessageEvent) -> None:
         """Publish a partial message to users with access to the thread."""
@@ -79,9 +76,6 @@ class SecurePubSub:
 
         # Send to authorized users only
         await self.publish_to_users(authorized_users, partial_event)
-        logger.debug(
-            f"Published partial message to {len(authorized_users)} authorized users"
-        )
 
     async def publish_thread_update(self, thread_event: GetThreadResponse) -> None:
         """Publish a thread update to users with access to the thread."""
@@ -101,9 +95,6 @@ class SecurePubSub:
 
         # Send to authorized users only
         await self.publish_to_users(authorized_users, thread_event)
-        logger.debug(
-            f"Published thread update to {len(authorized_users)} authorized users"
-        )
 
     async def publish_thread_cancellation(
         self, cancel_event: CancelRequestEvent
@@ -127,9 +118,6 @@ class SecurePubSub:
 
         # Send to authorized users only
         await self.publish_to_users(authorized_users, cancel_event)
-        logger.debug(
-            f"Published thread cancellation to {len(authorized_users)} authorized users"
-        )
 
     async def publish_media_event(self, media_event: MediaEvent) -> None:
         """Publish a media event to users with access to the associated thread."""
@@ -160,9 +148,6 @@ class SecurePubSub:
 
         # Send to authorized users only
         await self.publish_to_users(list(all_authorized_users), media_event)
-        logger.debug(
-            f"Published media event to {len(all_authorized_users)} authorized users"
-        )
 
     async def publish_personality_event(
         self, personality_id: UUID, event: BaseModel
@@ -179,9 +164,6 @@ class SecurePubSub:
 
         # Send to authorized users only
         await self.publish_to_users(authorized_users, event)
-        logger.debug(
-            f"Published personality event to {len(authorized_users)} authorized users"
-        )
 
     async def publish_error_to_user(self, user_id: str, error_event: BaseModel) -> None:
         """Publish an error event to a specific user."""
@@ -195,7 +177,6 @@ class SecurePubSub:
         active_users = await session_manager.get_active_users()
         if active_users:
             await self.publish_to_users(list(active_users), event)
-            logger.debug(f"Broadcast event to {len(active_users)} active users")
 
     async def publish_admin_event(self, event: BaseModel) -> None:
         """Publish an event to admin users only.

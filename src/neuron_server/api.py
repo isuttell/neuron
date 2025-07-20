@@ -222,7 +222,6 @@ async def ping_handler(session_id: str) -> None:
                 }
             )
             await websocket.send(ping_message)
-            logger.debug(f"Sent ping to session {session_id}")
 
         except Exception as e:
             logger.warning(f"Ping failed for session {session_id}: {e}")
@@ -239,7 +238,6 @@ async def receiving(session_id: str) -> None:
 
             # Handle pong messages (heartbeat response)
             if body.get("type") == "pong":
-                logger.debug(f"Received pong from session {session_id}")
                 # Update session activity to keep it alive
                 await session_manager.get_session(session_id)
                 continue
