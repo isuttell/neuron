@@ -11,6 +11,11 @@ from neuron_server.config import config
 
 logger = logging.getLogger(__name__)
 
+# Constants
+PING_INTERVAL_SECONDS = 30  # WebSocket ping frequency
+BUILD_INFO_CACHE_SECONDS = 30  # Align cache with ping frequency
+BUILD_INFO_FETCH_TIMEOUT_SECONDS = 5  # HTTP request timeout
+
 
 class BuildInfoManager:
     """Manages fetching and caching of build information from client container."""
@@ -18,7 +23,7 @@ class BuildInfoManager:
     def __init__(self) -> None:
         self.current_hash: Optional[str] = None
         self.last_check: float = 0
-        self.check_interval: float = 60  # 1 minute
+        self.check_interval: float = BUILD_INFO_CACHE_SECONDS
 
     async def get_current_hash(self) -> Optional[str]:
         """Get the current asset hash, fetching if needed."""
@@ -46,7 +51,7 @@ class BuildInfoManager:
 
             build_info_url = f"{client_url}/build-info.json"
 
-            timeout = aiohttp.ClientTimeout(total=5)
+            timeout = aiohttp.ClientTimeout(total=BUILD_INFO_FETCH_TIMEOUT_SECONDS)
             async with (
                 aiohttp.ClientSession() as session,
                 session.get(build_info_url, timeout=timeout) as response,

@@ -53,7 +53,7 @@ class TestBuildInfoManager:
 
         # Set cached value with old timestamp
         manager.current_hash = "OLD123"
-        manager.last_check = time.time() - 400  # Older than 300s interval
+        manager.last_check = time.time() - 40  # Older than 30s interval
 
         # Test that method calls _fetch_build_info when cache is expired
         with (

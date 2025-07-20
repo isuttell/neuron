@@ -5,6 +5,9 @@ import { toast } from 'sonner';
 import { AppUpdateNotification } from '../AppUpdateNotification';
 import appSlice from '../../slices/appSlice';
 
+// Import the constant used by the component
+const AUTO_RELOAD_DELAY_MS = 60 * 60 * 1000; // 1 hour
+
 // Mock sonner toast
 vi.mock('sonner', () => ({
   toast: {
@@ -116,7 +119,7 @@ describe('AppUpdateNotification', () => {
     });
 
     // Check that setTimeout was called with 1 hour
-    expect(mockSetTimeout).toHaveBeenCalledWith(expect.any(Function), 60 * 60 * 1000);
+    expect(mockSetTimeout).toHaveBeenCalledWith(expect.any(Function), AUTO_RELOAD_DELAY_MS);
   });
 
 
@@ -166,7 +169,7 @@ describe('AppUpdateNotification', () => {
     unmount();
 
     // Fast-forward time - reload should not happen because timer was cleared
-    vi.advanceTimersByTime(60 * 60 * 1000);
+    vi.advanceTimersByTime(AUTO_RELOAD_DELAY_MS);
     expect(mockReload).not.toHaveBeenCalled();
   });
 
