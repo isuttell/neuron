@@ -88,7 +88,7 @@ describe("personalityActions", () => {
 
   describe("fetchPersonality", () => {
     it("should handle successful fetch of single personality", async () => {
-      (api.get as vi.Mock).mockResolvedValueOnce(mockPersonality);
+      (api.get as vi.Mock).mockResolvedValueOnce({ personality: mockPersonality });
 
       await store.dispatch(fetchPersonality(mockPersonality.id));
 
@@ -130,7 +130,7 @@ describe("personalityActions", () => {
       };
 
       const updatedPersonality = { ...mockPersonality, ...updatePayload };
-      (api.put as vi.Mock).mockResolvedValueOnce(updatedPersonality);
+      (api.put as vi.Mock).mockResolvedValueOnce({ personality: updatedPersonality });
 
       await store.dispatch(updatePersonality(updatePayload));
 

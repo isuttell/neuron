@@ -8,8 +8,8 @@ export const fetchPersonality = createAsyncThunk(
   "personalities/fetchPersonality",
   async (personalityId: string, thunkAPI) => {
     try {
-      const personality = await api.get<Personality>(`/personalities/${personalityId}`);
-      return { personality };
+      const response = await api.get<{personality: Personality}>(`/personalities/${personalityId}`);
+      return response;
     } catch (error) {
       if (error instanceof Error) {
         return thunkAPI.rejectWithValue(error.message);
@@ -86,7 +86,7 @@ export const updatePersonality = createAsyncThunk(
   "personalities/updatePersonality",
   async (personality: UpdatePersonality, thunkAPI) => {
     try {
-      const updatedPersonality = await api.put<Personality>(`/personalities/${personality.id}`, {
+      const response = await api.put<{personality: Personality}>(`/personalities/${personality.id}`, {
         name: personality.name,
         context: personality.context,
         memory: personality.memory,
@@ -94,7 +94,7 @@ export const updatePersonality = createAsyncThunk(
         description: personality.description,
         logo: personality.logo,
       });
-      return { personality: updatedPersonality };
+      return response;
     } catch (error) {
       if (error instanceof Error) {
         return thunkAPI.rejectWithValue(error.message);
