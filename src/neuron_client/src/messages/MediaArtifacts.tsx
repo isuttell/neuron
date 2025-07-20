@@ -3,6 +3,8 @@ import { getMediaContent, type AudioContent, type VideoContent, type ImageConten
 import AudioContentComponent from "./AudioContent";
 import VideoContentComponent from "./VideoContent";
 import ImageContentComponent from "./ImageContent";
+import TextContentComponent from "./TextContentComponent";
+import { Search } from "lucide-react";
 import { FileLink } from "@/components/FileLink";
 
 interface MediaArtifactsProps {
@@ -88,9 +90,33 @@ const MediaArtifacts: React.FC<MediaArtifactsProps> = ({
                     />
                   );
 
+                case "search_result":
+                  return (
+                    <TextContentComponent
+                      key={item.id}
+                      id={item.id}
+                      url={item.url}
+                      caption={item.caption}
+                      description={item.description}
+                      metadata={item.metadata}
+                      icon={Search}
+                    />
+                  );
+
+                case "text":
+                  return (
+                    <TextContentComponent
+                      key={item.id}
+                      id={item.id}
+                      url={item.url}
+                      caption={item.caption}
+                      description={item.description}
+                      metadata={item.metadata}
+                    />
+                  );
+
                 case "html":
                 case "data":
-                case "code":
                   return (
                     <FileLink
                       key={item.id}
