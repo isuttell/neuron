@@ -127,7 +127,7 @@ need it.
         self,
         *args: tuple[Any, ...],
         **kwargs: dict[str, Any],
-    ) -> str:
+    ) -> tuple[str, dict]:
         return asyncio.run(self._arun(*args, **kwargs))
 
     async def _arun(

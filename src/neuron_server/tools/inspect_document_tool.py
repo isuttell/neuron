@@ -11,6 +11,11 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from pydantic import BaseModel, Field
 
 from neuron_server.logger import logger
+from neuron_server.tools.artifact_types import (
+    ToolArtifactMetadata,
+    ToolMediaArtifact,
+    ToolMediaItem,
+)
 from neuron_server.tools.document_utils import (
     DocumentLoadError as BaseDocumentError,
 )
@@ -73,6 +78,7 @@ pdf
 youtube
 """.strip()
     args_schema: type[InspectDocumentToolArgs] = InspectDocumentToolArgs
+    response_format: str = "content_and_artifact"
 
     def _run(
         self,
@@ -80,7 +86,7 @@ youtube
         config: RunnableConfig,
         mode: str | None = None,
         memorize: bool = False,
-    ) -> str:
+    ) -> tuple[str, list[dict]]:
         return asyncio.run(self._arun(url, config, mode, memorize))
 
     async def _arun(
@@ -89,7 +95,7 @@ youtube
         config: RunnableConfig,
         mode: str | None = None,
         memorize: bool = False,
-    ) -> str:
+    ) -> tuple[str, list[dict]]:
         try:
             # Record the start time for performance measurement
             start_time = time.perf_counter()
@@ -132,7 +138,29 @@ youtube
             duration = time.perf_counter() - start_time
             logger.debug(f"Processed '{url}' - {duration:.2f}s")
             docs = "\n\n".join(results)
-            return f"<documents>\n{docs}\n</documents>"
+
+            artifacts = [
+                ToolMediaArtifact(
+                    media_type="text",
+                    items=[
+                        ToolMediaItem(
+                            id=str(uuid4()),
+                            url=doc.metadata.get("source", url),
+                            caption=doc.metadata.get("title", "Document"),
+                            description=doc.page_content.strip(),
+                            metadata=ToolArtifactMetadata(
+                                type=doc.metadata.get("type", None)
+                            ),
+                        )
+                        for doc in loaded_docs
+                    ],
+                )
+            ]
+
+            return (
+                f"<documents>\n{docs}\n</documents>",
+                [artifact.model_dump() for artifact in artifacts],
+            )
         except Exception as e:
             logger.error(e, exc_info=True)
             raise e

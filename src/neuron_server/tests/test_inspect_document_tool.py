@@ -96,9 +96,12 @@ async def test_inspect_document_tool_youtube() -> None:
             config={"configurable": {}},
         )
 
-    assert "Hello world" in result
-    assert "This is a test" in result
-    # assert "Summary of the document" in result # Output format changed
+    content, artifacts = result
+    assert "Hello world" in content
+    assert "This is a test" in content
+    assert isinstance(artifacts, list)
+    assert len(artifacts) == 1
+    assert artifacts[0]["media_type"] == "text"
 
 
 # Tests for memorize functionality
@@ -161,9 +164,13 @@ async def test_inspect_document_tool_memorize_functionality() -> None:
         )
 
         # Verify the result contains the document content
-        assert "This is a test document" in result
-        assert "This is another document" in result
-        assert "<documents>" in result
+        content, artifacts = result
+        assert "This is a test document" in content
+        assert "This is another document" in content
+        assert "<documents>" in content
+        assert isinstance(artifacts, list)
+        assert len(artifacts) == 1
+        assert artifacts[0]["media_type"] == "text"
 
         # Verify that memories_store.aadd_documents was called
         mock_memory_store.aadd_documents.assert_called_once()
@@ -217,7 +224,11 @@ async def test_inspect_document_tool_no_memorize() -> None:
         )
 
         # Verify the result contains the document content
-        assert "Test content" in result
+        content, artifacts = result
+        assert "Test content" in content
+        assert isinstance(artifacts, list)
+        assert len(artifacts) == 1
+        assert artifacts[0]["media_type"] == "text"
 
         # Verify that memories_store.aadd_documents was NOT called
         mock_memory_store.aadd_documents.assert_not_called()
@@ -301,7 +312,11 @@ async def test_inspect_document_tool_memorize_error_handling() -> None:
         )
 
         # Verify the result still contains the document content
-        assert "Test content" in result
+        content, artifacts = result
+        assert "Test content" in content
+        assert isinstance(artifacts, list)
+        assert len(artifacts) == 1
+        assert artifacts[0]["media_type"] == "text"
 
         # Verify error was logged
         mock_logger.error.assert_called_once()

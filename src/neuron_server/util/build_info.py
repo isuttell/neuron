@@ -46,7 +46,6 @@ class BuildInfoManager:
             # Try to determine client URL based on environment
             client_url = self._get_client_url()
             if not client_url:
-                logger.warning("No client URL configured for build info fetching")
                 return
 
             build_info_url = f"{client_url}/build-info.json"
@@ -75,7 +74,7 @@ class BuildInfoManager:
         """Determine the client container URL based on configuration."""
         # In development mode with SERVE_CLIENT=true, no separate client container
         if config.serve_client:
-            return None
+            return ""
 
         # Use configured client URL
         return config.client_url

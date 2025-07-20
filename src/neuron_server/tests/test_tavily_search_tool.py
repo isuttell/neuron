@@ -23,8 +23,8 @@ class TestTavilySearchToolArgs:
         assert args.query == "test query"
         assert args.topic == "general"  # default
         assert args.time_range is None  # default
-        assert args.max_results == 5  # default
-        assert args.search_depth == "basic"  # default
+        assert args.max_results == 10  # default from Pydantic model
+        assert args.search_depth == "advanced"  # default
         assert args.include_answer is False  # default
 
     def test_all_parameters(self) -> None:
@@ -171,14 +171,24 @@ class TestTavilySearchTool:
             # Execute search
             result = await tool._arun(query="Python programming")
 
+            # Verify result is tuple with content and artifacts
+            assert isinstance(result, tuple)
+            assert len(result) == 2
+            content, artifacts = result
+
             # Verify result is valid JSON
-            parsed_result = json.loads(result)
+            parsed_result = json.loads(content)
             assert parsed_result == sample_search_results
+
+            # Verify artifacts
+            assert isinstance(artifacts, list)
+            assert len(artifacts) == 1
+            assert artifacts[0]["media_type"] == "search_result"
 
             # Verify TavilySearchResults was called correctly
             mock_tavily.assert_called_once_with(
                 max_results=5,
-                search_depth="basic",
+                search_depth="advanced",
                 topic="general",
                 include_answer=False,
             )
@@ -212,8 +222,12 @@ class TestTavilySearchTool:
                 include_raw_content=True,
             )
 
+            # Verify result is tuple with content and artifacts
+            assert isinstance(result, tuple)
+            content, artifacts = result
+
             # Verify result is valid JSON
-            parsed_result = json.loads(result)
+            parsed_result = json.loads(content)
             assert parsed_result == sample_search_results
 
             # Verify TavilySearchResults was called with all parameters
@@ -245,14 +259,17 @@ class TestTavilySearchTool:
                 query="test query", include_domains=None, exclude_domains=None
             )
 
+            # Verify result is tuple with content and artifacts
+            content, artifacts = result
+
             # Verify result is valid JSON
-            parsed_result = json.loads(result)
+            parsed_result = json.loads(content)
             assert parsed_result == sample_search_results
 
             # Verify TavilySearchResults was called without domain parameters
             mock_tavily.assert_called_once_with(
                 max_results=5,
-                search_depth="basic",
+                search_depth="advanced",
                 topic="general",
                 include_answer=False,
             )
@@ -273,14 +290,17 @@ class TestTavilySearchTool:
             # Execute search with explicit time_range=None
             result = await tool._arun(query="test query", time_range=None)
 
+            # Verify result is tuple with content and artifacts
+            content, artifacts = result
+
             # Verify result is valid JSON
-            parsed_result = json.loads(result)
+            parsed_result = json.loads(content)
             assert parsed_result == sample_search_results
 
             # Verify TavilySearchResults was called without time_range parameter
             mock_tavily.assert_called_once_with(
                 max_results=5,
-                search_depth="basic",
+                search_depth="advanced",
                 topic="general",
                 include_answer=False,
             )
@@ -299,8 +319,11 @@ class TestTavilySearchTool:
             # Execute search
             result = await tool._arun(query="nonexistent query")
 
+            # Verify result is tuple with content and artifacts
+            content, artifacts = result
+
             # Verify result is valid JSON with empty array
-            parsed_result = json.loads(result)
+            parsed_result = json.loads(content)
             assert parsed_result == []
 
     @pytest.mark.asyncio
@@ -314,16 +337,11 @@ class TestTavilySearchTool:
             mock_instance.ainvoke.side_effect = Exception("API Error")
             mock_tavily.return_value = mock_instance
 
-            with patch("neuron_server.tools.tavily_search_tool.logger") as mock_logger:
-                # Execute search
-                result = await tool._arun(query="test query")
+            # Execute search - should raise exception instead of returning error string
+            with pytest.raises(Exception) as exc_info:
+                await tool._arun(query="test query")
 
-                # Verify error message is returned
-                assert result.startswith("Search error:")
-                assert "API Error" in result
-
-                # Verify error was logged
-                mock_logger.error.assert_called_once()
+            assert "API Error" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_tavily_initialization_error(self, tool: TavilySearchTool) -> None:
@@ -334,16 +352,11 @@ class TestTavilySearchTool:
             # Mock TavilySearchResults constructor to raise an exception
             mock_tavily.side_effect = Exception("Initialization Error")
 
-            with patch("neuron_server.tools.tavily_search_tool.logger") as mock_logger:
-                # Execute search
-                result = await tool._arun(query="test query")
+            # Execute search - should raise exception instead of returning error string
+            with pytest.raises(Exception) as exc_info:
+                await tool._arun(query="test query")
 
-                # Verify error message is returned
-                assert result.startswith("Search error:")
-                assert "Initialization Error" in result
-
-                # Verify error was logged
-                mock_logger.error.assert_called_once()
+            assert "Initialization Error" in str(exc_info.value)
 
     def test_sync_run_method(self, tool: TavilySearchTool) -> None:
         """Test synchronous _run method delegates to async _arun."""
@@ -380,8 +393,8 @@ class TestTavilySearchTool:
 
             # Verify defaults were used
             mock_tavily.assert_called_once_with(
-                max_results=5,  # default
-                search_depth="basic",  # default
+                max_results=5,  # default from tool implementation
+                search_depth="advanced",  # default
                 topic="general",  # default
                 include_answer=False,  # default
             )
@@ -410,13 +423,18 @@ class TestTavilySearchTool:
                 )
 
                 # Verify debug logging was called
-                mock_logger.debug.assert_called_once()
-                debug_call_args = mock_logger.debug.call_args[0][0]
-                assert "query='Python programming'" in debug_call_args
-                assert "topic='news'" in debug_call_args
-                assert "time_range='week'" in debug_call_args
-                assert "max_results=10" in debug_call_args
-                assert "search_depth='advanced'" in debug_call_args
+                # (first call is parameters, second is results)
+                assert mock_logger.debug.call_count == 2
+                # Check first debug call (parameters)
+                first_call_args = mock_logger.debug.call_args_list[0][0][0]
+                assert "query='Python programming'" in first_call_args
+                assert "topic='news'" in first_call_args
+                assert "time_range='week'" in first_call_args
+                assert "max_results=10" in first_call_args
+                assert "search_depth='advanced'" in first_call_args
+                # Check second debug call (results)
+                second_call_args = mock_logger.debug.call_args_list[1][0][0]
+                assert "Tavily search results:" in second_call_args
 
     @pytest.mark.asyncio
     async def test_response_length_limit_exceeded(self, tool: TavilySearchTool) -> None:
@@ -440,13 +458,15 @@ class TestTavilySearchTool:
             mock_instance.ainvoke.return_value = large_results
             mock_tavily.return_value = mock_instance
 
-            # Execute search
-            result = await tool._arun(query="test query")
+            # Execute search - should raise ValueError for length limit
+            with pytest.raises(ValueError) as exc_info:
+                await tool._arun(query="test query")
 
-            # Verify error message is returned
-            assert result.startswith("Search error:")
-            assert f"exceeded {MAX_SEARCH_RESULTS_LENGTH} characters" in result
-            assert "Try again with a more specific query" in result
+            assert (
+                f"exceeded {MAX_SEARCH_RESULTS_LENGTH} characters"
+                in str(exc_info.value)
+            )
+            assert "Try again with a more specific query" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_response_length_limit_within_bounds(
@@ -475,7 +495,10 @@ class TestTavilySearchTool:
             # Execute search
             result = await tool._arun(query="test query")
 
+            # Verify result is tuple with content and artifacts
+            content, artifacts = result
+
             # Verify result is valid JSON (not an error message)
-            parsed_result = json.loads(result)
+            parsed_result = json.loads(content)
             assert parsed_result == normal_results
-            assert len(result) <= MAX_SEARCH_RESULTS_LENGTH
+            assert len(content) <= MAX_SEARCH_RESULTS_LENGTH

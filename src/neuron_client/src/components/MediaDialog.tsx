@@ -55,7 +55,14 @@ type SubtitleMediaProps = BaseMediaProps & {
   language?: string;
 };
 
-export type MediaDialogProps = ImageMediaProps | VideoMediaProps | AudioMediaProps | SubtitleMediaProps;
+type SearchResultMediaProps = BaseMediaProps & {
+  type: "search_result";
+  id: string;
+  query?: string;
+  score?: number;
+};
+
+export type MediaDialogProps = ImageMediaProps | VideoMediaProps | AudioMediaProps | SubtitleMediaProps | SearchResultMediaProps;
 
 interface MediaDialogComponentProps {
   children: ReactNode;

@@ -1,13 +1,26 @@
 import json
-from typing import Any, Literal
+import uuid
+from typing import Any, Literal, TypedDict
 
 from langchain.tools import BaseTool
 from langchain_community.tools.tavily_search import TavilySearchResults
 from pydantic import BaseModel, Field
 
 from neuron_server.logger import logger
+from neuron_server.tools.artifact_types import (
+    ToolArtifactMetadata,
+    ToolMediaArtifact,
+    ToolMediaItem,
+)
 
 MAX_SEARCH_RESULTS_LENGTH = 25_000
+
+
+class TavilySearchResult(TypedDict):
+    title: str
+    url: str
+    content: str
+    score: float
 
 
 class TavilySearchToolArgs(BaseModel):
@@ -29,11 +42,14 @@ class TavilySearchToolArgs(BaseModel):
         default=None,
     )
     max_results: int = Field(
-        description="Maximum number of search results to return", default=5, ge=1, le=20
+        description="Maximum number of search results to return",
+        default=10,
+        ge=1,
+        le=20,
     )
     search_depth: Literal["basic", "advanced"] = Field(
         description="Search depth. 'basic' for quick, 'advanced' for comprehensive",
-        default="basic",
+        default="advanced",
     )
     include_answer: bool = Field(
         description="Whether to include a direct answer to the query", default=False
@@ -53,16 +69,19 @@ Features:
 - Domain inclusion/exclusion
 - Configurable result depth and formatting
 - Optional direct answer inclusion
+
+Use the inspect_document tool to get more information about the search results.
 """.strip()
     args_schema: type[TavilySearchToolArgs] = TavilySearchToolArgs
+    response_format: str = "content_and_artifact"
 
-    def _run(self, **kwargs: Any) -> str:
+    def _run(self, **kwargs: Any) -> tuple[str, list[dict]]:
         """Synchronous implementation that delegates to async version."""
         import asyncio
 
         return asyncio.run(self._arun(**kwargs))
 
-    async def _arun(self, **kwargs: Any) -> str:
+    async def _arun(self, **kwargs: Any) -> tuple[str, list[dict]]:
         # Extract parameters from kwargs
         query = kwargs.get("query")
         topic = kwargs.get("topic", "general")
@@ -70,7 +89,7 @@ Features:
         include_domains = kwargs.get("include_domains")
         exclude_domains = kwargs.get("exclude_domains")
         max_results = kwargs.get("max_results", 5)
-        search_depth = kwargs.get("search_depth", "basic")
+        search_depth = kwargs.get("search_depth", "advanced")
         include_answer = kwargs.get("include_answer", False)
 
         try:
@@ -107,17 +126,36 @@ Features:
 
             # Return raw JSON results
             final = json.dumps(results, indent=2)
-
+            logger.debug(f"Tavily search results: {final}")
             if len(final) > MAX_SEARCH_RESULTS_LENGTH:
                 raise ValueError(
                     f"Search results exceeded {MAX_SEARCH_RESULTS_LENGTH} characters. "
                     "Try again with a more specific query."
                 )
-            return final
+
+            artifacts = [
+                ToolMediaArtifact(
+                    media_type="search_result",
+                    items=[
+                        ToolMediaItem(
+                            id=str(uuid.uuid4()),
+                            url=result["url"],
+                            caption=result["title"],
+                            description=result["content"],
+                            metadata=ToolArtifactMetadata(
+                                query=query, score=result["score"]
+                            ),
+                        )
+                        for result in results
+                    ],
+                )
+            ]
+
+            return final, [artifact.model_dump() for artifact in artifacts]
 
         except Exception as e:
             logger.error(f"Tavily search error: {e}", exc_info=True)
-            return f"Search error: {str(e)}"
+            raise e
 
 
 if __name__ == "__main__":
