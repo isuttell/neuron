@@ -26,11 +26,15 @@ function upsert(state: PersonalityState, personality: Personality) {
   const existingPersonalityIndex = state.personalities.findIndex(
     (per) => per.id === personality.id
   );
-  const per: Personality = personality;
+
   if (existingPersonalityIndex !== -1) {
-    state.personalities[existingPersonalityIndex] = per;
+    // Merge with existing personality, keeping existing data for any undefined fields
+    state.personalities[existingPersonalityIndex] = {
+      ...state.personalities[existingPersonalityIndex],
+      ...personality
+    };
   } else {
-    state.personalities.push(per);
+    state.personalities.push(personality);
   }
 }
 
