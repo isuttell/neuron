@@ -1,5 +1,6 @@
 import { MainSidebar } from "@/components/layout/MainSidebar";
 import { ThreadTitleUpdater } from "@/components/ThreadTitleUpdater";
+import { AppUpdateNotification } from "@/components/AppUpdateNotification";
 import { Button } from "@/components/ui/button";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { Spinner } from "@/components/ui/spinner";
@@ -132,6 +133,7 @@ export function RootComponent() {
   return (
     <SidebarProvider>
       <ThreadTitleUpdater />
+      <AppUpdateNotification />
       <main className="flex flex-1">
         {isFullyAuthenticated ? (
           <>

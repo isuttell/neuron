@@ -10,6 +10,7 @@ export default defineConfig(({ mode }) => ({
   build: {
     sourcemap: mode === "development" ? "inline" : true,
     outDir: path.resolve(__dirname, "src/neuron_client/dist"),
+    manifest: true,
   },
   root: "src/neuron_client",
   resolve: {

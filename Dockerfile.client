@@ -16,9 +16,13 @@ RUN npm ci
 # Copy source code
 COPY src/neuron_client/ ./src/neuron_client/
 COPY postcss.config.js tailwind.config.js tsconfig*.json vite.config.ts components.json ./
+COPY scripts/generate-build-info.js ./scripts/
 
 # Build the application
 RUN npm run build
+
+# Generate build info after build
+RUN node scripts/generate-build-info.js
 
 # Production stage
 FROM nginx:1.28.0-alpine
