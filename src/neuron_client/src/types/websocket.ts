@@ -62,6 +62,7 @@ export interface ErrorEvent extends WebSocketMessage {
 export interface PingEvent extends WebSocketMessage {
   type: "ping";
   timestamp: number;
+  static_hash?: string;
 }
 
 export interface PongEvent extends WebSocketMessage {

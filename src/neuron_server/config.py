@@ -250,6 +250,10 @@ class Config(BaseModel):
         default=os.environ.get("SERVE_CLIENT", "False").lower() == "true",
         description="Whether to serve client files from the Python server",
     )
+    client_url: str = Field(
+        default=os.environ.get("CLIENT_URL", "http://neuron_client"),
+        description="URL of the client container for fetching build info",
+    )
 
 
 config = Config()

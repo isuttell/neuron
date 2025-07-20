@@ -27,6 +27,7 @@ interface AppState {
   error: string | null;
   currentUser: User | null; // Add currentUser state
   favoritePersonalitiesCollapsed: boolean; // Add collapsed state for favorites
+  buildHashMismatch: boolean; // Track if there's a build hash mismatch
 }
 
 // Load initial state from localStorage
@@ -47,6 +48,7 @@ const loadInitialState = (): AppState => {
     error: null,
     currentUser: null, // Initialize currentUser
     favoritePersonalitiesCollapsed: true, // Default to closed
+    buildHashMismatch: false,
   };
 };
 
@@ -79,6 +81,10 @@ export const appSlice = createSlice({
       state.favoritePersonalitiesCollapsed = action.payload;
       saveState(state);
     },
+    setBuildHashMismatch: (state, action: PayloadAction<boolean>) => {
+      state.buildHashMismatch = action.payload;
+      // Don't save to localStorage - this is session-specific
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -101,14 +107,20 @@ export const appSlice = createSlice({
   },
 });
 
-export const { setSidebarImage, setCurrentUser, setFavoritePersonalitiesCollapsed } = appSlice.actions; // Export new action
+export const {
+  setSidebarImage,
+  setCurrentUser,
+  setFavoritePersonalitiesCollapsed,
+  setBuildHashMismatch
+} = appSlice.actions;
 
 export const getSidebarImage = (state: RootState) => state.app.sidebar_image;
 export const getApiConfig = (state: RootState) => state.app.api;
 export const getProtectedToolSets = (state: RootState) => state.app.protectedToolSets;
 export const getConfigLoadingState = (state: RootState) => state.app.isLoading;
 export const getConfigError = (state: RootState) => state.app.error;
-export const getCurrentUser = (state: RootState) => state.app.currentUser; // Export new selector
+export const getCurrentUser = (state: RootState) => state.app.currentUser;
 export const getFavoritePersonalitiesCollapsed = (state: RootState) => state.app.favoritePersonalitiesCollapsed;
+export const getBuildHashMismatch = (state: RootState) => state.app.buildHashMismatch;
 
 export default appSlice.reducer;

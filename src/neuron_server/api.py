@@ -72,6 +72,7 @@ from neuron_server.graph.connection import connection_manager
 from neuron_server.pubsub import client
 from neuron_server.task_scheduler import TaskScheduler
 from neuron_server.type_defs.request import NeuronRequest
+from neuron_server.util.build_info import build_info_manager
 from neuron_server.util.image_utilities import create_thumbnails
 from neuron_server.websocket_session_manager import session_manager
 
@@ -209,11 +210,17 @@ async def ping_handler(session_id: str) -> None:
                 )
                 break
 
+            # Get current build hash
+            build_hash = await build_info_manager.get_current_hash()
+
             # Send ping message
-            ping_message = json.dumps({
-                "type": "ping",
-                "timestamp": int(time.time() * 1000)  # milliseconds
-            })
+            ping_message = json.dumps(
+                {
+                    "type": "ping",
+                    "timestamp": int(time.time() * 1000),  # milliseconds
+                    "static_hash": build_hash,
+                }
+            )
             await websocket.send(ping_message)
             logger.debug(f"Sent ping to session {session_id}")
 
