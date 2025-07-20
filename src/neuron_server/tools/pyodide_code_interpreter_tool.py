@@ -161,7 +161,6 @@ For complex workflows requiring file generation, use the regular code_interprete
         python_code = execution_info["python_code"]
         stdout = execution_info["stdout"]
         stderr = execution_info["stderr"]
-        duration = execution_info["duration"]
 
         # Create media item for code
         code_media_item = await self._create_media_item(
@@ -177,7 +176,7 @@ For complex workflows requiring file generation, use the regular code_interprete
                 id=str(code_media_item.id),
                 url=code_url,
                 caption="Source Code",
-                description=f"Python code ({len(python_code.splitlines())} lines)",
+                description=python_code,
                 metadata=ToolArtifactMetadata(
                     output_format="python",
                     code_lines=len(python_code.splitlines()),
@@ -199,8 +198,8 @@ For complex workflows requiring file generation, use the regular code_interprete
                 ToolMediaItem(
                     id=str(output_media_item.id),
                     url=output_url,
-                    caption="Execution Output",
-                    description="stdout and stderr from execution",
+                    caption="Output",
+                    description=f"{stdout}\n{stderr}".strip(),
                     metadata=ToolArtifactMetadata(
                         output_format="text",
                         has_output=bool(stdout),
@@ -208,33 +207,6 @@ For complex workflows requiring file generation, use the regular code_interprete
                     ),
                 )
             )
-
-        # Create media item for metadata
-        metadata_media_item = await self._create_media_item(
-            url=metadata_url,
-            media_type="data",
-            name="execution_metadata.json",
-            description="Execution metadata and variables",
-            config=config,
-        )
-
-        variables = execution_data.get("variables", {})
-        artifact_items.append(
-            ToolMediaItem(
-                id=str(metadata_media_item.id),
-                url=metadata_url,
-                caption="Execution Metadata",
-                description=(
-                    f"Variables: {', '.join(variables.keys())}"
-                    if variables
-                    else "Execution details"
-                ),
-                metadata=ToolArtifactMetadata(
-                    duration=duration,
-                    output_format="json",
-                ),
-            )
-        )
 
         # Create the artifact
         artifact = ToolMediaArtifact(

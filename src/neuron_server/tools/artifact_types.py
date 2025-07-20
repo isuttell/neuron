@@ -34,6 +34,12 @@ class ToolArtifactMetadata(BaseModel):
     output_format: str | None = None
     background: str | None = None
 
+    # Search-specific
+    query: str | None = None
+    score: float | None = None
+
+    type: str | None = None
+
     class Config:
         extra = "allow"  # Allow additional fields for extensibility
 
@@ -52,12 +58,23 @@ class ToolMediaItem(BaseModel):
         default_factory=ToolArtifactMetadata, description="Generation metadata"
     )
 
+ArtifactMediaType = Literal[
+    "image",
+    "audio",
+    "video",
+    "text",
+    "html",
+    "code",
+    "data",
+    "search_result",
+    "unknown",
+]
 
 class ToolMediaArtifact(BaseModel):
     """Artifact containing media items for UI display."""
 
     type: Literal["media"] = "media"
-    media_type: Literal["image", "audio", "video", "html", "code", "data"] = Field(
+    media_type: ArtifactMediaType = Field(
         description="Type of content"
     )
     items: list[ToolMediaItem] = Field(description="List of generated media items")
