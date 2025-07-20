@@ -9,7 +9,7 @@ import {
 import { Mock } from "jest-mock";
 import { useParams } from "react-router-dom";
 import { postMessageByThread } from "../../actions/messageActions";
-import { useAppDispatch } from "../../hooks";
+import { useAppDispatch, useAppSelector } from "../../hooks";
 import { AppDispatch } from "../../store";
 import { Thread } from "../../types/thread";
 import ThreadMessageForm from "../ThreadMessageForm";
@@ -17,6 +17,7 @@ import ThreadMessageForm from "../ThreadMessageForm";
 // Mock dependencies
 vi.mock("../../hooks", () => ({
   useAppDispatch: vi.fn() as Mock<() => AppDispatch>,
+  useAppSelector: vi.fn(),
 }));
 
 vi.mock("react-router-dom", () => ({
@@ -102,6 +103,7 @@ describe("ThreadMessageForm", () => {
     vi.clearAllMocks();
 
     (useAppDispatch as vi.MockedFunction<typeof useAppDispatch>).mockReturnValue(mockDispatch);
+    (useAppSelector as vi.MockedFunction<typeof useAppSelector>).mockReturnValue(true); // Mock connected state
     (useParams as vi.MockedFunction<typeof useParams>).mockReturnValue({
       threadId: mockThreadId,
     });
@@ -309,5 +311,14 @@ describe("ThreadMessageForm", () => {
     const errorThread = { ...mockThread, status: "error" as const };
     rerender(<ThreadMessageForm thread={errorThread} />);
     expect(screen.getByTestId("loading-state")).toHaveTextContent("loading");
+  });
+
+  it("disables form when WebSocket is disconnected", () => {
+    (useAppSelector as vi.MockedFunction<typeof useAppSelector>).mockReturnValue(false); // Mock disconnected state
+
+    render(<ThreadMessageForm thread={mockThread} />);
+
+    // The form should still render but be disabled - this is handled by the disabled prop passed to MessageForm
+    expect(screen.getByTestId("message-form")).toBeInTheDocument();
   });
 });

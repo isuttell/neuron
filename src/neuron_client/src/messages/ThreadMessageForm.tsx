@@ -1,4 +1,4 @@
-import { useAppDispatch } from "@/hooks";
+import { useAppDispatch, useAppSelector } from "@/hooks";
 import { toast } from "sonner";
 import { useParams } from "react-router-dom";
 import { postMessageByThread, cancelThreadMessages } from "../actions/messageActions";
@@ -6,6 +6,7 @@ import { Thread } from "../types/thread";
 import MessageForm from "./MessageForm";
 import { ThreadStatusMessage } from "@/components/ThreadStatusMessage";
 import { cn } from "@/lib/utils";
+import { getConnectionStatus } from "@/slices/socketSlice";
 
 /**
  * Props for the ThreadMessageForm component - a business logic wrapper for thread-specific messaging
@@ -44,6 +45,7 @@ export default function ThreadMessageForm({
 }: ThreadMessageFormProps) {
   const dispatch = useAppDispatch();
   const { threadId } = useParams();
+  const isConnected = useAppSelector(getConnectionStatus);
 
   /**
    * Handles message submission by dispatching to Redux store
@@ -111,6 +113,7 @@ export default function ThreadMessageForm({
   };
 
   const isLoading = thread ? thread.status !== "idle" : false;
+  const isDisabled = !isConnected || isLoading;
 
   return (
     <MessageForm
@@ -120,6 +123,7 @@ export default function ThreadMessageForm({
       onFileRemove={handleFileRemove}
       onCancel={handleCancel}
       isLoading={isLoading}
+      disabled={isDisabled}
     >
       <ThreadStatusMessage
         thread={thread}

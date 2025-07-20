@@ -8,6 +8,12 @@ export default class WebSocketManager {
   private events: EventEmitter;
   private url: string;
   public connected: boolean = false;
+  private reconnectAttempts: number = 0;
+  private maxReconnectAttempts: number = 100;
+  private baseReconnectDelay: number = 1000; // 1 second
+  private maxReconnectDelay: number = 30000; // 30 seconds
+  private reconnectTimer?: number;
+  private pingTimeout?: number;
 
   constructor(url: string) {
     this.events = new EventEmitter();
@@ -25,6 +31,7 @@ export default class WebSocketManager {
         getAccessToken().then((token) => {
           this.socket?.send(`access_token=${token}`);
           this.connected = true;
+          this.reconnectAttempts = 0; // Reset reconnection attempts on successful connection
           this.events.emit("open");
         });
       }
@@ -34,6 +41,11 @@ export default class WebSocketManager {
       try {
         const payload = JSON.parse(event.data) as WebSocketEvent;
         if (payload.type) {
+          // Handle ping messages by responding with pong
+          if (payload.type === "ping") {
+            this.sendPong(payload.timestamp);
+            return;
+          }
           this.events.emit(payload.type, payload);
         } else {
           console.error("Received payload without type:", payload);
@@ -48,6 +60,7 @@ export default class WebSocketManager {
         this.connected = false;
         this.events.emit("close");
       }
+      this.clearTimers();
       this.attemptReconnect();
     });
 
@@ -57,9 +70,56 @@ export default class WebSocketManager {
     return true;
   }
 
+  private clearTimers() {
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = undefined;
+    }
+    if (this.pingTimeout) {
+      clearTimeout(this.pingTimeout);
+      this.pingTimeout = undefined;
+    }
+  }
+
+  private sendPong(timestamp: number) {
+    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+      const pongMessage = JSON.stringify({
+        type: "pong",
+        timestamp: timestamp
+      });
+      this.socket.send(pongMessage);
+    }
+  }
+
+  private calculateReconnectDelay(): number {
+    // Exponential backoff: 1s, 2s, 4s, 8s, 16s, 30s (capped)
+    const exponentialDelay = Math.min(
+      this.baseReconnectDelay * Math.pow(2, this.reconnectAttempts),
+      this.maxReconnectDelay
+    );
+
+    // Add jitter (±25%) to prevent thundering herd
+    const jitter = exponentialDelay * 0.25 * (Math.random() * 2 - 1);
+    return Math.max(exponentialDelay + jitter, 500); // Minimum 500ms
+  }
+
   attemptReconnect() {
+    // Check if we've exceeded max retry attempts
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      console.error(`Max reconnection attempts (${this.maxReconnectAttempts}) reached. Giving up.`);
+      this.events.emit("give_up");
+      return;
+    }
+
+    this.reconnectAttempts++;
+    const delay = this.calculateReconnectDelay();
+
+    console.log(`Attempting reconnection ${this.reconnectAttempts}/${this.maxReconnectAttempts} in ${Math.round(delay)}ms`);
+
     delete this.socket;
-    setTimeout(() => this.connect(), 1000);
+    this.reconnectTimer = window.setTimeout(() => {
+      this.connect();
+    }, delay);
   }
 
   emit(payload: WebSocketPayload) {
@@ -90,6 +150,14 @@ export default class WebSocketManager {
     this.events.on(event, wrappedListener);
   }
 
+  // Handle internal events that are not WebSocket messages
+  onInternal(event: string, listener: () => void) {
+    this.events.on(event, listener);
+    return {
+      remove: () => this.events.off(event, listener),
+    };
+  }
+
   sendMessage(action: Action) {
     if (this.socket && this.socket.readyState === WebSocket.OPEN) {
       const message = {
@@ -106,9 +174,15 @@ export default class WebSocketManager {
   }
 
   close() {
+    this.clearTimers();
     if (this.socket) {
       this.socket.close();
     }
+  }
+
+  resetReconnectionAttempts() {
+    this.reconnectAttempts = 0;
+    this.clearTimers();
   }
 
   ready() {

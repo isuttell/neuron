@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import re
+import time
 import uuid
 from typing import Any
 
@@ -192,12 +193,49 @@ async def sending(session_id: str, user_id: str) -> None:
                     break
 
 
+async def ping_handler(session_id: str) -> None:
+    """Send periodic ping messages to detect dead connections."""
+
+    while True:
+        try:
+            # Wait 30 seconds between pings
+            await asyncio.sleep(30)
+
+            # Check if session still exists
+            session = await session_manager.get_session(session_id)
+            if not session:
+                logger.debug(
+                    f"Session {session_id} no longer exists, stopping ping handler"
+                )
+                break
+
+            # Send ping message
+            ping_message = json.dumps({
+                "type": "ping",
+                "timestamp": int(time.time() * 1000)  # milliseconds
+            })
+            await websocket.send(ping_message)
+            logger.debug(f"Sent ping to session {session_id}")
+
+        except Exception as e:
+            logger.warning(f"Ping failed for session {session_id}: {e}")
+            # Connection is likely dead, break out of ping loop
+            break
+
+
 async def receiving(session_id: str) -> None:
     """Handle incoming messages for a specific user session."""
     while True:
         try:
             data = await websocket.receive()
             body = json.loads(data)
+
+            # Handle pong messages (heartbeat response)
+            if body.get("type") == "pong":
+                logger.debug(f"Received pong from session {session_id}")
+                # Update session activity to keep it alive
+                await session_manager.get_session(session_id)
+                continue
 
             # Add session context to the event
             body["_session_id"] = session_id
@@ -226,10 +264,11 @@ async def ws() -> None:
 
         logger.info(f"Connected ({token.user_id}) - Session: {session_id}")
 
-        # Start the producer and consumer with session context
+        # Start the producer, consumer, and ping handler with session context
         producer = asyncio.create_task(sending(session_id, token.user_id))
         consumer = asyncio.create_task(receiving(session_id))
-        await asyncio.gather(producer, consumer)
+        ping_task = asyncio.create_task(ping_handler(session_id))
+        await asyncio.gather(producer, consumer, ping_task)
     except Exception as e:
         await websocket.close(401, str(e))
         logger.error(e)
