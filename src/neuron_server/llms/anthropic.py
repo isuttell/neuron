@@ -33,6 +33,7 @@ class AnthropicLLM(LLM):
             "streaming": True,
             "max_tokens": max_tokens,
             "verbose": True,
+            "max_retries": 3,
         }
 
         # Create default model without thinking for initial setup
@@ -41,17 +42,14 @@ class AnthropicLLM(LLM):
         fast_model = ChatAnthropic(
             model="claude-3-5-haiku-20241022",
             temperature=1,
+            max_retries=3,
         )
-        memory_model = ChatAnthropic(
-            model=model_id,
-            temperature=0.3,
-            max_tokens=8192,
-        )
+
         super().__init__(
             model=model,
             model_id=model_id,
             fast_model=fast_model,
-            memory_model=memory_model,
+            memory_model=fast_model,
             provider_model_id=provider_model_id,
         )
 
