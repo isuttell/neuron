@@ -59,6 +59,16 @@ export interface ErrorEvent extends WebSocketMessage {
   message: string;
 }
 
+export interface PingEvent extends WebSocketMessage {
+  type: "ping";
+  timestamp: number;
+}
+
+export interface PongEvent extends WebSocketMessage {
+  type: "pong";
+  timestamp: number;
+}
+
 export type WebSocketEvent =
   | MessageEvent
   | MediaEvent
@@ -69,6 +79,8 @@ export type WebSocketEvent =
   | PersonalityEvent
   | ImageEvent
   | ErrorEvent
+  | PingEvent
+  | PongEvent
   | ConnectionEvent;
 
 export interface PostMessage extends WebSocketMessage {
