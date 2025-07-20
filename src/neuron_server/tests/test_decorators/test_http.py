@@ -31,11 +31,11 @@ async def test_cors_default_headers(app: Quart) -> None:
         # Test with allowed origin in debug mode
         if config.debug:
             response = await client.get(
-                "/test", headers={"Origin": "http://localhost:5173"}
+                "/test", headers={"Origin": "http://localhost:5176"}
             )
             assert (
                 response.headers["Access-Control-Allow-Origin"]
-                == "http://localhost:5173"
+                == "http://localhost:5176"
             )
         else:
             response = await client.get(

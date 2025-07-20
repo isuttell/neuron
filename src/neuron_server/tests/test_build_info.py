@@ -139,7 +139,7 @@ class TestBuildInfoManager:
 
             url = manager._get_client_url()
 
-        assert url is None
+        assert url == ""
 
     def test_get_client_url_serve_client_false(self, manager):
         """Test client URL when SERVE_CLIENT is false."""
