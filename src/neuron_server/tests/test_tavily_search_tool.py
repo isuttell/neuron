@@ -462,9 +462,8 @@ class TestTavilySearchTool:
             with pytest.raises(ValueError) as exc_info:
                 await tool._arun(query="test query")
 
-            assert (
-                f"exceeded {MAX_SEARCH_RESULTS_LENGTH} characters"
-                in str(exc_info.value)
+            assert f"exceeded {MAX_SEARCH_RESULTS_LENGTH} characters" in str(
+                exc_info.value
             )
             assert "Try again with a more specific query" in str(exc_info.value)
 
