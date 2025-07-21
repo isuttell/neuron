@@ -57,7 +57,7 @@ const router = createBrowserRouter(
           element: <Personalities />,
         },
         {
-          path: "/personality/:personalityId",
+          path: "/personality/:personalityId/edit",
           element: <Personality />,
         },
         {

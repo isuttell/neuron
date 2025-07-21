@@ -126,7 +126,7 @@ const PersonalityDropdownMenu: React.FC<{
           <DropdownMenuItem asChild>
             <Link
               className="flex items-center gap-2 text-foreground"
-              to={`/personality/${personality.id}`}
+              to={`/personality/${personality.id}/edit`}
             >
               <UserPen className="size-4" />
               Edit Personality
