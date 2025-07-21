@@ -1082,13 +1082,19 @@ class TestGeneratePersonalityEndpoint:
     async def test_generate_personality_with_tool_set(
         self,
         app: Quart,
-        mock_token: TokenPayload,
         mock_decode_token: AsyncMock,
         sample_personality_response: PersonalityGenerationResponse,
     ) -> None:
         """Test personality generation with tool set specified."""
-        # Add tool permission to token
-        mock_token.roles = ["tool-search"]
+        # Create token with tool permission
+        mock_token = TokenPayload(
+            user_id="test_user_id",
+            roles=["tool-search"],
+            email="test@example.com",
+            nickname="test_user",
+            picture=None,
+            permissions=[],
+        )
 
         # Mock the created personality
         mock_created_personality = MagicMock()
@@ -1123,6 +1129,7 @@ class TestGeneratePersonalityEndpoint:
             mock_generate.return_value = sample_personality_response
             mock_create.return_value = mock_created_personality
             mock_validate_tools.return_value = None  # No validation errors
+            mock_decode_token.return_value = mock_token
 
             # Create request data
             request_data = {
