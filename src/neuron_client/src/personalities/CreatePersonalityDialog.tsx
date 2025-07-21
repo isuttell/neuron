@@ -71,7 +71,7 @@ export default function CreatePersonalityDialog({
       ).unwrap();
 
       // Navigate to the edit page for the new personality
-      navigate(`/personality/${body.personality.id}`);
+      navigate(`/personality/${body.personality.id}/edit`);
 
       toast.success("Personality created successfully!");
       handleOpenChange(false);

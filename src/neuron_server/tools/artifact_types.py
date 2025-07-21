@@ -58,6 +58,7 @@ class ToolMediaItem(BaseModel):
         default_factory=ToolArtifactMetadata, description="Generation metadata"
     )
 
+
 ArtifactMediaType = Literal[
     "image",
     "audio",
@@ -70,13 +71,12 @@ ArtifactMediaType = Literal[
     "unknown",
 ]
 
+
 class ToolMediaArtifact(BaseModel):
     """Artifact containing media items for UI display."""
 
     type: Literal["media"] = "media"
-    media_type: ArtifactMediaType = Field(
-        description="Type of content"
-    )
+    media_type: ArtifactMediaType = Field(description="Type of content")
     items: list[ToolMediaItem] = Field(description="List of generated media items")
 
     def to_xml(self) -> str:

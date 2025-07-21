@@ -124,7 +124,7 @@ if config.serve_client:
     @blueprint.get("/")
     @blueprint.get("/thread/<thread_id>")
     @blueprint.get("/personalities")
-    @blueprint.get("/personality/<personality_id>")
+    @blueprint.get("/personality/<personality_id>/edit")
     @blueprint.get("/personality/<personality_id>/embeddings")
     @blueprint.get("/gallery")
     @blueprint.get("/code-viewer")

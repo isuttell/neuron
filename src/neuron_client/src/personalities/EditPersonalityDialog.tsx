@@ -105,7 +105,7 @@ export default function EditPersonalityDialog({
           })
         ).unwrap();
 
-        navigate(`/personality/${body.personality.id}`);
+        navigate(`/personality/${body.personality.id}/edit`);
       }
       handleOpenChange(false);
     } catch (error: unknown) {
