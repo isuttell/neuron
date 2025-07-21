@@ -3,12 +3,19 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import pytest
+from pydantic import ValidationError
 from quart import Quart
 
 from neuron_server.api import app as neuron_app
 from neuron_server.controllers.auth import TokenPayload
+from neuron_server.controllers.personality_controller import (
+    PersonalityGenerationResponse,
+    ainvoke_generate_personality,
+)
+from neuron_server.llms.llm import LLM
 from neuron_server.models.personality_model import PersonalityModel
 from neuron_server.models.personality_user_model import PersonalityUserModel
+from neuron_server.models.provider_model import ProviderModelModel
 from neuron_server.models.user_model import UserModel
 
 # Constants
@@ -835,3 +842,379 @@ async def test_set_default_personality_not_found(
 
         # Verify mock was called
         mock_get.assert_called_once_with(personality_id=personality_id)
+
+
+# Personality Generation Tests
+
+
+@pytest.fixture
+def mock_llm() -> MagicMock:
+    """Mock LLM instance for testing."""
+    llm = MagicMock(spec=LLM)
+    llm.model = MagicMock()
+    return llm
+
+
+@pytest.fixture
+def sample_personality_response() -> PersonalityGenerationResponse:
+    """Sample personality generation response for testing."""
+    return PersonalityGenerationResponse(
+        name="Test Expert",
+        description="A knowledgeable expert in testing and quality assurance",
+        context=(
+            "You are Test Expert, a seasoned professional in software testing. "
+            "You provide detailed, practical advice on testing strategies, tools, "
+            "and best practices. Always be thorough and methodical in your responses."
+        ),
+        memory="",
+    )
+
+
+class TestPersonalityGenerationResponse:
+    """Test cases for PersonalityGenerationResponse Pydantic model."""
+
+    def test_valid_personality_response(
+        self, sample_personality_response: PersonalityGenerationResponse
+    ) -> None:
+        """Test creating a valid PersonalityGenerationResponse."""
+        assert sample_personality_response.name == "Test Expert"
+        assert "expert in testing" in sample_personality_response.description
+        assert "You are Test Expert" in sample_personality_response.context
+        assert sample_personality_response.memory == ""
+
+    def test_personality_response_missing_required_field(self) -> None:
+        """Test that missing required fields raise ValidationError."""
+        with pytest.raises(ValidationError) as excinfo:
+            PersonalityGenerationResponse(
+                name="Test Expert",
+                description="A testing expert",
+                # missing context and memory
+            )
+
+        error_details = excinfo.value.errors()
+        missing_fields = [
+            error["loc"][0] for error in error_details if error["type"] == "missing"
+        ]
+        assert "context" in missing_fields
+        assert "memory" in missing_fields
+
+    def test_personality_response_empty_strings(self) -> None:
+        """Test that empty strings are valid for all fields."""
+        response = PersonalityGenerationResponse(
+            name="",
+            description="",
+            context="",
+            memory="",
+        )
+        assert response.name == ""
+        assert response.description == ""
+        assert response.context == ""
+        assert response.memory == ""
+
+    def test_personality_response_serialization(
+        self, sample_personality_response: PersonalityGenerationResponse
+    ) -> None:
+        """Test that PersonalityGenerationResponse serializes correctly."""
+        data = sample_personality_response.model_dump()
+        assert data["name"] == "Test Expert"
+        expected_desc = "A knowledgeable expert in testing and quality assurance"
+        assert data["description"] == expected_desc
+        assert "You are Test Expert" in data["context"]
+        assert data["memory"] == ""
+
+
+class TestAinvokeGeneratePersonality:
+    """Test cases for ainvoke_generate_personality function."""
+
+    @pytest.mark.asyncio
+    async def test_successful_personality_generation(
+        self,
+        mock_llm: MagicMock,
+        sample_personality_response: PersonalityGenerationResponse,
+    ) -> None:
+        """Test successful personality generation with structured output."""
+        # Setup mock chain
+        mock_chain = MagicMock()
+        mock_chain.ainvoke = AsyncMock(return_value=sample_personality_response)
+
+        # Mock the chain creation
+        with patch(
+            "neuron_server.controllers.personality_controller.personality_generation_prompt"
+        ) as mock_prompt:
+            mock_prompt.__or__ = MagicMock(return_value=mock_chain)
+            mock_llm.model.with_structured_output.return_value = mock_chain
+
+            # Call the function
+            result = await ainvoke_generate_personality(
+                mock_llm, "Create a testing expert personality"
+            )
+
+            # Verify result
+            assert isinstance(result, PersonalityGenerationResponse)
+            assert result.name == "Test Expert"
+            expected_desc = "A knowledgeable expert in testing and quality assurance"
+            assert result.description == expected_desc
+            assert "You are Test Expert" in result.context
+            assert result.memory == ""
+
+            # Verify mocks were called
+            mock_llm.model.with_structured_output.assert_called_once_with(
+                PersonalityGenerationResponse
+            )
+            mock_chain.ainvoke.assert_called_once_with(
+                {"prompt": "Create a testing expert personality"}
+            )
+
+    @pytest.mark.asyncio
+    async def test_personality_generation_with_validation_error(
+        self, mock_llm: MagicMock
+    ) -> None:
+        """Test that Pydantic validation errors are properly raised."""
+        # Setup mock chain to raise ValidationError
+        mock_chain = MagicMock()
+        mock_chain.ainvoke = AsyncMock(
+            side_effect=ValidationError.from_exception_data(
+                "PersonalityGenerationResponse",
+                [{"type": "missing", "loc": ("name",), "msg": "Field required"}],
+            )
+        )
+
+        with patch(
+            "neuron_server.controllers.personality_controller.personality_generation_prompt"
+        ) as mock_prompt:
+            mock_prompt.__or__ = MagicMock(return_value=mock_chain)
+            mock_llm.model.with_structured_output.return_value = mock_chain
+
+            # Call the function and expect ValidationError
+            with pytest.raises(ValidationError) as excinfo:
+                await ainvoke_generate_personality(mock_llm, "Invalid prompt")
+
+            # Verify error details
+            error_details = excinfo.value.errors()
+            assert len(error_details) == 1
+            assert error_details[0]["type"] == "missing"
+            assert error_details[0]["loc"] == ("name",)
+
+
+class TestGeneratePersonalityEndpoint:
+    """Test cases for the /api/personality/generate endpoint."""
+
+    @pytest.mark.asyncio
+    async def test_generate_personality_success(
+        self,
+        app: Quart,
+        mock_token: TokenPayload,
+        mock_decode_token: AsyncMock,
+        sample_personality_response: PersonalityGenerationResponse,
+    ) -> None:
+        """Test successful personality generation endpoint."""
+        # Mock the created personality
+        mock_created_personality = MagicMock()
+        mock_created_personality.id = uuid4()
+        mock_created_personality.model_dump.return_value = {
+            "id": str(mock_created_personality.id),
+            "name": sample_personality_response.name,
+            "description": sample_personality_response.description,
+            "context": sample_personality_response.context,
+            "memory": sample_personality_response.memory,
+        }
+
+        with (
+            patch.object(
+                ProviderModelModel, "get_active_llm", new_callable=AsyncMock
+            ) as mock_get_llm,
+            patch(
+                "neuron_server.controllers.personality_controller.ainvoke_generate_personality",
+                new_callable=AsyncMock,
+            ) as mock_generate,
+            patch.object(
+                PersonalityModel, "create", new_callable=AsyncMock
+            ) as mock_create,
+        ):
+            # Setup mocks
+            mock_llm = MagicMock(spec=LLM)
+            mock_get_llm.return_value = mock_llm
+            mock_generate.return_value = sample_personality_response
+            mock_create.return_value = mock_created_personality
+
+            # Create request data
+            request_data = {
+                "prompt": "Create a testing expert personality",
+                "tool_set": None,
+            }
+
+            # Create request context
+            async with app.test_request_context(
+                "/api/personality/generate",
+                method="POST",
+                headers={
+                    "Authorization": TEST_JWT_TOKEN,
+                    "X-CSRF-Token": "test-csrf-token",
+                },
+                json=request_data,
+            ):
+                # Set token on request
+                app.request_class.token = mock_token
+
+                # Call the endpoint function directly
+                from neuron_server.controllers.personality_controller import (
+                    generate_personality,
+                )
+
+                result = await generate_personality()
+
+                # Verify response
+                assert "personality" in result
+                assert result["personality"]["name"] == sample_personality_response.name
+                assert (
+                    result["personality"]["description"]
+                    == sample_personality_response.description
+                )
+
+            # Verify mocks were called correctly
+            mock_get_llm.assert_called_once()
+            mock_generate.assert_called_once_with(
+                llm=mock_llm, prompt="Create a testing expert personality"
+            )
+            mock_create.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_generate_personality_with_tool_set(
+        self,
+        app: Quart,
+        mock_decode_token: AsyncMock,
+        sample_personality_response: PersonalityGenerationResponse,
+    ) -> None:
+        """Test personality generation with tool set specified."""
+        # Create token with tool permission
+        mock_token = TokenPayload(
+            user_id="test_user_id",
+            roles=["tool-search"],
+            email="test@example.com",
+            nickname="test_user",
+            picture=None,
+            permissions=[],
+        )
+
+        # Mock the created personality
+        mock_created_personality = MagicMock()
+        mock_created_personality.id = uuid4()
+        mock_created_personality.model_dump.return_value = {
+            "id": str(mock_created_personality.id),
+            "name": sample_personality_response.name,
+            "description": sample_personality_response.description,
+            "context": sample_personality_response.context,
+            "memory": sample_personality_response.memory,
+            "tool_set": "search",
+        }
+
+        with (
+            patch.object(
+                ProviderModelModel, "get_active_llm", new_callable=AsyncMock
+            ) as mock_get_llm,
+            patch(
+                "neuron_server.controllers.personality_controller.ainvoke_generate_personality",
+                new_callable=AsyncMock,
+            ) as mock_generate,
+            patch.object(
+                PersonalityModel, "create", new_callable=AsyncMock
+            ) as mock_create,
+            patch(
+                "neuron_server.controllers.personality_controller.validate_tool_set_permissions"
+            ) as mock_validate_tools,
+        ):
+            # Setup mocks
+            mock_llm = MagicMock(spec=LLM)
+            mock_get_llm.return_value = mock_llm
+            mock_generate.return_value = sample_personality_response
+            mock_create.return_value = mock_created_personality
+            mock_validate_tools.return_value = None  # No validation errors
+            mock_decode_token.return_value = mock_token
+
+            # Create request data
+            request_data = {
+                "prompt": "Create a search expert personality",
+                "tool_set": "search",
+            }
+
+            # Create request context
+            async with app.test_request_context(
+                "/api/personality/generate",
+                method="POST",
+                headers={
+                    "Authorization": TEST_JWT_TOKEN,
+                    "X-CSRF-Token": "test-csrf-token",
+                },
+                json=request_data,
+            ):
+                # Set token on request
+                app.request_class.token = mock_token
+
+                # Call the endpoint function directly
+                from neuron_server.controllers.personality_controller import (
+                    generate_personality,
+                )
+
+                result = await generate_personality()
+
+                # Verify response
+                assert "personality" in result
+                assert result["personality"]["tool_set"] == "search"
+
+            # Verify tool validation was called
+            mock_validate_tools.assert_called_once_with("search", ["tool-search"])
+
+    @pytest.mark.asyncio
+    async def test_generate_personality_validation_error(
+        self,
+        app: Quart,
+        mock_token: TokenPayload,
+        mock_decode_token: AsyncMock,
+    ) -> None:
+        """Test personality generation endpoint with validation error."""
+        with (
+            patch.object(
+                ProviderModelModel, "get_active_llm", new_callable=AsyncMock
+            ) as mock_get_llm,
+            patch(
+                "neuron_server.controllers.personality_controller.ainvoke_generate_personality",
+                new_callable=AsyncMock,
+            ) as mock_generate,
+        ):
+            # Setup mocks
+            mock_llm = MagicMock(spec=LLM)
+            mock_get_llm.return_value = mock_llm
+
+            # Mock ValidationError from Pydantic
+            mock_generate.side_effect = ValidationError.from_exception_data(
+                "PersonalityGenerationResponse",
+                [{"type": "missing", "loc": ("name",), "msg": "Field required"}],
+            )
+
+            # Create request data
+            request_data = {
+                "prompt": "Invalid prompt that causes validation error",
+                "tool_set": None,
+            }
+
+            # Create request context
+            async with app.test_request_context(
+                "/api/personality/generate",
+                method="POST",
+                headers={
+                    "Authorization": TEST_JWT_TOKEN,
+                    "X-CSRF-Token": "test-csrf-token",
+                },
+                json=request_data,
+            ):
+                # Set token on request
+                app.request_class.token = mock_token
+
+                # Call the endpoint function directly
+                from neuron_server.controllers.personality_controller import (
+                    generate_personality,
+                )
+
+                # Expect ValidationError to be raised (not caught by endpoint)
+                with pytest.raises(ValidationError):
+                    await generate_personality()

@@ -1,4 +1,3 @@
-import json
 import re
 from uuid import UUID
 
@@ -6,7 +5,7 @@ from langchain_core.messages import BaseMessage, HumanMessage
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import Runnable
 from langgraph.prebuilt import create_react_agent
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from quart import Blueprint, Response
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
@@ -57,6 +56,23 @@ class UpdatePersonality(CreatePersonality):
 class GeneratePersonality(BaseModel):
     prompt: str
     tool_set: str | None = None
+
+
+class PersonalityGenerationResponse(BaseModel):
+    """Pydantic model for structured personality generation response."""
+
+    name: str = Field(
+        description="Personality name that is memorable and reflects the role"
+    )
+    description: str = Field(
+        description="Brief description of what the personality does"
+    )
+    context: str = Field(
+        description="Detailed custom instructions written in second person"
+    )
+    memory: str = Field(
+        description="Memory field (typically empty for new personalities)"
+    )
 
 
 class PersonalityUserPayload(BaseModel):
@@ -127,7 +143,9 @@ async def ainvoke_description(llm: LLM, context: str) -> str:
     return re.sub(r"```(?:\w+)?\s*|\s*```", "", content.strip()).strip()
 
 
-async def ainvoke_generate_personality(llm: LLM, prompt: str) -> dict[str, str]:
+async def ainvoke_generate_personality(
+    llm: LLM, prompt: str
+) -> PersonalityGenerationResponse:
     """Generate a complete personality from a user prompt using LLM.
 
     Args:
@@ -135,32 +153,14 @@ async def ainvoke_generate_personality(llm: LLM, prompt: str) -> dict[str, str]:
         prompt: User's description of the desired personality
 
     Returns:
-        Dict containing name, description, context, and memory fields
-
-    Raises:
-        MissingContextError: If the LLM response doesn't contain valid personality data
+        PersonalityGenerationResponse containing name, description, context,
+        and memory fields
     """
-    chain = personality_generation_prompt | llm.model | StrOutputParser()
-    content: str = await chain.ainvoke({"prompt": prompt})
-
-    # Extract personality data from response
-    match = re.search(r"<\|personality\|>(.*?)</?\|personality\|>", content, re.DOTALL)
-    if not match:
-        raise MissingContextError("No personality tags found in response", content)
-
-    try:
-        personality_data = json.loads(match.group(1).strip())
-
-        # Validate required fields
-        required_fields = ["name", "description", "context", "memory"]
-        for field in required_fields:
-            if field not in personality_data:
-                raise MissingContextError(f"Missing required field: {field}", content)
-
-        return personality_data
-    except json.JSONDecodeError as e:
-        msg = f"Invalid JSON in personality response: {e}"
-        raise MissingContextError(msg, content) from e
+    chain = personality_generation_prompt | llm.model.with_structured_output(
+        PersonalityGenerationResponse
+    )
+    response: PersonalityGenerationResponse = await chain.ainvoke({"prompt": prompt})
+    return response
 
 
 @blueprint.get("/<uuid:personality_id>")
@@ -331,10 +331,10 @@ async def generate_personality() -> dict[str, dict]:
 
     # Create the personality using generated data
     create_params = PersonalityModel.CreateParams(
-        name=personality_data["name"],
-        description=personality_data["description"],
-        context=personality_data["context"],
-        memory=personality_data["memory"],
+        name=personality_data.name,
+        description=personality_data.description,
+        context=personality_data.context,
+        memory=personality_data.memory,
         logo=None,  # Can be generated later if needed
         tool_set=payload.tool_set,
         creator_id=user_id,
