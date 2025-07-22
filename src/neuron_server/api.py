@@ -45,6 +45,15 @@ from neuron_server.controllers.personality_controller import (
 from neuron_server.controllers.personality_controller import (
     router as personality_router,
 )
+from neuron_server.controllers.personality_message_controller import (
+    blueprint as personality_message_blueprint,
+)
+from neuron_server.controllers.personality_message_controller import (
+    cleanup_user_personality_rooms,
+)
+from neuron_server.controllers.personality_message_controller import (
+    router as personality_message_router,
+)
 from neuron_server.controllers.prompt_controller import (
     blueprint as prompt_blueprint,
 )
@@ -85,6 +94,7 @@ router.register_controller(message_router)
 router.register_controller(personality_router)
 router.register_controller(image_router)
 router.register_controller(prompt_router)
+router.register_controller(personality_message_router)
 
 app = Quart(
     __name__,
@@ -278,8 +288,12 @@ async def ws() -> None:
         await websocket.close(401, str(e))
         logger.error(e)
     finally:
-        # Clean up session
+        # Clean up session and rooms
         if session_id:
+            # Get session before removing it for room cleanup
+            session = await session_manager.get_session(session_id)
+            if session:
+                await cleanup_user_personality_rooms(session)
             await session_manager.remove_session(session_id)
         if token:
             logger.info(f"Disconnected ({token.user_id}) - Session: {session_id}")
@@ -297,6 +311,9 @@ app.register_blueprint(webhook_blueprint, url_prefix="/api/webhooks")
 app.register_blueprint(thread_blueprint, url_prefix="/api/threads")
 app.register_blueprint(message_blueprint, url_prefix="/api/messages")
 app.register_blueprint(personality_blueprint, url_prefix="/api/personalities")
+app.register_blueprint(
+    personality_message_blueprint, url_prefix="/api/personality-messages"
+)
 app.register_blueprint(favorites_blueprint, url_prefix="/api/favorites")
 app.register_blueprint(image_blueprint, url_prefix="/api/images")
 app.register_blueprint(graph_blueprint, url_prefix="/api/graph")

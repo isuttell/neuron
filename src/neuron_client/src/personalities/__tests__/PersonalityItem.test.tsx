@@ -221,8 +221,8 @@ describe("PersonalityItem", () => {
       const clickableArea = screen.getByText("Test description");
       fireEvent.click(clickableArea);
 
-      // Should navigate to home page
-      expect(mockNavigate).toHaveBeenCalledWith("/");
+      // Should navigate to personality chat page
+      expect(mockNavigate).toHaveBeenCalledWith("/personality/test-personality-id/chat");
     });
   });
 

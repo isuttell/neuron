@@ -48,3 +48,19 @@ class PostMessage(IncomingEvent):
 
 class CancelMessage(IncomingEvent):
     thread_id: UUID
+
+
+class PersonalityMessageEvent(OutgoingEvent):
+    type: Literal["personality_message"] = "personality_message"
+    personality_id: UUID
+    message_id: UUID
+    content: str
+    user_id: str | None
+    created_at: str
+    updated_at: str
+
+
+class PersonalityMessageDeletedEvent(OutgoingEvent):
+    type: Literal["personality_message_deleted"] = "personality_message_deleted"
+    personality_id: UUID
+    message_id: UUID

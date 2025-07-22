@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { CornerDownLeft, Upload, X } from "lucide-react";
+import { CornerDownLeft, Upload, X, Check } from "lucide-react";
 import { useState, useRef, useEffect, ReactNode } from "react";
 
 /**
@@ -20,6 +20,16 @@ interface MessageFormProps {
   placeholder?: string;
   /** Additional CSS classes to apply to the form element */
   className?: string;
+  /** Whether to show the upload button (default: true) */
+  showUpload?: boolean;
+  /** Whether to show the record button (default: true) */
+  showRecord?: boolean;
+  /** Whether to show the prompts dropdown (default: true) */
+  showPrompts?: boolean;
+  /** Initial value for the textarea (used when editing messages) */
+  initialValue?: string;
+  /** Whether the form is in edit mode */
+  editMode?: boolean;
   /**
    * Callback fired when the form is submitted
    * @param value - The trimmed text content of the message
@@ -37,9 +47,13 @@ interface MessageFormProps {
    */
   onFileRemove?: () => void;
   /**
-   * Callback fired when the cancel button is clicked (during loading state)
+   * Callback fired when the cancel button is clicked (during loading state or edit mode)
    */
   onCancel?: () => void;
+  /**
+   * Callback fired when editing is cancelled
+   */
+  onCancelEdit?: () => void;
 
   /**
    * Optional children to render to the left of the buttons
@@ -78,16 +92,27 @@ export default function MessageForm({
   isLoading = false,
   placeholder = "Type your message here...",
   className = "",
+  showUpload = true,
+  showRecord = true,
+  showPrompts = true,
+  initialValue = "",
+  editMode = false,
   onSubmit,
   onFileAdd,
   onFileRemove,
   onCancel,
+  onCancelEdit,
   children = undefined,
 }: MessageFormProps) {
-  const [value, setValue] = useState("");
+  const [value, setValue] = useState(initialValue);
   const [file, setFile] = useState<File | Blob | undefined>(undefined);
   const [isAudioRecording, setIsAudioRecording] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Update value when initialValue changes (for edit mode)
+  useEffect(() => {
+    setValue(initialValue);
+  }, [initialValue]);
 
   useEffect(() => {
     // Focus textarea when thread becomes idle
@@ -153,6 +178,9 @@ export default function MessageForm({
             if (e.key === "Enter" && !e.shiftKey) {
               e.preventDefault();
               handleSubmit();
+            } else if (e.key === "Escape" && editMode) {
+              e.preventDefault();
+              onCancelEdit?.();
             }
           }}
         />
@@ -173,55 +201,78 @@ export default function MessageForm({
           {children}
         </div>}
         <div className="flex-1" />
-        <Button
-          type="button"
-          size="sm"
-          variant={file ? "default" : "outline"}
-          className="size-10 gap-1.5 flex-shrink-0"
-          disabled={isDisabled}
-          onClick={() => {
-            if (file) {
+        {showUpload && (
+          <Button
+            type="button"
+            size="sm"
+            variant={file ? "default" : "outline"}
+            className="size-10 gap-1.5 flex-shrink-0"
+            disabled={isDisabled}
+            onClick={() => {
+              if (file) {
+                setFile(undefined);
+                setIsAudioRecording(false);
+                onFileRemove?.();
+              } else {
+                document.getElementById("file-upload")?.click();
+              }
+            }}
+          >
+            <Upload className="size-3.5" />
+          </Button>
+        )}
+        {showRecord && (
+          <AudioRecorder
+            className="size-10 flex-shrink-0"
+            disabled={isDisabled || !!file}
+            onRecordingComplete={(blob) => {
+              setFile(blob);
+              setIsAudioRecording(true);
+              onFileAdd?.(blob, true);
+            }}
+            onAutoSend={(blob) => {
+              onSubmit(value, blob);
+              setValue("");
               setFile(undefined);
               setIsAudioRecording(false);
-              onFileRemove?.();
-            } else {
-              document.getElementById("file-upload")?.click();
-            }
-          }}
-        >
-          <Upload className="size-3.5" />
-        </Button>
-        <AudioRecorder
-          className="size-10 flex-shrink-0"
-          disabled={isDisabled || !!file}
-          onRecordingComplete={(blob) => {
-            setFile(blob);
-            setIsAudioRecording(true);
-            onFileAdd?.(blob, true);
-          }}
-          onAutoSend={(blob) => {
-            onSubmit(value, blob);
-            setValue("");
-            setFile(undefined);
-            setIsAudioRecording(false);
-          }}
-        />
-        <PromptDropdown
-          disabled={isDisabled}
-          onSelectPrompt={(promptText) => setValue(promptText)}
-        />
-        <input
-          id="file-upload"
-          type="file"
-          className="hidden"
-          onChange={handleFileUpload}
-          accept=".png,.jpg,.jpeg,.gif,.webp,.pdf,.md,.txt,.csv,.srt,.vtt,.mp3,.wav,.mp4,.heic,.heif"
-        />
+            }}
+          />
+        )}
+        {showPrompts && (
+          <PromptDropdown
+            disabled={isDisabled}
+            onSelectPrompt={(promptText) => setValue(promptText)}
+          />
+        )}
+        {showUpload && (
+          <input
+            id="file-upload"
+            type="file"
+            className="hidden"
+            onChange={handleFileUpload}
+            accept=".png,.jpg,.jpeg,.gif,.webp,.pdf,.md,.txt,.csv,.srt,.vtt,.mp3,.wav,.mp4,.heic,.heif"
+          />
+        )}
+        {/* Cancel button for edit mode */}
+        {editMode && !isLoading && (
+          <Button
+            onClick={() => onCancelEdit?.()}
+            type="button"
+            size="sm"
+            variant="outline"
+            data-testid="cancel-edit-button"
+            className="size-10 flex-shrink-0"
+          >
+            <X className="size-3.5" />
+          </Button>
+        )}
+
+        {/* Submit/Update button */}
         <Button
           onClick={() => isLoading ? onCancel?.() : handleSubmit()}
           type={isLoading ? "button" : "submit"}
           size="sm"
-          data-testid={isLoading ? "cancel-button" : "submit-button"}
+          data-testid={isLoading ? "cancel-button" : editMode ? "update-button" : "submit-button"}
           disabled={!isLoading && (isSubmitDisabled || isDisabled)}
           className={cn(
             "size-10 flex-shrink-0",
@@ -234,6 +285,8 @@ export default function MessageForm({
         >
           {isLoading ? (
             <X className="size-3.5" />
+          ) : editMode ? (
+            <Check className="size-3.5" />
           ) : (
             <CornerDownLeft className="size-3.5" />
           )}

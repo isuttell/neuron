@@ -212,7 +212,7 @@ export default function Thread() {
               </div>
             </div>
             <div
-              className="h-16 w-full absolute bottom-0 z-20"
+              className="h-8 w-full absolute bottom-0 z-20"
               style={{
                 background:
                   "linear-gradient(0deg,rgba(9,9,11, 1) 0%, rgba(9,9,11, 0) 100%)",

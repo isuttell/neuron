@@ -11,6 +11,11 @@ import { upsertPersonality } from "../slices/personalitiesSlice";
 import { upsertPrompt } from "../slices/promptsSlice";
 import { connect, disconnect } from "../slices/socketSlice";
 import { upsertThread } from "../slices/threadsSlice";
+import {
+  upsertMessage as upsertPersonalityChatMessage,
+  updateMessage as updatePersonalityChatMessage,
+  deleteMessage as deletePersonalityChatMessage,
+} from "../slices/personalityChatSlice";
 import type {
   ErrorEvent,
   ImageEvent,
@@ -18,6 +23,15 @@ import type {
   MessageEvent,
   PartialMessageEvent,
   PersonalityEvent,
+  PersonalityChatMessageEvent,
+  PersonalityChatUpdateEvent,
+  PersonalityChatDeleteEvent,
+  PersonalityMessageEvent,
+  PersonalityMessageDeletedEvent,
+  RoomJoinedEvent,
+  RoomLeftEvent,
+  UserJoinedRoomEvent,
+  UserLeftRoomEvent,
   PingEvent,
   PromptEvent,
   SidebarImageEvent,
@@ -138,6 +152,65 @@ const websocketMiddleware =
           toast.error("Server error", {
             description: event.message,
           });
+        });
+
+        // Personality Chat WebSocket Events
+        socket.on("personality_chat_message", (event: PersonalityChatMessageEvent) => {
+          dispatch(upsertPersonalityChatMessage(event));
+        });
+
+        socket.on("personality_chat_update", (event: PersonalityChatUpdateEvent) => {
+          dispatch(updatePersonalityChatMessage(event));
+        });
+
+        socket.on("personality_chat_delete", (event: PersonalityChatDeleteEvent) => {
+          dispatch(deletePersonalityChatMessage(event));
+        });
+
+        // New personality message events from room system
+        socket.on("personality_message", (event: PersonalityMessageEvent) => {
+          // Convert backend PersonalityMessageEvent to frontend PersonalityChatMessageEvent format
+          const personalityChatEvent = {
+            type: "personality_chat_message" as const,
+            message: {
+              id: event.message_id,
+              personality_id: event.personality_id,
+              content: event.content,
+              user_id: event.user_id,
+              created_at: event.created_at,
+              updated_at: event.updated_at,
+            }
+          };
+          dispatch(upsertPersonalityChatMessage(personalityChatEvent));
+        });
+
+        socket.on("personality_message_deleted", (event: PersonalityMessageDeletedEvent) => {
+          // Convert backend PersonalityMessageDeletedEvent to frontend format
+          const deleteEvent = {
+            type: "personality_chat_delete" as const,
+            message_id: event.message_id,
+            personality_id: event.personality_id,
+          };
+          dispatch(deletePersonalityChatMessage(deleteEvent));
+        });
+
+        // Room WebSocket Events
+        socket.on("room_joined", (event: RoomJoinedEvent) => {
+          console.log(`Joined room: ${event.room_type}:${event.room_id} (${event.member_count} members)`);
+        });
+
+        socket.on("room_left", (event: RoomLeftEvent) => {
+          console.log(`Left room: ${event.room_type}:${event.room_id}`);
+        });
+
+        socket.on("user_joined_room", (event: UserJoinedRoomEvent) => {
+          console.log(`User ${event.nickname} joined room: ${event.room_type}:${event.room_id}`);
+          // Could show a toast notification here if desired
+        });
+
+        socket.on("user_left_room", (event: UserLeftRoomEvent) => {
+          console.log(`User ${event.nickname} left room: ${event.room_type}:${event.room_id}`);
+          // Could show a toast notification here if desired
         });
       }
     } else if (socket.connected && action.type.indexOf("socket/") === 0) {
