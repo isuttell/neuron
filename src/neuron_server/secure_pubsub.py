@@ -128,10 +128,9 @@ class SecurePubSub:
                 thread_ids.add(media_item.thread_id)
 
         if not thread_ids:
-            logger.warning(
-                "Media event has no associated thread_ids, broadcasting to all users"
+            logger.error(
+                "Media event has no associated thread_ids"
             )
-            await self.broadcast_to_all_users(media_event)
             return
 
         # Get all users with access to any of the associated threads
