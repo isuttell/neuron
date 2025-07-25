@@ -1,0 +1,190 @@
+import PersonalityChatHeaderActions from "@/components/PersonalityChatHeaderActions";
+import { SidebarTrigger } from "@/components/ui/sidebar";
+import { Spinner } from "@/components/ui/spinner";
+import Loading from "@/lib/loading";
+import { debounce } from "@/lib/utils";
+import { useEffect, useRef, useState } from "react";
+import { shallowEqual } from "react-redux";
+import { useParams, useNavigate } from "react-router-dom";
+import {
+  fetchPersonalityMessages,
+  sendPersonalityMessage,
+  updatePersonalityMessage,
+} from "../actions/personalityChatActions";
+import {
+  joinPersonalityRoom,
+  leavePersonalityRoom,
+} from "../actions/roomActions";
+import { useAppDispatch, useAppSelector } from "../hooks";
+import PersonalityChatForm from "../messages/PersonalityChatForm";
+import PersonalityChatItem from "../messages/PersonalityChatItem";
+import {
+  getPersonalityChatLoading,
+  getPersonalityChatMessages,
+  setActivePersonalityId,
+} from "../slices/personalityChatSlice";
+import { getPersonality } from "../slices/personalitiesSlice";
+import { getCurrentUser } from "../slices/appSlice";
+
+export default function PersonalityChat() {
+  const dispatch = useAppDispatch();
+  const navigate = useNavigate();
+  const currentUser = useAppSelector(getCurrentUser);
+  const lastMessageRef = useRef<HTMLDivElement | null>(null);
+  const { personalityId } = useParams();
+
+  const personality = useAppSelector(
+    (state) => personalityId ? getPersonality(state, personalityId) : undefined,
+    shallowEqual
+  );
+
+  const loading = useAppSelector(getPersonalityChatLoading);
+  const messages = useAppSelector(
+    (state) => getPersonalityChatMessages(state, personalityId),
+    shallowEqual
+  );
+
+  // Edit state management
+  const [editingMessage, setEditingMessage] = useState<{ id: string; content: string } | null>(null);
+
+  // Set active personality when component mounts
+  useEffect(() => {
+    if (personalityId) {
+      dispatch(setActivePersonalityId(personalityId));
+    }
+    return () => {
+      dispatch(setActivePersonalityId(null));
+    };
+  }, [personalityId, dispatch]);
+
+  // Join/leave personality room when component mounts/unmounts
+  useEffect(() => {
+    if (!personalityId) {
+      return;
+    }
+
+    // Join the personality room
+    dispatch(joinPersonalityRoom({ personalityId }));
+
+    return () => {
+      // Leave the personality room when component unmounts
+      dispatch(leavePersonalityRoom({ personalityId }));
+    };
+  }, [personalityId, dispatch]);
+
+  // Fetch messages when personality changes
+  useEffect(() => {
+    if (!personalityId) {
+      return;
+    }
+    dispatch(fetchPersonalityMessages({ personalityId }));
+  }, [personalityId, dispatch]);
+
+  // Auto-scroll to latest message
+  useEffect(() => {
+    setTimeout(() => {
+      if (lastMessageRef.current) {
+        lastMessageRef.current.scrollIntoView({
+          behavior: "instant",
+          block: "end",
+        });
+      }
+    }, 100);
+  }, [messages.length]);
+
+  if (!personality || (loading && messages.length === 0)) {
+    return <Loading />;
+  }
+
+  const handleSendMessage = debounce<[string], void>((content) => {
+    if (!personalityId || !currentUser?.sub) return;
+
+    if (editingMessage) {
+      // Update existing message
+      dispatch(
+        updatePersonalityMessage({
+          personalityId,
+          messageId: editingMessage.id,
+          content,
+        })
+      );
+      setEditingMessage(null); // Clear edit mode
+    } else {
+      // Send new message
+      dispatch(
+        sendPersonalityMessage({
+          personalityId,
+          content,
+          userId: currentUser.sub,
+        })
+      );
+    }
+  }, 100);
+
+  const handleEditMessage = (message: { id: string; content: string }) => {
+    setEditingMessage(message);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingMessage(null);
+  };
+
+  return (
+    <div className="flex flex-1 p-4 ipad-top-spacing flex-col flex-nowrap max-h-screen">
+      <div className="flex items-center justify-between mb-2 border-b pb-2 mobile-safe-top">
+        <SidebarTrigger className="size-10 mr-2" />
+        <h1 className="text-lg lg:text-2xl font-bold">
+          {personality.name} Chat
+        </h1>
+        <div className="flex-1" />
+        <PersonalityChatHeaderActions
+          personalityId={personality.id}
+          onEditPersonality={() => navigate(`/personality/${personality.id}/edit`)}
+        />
+      </div>
+
+      <div className="flex flex-col flex-1">
+        <div className="flex-1 overflow-y-auto relative">
+          <div className="absolute top-0 left-0 right-0 bottom-0 flex flex-1 flex-col flex-nowrap max-h-full mx-auto overflow-y-auto">
+            <div className="max-w-3xl mt-4 w-full mx-auto relative z-10 flex flex-grow flex-col">
+              <div className="flex-grow" />
+              {messages.map((message, index) => (
+                <div
+                  key={message.id}
+                  ref={index === messages.length - 1 ? lastMessageRef : null}
+                >
+                  <PersonalityChatItem
+                    message={message}
+                    personality={personality}
+                    onEditMessage={handleEditMessage}
+                  />
+                </div>
+              ))}
+
+              {loading && (
+                <div className="flex my-4 pl-5">
+                  <Spinner size={48} strokeWidth={2} className="text-muted-foreground" />
+                </div>
+              )}
+
+              {messages.length === 0 && !loading && (
+                <div className="m-4 text-center text-muted-foreground">
+                  Be the first to say hi!
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="bottom-0">
+          <PersonalityChatForm
+            onSendMessage={handleSendMessage}
+            editingMessage={editingMessage}
+            onCancelEdit={handleCancelEdit}
+            className="max-w-3xl w-full mx-auto mt-2"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}

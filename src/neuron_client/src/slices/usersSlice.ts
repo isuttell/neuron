@@ -2,6 +2,7 @@ import type { PayloadAction } from "@reduxjs/toolkit";
 import { createSlice, createSelector } from "@reduxjs/toolkit";
 import { fetchMessagesByThread } from "../actions/messageActions";
 import { addUserByEmail } from "../actions/threadActions";
+import { fetchPersonalityMessages, loadMorePersonalityMessages } from "../actions/personalityChatActions";
 import type { RootState } from "../store";
 import { MessageResponse } from "../types/message";
 import { User } from "../types/user";
@@ -31,6 +32,11 @@ export const usersSlice = createSlice({
       state.loading = false;
       state.error = null;
     },
+    upsertUsers: (state, action: PayloadAction<User[]>) => {
+      for (const user of action.payload) {
+        upsertUser(state, user);
+      }
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -52,11 +58,31 @@ export const usersSlice = createSlice({
             upsertUser(state, action.payload.user);
           }
         }
+      )
+      .addCase(
+        fetchPersonalityMessages.fulfilled,
+        (state, action) => {
+          if (action.payload.users) {
+            for (const user of action.payload.users) {
+              upsertUser(state, user);
+            }
+          }
+        }
+      )
+      .addCase(
+        loadMorePersonalityMessages.fulfilled,
+        (state, action) => {
+          if (action.payload.users) {
+            for (const user of action.payload.users) {
+              upsertUser(state, user);
+            }
+          }
+        }
       );
   },
 });
 
-export const { reset } = usersSlice.actions;
+export const { reset, upsertUsers } = usersSlice.actions;
 
 // Base selectors
 const selectUsersState = (state: RootState) => state.users;

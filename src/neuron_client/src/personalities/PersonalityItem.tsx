@@ -282,10 +282,7 @@ const PersonalityItem: React.FC<PersonalityItemProps> = ({
               )}
               alt={`${personality.name} logo`}
               onClick={() => {
-                if (!isActive) {
-                  handleActivate();
-                }
-                navigate(`/`);
+                navigate(`/personality/${personality.id}/chat`);
               }}
             />
           ) : (
@@ -295,10 +292,7 @@ const PersonalityItem: React.FC<PersonalityItemProps> = ({
                 isUpdatingLogo && "opacity-30"
               )}
               onClick={() => {
-                if (!isActive) {
-                  handleActivate();
-                }
-                navigate(`/`);
+                navigate(`/personality/${personality.id}/chat`);
               }}
             >
               <p className="text-xs text-muted-foreground">

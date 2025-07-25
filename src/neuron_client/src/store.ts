@@ -8,6 +8,7 @@ import mediaListsReducer from "./slices/mediaListsSlice";
 import mediaReducer from "./slices/mediaSlice";
 import messages from "./slices/messagesSlice";
 import personalities from "./slices/personalitiesSlice";
+import personalityChat from "./slices/personalityChatSlice";
 import promptsReducer from "./slices/promptsSlice";
 import providersReducer from "./slices/providerSlice";
 import schedulerReducer from "./slices/schedulerSlice";
@@ -24,6 +25,7 @@ export const store = configureStore({
     threads,
     socket,
     personalities,
+    personalityChat,
     favorites: favoritesReducer,
     images,
     prompts: promptsReducer,
@@ -48,6 +50,9 @@ export const store = configureStore({
           "messages/postMessageByThread/pending",
           "messages/postMessageByThread/fulfilled",
           "messages/postMessageByThread/rejected",
+          "personalityChat/sendPersonalityMessage/pending",
+          "personalityChat/sendPersonalityMessage/fulfilled",
+          "personalityChat/sendPersonalityMessage/rejected",
         ],
         // Ignore these field paths in all actions
         ignoredActionPaths: ["payload.socket"],
