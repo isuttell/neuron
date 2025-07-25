@@ -138,9 +138,11 @@ const Auth0ProviderWithNavigate = ({
       authorizationParams={{
         redirect_uri: window.location.origin,
         audience: "https://neuron.zaks.io/api",
+        scope: "openid profile email offline_access",
       }}
       onRedirectCallback={onRedirectCallback}
       useRefreshTokens={true}
+      cacheLocation="localstorage"
     >
       {children}
     </Auth0Provider>
