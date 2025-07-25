@@ -47,6 +47,7 @@ import { api } from "@/lib/api";
 // Mock actions
 vi.mock("@/actions/getToken", () => ({
   setGetAccessTokenSilently: vi.fn(),
+  setAuth0Functions: vi.fn(),
 }));
 
 // Mock WebSocketManager

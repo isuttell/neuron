@@ -1,5 +1,6 @@
 import { getAccessToken } from "@/actions/getToken";
 import { addCSRFHeader, addCSRFToFormData, setCSRFToken, clearCSRFToken } from "./csrf";
+import { handleApiAuthError } from "./authErrorHandler";
 
 type JsonValue =
   | string
@@ -53,9 +54,21 @@ class ApiClient {
         const error = new Error(errorData.message || errorData.error || `API Error: ${response.statusText}`);
         (error as unknown as { status: number; data: ApiError }).status = response.status;
         (error as unknown as { status: number; data: ApiError }).data = errorData;
+
+        // Handle API authentication errors by reloading the page
+        handleApiAuthError(error);
+
         throw error;
       }
-      throw new Error(`API Error: ${response.statusText}`);
+
+      // Handle non-JSON error responses (e.g., 401 from server)
+      const error = new Error(`API Error: ${response.statusText}`);
+      (error as unknown as { status: number }).status = response.status;
+
+      // Handle API authentication errors by reloading the page
+      handleApiAuthError(error);
+
+      throw error;
     }
 
     // Handle 204 No Content responses (empty body)

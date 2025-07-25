@@ -12,7 +12,7 @@ import { fetchFavorites } from "@/actions/favoritesActions";
 import { useAuth0, withAuthenticationRequired } from "@auth0/auth0-react";
 import { useEffect, useState } from "react"; // Import useState
 import { Outlet } from "react-router-dom";
-import { setGetAccessTokenSilently } from "../actions/getToken";
+import { setAuth0Functions } from "../actions/getToken";
 import { useAppDispatch, useAppSelector } from "../hooks";
 import { api } from "../lib/api"; // Re-add api client import
 import { isAdmin } from "../lib/auth";
@@ -37,9 +37,9 @@ export function RootComponent() {
     if (!isLoading && !isAuthenticated && !error) {
       loginWithRedirect();
     } else if (!isLoading && isAuthenticated) {
-      // Set the token function first
-      if (getAccessTokenSilently) {
-        setGetAccessTokenSilently(getAccessTokenSilently);
+      // Set the Auth0 functions first
+      if (getAccessTokenSilently && loginWithRedirect) {
+        setAuth0Functions(getAccessTokenSilently, loginWithRedirect);
       }
 
       // Connect socket and fetch initial data
@@ -84,10 +84,10 @@ export function RootComponent() {
   ]);
 
   useEffect(() => {
-    if (getAccessTokenSilently) {
-      setGetAccessTokenSilently(getAccessTokenSilently);
+    if (getAccessTokenSilently && loginWithRedirect) {
+      setAuth0Functions(getAccessTokenSilently, loginWithRedirect);
     }
-  }, [getAccessTokenSilently]);
+  }, [getAccessTokenSilently, loginWithRedirect]);
 
   // Set default provider if no active provider is set (only for admins)
   useEffect(() => {
