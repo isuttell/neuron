@@ -185,18 +185,20 @@ class TestPersonalityChatOrchestrator:
             with pytest.raises(ValueError, match="No fast model available"):
                 await orchestrator.get_personality_fast_model(sample_personality_id)
 
-    def test_convert_to_chat_history_empty(
+    @pytest.mark.asyncio
+    async def test_convert_to_chat_history_empty(
         self,
         orchestrator: PersonalityChatOrchestrator,
         mock_personality: PersonalityModel,
     ) -> None:
         """Test converting empty message list to chat history."""
-        result = orchestrator.convert_to_chat_history([], mock_personality, {})
+        result = await orchestrator.convert_to_chat_history([], mock_personality, {})
 
         assert "<chat_history>" in result
         assert "No previous messages." in result
 
-    def test_convert_to_chat_history_with_messages(
+    @pytest.mark.asyncio
+    async def test_convert_to_chat_history_with_messages(
         self,
         orchestrator: PersonalityChatOrchestrator,
         mock_personality: PersonalityModel,
@@ -206,6 +208,7 @@ class TestPersonalityChatOrchestrator:
         """Test converting messages to chat history XML."""
         # Create user message
         user_message = MagicMock(spec=PersonalityMessageModel)
+        user_message.id = uuid4()
         user_message.user_id = mock_user.id
         user_message.content = "Hello bot"
         user_message.created_at = MagicMock()
@@ -213,6 +216,7 @@ class TestPersonalityChatOrchestrator:
 
         # Create AI message
         ai_message = MagicMock(spec=PersonalityMessageModel)
+        ai_message.id = uuid4()
         ai_message.user_id = None
         ai_message.content = "Hello user"
         ai_message.created_at = MagicMock()
@@ -220,9 +224,14 @@ class TestPersonalityChatOrchestrator:
 
         messages = [user_message, ai_message]
 
-        result = orchestrator.convert_to_chat_history(
-            messages, mock_personality, mock_users_dict
-        )
+        # Mock the media item fetch to return empty lists
+        with patch(
+            "neuron_server.models.personality_message_media_item_model.PersonalityMessageMediaItemModel.get_media_for_message",
+            return_value=[]
+        ):
+            result = await orchestrator.convert_to_chat_history(
+                messages, mock_personality, mock_users_dict
+            )
 
         assert "<chat_history>" in result
         assert f'username="{mock_user.nickname}"' in result
@@ -231,6 +240,107 @@ class TestPersonalityChatOrchestrator:
         assert "Hello user" in result
         assert 'type="user"' in result
         assert 'type="personality"' in result
+        # Check for new content structure
+        assert "<content>" in result
+        assert "</content>" in result
+
+    @pytest.mark.asyncio
+    async def test_convert_to_chat_history_with_media_items(
+        self,
+        orchestrator: PersonalityChatOrchestrator,
+        mock_personality: PersonalityModel,
+        mock_user: UserModel,
+        mock_users_dict: dict[str, UserModel],
+    ) -> None:
+        """Test converting messages with media items to chat history XML."""
+        # Create message with media
+        message_with_media = MagicMock(spec=PersonalityMessageModel)
+        message_with_media.id = uuid4()
+        message_with_media.user_id = mock_user.id
+        message_with_media.content = "Check out this image!"
+        message_with_media.created_at = MagicMock()
+        message_with_media.created_at.isoformat.return_value = "2023-01-01T12:00:00"
+
+        # Create mock media items
+        media_item1 = MagicMock()
+        media_item1.url = "https://example.com/image1.jpg"
+        media_item1.media_type = "image"
+        media_item1.name = "Cool Image"
+        media_item1.description = "A really cool image"
+
+        media_item2 = MagicMock()
+        media_item2.url = "https://example.com/video1.mp4"
+        media_item2.media_type = "video"
+        media_item2.name = "Cool Video"
+        media_item2.description = ""
+
+        messages = [message_with_media]
+
+        # Mock the media item fetch to return our mock media items
+        with patch(
+            "neuron_server.models.personality_message_media_item_model.PersonalityMessageMediaItemModel.get_media_for_message",
+            return_value=[media_item1, media_item2]
+        ):
+            result = await orchestrator.convert_to_chat_history(
+                messages, mock_personality, mock_users_dict
+            )
+
+        assert "<chat_history>" in result
+        assert "<content>Check out this image!</content>" in result
+        assert "<media>" in result
+        assert "</media>" in result
+        assert 'url="https://example.com/image1.jpg"' in result
+        assert 'type="image"' in result
+        assert 'name="Cool Image"' in result
+        assert 'description="A really cool image"' in result
+        assert 'url="https://example.com/video1.mp4"' in result
+        assert 'type="video"' in result
+        assert 'name="Cool Video"' in result
+        # Description should not be included when empty
+        assert 'description=""' not in result
+
+    @pytest.mark.asyncio
+    async def test_convert_to_chat_history_with_long_description(
+        self,
+        orchestrator: PersonalityChatOrchestrator,
+        mock_personality: PersonalityModel,
+        mock_user: UserModel,
+        mock_users_dict: dict[str, UserModel],
+    ) -> None:
+        """Test that long media descriptions are truncated to 1000 characters."""
+        # Create message with media having a very long description
+        message_with_media = MagicMock(spec=PersonalityMessageModel)
+        message_with_media.id = uuid4()
+        message_with_media.user_id = mock_user.id
+        message_with_media.content = "Check out this document!"
+        message_with_media.created_at = MagicMock()
+        message_with_media.created_at.isoformat.return_value = "2023-01-01T12:00:00"
+
+        # Create mock media item with very long description (over 1000 chars)
+        long_description = "A" * 1500  # 1500 characters
+        media_item = MagicMock()
+        media_item.url = "https://example.com/document.pdf"
+        media_item.media_type = "document"
+        media_item.name = "Long Document"
+        media_item.description = long_description
+
+        messages = [message_with_media]
+
+        # Mock the media item fetch to return our mock media item
+        with patch(
+            "neuron_server.models.personality_message_media_item_model.PersonalityMessageMediaItemModel.get_media_for_message",
+            return_value=[media_item]
+        ):
+            result = await orchestrator.convert_to_chat_history(
+                messages, mock_personality, mock_users_dict
+            )
+
+        # Check that description is truncated to 1000 chars + "..."
+        assert "<media>" in result
+        expected_truncated = "A" * 1000 + "..."
+        assert f'description="{expected_truncated}"' in result
+        # Ensure the full long description is NOT in the result
+        assert long_description not in result
 
     @pytest.mark.asyncio
     async def test_analyze_message_direction_directed(

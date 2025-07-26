@@ -23,6 +23,7 @@ from neuron_server.tools.artifact_types import ToolMediaArtifact
 # Configuration constants
 RESPONSE_CONFIDENCE_THRESHOLD = 0.5  # Minimum confidence to trigger auto-response
 MAX_CHAT_HISTORY_TOKENS = 10000  # Maximum tokens for chat history context
+MAX_MEDIA_DESCRIPTION_LENGTH = 1000  # Maximum characters for media item descriptions
 
 # Initialize tokenizer for token counting
 tokenizer = tiktoken.encoding_for_model("gpt-4o")
@@ -191,7 +192,7 @@ class PersonalityChatOrchestrator:
 
         for message in all_messages:
             # Convert this single message to XML format to count tokens accurately
-            temp_xml = self.convert_to_chat_history([message], personality, users)
+            temp_xml = await self.convert_to_chat_history([message], personality, users)
             message_tokens = self.count_message_tokens(temp_xml)
 
             # Check if adding this message would exceed our token limit
@@ -205,13 +206,13 @@ class PersonalityChatOrchestrator:
         # Return messages in chronological order (oldest first) for proper context flow
         return list(reversed(selected_messages))
 
-    def convert_to_chat_history(
+    async def convert_to_chat_history(  # noqa: PLR0912
         self,
         messages: list[PersonalityMessageModel],
         personality: PersonalityModel,
         users: dict[str, UserModel] | None = None,
     ) -> str:
-        """Convert message history to readable XML chat format.
+        """Convert message history to readable XML chat format with media items.
 
         Args:
             messages: List of PersonalityMessageModel instances
@@ -219,12 +220,25 @@ class PersonalityChatOrchestrator:
             users: Dictionary mapping user_id to UserModel instances
 
         Returns:
-            Formatted chat history as XML string
+            Formatted chat history as XML string including media URLs
         """
         if not messages:
             root = etree.Element("chat_history")
             root.text = "No previous messages."
             return etree.tostring(root, encoding="unicode", pretty_print=True).strip()
+
+        # Batch fetch media items for all messages to minimize database queries
+        from neuron_server.models.personality_message_media_item_model import (
+            PersonalityMessageMediaItemModel,
+        )
+
+        message_media_map = {}
+        for message in messages:
+            media_items = await PersonalityMessageMediaItemModel.get_media_for_message(
+                message.id
+            )
+            if media_items:
+                message_media_map[message.id] = media_items
 
         root = etree.Element("chat_history")
 
@@ -247,7 +261,28 @@ class PersonalityChatOrchestrator:
             message_elem.set("username", username)
             message_elem.set("timestamp", timestamp)
             message_elem.set("type", msg_type)
-            message_elem.text = message.content
+
+            # Add content as a sub-element to accommodate media items
+            content_elem = etree.SubElement(message_elem, "content")
+            content_elem.text = message.content
+
+            # Add media items if they exist
+            media_items = message_media_map.get(message.id, [])
+            if media_items:
+                media_elem = etree.SubElement(message_elem, "media")
+                for media_item in media_items:
+                    item_elem = etree.SubElement(media_elem, "item")
+                    item_elem.set("url", media_item.url)
+                    item_elem.set("type", media_item.media_type)
+                    if media_item.name:
+                        item_elem.set("name", media_item.name)
+                    if media_item.description:
+                        # Limit description length to prevent overly long content
+                        max_len = MAX_MEDIA_DESCRIPTION_LENGTH
+                        description = media_item.description[:max_len]
+                        if len(media_item.description) > max_len:
+                            description += "..."
+                        item_elem.set("description", description)
 
         return etree.tostring(root, encoding="unicode", pretty_print=True).strip()
 
@@ -281,7 +316,9 @@ class PersonalityChatOrchestrator:
             messages = await self.get_token_limited_message_history(
                 personality_id, users
             )
-            chat_history = self.convert_to_chat_history(messages, personality, users)
+            chat_history = await self.convert_to_chat_history(
+                messages, personality, users
+            )
 
             # Create status-aware structured prompt
             personality_name = personality.name
@@ -693,7 +730,7 @@ AGENT ACTION: {action}"""
                 messages = await self.get_token_limited_message_history(
                     personality_id, users
                 )
-                chat_history = self.convert_to_chat_history(
+                chat_history = await self.convert_to_chat_history(
                     messages, personality, users
                 )
 
