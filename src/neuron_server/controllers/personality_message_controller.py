@@ -27,6 +27,7 @@ from neuron_server.controllers.events.room_events import (
     UserLeftRoomEvent,
 )
 from neuron_server.event_router import EventRouter
+from neuron_server.llms.agent import execute_agent_with_messages
 from neuron_server.logger import logger
 from neuron_server.models.personality_message_model import PersonalityMessageModel
 from neuron_server.models.personality_model import PersonalityModel
@@ -39,7 +40,6 @@ from neuron_server.secure_pubsub import secure_pubsub
 from neuron_server.tools.artifact_types import ToolMediaArtifact
 from neuron_server.type_defs.request_proxy import request
 from neuron_server.websocket_session_manager import WebSocketSession
-from neuron_server.llms.agent import execute_agent_with_messages
 
 blueprint = Blueprint("personality_message", __name__)
 router = EventRouter()
