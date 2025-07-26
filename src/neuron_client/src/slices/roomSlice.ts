@@ -34,7 +34,7 @@ const roomSlice = createSlice({
     joinRoomStart: (state, action: PayloadAction<{ roomType: string; roomId: string }>) => {
       const { roomType, roomId } = action.payload;
       const roomKey = getRoomKey(roomType, roomId);
-      
+
       state.joinPending[roomKey] = true;
       delete state.errors[roomKey];
     },
@@ -43,14 +43,14 @@ const roomSlice = createSlice({
     joinRoomSuccess: (state, action: PayloadAction<{ roomType: string; roomId: string; memberCount: number }>) => {
       const { roomType, roomId, memberCount } = action.payload;
       const roomKey = getRoomKey(roomType, roomId);
-      
+
       state.subscribedRooms[roomKey] = {
         roomType,
         roomId,
         memberCount,
         joinedAt: new Date().toISOString(),
       };
-      
+
       state.joinPending[roomKey] = false;
       delete state.errors[roomKey];
     },
@@ -59,7 +59,7 @@ const roomSlice = createSlice({
     joinRoomFailure: (state, action: PayloadAction<{ roomType: string; roomId: string; error: string }>) => {
       const { roomType, roomId, error } = action.payload;
       const roomKey = getRoomKey(roomType, roomId);
-      
+
       state.joinPending[roomKey] = false;
       state.errors[roomKey] = error;
       delete state.subscribedRooms[roomKey];
@@ -69,7 +69,7 @@ const roomSlice = createSlice({
     leaveRoom: (state, action: PayloadAction<{ roomType: string; roomId: string }>) => {
       const { roomType, roomId } = action.payload;
       const roomKey = getRoomKey(roomType, roomId);
-      
+
       delete state.subscribedRooms[roomKey];
       delete state.joinPending[roomKey];
       delete state.errors[roomKey];
@@ -79,7 +79,7 @@ const roomSlice = createSlice({
     updateMemberCount: (state, action: PayloadAction<{ roomType: string; roomId: string; memberCount: number }>) => {
       const { roomType, roomId, memberCount } = action.payload;
       const roomKey = getRoomKey(roomType, roomId);
-      
+
       if (state.subscribedRooms[roomKey]) {
         state.subscribedRooms[roomKey].memberCount = memberCount;
       }

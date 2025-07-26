@@ -203,7 +203,7 @@ Returns an audio tag to be shown to the user so they can play it.
             if os.path.exists(output_path):
                 # Generate a real UUID for consistent ID between artifact and media_item
                 media_id = uuid4()
-                
+
                 logger.info(
                     f"Generated GLaDOS audio file saved to {output_path} <{url}>"
                 )

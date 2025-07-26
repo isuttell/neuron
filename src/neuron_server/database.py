@@ -412,8 +412,9 @@ class PersonalityMessageMediaItem(Base):
     # Ensure each media item can only be associated with a message once
     __table_args__ = (
         UniqueConstraint(
-            "personality_message_id", "media_item_id",
-            name="unique_personality_message_media_item"
+            "personality_message_id",
+            "media_item_id",
+            name="unique_personality_message_media_item",
         ),
     )
 

@@ -125,10 +125,10 @@ class OpenAITTSTool(BaseTool):
             else:
                 shutil.copy(audio_files[0], output)
             url = neuron_config.static_content_url + "/" + filename
-            
+
             # Generate a real UUID for consistent ID between artifact and media_item
             media_id = uuid4()
-            
+
             logger.debug("Generated audio file at %s <%s>", output, url)
 
             # Prepare artifact for UI using typed models

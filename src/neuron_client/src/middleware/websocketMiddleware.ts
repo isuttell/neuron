@@ -116,7 +116,7 @@ const websocketMiddleware =
         socketManager.onInternal("close", () => {
           // Dispatch an action when disconnected
           dispatch(disconnect());
-          
+
           // Clear all room subscriptions on disconnect
           dispatch(clearAllRooms());
 
@@ -214,7 +214,7 @@ const websocketMiddleware =
         // Room WebSocket Events
         socketManager.on("room_joined", (event: RoomJoinedEvent) => {
           console.log(`Joined room: ${event.room_type}:${event.room_id} (${event.member_count} members)`);
-          
+
           // Update room state
           dispatch(joinRoomSuccess({
             roomType: event.room_type,
@@ -225,7 +225,7 @@ const websocketMiddleware =
 
         socketManager.on("room_left", (event: RoomLeftEvent) => {
           console.log(`Left room: ${event.room_type}:${event.room_id}`);
-          
+
           // Update room state
           dispatch(leaveRoom({
             roomType: event.room_type,

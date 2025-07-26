@@ -111,7 +111,7 @@ const embeddingsSlice = createSlice({
 });
 
 // Stable empty array to prevent new references
-const EMPTY_EMBEDDINGS_ARRAY: any[] = [];
+const EMPTY_EMBEDDINGS_ARRAY: Embedding[] = [];
 
 export const selectEmbeddingspersonality = createSelector(
   [(state: RootState, personalityId: string) => state.embeddings.personality[personalityId], (_, personalityId: string) => personalityId],

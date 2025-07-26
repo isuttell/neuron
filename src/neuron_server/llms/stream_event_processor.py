@@ -175,8 +175,11 @@ class StreamEventProcessor:
                 )
 
                 # Create media items from artifacts (using predefined UUIDs)
-                artifacts = (output.artifact if isinstance(output.artifact, list) 
-                           else [output.artifact])
+                artifacts = (
+                    output.artifact
+                    if isinstance(output.artifact, list)
+                    else [output.artifact]
+                )
                 await create_media_items_from_artifacts(
                     artifacts=artifacts,
                     thread_id=ctx["thread"].id,

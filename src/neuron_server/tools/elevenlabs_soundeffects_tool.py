@@ -89,7 +89,7 @@ quality.
                     file.write(chunk)
             url = neuron_config.static_content_url + "/" + filename
             logger.debug(f"Saved generated audio to {audio_file_path} <{url}>")
-            
+
             # Generate a real UUID for consistent ID between artifact and media_item
             media_id = uuid4()
 

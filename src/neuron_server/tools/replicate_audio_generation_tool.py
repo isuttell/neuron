@@ -154,10 +154,10 @@ class ReplicateAudioGenerationTool(BaseTool):
                 async for chunk in output:
                     await file.write(chunk)
             url = f"{neuron_config.static_content_url}/{filename}"
-            
+
             # Generate a real UUID for consistent ID between artifact and media_item
             media_id = uuid4()
-            
+
             logger.debug(f"Saved generated video to {file_path} <{url}>")
 
             # Prepare artifact for UI using typed models

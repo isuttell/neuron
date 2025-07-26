@@ -447,7 +447,9 @@ class TestPyodideCodeInterpreterTool:
             assert duration >= 0.1
 
     @pytest.mark.asyncio
-    async def test_execution_with_different_configs(self, tool: PyodideCodeInterpreterTool) -> None:
+    async def test_execution_with_different_configs(
+        self, tool: PyodideCodeInterpreterTool
+    ) -> None:
         """Test that tool executes successfully with different config setups."""
         with (
             patch(

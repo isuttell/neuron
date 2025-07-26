@@ -209,7 +209,7 @@ text prompts with the stackadoc/stable-audio-open-1.0 model. Ideal for:
             # Create media item in database
             # Generate a real UUID for consistent ID between artifact and media_item
             media_id = uuid4()
-            
+
             logger.debug(f"Saved generated video to {output_file_path} <{url}>")
 
             # Prepare artifact for UI using typed models

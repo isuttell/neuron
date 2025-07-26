@@ -11,6 +11,7 @@ import type {
   IncomingPersonalitiesEvent,
   PersonalityState,
 } from "./personalitiesSlice.d";
+import type { PersonalityUser } from "../types/personality";
 
 // Define the initial state using that type
 const initialState: PersonalityState = {
@@ -272,7 +273,7 @@ export const getPersonalitiesError = (state: RootState) =>
   state.personalities.error;
 
 // Stable empty array to prevent new references
-const EMPTY_USER_ARRAY: any[] = [];
+const EMPTY_USER_ARRAY: PersonalityUser[] = [];
 
 export const getPersonalityUsers = createSelector(
   [(state: RootState, personalityId: string) => state.personalities.personalityUsers[personalityId], (_, personalityId: string) => personalityId],

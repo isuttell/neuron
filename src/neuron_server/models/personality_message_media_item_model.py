@@ -46,12 +46,11 @@ class PersonalityMessageMediaItemModel(BaseModel):
                 select(MediaItem)
                 .select_from(PersonalityMessageMediaItem)
                 .join(
-                    MediaItem,
-                    PersonalityMessageMediaItem.media_item_id == MediaItem.id
+                    MediaItem, PersonalityMessageMediaItem.media_item_id == MediaItem.id
                 )
                 .where(
-                    PersonalityMessageMediaItem.personality_message_id == 
-                    personality_message_id
+                    PersonalityMessageMediaItem.personality_message_id
+                    == personality_message_id
                 )
                 .order_by(PersonalityMessageMediaItem.created_at)
             )
@@ -66,15 +65,15 @@ class PersonalityMessageMediaItemModel(BaseModel):
         """Delete all media item associations for a personality message."""
         async with get_session() as session:
             query = select(PersonalityMessageMediaItem).where(
-                PersonalityMessageMediaItem.personality_message_id == 
-                personality_message_id
+                PersonalityMessageMediaItem.personality_message_id
+                == personality_message_id
             )
             results = await session.execute(query)
             associations = results.scalars().all()
-            
+
             for association in associations:
                 await session.delete(association)
-            
+
             await session.commit()
 
     @classmethod
@@ -84,8 +83,8 @@ class PersonalityMessageMediaItemModel(BaseModel):
         """Get all associations for a personality message."""
         async with get_session() as session:
             query = select(PersonalityMessageMediaItem).where(
-                PersonalityMessageMediaItem.personality_message_id == 
-                personality_message_id
+                PersonalityMessageMediaItem.personality_message_id
+                == personality_message_id
             )
             results = await session.execute(query)
             records = results.scalars().all()
@@ -99,9 +98,9 @@ class PersonalityMessageMediaItemModel(BaseModel):
         async with get_session() as session:
             query = select(PersonalityMessageMediaItem).where(
                 and_(
-                    PersonalityMessageMediaItem.personality_message_id == 
-                    personality_message_id,
-                    PersonalityMessageMediaItem.media_item_id == media_item_id
+                    PersonalityMessageMediaItem.personality_message_id
+                    == personality_message_id,
+                    PersonalityMessageMediaItem.media_item_id == media_item_id,
                 )
             )
             result = await session.execute(query)
@@ -115,14 +114,14 @@ class PersonalityMessageMediaItemModel(BaseModel):
         async with get_session() as session:
             query = select(PersonalityMessageMediaItem).where(
                 and_(
-                    PersonalityMessageMediaItem.personality_message_id == 
-                    personality_message_id,
-                    PersonalityMessageMediaItem.media_item_id == media_item_id
+                    PersonalityMessageMediaItem.personality_message_id
+                    == personality_message_id,
+                    PersonalityMessageMediaItem.media_item_id == media_item_id,
                 )
             )
             result = await session.execute(query)
             association = result.scalar()
-            
+
             if association:
                 await session.delete(association)
                 await session.commit()

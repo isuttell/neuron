@@ -143,10 +143,10 @@ class Automatic1111Tool(BaseTool):
             )
             file_path = await self.api.generate(settings=settings)
             url = f"{neuron_config.static_content_url}/{os.path.basename(file_path)}"
-            
+
             # Generate a real UUID for consistent ID between artifact and media_item
             media_id = uuid4()
-            
+
             logger.debug(f"Saved generated image to {file_path} <{url}>")
 
             # Prepare artifact for UI using typed models

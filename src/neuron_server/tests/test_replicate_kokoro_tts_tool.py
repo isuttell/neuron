@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -83,7 +83,6 @@ class TestReplicateKokoroTTSTool:
         # Mock replicate response as bytes (simpler case)
         mock_replicate.return_value = b"fake audio data"
 
-
         # Mock config
         config = {"configurable": {"thread_id": "test-thread", "user_id": "test-user"}}
 
@@ -115,7 +114,7 @@ class TestReplicateKokoroTTSTool:
 
         # Check XML content
         assert "<audio>" in xml_content
-        assert "<id>" in xml_content and "</id>" in xml_content  # UUID generated dynamically
+        assert "<id>" in xml_content and "</id>" in xml_content  # UUID dynamic
         assert "<caption>test audio</caption>" in xml_content
 
         # Check artifact - it's returned as a list containing the artifact dict

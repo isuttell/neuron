@@ -2,7 +2,7 @@ import { configureStore } from "@reduxjs/toolkit";
 import { vi } from "vitest";
 import { joinPersonalityRoom, leavePersonalityRoom } from "../roomActions";
 
-// Mock socket slice  
+// Mock socket slice
 vi.mock("../../slices/socketSlice", () => ({
   getConnectionStatus: vi.fn(() => true),
 }));
@@ -29,7 +29,7 @@ describe("roomActions", () => {
   beforeEach(async () => {
     store = createMockStore();
     vi.clearAllMocks();
-    
+
     // Get the mocked socket manager
     const { socketManager } = await import("../../WebSocketManager");
     mockSendMessage = socketManager.sendMessage;

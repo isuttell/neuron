@@ -33,7 +33,8 @@ class PersonalityModel(BaseModel):
         description="Whether this is the default personality", default=False
     )
     status: str = Field(
-        description="Current status of the personality (empty string means idle)", default=""
+        description="Current status of the personality (empty string means idle)",
+        default="",
     )
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC).astimezone())
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC).astimezone())
@@ -41,17 +42,17 @@ class PersonalityModel(BaseModel):
     @classmethod
     def _from_db_record(cls, personality: Personality) -> Self:
         """Create a PersonalityModel from a database record, handling None values.
-        
+
         Args:
             personality: The database record to convert
-            
+
         Returns:
             A PersonalityModel instance with proper defaults
         """
         data = personality.__dict__.copy()
         # Handle None status values from database (convert to empty string)
-        if data.get('status') is None:
-            data['status'] = ""
+        if data.get("status") is None:
+            data["status"] = ""
         return cls(**data)
 
     @dataclass

@@ -30,6 +30,7 @@ tokenizer = tiktoken.encoding_for_model("gpt-4o")
 
 class PersonalityDirectedAnalysis(BaseModel):
     """Structured output for personality message direction analysis."""
+
     is_directed: bool = Field(
         description="Whether the message is directed at this personality"
     )
@@ -42,16 +43,17 @@ class PersonalityDirectedAnalysis(BaseModel):
             "A brief response to provide immediately when personality is busy "
             "(None if not busy or not directed)"
         ),
-        default=None
+        default=None,
     )
     should_use_quick_response: bool = Field(
         description="Whether to use the quick response instead of full processing",
-        default=False
+        default=False,
     )
 
 
 class PersonalityStatusMessage(BaseModel):
     """Structured output for personality status message generation."""
+
     status: str = Field(
         description=(
             "Terse status message (under 4 words) in personality's style. "
@@ -207,7 +209,7 @@ class PersonalityChatOrchestrator:
         self,
         messages: list[PersonalityMessageModel],
         personality: PersonalityModel,
-        users: dict[str, UserModel] | None = None
+        users: dict[str, UserModel] | None = None,
     ) -> str:
         """Convert message history to readable XML chat format.
 
@@ -279,9 +281,7 @@ class PersonalityChatOrchestrator:
             messages = await self.get_token_limited_message_history(
                 personality_id, users
             )
-            chat_history = self.convert_to_chat_history(
-                messages, personality, users
-            )
+            chat_history = self.convert_to_chat_history(messages, personality, users)
 
             # Create status-aware structured prompt
             personality_name = personality.name
@@ -305,7 +305,11 @@ requests
 Since {personality_name} is available:
 - Set should_use_quick_response to false for normal processing"""
 
-            prompt = f"""Analyze the latest message to determine if it's directed at {personality_name} and provide appropriate response handling.
+            analysis_task = (
+                f"Analyze the latest message to determine if it's directed at "
+                f"{personality_name} and provide appropriate response handling."
+            )
+            prompt = f"""{analysis_task}
 
 PERSONALITY CONTEXT:
 Name: {personality.name}
@@ -333,7 +337,7 @@ CONSIDERATION FACTORS:
 - @bot mentions or direct addressing
 - Message urgency and complexity
 
-OUTPUT: Provide structured analysis including direction determination and appropriate response handling."""
+OUTPUT: Provide structured analysis with direction and response handling."""
 
             # Use structured output
             structured_model = fast_model.with_structured_output(
@@ -347,7 +351,7 @@ OUTPUT: Provide structured analysis including direction determination and approp
             return PersonalityDirectedAnalysis(
                 is_directed=False,
                 confidence=0.0,
-                reasoning=f"Error during analysis: {str(e)}"
+                reasoning=f"Error during analysis: {str(e)}",
             )
 
     async def generate_personality_status_message(
@@ -356,7 +360,7 @@ OUTPUT: Provide structured analysis including direction determination and approp
         personality: PersonalityModel,
         chat_history: str,
         latest_message: str,
-        action: str = "working on a request"
+        action: str = "working on a request",
     ) -> str:
         """Generate personality-specific status message.
 
@@ -386,14 +390,16 @@ LATEST MESSAGE: <user>{latest_message}</user>
 AGENT ACTION: {action}"""
 
             # Use structured output to ensure clean response
-            structured_model = fast_model.with_structured_output(PersonalityStatusMessage)
+            structured_model = fast_model.with_structured_output(
+                PersonalityStatusMessage
+            )
             response = await structured_model.ainvoke([HumanMessage(content=prompt)])
             return response.status.strip()
         except Exception as e:
             logger.error(f"Error generating personality status: {e}", exc_info=True)
             return "working"
 
-    async def update_status_with_generation(
+    async def update_status_with_generation(  # noqa: PLR0913
         self,
         personality_id: UUID,
         fast_model: Runnable,
@@ -401,7 +407,7 @@ AGENT ACTION: {action}"""
         chat_history: str,
         latest_message: str,
         user_id: str,
-        action: str = "working on your request"
+        action: str = "working on your request",
     ) -> None:
         """Generate and update personality status in background.
 
@@ -423,11 +429,13 @@ AGENT ACTION: {action}"""
                 personality=personality,
                 chat_history=chat_history,
                 latest_message=latest_message,
-                action=action
+                action=action,
             )
 
             await PersonalityModel.update_status(personality_id, custom_status)
-            await self.broadcast_personality_status_update(personality_id, custom_status)
+            await self.broadcast_personality_status_update(
+                personality_id, custom_status
+            )
             logger.debug(
                 f"Updated {personality.name} status to: {custom_status} "
                 f"(triggered by user {user_id})"
@@ -437,9 +445,11 @@ AGENT ACTION: {action}"""
             logger.error(f"Error in update_status_with_generation: {e}", exc_info=True)
             fallback_status = "working"
             await PersonalityModel.update_status(personality_id, fallback_status)
-            await self.broadcast_personality_status_update(personality_id, fallback_status)
+            await self.broadcast_personality_status_update(
+                personality_id, fallback_status
+            )
 
-    async def generate_personality_response(
+    async def generate_personality_response(  # noqa: PLR0913
         self,
         personality_id: UUID,
         personality: PersonalityModel,
@@ -461,7 +471,7 @@ AGENT ACTION: {action}"""
         Returns:
             Tuple of (response text, list of media artifacts).
             Response text is empty string if failed.
-            Media artifacts list contains ToolMediaArtifact objects from agent execution.
+            Media artifacts list contains ToolMediaArtifact objects from agent.
         """
         try:
             # Construct contextual prompt for terse chat response
@@ -492,29 +502,42 @@ AGENT ACTION: {action}"""
             if result_messages and isinstance(result_messages[-1], AIMessage):
                 from neuron_server.llms.message_processor import get_message_content
 
-                content = get_message_content(result_messages[-1], format_as_string=True)
+                content = get_message_content(
+                    result_messages[-1], format_as_string=True
+                )
                 response_text = content.strip() if content else ""
 
             # Extract media artifacts from all tool messages
             media_artifacts = []
             for message in result_messages:
-                if (isinstance(message, ToolMessage) and
-                    hasattr(message, "artifact") and message.artifact):
+                if (
+                    isinstance(message, ToolMessage)
+                    and hasattr(message, "artifact")
+                    and message.artifact
+                ):
                     # Handle both single artifact and list of artifacts
-                    artifacts = (message.artifact if isinstance(message.artifact, list)
-                               else [message.artifact])
+                    artifacts = (
+                        message.artifact
+                        if isinstance(message.artifact, list)
+                        else [message.artifact]
+                    )
 
                     for artifact_dict in artifacts:
                         # Only process media artifacts
-                        if (isinstance(artifact_dict, dict) and
-                            artifact_dict.get("type") == "media"):
+                        if (
+                            isinstance(artifact_dict, dict)
+                            and artifact_dict.get("type") == "media"
+                        ):
                             try:
                                 # Parse the artifact using Pydantic model for validation
-                                artifact = ToolMediaArtifact.model_validate(artifact_dict)
+                                artifact = ToolMediaArtifact.model_validate(
+                                    artifact_dict
+                                )
                                 media_artifacts.append(artifact)
                             except Exception as e:
                                 logger.error(
-                                    f"Failed to parse media artifact: {e}", exc_info=True
+                                    f"Failed to parse media artifact: {e}",
+                                    exc_info=True,
                                 )
                                 continue
 
@@ -540,7 +563,7 @@ AGENT ACTION: {action}"""
             personality_id: The ID of the personality
             response_content: The response text to broadcast
             user_id: The ID of the user who triggered this response
-            media_artifacts: Optional list of media artifacts to associate with the message
+            media_artifacts: Optional list of media artifacts to associate
         """
         try:
             from neuron_server.controllers.events.message_events import (
@@ -607,7 +630,7 @@ AGENT ACTION: {action}"""
     async def process_user_message(
         self, personality_id: UUID, message_id: UUID
     ) -> None:
-        """Background task to analyze message direction and generate response without blocking the request.
+        """Background task to analyze message direction and generate response.
 
         Args:
             personality_id: The ID of the personality
@@ -624,21 +647,25 @@ AGENT ACTION: {action}"""
                     f"Skipping direction analysis for message {message_id}: "
                     f"message exists: {message is not None}, "
                     f"personality exists: {personality is not None}, "
-                    f"is user message: {message.user_id is not None if message else False}"
+                    f"is user msg: {message.user_id is not None if message else False}"
                 )
                 return
 
             await PersonalityModel.update_status(personality_id, "contemplating")
-            await self.broadcast_personality_status_update(personality_id, "contemplating")
+            await self.broadcast_personality_status_update(
+                personality_id, "contemplating"
+            )
 
             # Analyze direction with current status
-            analysis = await self.analyze_message_direction(personality_id, message, personality, personality.status)
+            analysis = await self.analyze_message_direction(
+                personality_id, message, personality, personality.status
+            )
 
             # Log results for monitoring/debugging
             logger.debug(
                 f"Message {message_id} directed at {personality.name}: "
                 f"{analysis.is_directed} (confidence: {analysis.confidence:.2f}) - "
-                f"{analysis.reasoning} | Quick response needed: {analysis.should_use_quick_response}"
+                f"{analysis.reasoning} | Quick: {analysis.should_use_quick_response}"
             )
 
             # Handle quick response for busy personality
@@ -649,35 +676,41 @@ AGENT ACTION: {action}"""
                 )
                 return
 
-            # Generate automatic response if message is directed at personality and not busy
-            if (analysis.is_directed and
-                analysis.confidence >= RESPONSE_CONFIDENCE_THRESHOLD and
-                not analysis.should_use_quick_response):
+            # Generate automatic response if directed at personality and not busy
+            if (
+                analysis.is_directed
+                and analysis.confidence >= RESPONSE_CONFIDENCE_THRESHOLD
+                and not analysis.should_use_quick_response
+            ):
                 logger.debug(
-                    f"Generating full response for message directed at {personality.name}"
+                    f"Generating full response for message to {personality.name}"
                 )
 
                 # Get all users who have access to this personality
                 users = await self.get_personality_users_dict(personality_id)
 
                 # Get token-limited chat history for context
-                messages = await self.get_token_limited_message_history(personality_id, users)
+                messages = await self.get_token_limited_message_history(
+                    personality_id, users
+                )
                 chat_history = self.convert_to_chat_history(
-                messages, personality, users
-            )
+                    messages, personality, users
+                )
 
                 # Get fast model for status generation
                 fast_model = await self.get_personality_fast_model(personality_id)
 
                 # Generate dynamic status message in background and broadcast update
-                asyncio.create_task(self.update_status_with_generation(
-                    personality_id=personality_id,
-                    fast_model=fast_model,
-                    personality=personality,
-                    chat_history=chat_history,
-                    latest_message=message.content,
-                    user_id=message.user_id
-                ))
+                asyncio.create_task(
+                    self.update_status_with_generation(
+                        personality_id=personality_id,
+                        fast_model=fast_model,
+                        personality=personality,
+                        chat_history=chat_history,
+                        latest_message=message.content,
+                        user_id=message.user_id,
+                    )
+                )
 
                 # Get username for agent context
                 username = "Unknown User"
@@ -685,7 +718,10 @@ AGENT ACTION: {action}"""
                     username = users[message.user_id].nickname
 
                 # Generate personality response
-                response_text, media_artifacts = await self.generate_personality_response(
+                (
+                    response_text,
+                    media_artifacts,
+                ) = await self.generate_personality_response(
                     personality_id=personality_id,
                     personality=personality,
                     chat_history=chat_history,
@@ -703,7 +739,7 @@ AGENT ACTION: {action}"""
             logger.error(
                 f"Error in background message direction analysis for "
                 f"personality {personality_id}, message {message_id}: {e}",
-                exc_info=True
+                exc_info=True,
             )
         finally:
             # Clear personality status
@@ -711,4 +747,6 @@ AGENT ACTION: {action}"""
                 await PersonalityModel.update_status(personality_id, "")
                 await self.broadcast_personality_status_update(personality_id, "")
             except Exception as status_error:
-                logger.error(f"Failed to clear personality status after error: {status_error}")
+                logger.error(
+                    f"Failed to clear personality status after error: {status_error}"
+                )

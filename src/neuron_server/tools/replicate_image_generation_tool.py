@@ -345,7 +345,7 @@ class ReplicateImageGenerationTool(BaseTool):
         self,
         result: replicate.helpers.FileOutput,
         params: ImageProcessingParams,
-    ) -> tuple[str, "ToolMediaItem"]:
+    ) -> tuple[str, Any]:
         """Save and process a single generated image."""
         filename = safe_filename(
             params.model.replace("/", "_").split(":")[0],
@@ -384,7 +384,7 @@ class ReplicateImageGenerationTool(BaseTool):
         create_thumbnails(file_path)
 
         url = f"{neuron_config.static_content_url}/{filename}"
-        
+
         # Generate a real UUID for consistent ID between artifact and media_item
         media_id = uuid4()
 

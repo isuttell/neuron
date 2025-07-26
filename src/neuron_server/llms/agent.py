@@ -49,7 +49,7 @@ DEFAULT_LOCATION = "San Diego, California at -117.1860 W and 32.84 N."
 _orchestrator = create_agent_orchestrator()
 
 
-async def execute_agent_with_messages(
+async def execute_agent_with_messages(  # noqa: PLR0913
     messages: list[HumanMessage | AIMessage],
     personality_id: UUID,
     user_id: str,
@@ -103,9 +103,9 @@ async def execute_agent_with_messages(
             },
         },
     )
-    
+
     result_messages = result["messages"]
-    
+
     # Process artifacts and create media items if requested
     if create_media_items and thread_id:
         from langchain_core.messages import ToolMessage
@@ -113,19 +113,25 @@ async def execute_agent_with_messages(
         from neuron_server.util.artifact_to_media_converter import (
             create_media_items_from_artifacts,
         )
-        
+
         # Process tool messages with artifacts
         for message in result_messages:
-            if (isinstance(message, ToolMessage) and 
-                hasattr(message, "artifact") and message.artifact):
-                artifacts = (message.artifact if isinstance(message.artifact, list) 
-                           else [message.artifact])
+            if (
+                isinstance(message, ToolMessage)
+                and hasattr(message, "artifact")
+                and message.artifact
+            ):
+                artifacts = (
+                    message.artifact
+                    if isinstance(message.artifact, list)
+                    else [message.artifact]
+                )
                 await create_media_items_from_artifacts(
                     artifacts=artifacts,
                     thread_id=thread_id,
                     user_id=user_id,
                 )
-    
+
     return result_messages
 
 
@@ -161,7 +167,7 @@ async def execute_agent(
         ),
         HumanMessage(content=prompt),
     ]
-    
+
     result_messages = await execute_agent_with_messages(
         messages, personality_id, user_id, username, location
     )

@@ -182,7 +182,7 @@ async def process_artifacts(
             continue
 
         url = f"{neuron_config.static_content_url}/artifacts/{folder_name}/{file}"
-        
+
         # Generate a real UUID for consistent ID between artifact and media_item
         media_id = uuid4()
 

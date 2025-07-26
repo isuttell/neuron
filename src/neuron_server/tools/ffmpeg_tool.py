@@ -360,8 +360,8 @@ output filename to the user as they can't directly access it.
             )
 
             artifact = ToolMediaArtifact(
-                media_type="video" if extension == "mp4" else "audio", 
-                items=[artifact_item]
+                media_type="video" if extension == "mp4" else "audio",
+                items=[artifact_item],
             )
 
             xml_content = f"""<{"video" if extension == "mp4" else "audio"}>

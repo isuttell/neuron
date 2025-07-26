@@ -97,7 +97,9 @@ async def test_replicate_play_dialog_with_bytes_output(
 
         # Check XML content
         assert "<audio>" in xml_content
-        assert "<id>" in xml_content and "</id>" in xml_content  # UUID generated dynamically
+        assert (
+            "<id>" in xml_content and "</id>" in xml_content
+        )  # UUID generated dynamically
         assert "<caption>test_audio</caption>" in xml_content
 
         # Check artifact - it's returned as a list containing the artifact dict

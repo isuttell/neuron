@@ -261,9 +261,13 @@ class TestReplicateKontextImageTool:
             # Verify the general call structure
 
             # Verify result format
-            assert '<image>' in result[0] and '<id>' in result[0] and '</id>' in result[0]  # UUID generated dynamically
+            assert (
+                "<image>" in result[0] and "<id>" in result[0] and "</id>" in result[0]
+            )  # UUID generated dynamically
             assert "<caption>Sunset Beach Scene</caption>" in result[0]
-            assert "<description>A beautiful edited landscape</description>" in result[0]
+            assert (
+                "<description>A beautiful edited landscape</description>" in result[0]
+            )
             expected_edit_comparison = (
                 "<edit_comparison>Background changed from city to beach"
                 "</edit_comparison>"
@@ -315,9 +319,14 @@ class TestReplicateKontextImageTool:
             result = await tool._save_and_process_edited_image(mock_result, params)
 
             # Verify simplified result format
-            assert '<image>' in result[0] and '<id>' in result[0] and '</id>' in result[0]  # UUID generated dynamically
+            assert (
+                "<image>" in result[0] and "<id>" in result[0] and "</id>" in result[0]
+            )  # UUID generated dynamically
             assert "<caption>simple_edit</caption>" in result[0]
-            assert "<description>" not in result[0] or "<description></description>" in result[0]
+            assert (
+                "<description>" not in result[0]
+                or "<description></description>" in result[0]
+            )
             assert "<edit_comparison>" not in result[0]
 
     @pytest.mark.asyncio

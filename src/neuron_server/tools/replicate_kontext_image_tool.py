@@ -274,7 +274,7 @@ class ReplicateKontextImageTool(BaseTool):
 
         # Create media item
         url = f"{neuron_config.static_content_url}/{filename}"
-        
+
         # Generate a real UUID for consistent ID between artifact and media_item
         media_id = uuid4()
 

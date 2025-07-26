@@ -36,7 +36,7 @@ describe('websocketMiddleware build hash handling', () => {
 
   beforeEach(async () => {
     vi.clearAllMocks();
-    
+
     // Get the mocked socket manager
     const { socketManager } = await import('../../WebSocketManager');
     mockWebSocketManager = socketManager;

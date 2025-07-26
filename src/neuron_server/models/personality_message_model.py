@@ -131,11 +131,11 @@ class PersonalityMessageModel(BaseModel):
         from neuron_server.models.personality_message_media_item_model import (
             PersonalityMessageMediaItemModel,
         )
-        
+
         message = await cls.get(message_id)
         if not message:
             return None, []
-        
+
         media_items = await PersonalityMessageMediaItemModel.get_media_for_message(
             message_id
         )
@@ -149,7 +149,7 @@ class PersonalityMessageModel(BaseModel):
         from neuron_server.models.personality_message_media_item_model import (
             PersonalityMessageMediaItemModel,
         )
-        
+
         associations = []
         for media_item_id in media_item_ids:
             # Check if association already exists to avoid duplicates
@@ -157,8 +157,7 @@ class PersonalityMessageModel(BaseModel):
                 message_id, media_item_id
             ):
                 params = PersonalityMessageMediaItemModel.CreateParams(
-                    personality_message_id=message_id,
-                    media_item_id=media_item_id
+                    personality_message_id=message_id, media_item_id=media_item_id
                 )
                 association = await PersonalityMessageMediaItemModel.create_association(
                     params

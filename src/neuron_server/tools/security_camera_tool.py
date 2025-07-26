@@ -178,7 +178,7 @@ async def save_images(config: SaveImagesConfig) -> tuple[list[str], list[dict]]:
     """Save captured images to disk and return markdown URLs and artifacts."""
     results: list[str] = []
     artifacts: list[dict] = []
-    
+
     for i, data_url in enumerate(config.image_urls):
         capture_time = config.start_time + timedelta(seconds=i / config.fps)
         image_data = base64.b64decode(data_url.split(",")[1])
@@ -212,7 +212,7 @@ async def save_images(config: SaveImagesConfig) -> tuple[list[str], list[dict]]:
             model="security-camera",
             prompt=config.description,
             camera=config.camera,
-            capture_time=capture_time.astimezone().isoformat(timespec='seconds'),
+            capture_time=capture_time.astimezone().isoformat(timespec="seconds"),
         )
 
         artifact_item = ToolMediaItem(
@@ -344,7 +344,7 @@ class SecurityCameraTool(BaseTool):
 {markdown_urls_str}
 </images>
     """.strip()
-            
+
             return xml_content, artifacts
         except Exception as e:
             logger.error(e, exc_info=True)

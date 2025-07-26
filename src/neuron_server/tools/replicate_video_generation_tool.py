@@ -168,7 +168,7 @@ complete.
             url = f"{neuron_config.static_content_url}/{filename}"
             # Generate a real UUID for consistent ID between artifact and media_item
             media_id = uuid4()
-            
+
             duration = time.perf_counter() - start_time
             logger.debug(f"Saved video to {file_path} <{url}> - {duration:.2f}s")
 

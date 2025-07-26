@@ -47,8 +47,6 @@ class UpdatePersonalityMessage(BaseModel):
     content: str = Field(description="The updated message content")
 
 
-
-
 @blueprint.get("/<uuid:personality_id>")
 @requires_auth
 async def get_personality_messages(personality_id: UUID) -> dict[str, list[dict]]:
@@ -346,7 +344,7 @@ async def ajoin_personality_room(
     logger.debug(
         f"Current members in room {personality_id} before join: {current_members}"
     )
-    
+
     joined = await room_manager.join_personality_room(personality_id, user_id, nickname)
 
     if joined:
@@ -389,7 +387,7 @@ async def ajoin_personality_room(
             member_count=member_count,
         )
         await secure_pubsub.publish_to_user(user_id, join_event)
-        
+
         logger.info(
             f"User {user_id} ({nickname}) rejoined personality room {personality_id}"
         )

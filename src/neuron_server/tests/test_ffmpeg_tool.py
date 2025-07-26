@@ -7,7 +7,6 @@ import pytest
 from langchain_core.runnables import RunnableConfig
 
 from neuron_server.config import config as neuron_config
-from neuron_server.models.media_item_model import MediaItemModel
 from neuron_server.tools.ffmpeg_tool import FFmpegTool, FFmpegToolError
 
 
@@ -352,17 +351,17 @@ class TestFFmpegTool:
             assert isinstance(result, tuple)
             assert len(result) == 2
             xml_content, artifact_list = result
-            
+
             # Check XML content contains video tag with the correct URL pattern
-            assert '<video>' in xml_content
-            assert 'https://example.com/static/' in xml_content
-            
+            assert "<video>" in xml_content
+            assert "https://example.com/static/" in xml_content
+
             # Check artifact list
             assert isinstance(artifact_list, list)
             assert len(artifact_list) == 1
             artifact = artifact_list[0]
-            assert artifact['type'] == 'media'
-            assert artifact['media_type'] == 'video'
+            assert artifact["type"] == "media"
+            assert artifact["media_type"] == "video"
 
     @pytest.mark.asyncio
     async def test_arun_file_not_found(self) -> None:

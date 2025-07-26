@@ -203,7 +203,9 @@ class TestOpenAIImageGenerationTool:
             # Verify result format - single image doesn't get wrapped in <images>
             xml_content, artifact_list = result
             assert "<image>" in xml_content
-            assert "<id>" in xml_content and "</id>" in xml_content  # UUID generated dynamically
+            assert (
+                "<id>" in xml_content and "</id>" in xml_content
+            )  # UUID generated dynamically
             assert "<image_id>img_call_123</image_id>" in xml_content
             assert (
                 "<revised_prompt>A beautiful cat sitting gracefully</revised_prompt>"
@@ -496,7 +498,9 @@ class TestOpenAIImageGenerationTool:
             # Verify successful result
             xml_content, artifact_list = result
             assert "<image>" in xml_content
-            assert "<caption>webp_image</caption>" in xml_content  # Check for actual content instead of hardcoded ID
+            assert (
+                "<caption>webp_image</caption>" in xml_content
+            )  # Check for actual content instead of hardcoded ID
 
     def test_sync_run_method(self, tool: OpenAIImageGenerationTool) -> None:
         """Test that the sync _run method calls the async _arun method."""
@@ -592,7 +596,9 @@ class TestOpenAIImageGenerationTool:
             # Verify successful result
             xml_content, artifact_list = result
             assert "<image>" in xml_content
-            assert "<caption>image_from_url</caption>" in xml_content  # Check for actual content instead of hardcoded ID
+            assert (
+                "<caption>image_from_url</caption>" in xml_content
+            )  # Check for actual content instead of hardcoded ID
 
     @pytest.mark.asyncio
     async def test_image_url_download_error(

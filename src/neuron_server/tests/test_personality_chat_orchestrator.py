@@ -1,12 +1,11 @@
 """Tests for the PersonalityChatOrchestrator class."""
 
-import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import UUID, uuid4
 
 import pytest
-from langchain_core.messages import AIMessage, HumanMessage
-from langchain_core.runnables import Runnable, RunnableConfig
+from langchain_core.messages import AIMessage
+from langchain_core.runnables import Runnable
 
 from neuron_server.models.personality_message_model import PersonalityMessageModel
 from neuron_server.models.personality_model import PersonalityModel
@@ -15,7 +14,6 @@ from neuron_server.services.personality_chat_orchestrator import (
     PersonalityChatOrchestrator,
     PersonalityDirectedAnalysis,
 )
-from neuron_server.tools.artifact_types import ToolMediaArtifact
 
 
 class TestPersonalityChatOrchestrator:
@@ -52,7 +50,9 @@ class TestPersonalityChatOrchestrator:
         return personality
 
     @pytest.fixture
-    def mock_user_message(self, sample_message_id: UUID, sample_user_id: str) -> PersonalityMessageModel:
+    def mock_user_message(
+        self, sample_message_id: UUID, sample_user_id: str
+    ) -> PersonalityMessageModel:
         """Create a mock user message."""
         message = MagicMock(spec=PersonalityMessageModel)
         message.id = sample_message_id
@@ -75,7 +75,9 @@ class TestPersonalityChatOrchestrator:
         """Create a mock users dictionary."""
         return {mock_user.id: mock_user}
 
-    def test_count_message_tokens(self, orchestrator: PersonalityChatOrchestrator) -> None:
+    def test_count_message_tokens(
+        self, orchestrator: PersonalityChatOrchestrator
+    ) -> None:
         """Test token counting functionality."""
         # Test with simple message
         simple_message = "Hello world"
@@ -94,18 +96,18 @@ class TestPersonalityChatOrchestrator:
 
     @pytest.mark.asyncio
     async def test_broadcast_personality_status_update(
-        self, 
-        orchestrator: PersonalityChatOrchestrator,
-        sample_personality_id: UUID
+        self, orchestrator: PersonalityChatOrchestrator, sample_personality_id: UUID
     ) -> None:
         """Test broadcasting personality status updates."""
-        with patch("neuron_server.services.personality_chat_orchestrator.secure_pubsub") as mock_pubsub:
+        with patch(
+            "neuron_server.services.personality_chat_orchestrator.secure_pubsub"
+        ) as mock_pubsub:
             mock_pubsub.publish_personality_room_message = AsyncMock()
-            
+
             await orchestrator.broadcast_personality_status_update(
                 sample_personality_id, "thinking"
             )
-            
+
             # Verify pubsub was called
             mock_pubsub.publish_personality_room_message.assert_called_once()
             call_args = mock_pubsub.publish_personality_room_message.call_args
@@ -114,84 +116,92 @@ class TestPersonalityChatOrchestrator:
 
     @pytest.mark.asyncio
     async def test_get_personality_users_dict(
-        self, 
+        self,
         orchestrator: PersonalityChatOrchestrator,
         sample_personality_id: UUID,
-        mock_user: UserModel
+        mock_user: UserModel,
     ) -> None:
         """Test getting personality users as dictionary."""
         with (
-            patch("neuron_server.models.personality_user_model.PersonalityUserModel.get_personality_users") as mock_get_users,
-            patch("neuron_server.models.user_model.UserModel.get_by_ids") as mock_get_by_ids
+            patch(
+                "neuron_server.models.personality_user_model.PersonalityUserModel.get_personality_users"
+            ) as mock_get_users,
+            patch(
+                "neuron_server.models.user_model.UserModel.get_by_ids"
+            ) as mock_get_by_ids,
         ):
             # Mock personality users
             mock_personality_user = MagicMock()
             mock_personality_user.user_id = mock_user.id
             mock_get_users.return_value = [mock_personality_user]
-            
+
             # Mock user lookup
             mock_get_by_ids.return_value = [mock_user]
-            
-            result = await orchestrator.get_personality_users_dict(sample_personality_id)
-            
+
+            result = await orchestrator.get_personality_users_dict(
+                sample_personality_id
+            )
+
             assert isinstance(result, dict)
             assert mock_user.id in result
             assert result[mock_user.id] == mock_user
-            
+
             # Verify calls
             mock_get_users.assert_called_once_with(sample_personality_id)
             mock_get_by_ids.assert_called_once_with(user_ids=[mock_user.id])
 
     @pytest.mark.asyncio
     async def test_get_personality_fast_model(
-        self, 
-        orchestrator: PersonalityChatOrchestrator,
-        sample_personality_id: UUID
+        self, orchestrator: PersonalityChatOrchestrator, sample_personality_id: UUID
     ) -> None:
         """Test getting fast model for personality."""
-        with patch("neuron_server.models.provider_model.ProviderModelModel.get_active_llm") as mock_get_llm:
+        with patch(
+            "neuron_server.models.provider_model.ProviderModelModel.get_active_llm"
+        ) as mock_get_llm:
             mock_llm = MagicMock()
             mock_fast_model = MagicMock(spec=Runnable)
             mock_llm.fast_model = mock_fast_model
             mock_get_llm.return_value = mock_llm
-            
-            result = await orchestrator.get_personality_fast_model(sample_personality_id)
-            
+
+            result = await orchestrator.get_personality_fast_model(
+                sample_personality_id
+            )
+
             assert result == mock_fast_model
             mock_get_llm.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_get_personality_fast_model_no_fast_model(
-        self, 
-        orchestrator: PersonalityChatOrchestrator,
-        sample_personality_id: UUID
+        self, orchestrator: PersonalityChatOrchestrator, sample_personality_id: UUID
     ) -> None:
         """Test error when no fast model available."""
-        with patch("neuron_server.models.provider_model.ProviderModelModel.get_active_llm") as mock_get_llm:
+        with patch(
+            "neuron_server.models.provider_model.ProviderModelModel.get_active_llm"
+        ) as mock_get_llm:
             mock_llm = MagicMock()
             mock_llm.fast_model = None
             mock_get_llm.return_value = mock_llm
-            
+
             with pytest.raises(ValueError, match="No fast model available"):
                 await orchestrator.get_personality_fast_model(sample_personality_id)
 
     def test_convert_to_chat_history_empty(
-        self, 
+        self,
         orchestrator: PersonalityChatOrchestrator,
-        mock_personality: PersonalityModel
+        mock_personality: PersonalityModel,
     ) -> None:
         """Test converting empty message list to chat history."""
         result = orchestrator.convert_to_chat_history([], mock_personality, {})
-        
+
         assert "<chat_history>" in result
         assert "No previous messages." in result
 
     def test_convert_to_chat_history_with_messages(
-        self, 
+        self,
         orchestrator: PersonalityChatOrchestrator,
         mock_personality: PersonalityModel,
         mock_user: UserModel,
-        mock_users_dict: dict[str, UserModel]
+        mock_users_dict: dict[str, UserModel],
     ) -> None:
         """Test converting messages to chat history XML."""
         # Create user message
@@ -200,18 +210,20 @@ class TestPersonalityChatOrchestrator:
         user_message.content = "Hello bot"
         user_message.created_at = MagicMock()
         user_message.created_at.isoformat.return_value = "2023-01-01T12:00:00"
-        
+
         # Create AI message
         ai_message = MagicMock(spec=PersonalityMessageModel)
         ai_message.user_id = None
         ai_message.content = "Hello user"
         ai_message.created_at = MagicMock()
         ai_message.created_at.isoformat.return_value = "2023-01-01T12:01:00"
-        
+
         messages = [user_message, ai_message]
-        
-        result = orchestrator.convert_to_chat_history(messages, mock_personality, mock_users_dict)
-        
+
+        result = orchestrator.convert_to_chat_history(
+            messages, mock_personality, mock_users_dict
+        )
+
         assert "<chat_history>" in result
         assert f'username="{mock_user.nickname}"' in result
         assert f'username="{mock_personality.name}"' in result
@@ -226,39 +238,47 @@ class TestPersonalityChatOrchestrator:
         orchestrator: PersonalityChatOrchestrator,
         sample_personality_id: UUID,
         mock_user_message: PersonalityMessageModel,
-        mock_personality: PersonalityModel
+        mock_personality: PersonalityModel,
     ) -> None:
         """Test analyzing message direction when directed at personality."""
         with (
             patch.object(orchestrator, "get_personality_fast_model") as mock_get_model,
             patch.object(orchestrator, "get_personality_users_dict") as mock_get_users,
-            patch.object(orchestrator, "get_token_limited_message_history") as mock_get_history,
-            patch.object(orchestrator, "convert_to_chat_history") as mock_convert_history
+            patch.object(
+                orchestrator, "get_token_limited_message_history"
+            ) as mock_get_history,
+            patch.object(
+                orchestrator, "convert_to_chat_history"
+            ) as mock_convert_history,
         ):
             # Setup mocks
             mock_fast_model = MagicMock()
             mock_structured_model = MagicMock()
-            mock_fast_model.with_structured_output = MagicMock(return_value=mock_structured_model)
+            mock_fast_model.with_structured_output = MagicMock(
+                return_value=mock_structured_model
+            )
             mock_get_model.return_value = mock_fast_model
-            
+
             mock_get_users.return_value = {}
             mock_get_history.return_value = []
-            mock_convert_history.return_value = "<chat_history>No previous messages.</chat_history>"
-            
+            mock_convert_history.return_value = (
+                "<chat_history>No previous messages.</chat_history>"
+            )
+
             # Mock analysis result
             expected_analysis = PersonalityDirectedAnalysis(
                 is_directed=True,
                 confidence=0.8,
                 reasoning="Message directly addresses the bot",
                 quick_response=None,
-                should_use_quick_response=False
+                should_use_quick_response=False,
             )
             mock_structured_model.ainvoke = AsyncMock(return_value=expected_analysis)
-            
+
             result = await orchestrator.analyze_message_direction(
                 sample_personality_id, mock_user_message, mock_personality
             )
-            
+
             assert isinstance(result, PersonalityDirectedAnalysis)
             assert result.is_directed is True
             assert result.confidence == 0.8
@@ -270,44 +290,55 @@ class TestPersonalityChatOrchestrator:
         orchestrator: PersonalityChatOrchestrator,
         sample_personality_id: UUID,
         mock_user_message: PersonalityMessageModel,
-        mock_personality: PersonalityModel
+        mock_personality: PersonalityModel,
     ) -> None:
         """Test analyzing message direction when personality is busy."""
         mock_personality.status = "working on something"
-        
+
         with (
             patch.object(orchestrator, "get_personality_fast_model") as mock_get_model,
             patch.object(orchestrator, "get_personality_users_dict") as mock_get_users,
-            patch.object(orchestrator, "get_token_limited_message_history") as mock_get_history,
-            patch.object(orchestrator, "convert_to_chat_history") as mock_convert_history
+            patch.object(
+                orchestrator, "get_token_limited_message_history"
+            ) as mock_get_history,
+            patch.object(
+                orchestrator, "convert_to_chat_history"
+            ) as mock_convert_history,
         ):
             # Setup mocks
             mock_fast_model = MagicMock()
             mock_structured_model = MagicMock()
-            mock_fast_model.with_structured_output = MagicMock(return_value=mock_structured_model)
+            mock_fast_model.with_structured_output = MagicMock(
+                return_value=mock_structured_model
+            )
             mock_get_model.return_value = mock_fast_model
-            
+
             mock_get_users.return_value = {}
             mock_get_history.return_value = []
-            mock_convert_history.return_value = "<chat_history>No previous messages.</chat_history>"
-            
+            mock_convert_history.return_value = (
+                "<chat_history>No previous messages.</chat_history>"
+            )
+
             # Mock analysis result with quick response
             expected_analysis = PersonalityDirectedAnalysis(
                 is_directed=True,
                 confidence=0.9,
                 reasoning="Direct question but I'm busy",
                 quick_response="I'm currently working on something, please wait.",
-                should_use_quick_response=True
+                should_use_quick_response=True,
             )
             mock_structured_model.ainvoke = AsyncMock(return_value=expected_analysis)
-            
+
             result = await orchestrator.analyze_message_direction(
-                sample_personality_id, mock_user_message, mock_personality, "working on something"
+                sample_personality_id,
+                mock_user_message,
+                mock_personality,
+                "working on something",
             )
-            
+
             assert result.should_use_quick_response is True
             assert result.quick_response is not None
-            
+
             # Verify the prompt included busy state information
             call_args = mock_structured_model.ainvoke.call_args[0][0]
             prompt_content = call_args[0].content
@@ -320,31 +351,33 @@ class TestPersonalityChatOrchestrator:
         orchestrator: PersonalityChatOrchestrator,
         sample_personality_id: UUID,
         mock_personality: PersonalityModel,
-        sample_user_id: str
+        sample_user_id: str,
     ) -> None:
         """Test generating personality response."""
-        with patch("neuron_server.services.personality_chat_orchestrator.execute_agent_with_messages") as mock_execute:
+        with patch(
+            "neuron_server.services.personality_chat_orchestrator.execute_agent_with_messages"
+        ) as mock_execute:
             # Mock agent response
             ai_message = AIMessage(content="I'd be happy to help you!")
             mock_execute.return_value = [ai_message]
-            
+
             result = await orchestrator.generate_personality_response(
                 personality_id=sample_personality_id,
                 personality=mock_personality,
                 chat_history="<chat_history>Test history</chat_history>",
                 latest_message="Can you help me?",
                 user_id=sample_user_id,
-                username="TestUser"
+                username="TestUser",
             )
-            
+
             assert isinstance(result, tuple)
             assert len(result) == 2
             response_text, media_artifacts = result
-            
+
             assert response_text == "I'd be happy to help you!"
             assert isinstance(media_artifacts, list)
             assert len(media_artifacts) == 0  # No tool calls in this test
-            
+
             # Verify agent was called with correct parameters
             mock_execute.assert_called_once()
             call_args = mock_execute.call_args
@@ -358,12 +391,16 @@ class TestPersonalityChatOrchestrator:
         self,
         orchestrator: PersonalityChatOrchestrator,
         sample_personality_id: UUID,
-        sample_user_id: str
+        sample_user_id: str,
     ) -> None:
         """Test creating and broadcasting personality response."""
         with (
-            patch("neuron_server.models.personality_message_model.PersonalityMessageModel.create") as mock_create,
-            patch("neuron_server.services.personality_chat_orchestrator.secure_pubsub") as mock_pubsub
+            patch(
+                "neuron_server.models.personality_message_model.PersonalityMessageModel.create"
+            ) as mock_create,
+            patch(
+                "neuron_server.services.personality_chat_orchestrator.secure_pubsub"
+            ) as mock_pubsub,
         ):
             # Mock message creation
             mock_message = MagicMock()
@@ -373,20 +410,20 @@ class TestPersonalityChatOrchestrator:
             mock_message.created_at.isoformat.return_value = "2023-01-01T12:00:00"
             mock_message.updated_at.isoformat.return_value = "2023-01-01T12:00:00"
             mock_create.return_value = mock_message
-            
+
             mock_pubsub.publish_personality_room_message = AsyncMock()
-            
+
             await orchestrator.create_and_broadcast_personality_response(
                 sample_personality_id, "Test response", sample_user_id
             )
-            
+
             # Verify message was created
             mock_create.assert_called_once()
             create_args = mock_create.call_args[1]["params"]
             assert create_args.personality_id == sample_personality_id
             assert create_args.content == "Test response"
             assert create_args.user_id is None  # AI message
-            
+
             # Verify broadcast
             mock_pubsub.publish_personality_room_message.assert_called_once()
 
@@ -396,34 +433,44 @@ class TestPersonalityChatOrchestrator:
         orchestrator: PersonalityChatOrchestrator,
         sample_personality_id: UUID,
         mock_personality: PersonalityModel,
-        sample_user_id: str
+        sample_user_id: str,
     ) -> None:
         """Test updating status with generation."""
         with (
-            patch.object(orchestrator, "generate_personality_status_message") as mock_generate,
-            patch("neuron_server.models.personality_model.PersonalityModel.update_status") as mock_update,
-            patch.object(orchestrator, "broadcast_personality_status_update") as mock_broadcast
+            patch.object(
+                orchestrator, "generate_personality_status_message"
+            ) as mock_generate,
+            patch(
+                "neuron_server.models.personality_model.PersonalityModel.update_status"
+            ) as mock_update,
+            patch.object(
+                orchestrator, "broadcast_personality_status_update"
+            ) as mock_broadcast,
         ):
             mock_generate.return_value = "thinking deeply"
             mock_fast_model = MagicMock(spec=Runnable)
-            
+
             await orchestrator.update_status_with_generation(
                 personality_id=sample_personality_id,
                 fast_model=mock_fast_model,
                 personality=mock_personality,
                 chat_history="<chat_history>Test</chat_history>",
                 latest_message="Test message",
-                user_id=sample_user_id
+                user_id=sample_user_id,
             )
-            
+
             # Verify status generation
             mock_generate.assert_called_once()
-            
+
             # Verify status update
-            mock_update.assert_called_once_with(sample_personality_id, "thinking deeply")
-            
+            mock_update.assert_called_once_with(
+                sample_personality_id, "thinking deeply"
+            )
+
             # Verify broadcast
-            mock_broadcast.assert_called_once_with(sample_personality_id, "thinking deeply")
+            mock_broadcast.assert_called_once_with(
+                sample_personality_id, "thinking deeply"
+            )
 
     @pytest.mark.asyncio
     async def test_process_user_message_directed_response(
@@ -433,21 +480,35 @@ class TestPersonalityChatOrchestrator:
         sample_message_id: UUID,
         mock_personality: PersonalityModel,
         mock_user_message: PersonalityMessageModel,
-        mock_users_dict: dict[str, UserModel]
+        mock_users_dict: dict[str, UserModel],
     ) -> None:
         """Test processing user message that generates a response."""
         with (
-            patch("neuron_server.models.personality_message_model.PersonalityMessageModel.get") as mock_get_message,
-            patch("neuron_server.models.personality_model.PersonalityModel.get") as mock_get_personality,
-            patch("neuron_server.models.personality_model.PersonalityModel.update_status") as mock_update_status,
-            patch.object(orchestrator, "broadcast_personality_status_update") as mock_broadcast,
+            patch(
+                "neuron_server.models.personality_message_model.PersonalityMessageModel.get"
+            ) as mock_get_message,
+            patch(
+                "neuron_server.models.personality_model.PersonalityModel.get"
+            ) as mock_get_personality,
+            patch(
+                "neuron_server.models.personality_model.PersonalityModel.update_status"
+            ) as mock_update_status,
+            patch.object(
+                orchestrator, "broadcast_personality_status_update"
+            ) as mock_broadcast,
             patch.object(orchestrator, "analyze_message_direction") as mock_analyze,
             patch.object(orchestrator, "get_personality_users_dict") as mock_get_users,
-            patch.object(orchestrator, "get_token_limited_message_history") as mock_get_history,
+            patch.object(
+                orchestrator, "get_token_limited_message_history"
+            ) as mock_get_history,
             patch.object(orchestrator, "convert_to_chat_history") as mock_convert,
             patch.object(orchestrator, "get_personality_fast_model") as mock_get_model,
-            patch.object(orchestrator, "generate_personality_response") as mock_generate,
-            patch.object(orchestrator, "create_and_broadcast_personality_response") as mock_create_broadcast
+            patch.object(
+                orchestrator, "generate_personality_response"
+            ) as mock_generate,
+            patch.object(
+                orchestrator, "create_and_broadcast_personality_response"
+            ) as mock_create_broadcast,
         ):
             # Setup mocks
             mock_get_message.return_value = mock_user_message
@@ -456,29 +517,31 @@ class TestPersonalityChatOrchestrator:
             mock_get_history.return_value = []
             mock_convert.return_value = "<chat_history>Test</chat_history>"
             mock_get_model.return_value = MagicMock(spec=Runnable)
-            
+
             # Mock analysis - message is directed and confident
             mock_analysis = PersonalityDirectedAnalysis(
                 is_directed=True,
                 confidence=0.8,
                 reasoning="Direct question",
                 quick_response=None,
-                should_use_quick_response=False
+                should_use_quick_response=False,
             )
             mock_analyze.return_value = mock_analysis
-            
+
             # Mock response generation
             mock_generate.return_value = ("Here's my response", [])
-            
-            await orchestrator.process_user_message(sample_personality_id, sample_message_id)
-            
+
+            await orchestrator.process_user_message(
+                sample_personality_id, sample_message_id
+            )
+
             # Verify status updates
             assert mock_update_status.call_count >= 2  # contemplating and clear
             assert mock_broadcast.call_count >= 2
-            
+
             # Verify analysis was called
             mock_analyze.assert_called_once()
-            
+
             # Verify response generation and broadcast
             mock_generate.assert_called_once()
             mock_create_broadcast.assert_called_once()
@@ -490,33 +553,45 @@ class TestPersonalityChatOrchestrator:
         sample_personality_id: UUID,
         sample_message_id: UUID,
         mock_personality: PersonalityModel,
-        mock_user_message: PersonalityMessageModel
+        mock_user_message: PersonalityMessageModel,
     ) -> None:
         """Test processing user message that gets a quick response."""
         with (
-            patch("neuron_server.models.personality_message_model.PersonalityMessageModel.get") as mock_get_message,
-            patch("neuron_server.models.personality_model.PersonalityModel.get") as mock_get_personality,
-            patch("neuron_server.models.personality_model.PersonalityModel.update_status") as mock_update_status,
-            patch.object(orchestrator, "broadcast_personality_status_update") as mock_broadcast,
+            patch(
+                "neuron_server.models.personality_message_model.PersonalityMessageModel.get"
+            ) as mock_get_message,
+            patch(
+                "neuron_server.models.personality_model.PersonalityModel.get"
+            ) as mock_get_personality,
+            patch(
+                "neuron_server.models.personality_model.PersonalityModel.update_status"
+            ),
+            patch.object(
+                orchestrator, "broadcast_personality_status_update"
+            ),
             patch.object(orchestrator, "analyze_message_direction") as mock_analyze,
-            patch.object(orchestrator, "create_and_broadcast_personality_response") as mock_create_broadcast
+            patch.object(
+                orchestrator, "create_and_broadcast_personality_response"
+            ) as mock_create_broadcast,
         ):
             # Setup mocks
             mock_get_message.return_value = mock_user_message
             mock_get_personality.return_value = mock_personality
-            
+
             # Mock analysis - quick response needed
             mock_analysis = PersonalityDirectedAnalysis(
                 is_directed=True,
                 confidence=0.9,
                 reasoning="Question while busy",
                 quick_response="I'm busy right now, please wait.",
-                should_use_quick_response=True
+                should_use_quick_response=True,
             )
             mock_analyze.return_value = mock_analysis
-            
-            await orchestrator.process_user_message(sample_personality_id, sample_message_id)
-            
+
+            await orchestrator.process_user_message(
+                sample_personality_id, sample_message_id
+            )
+
             # Verify quick response was broadcast
             mock_create_broadcast.assert_called_once()
             call_args = mock_create_broadcast.call_args
@@ -529,35 +604,47 @@ class TestPersonalityChatOrchestrator:
         sample_personality_id: UUID,
         sample_message_id: UUID,
         mock_personality: PersonalityModel,
-        mock_user_message: PersonalityMessageModel
+        mock_user_message: PersonalityMessageModel,
     ) -> None:
         """Test processing user message that is not directed at personality."""
         with (
-            patch("neuron_server.models.personality_message_model.PersonalityMessageModel.get") as mock_get_message,
-            patch("neuron_server.models.personality_model.PersonalityModel.get") as mock_get_personality,
-            patch("neuron_server.models.personality_model.PersonalityModel.update_status") as mock_update_status,
-            patch.object(orchestrator, "broadcast_personality_status_update") as mock_broadcast,
+            patch(
+                "neuron_server.models.personality_message_model.PersonalityMessageModel.get"
+            ) as mock_get_message,
+            patch(
+                "neuron_server.models.personality_model.PersonalityModel.get"
+            ) as mock_get_personality,
+            patch(
+                "neuron_server.models.personality_model.PersonalityModel.update_status"
+            ) as mock_update_status,
+            patch.object(
+                orchestrator, "broadcast_personality_status_update"
+            ),
             patch.object(orchestrator, "analyze_message_direction") as mock_analyze,
-            patch.object(orchestrator, "generate_personality_response") as mock_generate
+            patch.object(
+                orchestrator, "generate_personality_response"
+            ) as mock_generate,
         ):
             # Setup mocks
             mock_get_message.return_value = mock_user_message
             mock_get_personality.return_value = mock_personality
-            
+
             # Mock analysis - not directed
             mock_analysis = PersonalityDirectedAnalysis(
                 is_directed=False,
                 confidence=0.2,
                 reasoning="General conversation",
                 quick_response=None,
-                should_use_quick_response=False
+                should_use_quick_response=False,
             )
             mock_analyze.return_value = mock_analysis
-            
-            await orchestrator.process_user_message(sample_personality_id, sample_message_id)
-            
+
+            await orchestrator.process_user_message(
+                sample_personality_id, sample_message_id
+            )
+
             # Verify no response was generated
             mock_generate.assert_not_called()
-            
+
             # Verify status was cleared
             mock_update_status.assert_called_with(sample_personality_id, "")

@@ -156,7 +156,7 @@ class TestElevenLabsTTSTool:
             mock_config_obj.static_folder = "/static"
             mock_config_obj.static_content_url = "http://localhost/static"
 
-            # Mock media item creation - removed since MediaItemModel not used in this tool
+            # Mock media item creation - removed since MediaItemModel not used
 
             # Mock file operations
             with patch("builtins.open", create=True) as mock_open:
@@ -187,7 +187,7 @@ class TestElevenLabsTTSTool:
 
             # Check XML content
             assert "<audio>" in xml_content
-            assert "<id>" in xml_content and "</id>" in xml_content  # UUID generated dynamically
+            assert "<id>" in xml_content and "</id>" in xml_content  # UUID dynamic
             assert "<url>http://localhost/static/" in xml_content
 
             # Check artifact - it's returned as a list containing the artifact dict
@@ -290,7 +290,7 @@ class TestElevenLabsTTSTool:
             mock_config_obj.static_folder = "/static"
             mock_config_obj.static_content_url = "http://localhost/static"
 
-            # Mock media item creation - removed since MediaItemModel not used in this tool
+            # Mock media item creation - removed since MediaItemModel not used
 
             with patch("builtins.open", create=True):
                 await tool._arun(
