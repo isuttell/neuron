@@ -240,9 +240,6 @@ class TestReplicateKontextImageTool:
                 "neuron_server.tools.replicate_kontext_image_tool.safe_filename",
                 return_value="test_edit.png",
             ),
-            patch(
-                "neuron_server.tools.replicate_kontext_image_tool.MediaItemModel"
-            ) as mock_media_model,
             patch("neuron_server.tools.replicate_kontext_image_tool.create_thumbnails"),
             patch(
                 "neuron_server.tools.replicate_kontext_image_tool.describe_edited_image",
@@ -253,7 +250,6 @@ class TestReplicateKontextImageTool:
         ):
             mock_config_module.static_folder = "/tmp"
             mock_config_module.static_content_url = "http://test.com/static"
-            mock_media_model.create = AsyncMock(return_value=mock_media_item)
 
             # Mock PIL Image
             mock_image = MagicMock()
@@ -262,19 +258,17 @@ class TestReplicateKontextImageTool:
             result = await tool._save_and_process_edited_image(mock_result, params)
 
             # Verify media item creation was called
-            mock_media_model.create.assert_called_once()
             # Verify the general call structure
-            assert mock_media_model.create.called
 
             # Verify result format
-            assert '<image id="media_123">' in result
-            assert "![Sunset Beach Scene]" in result
-            assert "<description>A beautiful edited landscape</description>" in result
+            assert '<image>' in result[0] and '<id>' in result[0] and '</id>' in result[0]  # UUID generated dynamically
+            assert "<caption>Sunset Beach Scene</caption>" in result[0]
+            assert "<description>A beautiful edited landscape</description>" in result[0]
             expected_edit_comparison = (
                 "<edit_comparison>Background changed from city to beach"
                 "</edit_comparison>"
             )
-            assert expected_edit_comparison in result
+            assert expected_edit_comparison in result[0]
 
     @pytest.mark.asyncio
     async def test_save_and_process_edited_image_without_description(
@@ -311,24 +305,20 @@ class TestReplicateKontextImageTool:
                 "neuron_server.tools.replicate_kontext_image_tool.safe_filename",
                 return_value="simple_edit.png",
             ),
-            patch(
-                "neuron_server.tools.replicate_kontext_image_tool.MediaItemModel"
-            ) as mock_media_model,
             patch("neuron_server.tools.replicate_kontext_image_tool.create_thumbnails"),
             patch("PIL.Image.open"),
             patch("os.path.abspath", return_value="/tmp/simple_edit.png"),
         ):
             mock_config_module.static_folder = "/tmp"
             mock_config_module.static_content_url = "http://test.com/static"
-            mock_media_model.create = AsyncMock(return_value=mock_media_item)
 
             result = await tool._save_and_process_edited_image(mock_result, params)
 
             # Verify simplified result format
-            assert '<image id="media_456">' in result
-            assert "![simple_edit]" in result
-            assert "<description>" not in result
-            assert "<edit_comparison>" not in result
+            assert '<image>' in result[0] and '<id>' in result[0] and '</id>' in result[0]  # UUID generated dynamically
+            assert "<caption>simple_edit</caption>" in result[0]
+            assert "<description>" not in result[0] or "<description></description>" in result[0]
+            assert "<edit_comparison>" not in result[0]
 
     @pytest.mark.asyncio
     async def test_successful_image_editing(

@@ -165,9 +165,6 @@ class TestOpenAIImageGenerationTool:
 
         with (
             patch("neuron_server.tools.openai_image_tool.AsyncOpenAI") as mock_openai,
-            patch(
-                "neuron_server.tools.openai_image_tool.MediaItemModel"
-            ) as mock_media_model,
             patch("neuron_server.tools.openai_image_tool.create_thumbnails"),
             patch(
                 "neuron_server.tools.openai_image_tool.safe_filename",
@@ -183,7 +180,7 @@ class TestOpenAIImageGenerationTool:
             mock_image_open.return_value = mock_image
 
             mock_openai.return_value = mock_client
-            mock_media_model.create = AsyncMock(return_value=mock_media_item)
+            # Removed MediaItemModel mock - tool no longer uses it directly
             mock_config_module.openai_api_key = "test_key"
             mock_config_module.static_folder = "/tmp"
             mock_config_module.static_content_url = "http://test.com/static"
@@ -201,15 +198,12 @@ class TestOpenAIImageGenerationTool:
             assert call_args[1]["input"] == "A cat sitting on a chair"
             assert call_args[1]["tools"][0]["type"] == "image_generation"
 
-            # Verify media item was created
-            mock_media_model.create.assert_called_once()
-            # Just verify it was called, detailed validation in integration tests
-            assert mock_media_model.create.called
+            # Removed MediaItemModel assertions - tool no longer uses it directly
 
             # Verify result format - single image doesn't get wrapped in <images>
             xml_content, artifact_list = result
             assert "<image>" in xml_content
-            assert "<id>media_123</id>" in xml_content
+            assert "<id>" in xml_content and "</id>" in xml_content  # UUID generated dynamically
             assert "<image_id>img_call_123</image_id>" in xml_content
             assert (
                 "<revised_prompt>A beautiful cat sitting gracefully</revised_prompt>"
@@ -247,9 +241,6 @@ class TestOpenAIImageGenerationTool:
 
         with (
             patch("neuron_server.tools.openai_image_tool.AsyncOpenAI") as mock_openai,
-            patch(
-                "neuron_server.tools.openai_image_tool.MediaItemModel"
-            ) as mock_media_model,
             patch("neuron_server.tools.openai_image_tool.create_thumbnails"),
             patch(
                 "neuron_server.tools.openai_image_tool.safe_filename",
@@ -265,7 +256,7 @@ class TestOpenAIImageGenerationTool:
             mock_image_open.return_value = mock_image
 
             mock_openai.return_value = mock_client
-            mock_media_model.create = AsyncMock(return_value=mock_media_item)
+            # Removed MediaItemModel mock - tool no longer uses it directly
             mock_config_module.openai_api_key = "test_key"
             mock_config_module.static_folder = "/tmp"
             mock_config_module.static_content_url = "http://test.com/static"
@@ -321,9 +312,6 @@ class TestOpenAIImageGenerationTool:
 
         with (
             patch("neuron_server.tools.openai_image_tool.AsyncOpenAI") as mock_openai,
-            patch(
-                "neuron_server.tools.openai_image_tool.MediaItemModel"
-            ) as mock_media_model,
             patch("neuron_server.tools.openai_image_tool.create_thumbnails"),
             patch(
                 "neuron_server.tools.openai_image_tool.safe_filename",
@@ -339,7 +327,7 @@ class TestOpenAIImageGenerationTool:
             mock_image_open.return_value = mock_image
 
             mock_openai.return_value = mock_client
-            mock_media_model.create = AsyncMock(return_value=mock_media_item)
+            # Removed MediaItemModel mock - tool no longer uses it directly
             mock_config_module.openai_api_key = "test_key"
             mock_config_module.static_folder = "/tmp"
             mock_config_module.static_content_url = "http://test.com/static"
@@ -474,9 +462,6 @@ class TestOpenAIImageGenerationTool:
 
         with (
             patch("neuron_server.tools.openai_image_tool.AsyncOpenAI") as mock_openai,
-            patch(
-                "neuron_server.tools.openai_image_tool.MediaItemModel"
-            ) as mock_media_model,
             patch("neuron_server.tools.openai_image_tool.create_thumbnails"),
             patch(
                 "neuron_server.tools.openai_image_tool.safe_filename",
@@ -492,7 +477,7 @@ class TestOpenAIImageGenerationTool:
             mock_image_open.return_value = mock_image
 
             mock_openai.return_value = mock_client
-            mock_media_model.create = AsyncMock(return_value=mock_media_item)
+            # Removed MediaItemModel mock - tool no longer uses it directly
             mock_config_module.openai_api_key = "test_key"
             mock_config_module.static_folder = "/tmp"
             mock_config_module.static_content_url = "http://test.com/static"
@@ -511,7 +496,7 @@ class TestOpenAIImageGenerationTool:
             # Verify successful result
             xml_content, artifact_list = result
             assert "<image>" in xml_content
-            assert "media_webp" in xml_content
+            assert "<caption>webp_image</caption>" in xml_content  # Check for actual content instead of hardcoded ID
 
     def test_sync_run_method(self, tool: OpenAIImageGenerationTool) -> None:
         """Test that the sync _run method calls the async _arun method."""
@@ -554,9 +539,6 @@ class TestOpenAIImageGenerationTool:
 
         with (
             patch("neuron_server.tools.openai_image_tool.AsyncOpenAI") as mock_openai,
-            patch(
-                "neuron_server.tools.openai_image_tool.MediaItemModel"
-            ) as mock_media_model,
             patch("neuron_server.tools.openai_image_tool.create_thumbnails"),
             patch(
                 "neuron_server.tools.openai_image_tool.safe_filename",
@@ -575,7 +557,7 @@ class TestOpenAIImageGenerationTool:
             mock_image_open.return_value = mock_image
 
             mock_openai.return_value = mock_client
-            mock_media_model.create = AsyncMock(return_value=mock_media_item)
+            # Removed MediaItemModel mock - tool no longer uses it directly
             mock_config_module.openai_api_key = "test_key"
             mock_config_module.static_folder = "/tmp"
             mock_config_module.static_content_url = "http://test.com/static"
@@ -610,7 +592,7 @@ class TestOpenAIImageGenerationTool:
             # Verify successful result
             xml_content, artifact_list = result
             assert "<image>" in xml_content
-            assert "media_from_url" in xml_content
+            assert "<caption>image_from_url</caption>" in xml_content  # Check for actual content instead of hardcoded ID
 
     @pytest.mark.asyncio
     async def test_image_url_download_error(

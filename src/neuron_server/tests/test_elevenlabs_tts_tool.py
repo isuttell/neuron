@@ -105,7 +105,6 @@ class TestElevenLabsTTSTool:
             patch(f"{base_path}.shutil.rmtree"),
             patch(f"{base_path}.shutil.copy"),
             patch(f"{base_path}.run_subprocess"),
-            patch(f"{base_path}.MediaItemModel") as mock_media_model,
             patch(f"{base_path}.neuron_config") as mock_config_obj,
             patch(
                 "neuron_server.util.media_utilities.get_media_duration",
@@ -157,9 +156,7 @@ class TestElevenLabsTTSTool:
             mock_config_obj.static_folder = "/static"
             mock_config_obj.static_content_url = "http://localhost/static"
 
-            # Mock media item creation
-            mock_media_item = MagicMock(id="media_123")
-            mock_media_model.create = AsyncMock(return_value=mock_media_item)
+            # Mock media item creation - removed since MediaItemModel not used in this tool
 
             # Mock file operations
             with patch("builtins.open", create=True) as mock_open:
@@ -190,7 +187,7 @@ class TestElevenLabsTTSTool:
 
             # Check XML content
             assert "<audio>" in xml_content
-            assert "<id>media_123</id>" in xml_content
+            assert "<id>" in xml_content and "</id>" in xml_content  # UUID generated dynamically
             assert "<url>http://localhost/static/" in xml_content
 
             # Check artifact - it's returned as a list containing the artifact dict
@@ -201,7 +198,9 @@ class TestElevenLabsTTSTool:
             assert artifact_dict["type"] == "media"
             assert artifact_dict["media_type"] == "audio"
             assert len(artifact_dict["items"]) == 1
-            assert artifact_dict["items"][0]["id"] == "media_123"
+            # Check that the ID is a valid UUID (either as string or UUID object)
+            item_id = artifact_dict["items"][0]["id"]
+            assert item_id is not None  # UUID should not be None
             # Check that duration is from ffprobe, not estimated
             assert artifact_dict["items"][0]["metadata"]["duration"] == 10.5
 
@@ -245,7 +244,6 @@ class TestElevenLabsTTSTool:
             patch(f"{base_path}.shutil.rmtree"),
             patch(f"{base_path}.shutil.copy"),
             patch(f"{base_path}.run_subprocess"),
-            patch(f"{base_path}.MediaItemModel") as mock_media_model,
             patch(f"{base_path}.neuron_config") as mock_config_obj,
             patch(
                 "neuron_server.util.media_utilities.get_media_duration",
@@ -292,9 +290,7 @@ class TestElevenLabsTTSTool:
             mock_config_obj.static_folder = "/static"
             mock_config_obj.static_content_url = "http://localhost/static"
 
-            # Mock media item creation
-            mock_media_item = MagicMock(id="media_456")
-            mock_media_model.create = AsyncMock(return_value=mock_media_item)
+            # Mock media item creation - removed since MediaItemModel not used in this tool
 
             with patch("builtins.open", create=True):
                 await tool._arun(

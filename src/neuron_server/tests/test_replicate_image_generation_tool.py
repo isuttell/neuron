@@ -100,7 +100,6 @@ class TestReplicateImageGenerationTool:
     @pytest.mark.asyncio
     @patch("neuron_server.tools.replicate_image_generation_tool.replicate.async_run")
     @patch("neuron_server.tools.replicate_image_generation_tool.describe_image")
-    @patch("neuron_server.tools.replicate_image_generation_tool.MediaItemModel.create")
     @patch("neuron_server.tools.replicate_image_generation_tool.aiofiles.open")
     @patch("neuron_server.tools.replicate_image_generation_tool.Image")
     @patch("neuron_server.tools.replicate_image_generation_tool.create_thumbnails")
@@ -109,7 +108,6 @@ class TestReplicateImageGenerationTool:
         mock_create_thumbnails: MagicMock,
         mock_image: MagicMock,
         mock_aiofiles_open: MagicMock,
-        mock_media_create: AsyncMock,
         mock_describe_image: AsyncMock,
         mock_replicate_run: AsyncMock,
     ) -> None:
@@ -141,7 +139,6 @@ class TestReplicateImageGenerationTool:
         mock_image_instance.save = MagicMock()
         mock_image.open.return_value = mock_image_instance
 
-        mock_media_create.return_value = MagicMock(id="test-media-id")
         mock_describe_image.return_value = MagicMock(
             description="A beautiful sunset",
             caption="Sunset",
@@ -177,7 +174,7 @@ class TestReplicateImageGenerationTool:
 
         # Check content (XML for LLM)
         assert "<image" in content
-        assert "test-media-id" in content
+        assert "<id>" in content and "</id>" in content  # UUID generated dynamically
 
         # Check artifact (for UI) - it's returned as a list containing the artifact dict
         assert isinstance(artifact, list)
@@ -187,6 +184,6 @@ class TestReplicateImageGenerationTool:
         assert artifact_dict["type"] == "media"
         assert artifact_dict["media_type"] == "image"
         assert len(artifact_dict["items"]) == 1
-        assert artifact_dict["items"][0]["id"] == "test-media-id"
+        assert artifact_dict["items"][0]["id"] is not None  # UUID generated dynamically
 
         assert mock_file_handle.write.called
