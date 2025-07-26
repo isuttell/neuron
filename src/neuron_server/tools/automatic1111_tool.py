@@ -1,6 +1,7 @@
 import asyncio
 import os
 from typing import Any, Literal
+from uuid import uuid4
 
 import aiohttp
 from langchain.tools import BaseTool
@@ -9,7 +10,6 @@ from pydantic import BaseModel, Field
 
 from neuron_server.config import config as neuron_config
 from neuron_server.logger import logger
-from neuron_server.models.media_item_model import MediaItemModel
 from neuron_server.tools.automatic1111_api import Automatic1111API, GenerationSettings
 
 # HTTP status codes
@@ -95,6 +95,7 @@ class Automatic1111Tool(BaseTool):
         "image tag."
     )
     args_schema: type[Automatic1111ToolArgs] = Automatic1111ToolArgs
+    response_format: str = "content_and_artifact"
 
     api: Automatic1111API
 
@@ -142,17 +143,45 @@ class Automatic1111Tool(BaseTool):
             )
             file_path = await self.api.generate(settings=settings)
             url = f"{neuron_config.static_content_url}/{os.path.basename(file_path)}"
-            create_params = MediaItemModel.CreateParams(
-                thread_id=config["configurable"].get("thread_id"),
-                user_id=config["configurable"].get("user_id"),
-                url=url,
-                media_type="image",
-                name=name,
-                description=prompt,
-            )
-            await MediaItemModel.create(params=create_params)
+            
+            # Generate a real UUID for consistent ID between artifact and media_item
+            media_id = uuid4()
+            
             logger.debug(f"Saved generated image to {file_path} <{url}>")
-            return f"<image>![{name}]({url})</image>"
+
+            # Prepare artifact for UI using typed models
+            from neuron_server.tools.artifact_types import (
+                ToolArtifactMetadata,
+                ToolMediaArtifact,
+                ToolMediaItem,
+            )
+
+            metadata = ToolArtifactMetadata(
+                model="automatic1111/stable-diffusion",
+                prompt=prompt,
+                negative_prompt=negative_prompt,
+                num_inference_steps=steps,
+                cfg_strength=cfg_scale,
+            )
+
+            artifact_item = ToolMediaItem(
+                id=media_id,
+                url=url,
+                caption=name,
+                description=prompt,
+                metadata=metadata,
+            )
+
+            artifact = ToolMediaArtifact(media_type="image", items=[artifact_item])
+
+            xml_content = f"""<image>
+    <id>{media_id}</id>
+    <url>{url}</url>
+    <caption>{name}</caption>
+    <description>{prompt}</description>
+</image>"""
+
+            return xml_content, [artifact.model_dump()]
         except Exception as e:
             logger.error(e, exc_info=True)
             return f"Error generating image: {str(e)}"

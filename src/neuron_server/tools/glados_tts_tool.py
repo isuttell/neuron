@@ -1,5 +1,6 @@
 import asyncio
 import os
+from uuid import uuid4
 
 import aiohttp
 from aiohttp import ClientConnectorError
@@ -9,7 +10,6 @@ from pydantic import BaseModel, Field
 
 from neuron_server.config import config as neuron_config
 from neuron_server.logger import logger
-from neuron_server.models.media_item_model import MediaItemModel
 from neuron_server.util.slug import safe_filename
 
 
@@ -201,15 +201,9 @@ Returns an audio tag to be shown to the user so they can play it.
 
             url = neuron_config.static_content_url + "/" + filename
             if os.path.exists(output_path):
-                create_params = MediaItemModel.CreateParams(
-                    url=url,
-                    media_type="tts",
-                    user_id=config["configurable"].get("user_id"),
-                    thread_id=config["configurable"].get("thread_id"),
-                    name=name,
-                    description=content,
-                )
-                media_item = await MediaItemModel.create(params=create_params)
+                # Generate a real UUID for consistent ID between artifact and media_item
+                media_id = uuid4()
+                
                 logger.info(
                     f"Generated GLaDOS audio file saved to {output_path} <{url}>"
                 )
@@ -233,7 +227,7 @@ Returns an audio tag to be shown to the user so they can play it.
                 )
 
                 artifact_item = ToolMediaItem(
-                    id=str(media_item.id),
+                    id=media_id,
                     url=url,
                     caption=name,
                     description=content,

@@ -2,7 +2,6 @@ import { configureStore } from '@reduxjs/toolkit';
 import { toast } from 'sonner';
 import websocketMiddleware from '../websocketMiddleware';
 import appSlice, { getBuildHashMismatch } from '../../slices/appSlice';
-import WebSocketManager from '../../WebSocketManager';
 import { getCurrentBuildHash } from '../../utils/buildHash';
 
 // Mock dependencies
@@ -19,21 +18,28 @@ vi.mock('../../utils/buildHash', () => ({
   getCurrentBuildHash: vi.fn(),
 }));
 
-// Mock WebSocketManager
-const mockWebSocketManager = {
-  connect: vi.fn(),
-  on: vi.fn(),
-  onInternal: vi.fn(),
-  close: vi.fn(),
-  sendMessage: vi.fn(),
-} as unknown as WebSocketManager;
+// Mock the singleton
+vi.mock('../../WebSocketManager', () => ({
+  socketManager: {
+    connect: vi.fn(),
+    on: vi.fn(),
+    onInternal: vi.fn(),
+    close: vi.fn(),
+    sendMessage: vi.fn(),
+    connected: false,
+  },
+}));
 
 describe('websocketMiddleware build hash handling', () => {
   let store: ReturnType<typeof configureStore>;
-  let middleware: ReturnType<typeof websocketMiddleware>;
+  let mockWebSocketManager: any;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
+    
+    // Get the mocked socket manager
+    const { socketManager } = await import('../../WebSocketManager');
+    mockWebSocketManager = socketManager;
 
     store = configureStore({
       reducer: {
@@ -52,14 +58,12 @@ describe('websocketMiddleware build hash handling', () => {
         personalities: (state = { personalities: [] }) => state,
       },
       middleware: (getDefaultMiddleware) =>
-        getDefaultMiddleware().concat(websocketMiddleware(mockWebSocketManager)),
+        getDefaultMiddleware().concat(websocketMiddleware),
     });
-
-    middleware = websocketMiddleware(mockWebSocketManager);
   });
 
   it('registers ping event handler when connecting', () => {
-    (mockWebSocketManager.connect as any).mockReturnValue(true);
+    mockWebSocketManager.connect.mockReturnValue(true);
 
     store.dispatch({ type: 'socket/connect' });
 
@@ -68,13 +72,13 @@ describe('websocketMiddleware build hash handling', () => {
   });
 
   it('detects hash mismatch when current hash differs from server hash', () => {
-    (mockWebSocketManager.connect as any).mockReturnValue(true);
-    (getCurrentBuildHash as any).mockReturnValue('CLIENT123');
+    mockWebSocketManager.connect.mockReturnValue(true);
+    vi.mocked(getCurrentBuildHash).mockReturnValue('CLIENT123');
 
     store.dispatch({ type: 'socket/connect' });
 
     // Get the ping handler that was registered
-    const pingHandler = (mockWebSocketManager.on as any).mock.calls.find(
+    const pingHandler = mockWebSocketManager.on.mock.calls.find(
       (call: any) => call[0] === 'ping'
     )[1];
 
@@ -91,12 +95,12 @@ describe('websocketMiddleware build hash handling', () => {
   });
 
   it('does not detect mismatch when hashes match', () => {
-    (mockWebSocketManager.connect as any).mockReturnValue(true);
-    (getCurrentBuildHash as any).mockReturnValue('SAME123');
+    mockWebSocketManager.connect.mockReturnValue(true);
+    vi.mocked(getCurrentBuildHash).mockReturnValue('SAME123');
 
     store.dispatch({ type: 'socket/connect' });
 
-    const pingHandler = (mockWebSocketManager.on as any).mock.calls.find(
+    const pingHandler = mockWebSocketManager.on.mock.calls.find(
       (call: any) => call[0] === 'ping'
     )[1];
 
@@ -113,12 +117,12 @@ describe('websocketMiddleware build hash handling', () => {
   });
 
   it('does not detect mismatch when server provides no hash', () => {
-    (mockWebSocketManager.connect as any).mockReturnValue(true);
-    (getCurrentBuildHash as any).mockReturnValue('CLIENT123');
+    mockWebSocketManager.connect.mockReturnValue(true);
+    vi.mocked(getCurrentBuildHash).mockReturnValue('CLIENT123');
 
     store.dispatch({ type: 'socket/connect' });
 
-    const pingHandler = (mockWebSocketManager.on as any).mock.calls.find(
+    const pingHandler = mockWebSocketManager.on.mock.calls.find(
       (call: any) => call[0] === 'ping'
     )[1];
 
@@ -134,12 +138,12 @@ describe('websocketMiddleware build hash handling', () => {
   });
 
   it('does not detect mismatch when client has no hash', () => {
-    (mockWebSocketManager.connect as any).mockReturnValue(true);
-    (getCurrentBuildHash as any).mockReturnValue(null);
+    mockWebSocketManager.connect.mockReturnValue(true);
+    vi.mocked(getCurrentBuildHash).mockReturnValue(null);
 
     store.dispatch({ type: 'socket/connect' });
 
-    const pingHandler = (mockWebSocketManager.on as any).mock.calls.find(
+    const pingHandler = mockWebSocketManager.on.mock.calls.find(
       (call: any) => call[0] === 'ping'
     )[1];
 
@@ -156,12 +160,12 @@ describe('websocketMiddleware build hash handling', () => {
   });
 
   it('handles multiple ping events correctly', () => {
-    (mockWebSocketManager.connect as any).mockReturnValue(true);
-    (getCurrentBuildHash as any).mockReturnValue('CLIENT123');
+    mockWebSocketManager.connect.mockReturnValue(true);
+    vi.mocked(getCurrentBuildHash).mockReturnValue('CLIENT123');
 
     store.dispatch({ type: 'socket/connect' });
 
-    const pingHandler = (mockWebSocketManager.on as any).mock.calls.find(
+    const pingHandler = mockWebSocketManager.on.mock.calls.find(
       (call: any) => call[0] === 'ping'
     )[1];
 
@@ -185,7 +189,7 @@ describe('websocketMiddleware build hash handling', () => {
   });
 
   it('registers all expected event handlers on connect', () => {
-    (mockWebSocketManager.connect as any).mockReturnValue(true);
+    mockWebSocketManager.connect.mockReturnValue(true);
 
     store.dispatch({ type: 'socket/connect' });
 

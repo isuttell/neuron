@@ -168,6 +168,21 @@ class StreamEventProcessor:
             message_data = output.model_dump()
             message_data["id"] = self._clean_run_id(ctx["run_id"])
 
+            # Process artifacts and create media items if present
+            if hasattr(output, "artifact") and output.artifact:
+                from neuron_server.util.artifact_to_media_converter import (
+                    create_media_items_from_artifacts,
+                )
+
+                # Create media items from artifacts (using predefined UUIDs)
+                artifacts = (output.artifact if isinstance(output.artifact, list) 
+                           else [output.artifact])
+                await create_media_items_from_artifacts(
+                    artifacts=artifacts,
+                    thread_id=ctx["thread"].id,
+                    user_id=ctx["data"].get("input", {}).get("user_id"),
+                )
+
             # The tool message artifact (if present) will be preserved automatically
             # due to ThreadMessage's extra="allow" configuration
 

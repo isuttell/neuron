@@ -71,6 +71,21 @@ class UserModel(BaseModel):
             return [cls.model_validate(user.__dict__) for user in users]
 
     @classmethod
+    async def get_all(cls) -> list["UserModel"]:
+        """
+        Retrieve all users from the database.
+
+        Returns:
+            List of all UserModel instances
+        """
+        async with get_session() as session:
+            stmt = select(DBUser)
+            result = await session.execute(stmt)
+            users = result.scalars().all()
+
+            return [cls.model_validate(user.__dict__) for user in users]
+
+    @classmethod
     async def get_by_email(cls, email: str) -> "UserModel | None":
         """
         Retrieve a user by their email.

@@ -2,31 +2,37 @@ import { configureStore } from "@reduxjs/toolkit";
 import { vi } from "vitest";
 import { joinPersonalityRoom, leavePersonalityRoom } from "../roomActions";
 
-// Mock WebSocket
-const mockSendMessage = vi.fn();
-const mockSocket = {
-  sendMessage: mockSendMessage,
-};
-
-// Mock socket slice
+// Mock socket slice  
 vi.mock("../../slices/socketSlice", () => ({
-  getSocket: vi.fn(() => mockSocket),
+  getConnectionStatus: vi.fn(() => true),
+}));
+
+// Mock WebSocketManager singleton
+vi.mock("../../WebSocketManager", () => ({
+  socketManager: {
+    sendMessage: vi.fn(),
+  },
 }));
 
 // Create a mock store
 const createMockStore = () =>
   configureStore({
     reducer: {
-      socket: (state = { socket: mockSocket }) => state,
+      socket: (state = { connected: true }) => state,
     },
   });
 
 describe("roomActions", () => {
   let store: ReturnType<typeof createMockStore>;
+  let mockSendMessage: any;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     store = createMockStore();
     vi.clearAllMocks();
+    
+    // Get the mocked socket manager
+    const { socketManager } = await import("../../WebSocketManager");
+    mockSendMessage = socketManager.sendMessage;
   });
 
   describe("joinPersonalityRoom", () => {
@@ -46,9 +52,9 @@ describe("roomActions", () => {
     });
 
     it("should reject when socket is not connected", async () => {
-      // Mock socket as null
-      const { getSocket } = await import("../../slices/socketSlice");
-      vi.mocked(getSocket).mockReturnValueOnce(null);
+      // Mock connection status as false
+      const { getConnectionStatus } = await import("../../slices/socketSlice");
+      vi.mocked(getConnectionStatus).mockReturnValueOnce(false);
 
       const personalityId = "test-personality-id";
 
@@ -108,9 +114,9 @@ describe("roomActions", () => {
     });
 
     it("should reject when socket is not connected", async () => {
-      // Mock socket as null for this test
-      const { getSocket } = await import("../../slices/socketSlice");
-      vi.mocked(getSocket).mockReturnValueOnce(null);
+      // Mock connection status as false for this test
+      const { getConnectionStatus } = await import("../../slices/socketSlice");
+      vi.mocked(getConnectionStatus).mockReturnValueOnce(false);
 
       const personalityId = "test-personality-id";
 

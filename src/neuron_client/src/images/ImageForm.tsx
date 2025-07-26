@@ -4,7 +4,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { CornerDownLeft } from "lucide-react";
 import { useState } from "react";
 import { useAppSelector } from "../hooks";
-import { getSocket, getConnectionStatus } from "../slices/socketSlice";
+import { getConnectionStatus } from "../slices/socketSlice";
+import { socketManager } from "../WebSocketManager";
 import { WebSocketPayload } from "../types/websocket";
 
 interface ImageFormProps {
@@ -18,7 +19,6 @@ export default function ImageForm({
   onSubmit = () => {},
   className = "",
 }: ImageFormProps) {
-  const socket = useAppSelector(getSocket);
   const isConnected = useAppSelector(getConnectionStatus);
   const [value, setValue] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -30,11 +30,11 @@ export default function ImageForm({
       | React.KeyboardEvent<HTMLTextAreaElement>
   ) => {
     e.preventDefault();
-    if (!socket || !isConnected || value.trim().length === 0 || isSubmitting) {
+    if (!isConnected || value.trim().length === 0 || isSubmitting) {
       return;
     }
     setIsSubmitting(true);
-    socket.sendMessage({
+    socketManager.sendMessage({
       type: "CreateImage",
       prompt: value,
     } as WebSocketPayload);

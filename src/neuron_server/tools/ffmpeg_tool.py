@@ -12,7 +12,6 @@ from pydantic import BaseModel, Field
 
 from neuron_server.config import config as neuron_config
 from neuron_server.logger import logger
-from neuron_server.models.media_item_model import MediaItemModel
 from neuron_server.util.slug import safe_filename
 from neuron_server.util.subprocess_runner import run_subprocess
 
@@ -65,6 +64,7 @@ output filename to the user as they can't directly access it.
 """.strip()
 
     args_schema: type[FFmpegToolArgs] = FFmpegToolArgs
+    response_format: str = "content_and_artifact"
 
     @staticmethod
     def get_auth_cookies() -> dict[str, str] | None:
@@ -327,24 +327,51 @@ output filename to the user as they can't directly access it.
             if not os.path.exists(output):
                 raise FFmpegToolError("Output file not found", process.stderr)
 
-            # Create media item
+            # Generate URL and UUID for consistent ID between artifact and media_item
             url = neuron_config.static_content_url + "/" + filename
-            create_params = MediaItemModel.CreateParams(
-                url=url,
-                media_type="video" if extension == "mp4" else "audio",
-                user_id=config["configurable"].get("user_id"),
-                thread_id=config["configurable"].get("thread_id"),
-                name=name,
-            )
-            await MediaItemModel.create(params=create_params)
+            media_id = uuid4()
 
-            # Return formatted response
             logger.info(f"File saved to {output} <{url}>")
-            output_format = self.get_output_format(extension)
-            return f"""
-{output_format}
-Filename: {output}
-""".strip().format(url=url)
+
+            # Prepare artifact for UI using typed models
+            from neuron_server.tools.artifact_types import (
+                ToolArtifactMetadata,
+                ToolMediaArtifact,
+                ToolMediaItem,
+            )
+            from neuron_server.util.media_utilities import get_media_duration
+
+            # Get actual duration from the generated file
+            duration = await get_media_duration(output)
+
+            metadata = ToolArtifactMetadata(
+                model="ffmpeg",
+                prompt=name,
+                duration=duration,
+                output_format=extension,
+            )
+
+            artifact_item = ToolMediaItem(
+                id=media_id,
+                url=url,
+                caption=name,
+                description=f"FFmpeg processed {extension} file",
+                metadata=metadata,
+            )
+
+            artifact = ToolMediaArtifact(
+                media_type="video" if extension == "mp4" else "audio", 
+                items=[artifact_item]
+            )
+
+            xml_content = f"""<{"video" if extension == "mp4" else "audio"}>
+    <id>{media_id}</id>
+    <url>{url}</url>
+    <caption>{name}</caption>
+    <description>FFmpeg processed {extension} file</description>
+</{"video" if extension == "mp4" else "audio"}>"""
+
+            return xml_content, [artifact.model_dump()]
 
         except Exception as e:
             logger.error(e, exc_info=True)

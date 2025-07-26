@@ -50,6 +50,12 @@ export interface PersonalityEvent extends WebSocketMessage {
   personality: Personality;
 }
 
+export interface PersonalityStatusUpdateEvent extends WebSocketMessage {
+  type: "personality_status_update";
+  personality_id: string;
+  status: string;
+}
+
 export interface ImageEvent extends WebSocketMessage {
   type: "image";
   image: MediaItem;
@@ -143,6 +149,7 @@ export type WebSocketEvent =
   | SidebarImageEvent
   | PromptEvent
   | PersonalityEvent
+  | PersonalityStatusUpdateEvent
   | ImageEvent
   | ErrorEvent
   | PingEvent

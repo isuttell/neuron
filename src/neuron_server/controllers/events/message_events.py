@@ -58,6 +58,7 @@ class PersonalityMessageEvent(OutgoingEvent):
     user_id: str | None
     created_at: str
     updated_at: str
+    media_items: list[dict] = []
 
 
 class PersonalityMessageDeletedEvent(OutgoingEvent):

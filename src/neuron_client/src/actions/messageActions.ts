@@ -7,7 +7,8 @@ import {
   markMessageCancelled,
   getMessages,
 } from "../slices/messagesSlice";
-import { getSocket } from "../slices/socketSlice";
+import { getConnectionStatus } from "../slices/socketSlice";
+import { socketManager } from "../WebSocketManager";
 import { RootState } from "../store";
 import { WebSocketPayload } from "../types/websocket";
 
@@ -107,14 +108,14 @@ export const sendMessage = createAsyncThunk(
     { getState, rejectWithValue }
   ) => {
     const state = getState() as RootState;
-    const socket = getSocket(state);
+    const connected = getConnectionStatus(state);
 
-    if (!socket) {
+    if (!connected) {
       return rejectWithValue("Socket not connected");
     }
 
     try {
-      socket.sendMessage({
+      socketManager.sendMessage({
         type: "PostMessage",
         thread_id: threadId,
         prompt,

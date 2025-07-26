@@ -16,7 +16,6 @@ from pydantic import BaseModel, Field
 
 from neuron_server.config import config as neuron_config
 from neuron_server.logger import logger
-from neuron_server.models.media_item_model import MediaItemModel
 from neuron_server.tools.artifact_types import (
     ToolArtifactMetadata,
     ToolMediaArtifact,
@@ -81,28 +80,9 @@ For complex workflows requiring file generation, use the regular code_interprete
     def _run(self, *args: Any, **kwargs: Any) -> str:
         return asyncio.run(self._arun(*args, **kwargs))
 
-    async def _create_media_item(
-        self,
-        url: str,
-        media_type: str,
-        name: str,
-        description: str,
-        config: RunnableConfig,
-    ) -> MediaItemModel:
-        """Helper to create media item with config handling."""
-        user_id = config["configurable"].get("user_id")
-        if not user_id:
-            raise ValueError("User ID is required")
-
-        params = MediaItemModel.CreateParams(
-            url=url,
-            media_type=media_type,
-            user_id=user_id,
-            thread_id=config["configurable"].get("thread_id"),
-            name=name,
-            description=description,
-        )
-        return await MediaItemModel.create(params)
+    def _generate_media_id(self) -> str:
+        """Helper to generate consistent media ID."""
+        return str(uuid4())
 
     async def _write_artifact_files(
         self,
@@ -162,18 +142,12 @@ For complex workflows requiring file generation, use the regular code_interprete
         stdout = execution_info["stdout"]
         stderr = execution_info["stderr"]
 
-        # Create media item for code
-        code_media_item = await self._create_media_item(
-            url=code_url,
-            media_type="code",
-            name="source_code.py",
-            description=f"Python code ({len(python_code.splitlines())} lines)",
-            config=config,
-        )
+        # Generate a real UUID for consistent ID between artifact and media_item
+        code_media_id = uuid4()
 
         artifact_items.append(
             ToolMediaItem(
-                id=str(code_media_item.id),
+                id=code_media_id,
                 url=code_url,
                 caption="Source Code",
                 description=python_code,
@@ -184,19 +158,13 @@ For complex workflows requiring file generation, use the regular code_interprete
             )
         )
 
-        # Create media item for output if exists
+        # Create artifact item for output if exists
         if output_url:
-            output_media_item = await self._create_media_item(
-                url=output_url,
-                media_type="data",
-                name="output.txt",
-                description="Execution output",
-                config=config,
-            )
+            output_media_id = uuid4()
 
             artifact_items.append(
                 ToolMediaItem(
-                    id=str(output_media_item.id),
+                    id=output_media_id,
                     url=output_url,
                     caption="Output",
                     description=f"{stdout}\n{stderr}".strip(),

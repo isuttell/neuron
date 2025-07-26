@@ -2,6 +2,7 @@ import asyncio
 import os
 import shutil
 from typing import Any
+from uuid import uuid4
 
 import aiofiles
 from langchain.tools import BaseTool
@@ -11,7 +12,6 @@ from pydantic import BaseModel, Field
 
 from neuron_server.config import config as neuron_config
 from neuron_server.logger import logger
-from neuron_server.models.media_item_model import MediaItemModel
 from neuron_server.util.slug import safe_filename
 
 client = AsyncOpenAI(api_key=neuron_config.openai_api_key)
@@ -34,6 +34,7 @@ class WhisperSTTTool(BaseTool):
         """Returns both the transcription and a link to the audio file."""
     ).strip()
     args_schema: type[WhisperSTTToolArgs] = WhisperSTTToolArgs
+    response_format: str = "content_and_artifact"
 
     async def _arun(
         self,
@@ -57,22 +58,43 @@ class WhisperSTTTool(BaseTool):
                     model="whisper-1", file=await f.read(), response_format="text"
                 )
 
-            # Create media item
-            create_params = MediaItemModel.CreateParams(
-                url=url,
-                media_type="text",
-                name=name,
-                description=transcript,
-                thread_id=config["configurable"].get("thread_id"),
-                user_id=config["configurable"].get("user_id"),
-            )
-            media_item = await MediaItemModel.create(params=create_params)
+            # Generate a real UUID for consistent ID between artifact and media_item
+            media_id = uuid4()
 
-            return f"""\
-<audio id="{media_item.id}">
+            # Prepare artifact for UI using typed models
+            from neuron_server.tools.artifact_types import (
+                ToolArtifactMetadata,
+                ToolMediaArtifact,
+                ToolMediaItem,
+            )
+            from neuron_server.util.media_utilities import get_media_duration
+
+            # Get actual duration from the generated file
+            duration = await get_media_duration(output)
+
+            metadata = ToolArtifactMetadata(
+                model="openai/whisper-1",
+                prompt=name,
+                duration=duration,
+                transcription=transcript,
+            )
+
+            artifact_item = ToolMediaItem(
+                id=media_id,
+                url=url,
+                caption=name,
+                description=transcript,
+                metadata=metadata,
+            )
+
+            artifact = ToolMediaArtifact(media_type="audio", items=[artifact_item])
+
+            xml_content = f"""<audio id="{media_id}">
     <display><audio src="{url}"></audio></display>
     <transcription>{transcript}</transcription>
-</audio>""".strip()
+</audio>"""
+
+            return xml_content.strip(), [artifact.model_dump()]
 
         except Exception as e:
             logger.error(e, exc_info=True)

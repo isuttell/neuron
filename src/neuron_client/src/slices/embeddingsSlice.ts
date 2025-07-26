@@ -1,4 +1,4 @@
-import { createSlice } from "@reduxjs/toolkit";
+import { createSlice, createSelector } from "@reduxjs/toolkit";
 import {
   deleteEmbedding,
   bulkDeleteEmbeddings,
@@ -110,9 +110,12 @@ const embeddingsSlice = createSlice({
   },
 });
 
-export const selectEmbeddingspersonality = (
-  state: RootState,
-  personalityId: string
-) => state.embeddings.personality[personalityId] || [];
+// Stable empty array to prevent new references
+const EMPTY_EMBEDDINGS_ARRAY: any[] = [];
+
+export const selectEmbeddingspersonality = createSelector(
+  [(state: RootState, personalityId: string) => state.embeddings.personality[personalityId], (_, personalityId: string) => personalityId],
+  (embeddings) => embeddings || EMPTY_EMBEDDINGS_ARRAY
+);
 
 export default embeddingsSlice.reducer;

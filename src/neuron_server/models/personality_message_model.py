@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Self
@@ -122,3 +124,44 @@ class PersonalityMessageModel(BaseModel):
             session.add(message)
             await session.commit()
             return cls(**message.__dict__)
+
+    @classmethod
+    async def get_with_media_items(cls, message_id: UUID) -> tuple[Self | None, list]:
+        """Get a personality message with its associated media items."""
+        from neuron_server.models.personality_message_media_item_model import (
+            PersonalityMessageMediaItemModel,
+        )
+        
+        message = await cls.get(message_id)
+        if not message:
+            return None, []
+        
+        media_items = await PersonalityMessageMediaItemModel.get_media_for_message(
+            message_id
+        )
+        return message, media_items
+
+    @classmethod
+    async def associate_media_items(
+        cls, message_id: UUID, media_item_ids: list[UUID]
+    ) -> list:
+        """Associate media items with a personality message."""
+        from neuron_server.models.personality_message_media_item_model import (
+            PersonalityMessageMediaItemModel,
+        )
+        
+        associations = []
+        for media_item_id in media_item_ids:
+            # Check if association already exists to avoid duplicates
+            if not await PersonalityMessageMediaItemModel.association_exists(
+                message_id, media_item_id
+            ):
+                params = PersonalityMessageMediaItemModel.CreateParams(
+                    personality_message_id=message_id,
+                    media_item_id=media_item_id
+                )
+                association = await PersonalityMessageMediaItemModel.create_association(
+                    params
+                )
+                associations.append(association)
+        return associations

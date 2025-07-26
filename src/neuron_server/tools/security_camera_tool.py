@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from enum import Enum
 from io import BytesIO
 from typing import Any
+from uuid import uuid4
 
 import cv2
 import numpy as np
@@ -20,7 +21,6 @@ from pydantic import BaseModel, Field
 
 from neuron_server.config import config as neuron_config
 from neuron_server.logger import logger
-from neuron_server.models.media_item_model import MediaItemModel
 from neuron_server.util.image_utilities import create_thumbnails
 
 
@@ -174,9 +174,11 @@ class SaveImagesConfig:
     config: RunnableConfig
 
 
-async def save_images(config: SaveImagesConfig) -> list[str]:
-    """Save captured images to disk and return markdown URLs."""
+async def save_images(config: SaveImagesConfig) -> tuple[list[str], list[dict]]:
+    """Save captured images to disk and return markdown URLs and artifacts."""
     results: list[str] = []
+    artifacts: list[dict] = []
+    
     for i, data_url in enumerate(config.image_urls):
         capture_time = config.start_time + timedelta(seconds=i / config.fps)
         image_data = base64.b64decode(data_url.split(",")[1])
@@ -196,29 +198,46 @@ async def save_images(config: SaveImagesConfig) -> list[str]:
         url = f"{neuron_config.static_content_url}/{filename}"
         create_thumbnails(file_path)
 
-        # Create media item
-        create_params = MediaItemModel.CreateParams(
-            thread_id=config.config["configurable"].get("thread_id"),
-            user_id=config.config["configurable"].get("user_id"),
+        # Generate a real UUID for consistent ID between artifact and media_item
+        media_id = uuid4()
+
+        # Prepare artifact for UI using typed models
+        from neuron_server.tools.artifact_types import (
+            ToolArtifactMetadata,
+            ToolMediaArtifact,
+            ToolMediaItem,
+        )
+
+        metadata = ToolArtifactMetadata(
+            model="security-camera",
+            prompt=config.description,
+            camera=config.camera,
+            capture_time=capture_time.astimezone().isoformat(timespec='seconds'),
+        )
+
+        artifact_item = ToolMediaItem(
+            id=media_id,
             url=url,
-            media_type="image",
-            name=(f"{device_descriptions[config.camera]} #{i + 1}"),
+            caption=f"{device_descriptions[config.camera]} #{i + 1}",
             description=(
                 f"Security camera capture from {config.camera} at "
                 f"{capture_time.astimezone().isoformat(timespec='seconds')}"
                 f"\n\nDescription:\n{config.description}"
             ),
+            metadata=metadata,
         )
-        media_item = await MediaItemModel.create(params=create_params)
+
+        artifact = ToolMediaArtifact(media_type="image", items=[artifact_item])
+        artifacts.append(artifact.model_dump())
 
         timestamp = capture_time.astimezone().isoformat(timespec="seconds")
         results.append(
-            f"""<image id="{media_item.id}">
+            f"""<image id="{media_id}">
     <display>![{config.camera} at {timestamp}]({url})</display>
 </image>"""
         )
 
-    return results
+    return results, artifacts
 
 
 class SecurityCameraToolArgs(BaseModel):
@@ -268,6 +287,7 @@ class SecurityCameraTool(BaseTool):
         "relevant image in your response."
     )
     args_schema: type[SecurityCameraToolArgs] = SecurityCameraToolArgs
+    response_format: str = "content_and_artifact"
 
     def _run(self, *args: Any, **kwargs: Any) -> str:
         return asyncio.run(self._arun(*args, **kwargs))
@@ -306,7 +326,7 @@ class SecurityCameraTool(BaseTool):
                 )
             )
 
-            markdown_urls = await save_images(
+            markdown_urls, artifacts = await save_images(
                 SaveImagesConfig(
                     image_urls=image_urls,
                     description=content,
@@ -317,13 +337,15 @@ class SecurityCameraTool(BaseTool):
                 )
             )
             markdown_urls_str = "\n".join(markdown_urls)
-            return f"""
+            xml_content = f"""
 {content}
 
 <images>
 {markdown_urls_str}
 </images>
     """.strip()
+            
+            return xml_content, artifacts
         except Exception as e:
             logger.error(e, exc_info=True)
             return f"Error capturing images from {camera}: {e}"

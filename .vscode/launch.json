@@ -9,7 +9,7 @@
       "request": "launch",
       "reAttach": true,
       "name": "Launch Firefox",
-      "url": "http://localhost:5173",
+      "url": "http://localhost:5176",
       "webRoot": "${workspaceFolder}/src/neuron_client/dist"
     },
     {

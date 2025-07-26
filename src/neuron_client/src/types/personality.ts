@@ -12,6 +12,7 @@ export interface Personality {
   memory: string;
   tool_set: string;
   logo?: string;
+  status: string;
   created_at: string;
   updated_at: string;
   personality_users?: PersonalityUser[];
