@@ -53,7 +53,10 @@ class PersonalityDirectedAnalysis(BaseModel):
 class PersonalityStatusMessage(BaseModel):
     """Structured output for personality status message generation."""
     status: str = Field(
-        description="Terse status message (under 4 words) in personality's style. Must indicate what the personality is doing."
+        description=(
+            "Terse status message (under 4 words) in personality's style. "
+            "Must indicate what the personality is doing."
+        )
     )
 
 
@@ -397,6 +400,7 @@ AGENT ACTION: {action}"""
         personality: PersonalityModel,
         chat_history: str,
         latest_message: str,
+        user_id: str,
         action: str = "working on your request"
     ) -> None:
         """Generate and update personality status in background.
@@ -409,6 +413,7 @@ AGENT ACTION: {action}"""
             personality: The PersonalityModel instance
             chat_history: Formatted chat history string
             latest_message: The latest message content
+            user_id: The ID of the user who triggered this status update
             action: Type of status to generate (default: "working on your request")
         """
         try:
@@ -423,7 +428,10 @@ AGENT ACTION: {action}"""
 
             await PersonalityModel.update_status(personality_id, custom_status)
             await self.broadcast_personality_status_update(personality_id, custom_status)
-            logger.debug(f"Updated {personality.name} status to: {custom_status}")
+            logger.debug(
+                f"Updated {personality.name} status to: {custom_status} "
+                f"(triggered by user {user_id})"
+            )
 
         except Exception as e:
             logger.error(f"Error in update_status_with_generation: {e}", exc_info=True)
@@ -438,6 +446,7 @@ AGENT ACTION: {action}"""
         chat_history: str,
         latest_message: str,
         user_id: str,
+        username: str,
     ) -> tuple[str, list[ToolMediaArtifact]]:
         """Generate a personality response using the agent system.
 
@@ -447,6 +456,7 @@ AGENT ACTION: {action}"""
             chat_history: Formatted chat history string
             latest_message: The latest message content
             user_id: The user who sent the message
+            username: The username of the user who sent the message
 
         Returns:
             Tuple of (response text, list of media artifacts).
@@ -473,7 +483,7 @@ AGENT ACTION: {action}"""
                 messages=messages,
                 personality_id=personality_id,
                 user_id=user_id,
-                username="system",  # Generic username for personality responses
+                username=username,  # Use actual username of message sender
                 create_media_items=False,  # No media items needed for personality chat
             )
 
@@ -521,6 +531,7 @@ AGENT ACTION: {action}"""
         self,
         personality_id: UUID,
         response_content: str,
+        user_id: str,
         media_artifacts: list[ToolMediaArtifact] = None,
     ) -> None:
         """Create personality message and broadcast to chat room.
@@ -528,6 +539,7 @@ AGENT ACTION: {action}"""
         Args:
             personality_id: The ID of the personality
             response_content: The response text to broadcast
+            user_id: The ID of the user who triggered this response
             media_artifacts: Optional list of media artifacts to associate with the message
         """
         try:
@@ -557,7 +569,7 @@ AGENT ACTION: {action}"""
                             media_type=artifact.media_type,
                             name=item.caption,
                             description=item.description,
-                            user_id="system",  # AI-generated media
+                            user_id=user_id,  # User who triggered this response
                             thread_id=None,  # No thread association
                         )
                         media_item = await MediaItemModel.create(params=media_params)
@@ -633,7 +645,7 @@ AGENT ACTION: {action}"""
             if analysis.should_use_quick_response and analysis.quick_response:
                 # Create and broadcast quick response immediately
                 await self.create_and_broadcast_personality_response(
-                    personality_id, analysis.quick_response
+                    personality_id, analysis.quick_response, message.user_id
                 )
                 return
 
@@ -663,8 +675,14 @@ AGENT ACTION: {action}"""
                     fast_model=fast_model,
                     personality=personality,
                     chat_history=chat_history,
-                    latest_message=message.content
+                    latest_message=message.content,
+                    user_id=message.user_id
                 ))
+
+                # Get username for agent context
+                username = "Unknown User"
+                if message.user_id in users:
+                    username = users[message.user_id].nickname
 
                 # Generate personality response
                 response_text, media_artifacts = await self.generate_personality_response(
@@ -673,11 +691,12 @@ AGENT ACTION: {action}"""
                     chat_history=chat_history,
                     latest_message=message.content,
                     user_id=message.user_id,
+                    username=username,
                 )
 
                 # Create and broadcast the response
                 await self.create_and_broadcast_personality_response(
-                    personality_id, response_text, media_artifacts
+                    personality_id, response_text, message.user_id, media_artifacts
                 )
 
         except Exception as e:
