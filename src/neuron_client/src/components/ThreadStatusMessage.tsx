@@ -76,7 +76,10 @@ export function ThreadStatusMessage({ thread, className }: ThreadStatusMessagePr
         className
       )}
     >
-      <span className="inline-block">
+      <span className={cn(
+        "inline-block",
+        currentIndex >= currentStatus.length && "text-shine"
+      )}>
         {displayedText}
         {currentIndex < currentStatus.length && (
           <span className="opacity-0">|</span>

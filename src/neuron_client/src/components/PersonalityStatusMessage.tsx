@@ -7,6 +7,22 @@ interface PersonalityStatusMessageProps {
   className?: string;
 }
 
+// Format the status for display
+const formatStatus = (status: string): string => {
+  // Handle specific status values
+  switch (status) {
+    case "working":
+      return "Working...";
+    case "contemplating":
+      return "Contemplating...";
+    case "error":
+      return "An error occurred";
+    default:
+      // For all other statuses, display as-is since they are already formatted
+      return status;
+  }
+};
+
 /**
  * Displays the current personality status when the personality is not idle.
  * This provides visibility into what the personality is currently doing.
@@ -16,23 +32,6 @@ export function PersonalityStatusMessage({ personality, className }: Personality
   const [currentIndex, setCurrentIndex] = useState(0);
   const previousStatusRef = useRef<string>("");
   const animationRef = useRef<number | null>(null);
-
-  // Format the status for display
-  const formatStatus = (status: string): string => {
-    // Handle specific status values
-    switch (status) {
-      case "working":
-        return "Working...";
-      case "contemplating":
-        return "Contemplating...";
-      case "error":
-        return "An error occurred";
-      default:
-        // For all other statuses, display as-is since they are already formatted
-        return status;
-    }
-  };
-
   const currentStatus = personality && personality.status && personality.status !== "" ? formatStatus(personality.status) : "";
 
   useEffect(() => {
@@ -75,7 +74,10 @@ export function PersonalityStatusMessage({ personality, className }: Personality
         className
       )}
     >
-      <span className="inline-block">
+     <span className={cn(
+        "inline-block",
+        currentIndex >= currentStatus.length && "text-shine"
+      )}>
         {displayedText}
         {currentIndex < currentStatus.length && (
           <span className="opacity-0">|</span>
