@@ -110,7 +110,7 @@ export default function NavThreads({ activePathname }: NavThreadsProps) {
                   asChild
                 >
                   <NavLink to={`/personality/${item.personality_id}/room/${item.id}`} className="text-gray-300">
-                    {item.status === "idle" ? (
+                    {!item.status || item.status === "" || item.status === "contemplating" ? (
                       <MessageCircle className="size-4 min-w-[20px]" />
                     ) : (
                       <MessageCircleDashed className="size-4 min-w-[20px] text-accent" />
