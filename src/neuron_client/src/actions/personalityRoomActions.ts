@@ -113,6 +113,24 @@ export const addPersonalityRoomUser = createAsyncThunk(
   }
 );
 
+export const updatePersonalityRoomUser = createAsyncThunk(
+  "personalityRoom/updateUser",
+  async ({ personalityId, roomId, userId, data }: { personalityId: string; roomId: string; userId: string; data: { role?: string } }, thunkAPI) => {
+    try {
+      const response = await api.put<{ user: User; personality_room_user: PersonalityRoomUser }>(
+        `/personality-rooms/${personalityId}/rooms/${roomId}/users/${userId}`,
+        data
+      );
+      return { ...response, roomId };
+    } catch (error) {
+      if (error instanceof Error) {
+        return thunkAPI.rejectWithValue(error.message);
+      }
+      return thunkAPI.rejectWithValue("Failed to update user in room");
+    }
+  }
+);
+
 export const removePersonalityRoomUser = createAsyncThunk(
   "personalityRoom/removeUser",
   async ({ personalityId, roomId, userId }: { personalityId: string; roomId: string; userId: string }, thunkAPI) => {

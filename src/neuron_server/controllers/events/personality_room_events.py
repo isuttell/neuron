@@ -53,3 +53,12 @@ class UserLeftPersonalityRoomEvent(OutgoingEvent):
     personality_id: UUID
     room_id: UUID
     user_id: str
+
+
+class PersonalityRoomDataEvent(OutgoingEvent):
+    """Event sent to a user with complete room data when they are added to a room."""
+
+    type: Literal["personality_room_data"] = "personality_room_data"
+    personality_room: dict
+    personality_room_users: list[dict]
+    users: list[dict]

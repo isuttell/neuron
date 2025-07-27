@@ -1,11 +1,13 @@
-import PersonalityChatHeaderActions from "@/components/PersonalityChatHeaderActions";
+import PersonalityRoomHeaderActions from "@/components/PersonalityRoomHeaderActions";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import DeletePersonalityRoomDialog from "@/components/DeletePersonalityRoomDialog";
 import { Spinner } from "@/components/ui/spinner";
 import Loading from "@/lib/loading";
+import PersonalityRoomUsersDialog from "@/rooms/PersonalityRoomUsersDialog";
 import { debounce } from "@/lib/utils";
 import { useEffect, useRef, useState } from "react";
 import { shallowEqual } from "react-redux";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import {
   sendPersonalityMessage,
   updatePersonalityMessage,
@@ -26,7 +28,6 @@ import { getCurrentUser } from "../slices/appSlice";
 
 export default function PersonalityChatRoom() {
   const dispatch = useAppDispatch();
-  const navigate = useNavigate();
   const currentUser = useAppSelector(getCurrentUser);
   const lastMessageRef = useRef<HTMLDivElement | null>(null);
   const { personalityId, roomId } = useParams();
@@ -53,6 +54,10 @@ export default function PersonalityChatRoom() {
   // Edit state management
   const [editingMessage, setEditingMessage] = useState<{ id: string; content: string } | null>(null);
 
+  // Dialog states
+  const [isRoomUsersOpen, setIsRoomUsersOpen] = useState(false);
+
+  const [isDeleteRoomOpen, setIsDeleteRoomOpen] = useState(false);
   // Fetch room details and messages when IDs are available
   useEffect(() => {
     if (personalityId && roomId) {
@@ -113,6 +118,14 @@ export default function PersonalityChatRoom() {
     setEditingMessage(null);
   };
 
+  const handleDeleteRoom = () => {
+    setIsDeleteRoomOpen(true);
+  };
+
+  const handleManageUsers = () => {
+    setIsRoomUsersOpen(true);
+  };
+
   return (
     <div className="flex flex-1 p-4 ipad-top-spacing flex-col flex-nowrap max-h-screen">
       <div className="flex items-center justify-between mb-2 border-b pb-2 mobile-safe-top">
@@ -121,16 +134,38 @@ export default function PersonalityChatRoom() {
           {room.name}
         </h1>
         <div className="flex-1" />
-        <PersonalityChatHeaderActions
+        <PersonalityRoomHeaderActions
           personalityId={personality.id}
-          onEditPersonality={() => navigate(`/personality/${personality.id}/edit`)}
+          roomId={room.id}
+          onManageUsers={handleManageUsers}
+          onDeleteRoom={handleDeleteRoom}
         />
       </div>
 
-      <div className="flex flex-col flex-1">
+        {/* Controlled dialogs */}
+        {personalityId && roomId && (
+          <PersonalityRoomUsersDialog
+            personalityId={personalityId}
+            roomId={roomId}
+            open={isRoomUsersOpen}
+            onOpenChange={setIsRoomUsersOpen}
+            trigger={<></>}
+          />
+        )}
+
+        <DeletePersonalityRoomDialog
+          personalityId={personalityId || ""}
+          roomId={roomId || ""}
+          roomName={room?.name}
+          open={isDeleteRoomOpen}
+          onOpenChange={setIsDeleteRoomOpen}
+          trigger={<></>}
+        />
+
+      <div className="flex flex-col flex-1 max-w-3xl self-center w-full">
         <div className="flex-1 overflow-y-auto relative">
           <div className="absolute top-0 left-0 right-0 bottom-0 flex flex-1 flex-col flex-nowrap max-h-full mx-auto overflow-y-auto">
-            <div className="max-w-3xl mt-4 w-full mx-auto relative z-10 flex flex-grow flex-col">
+            <div className="mt-4 w-full mx-auto relative z-10 flex flex-grow flex-col">
               <div className="flex-grow" />
               {messages.map((message, index) => (
                 <div
@@ -168,7 +203,7 @@ export default function PersonalityChatRoom() {
             editingMessage={editingMessage}
             onCancelEdit={handleCancelEdit}
             isSubscribed={isSubscribed}
-            className="max-w-3xl w-full mx-auto mt-2"
+            className="w-full mx-auto mt-2 "
           />
         </div>
       </div>

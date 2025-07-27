@@ -28,6 +28,7 @@ import {
   handleUserJoined,
   handleUserLeft,
   handleRoomStatusUpdate,
+  handleRoomData,
 } from "../slices/personalityRoomSlice";
 import { MediaItem } from "../types/media";
 import type {
@@ -53,6 +54,7 @@ import type {
   PersonalityRoomDeletedEvent,
   UserJoinedPersonalityRoomEvent,
   UserLeftPersonalityRoomEvent,
+  PersonalityRoomDataEvent,
   PingEvent,
   PromptEvent,
   SidebarImageEvent,
@@ -285,6 +287,10 @@ const websocketMiddleware =
 
         socketManager.on("user_left_personality_room", (event: UserLeftPersonalityRoomEvent) => {
           dispatch(handleUserLeft(event));
+        });
+
+        socketManager.on("personality_room_data", (event: PersonalityRoomDataEvent) => {
+          dispatch(handleRoomData(event));
         });
       }
     } else if (socketManager.connected && action.type.indexOf("socket/") === 0) {

@@ -3,6 +3,8 @@ import { MediaItem } from "./media";
 import { Personality } from "./personality";
 import { PersonalityMessage } from "./personalityChat";
 import { Thread } from "./thread";
+import { PersonalityRoom, PersonalityRoomUser } from "./personalityRoom";
+import { User } from "./user";
 
 export interface WebSocketMessage<T = unknown> {
   type: string;
@@ -190,6 +192,13 @@ export interface UserLeftPersonalityRoomEvent extends WebSocketMessage {
   user_id: string;
 }
 
+export interface PersonalityRoomDataEvent extends WebSocketMessage {
+  type: "personality_room_data";
+  personality_room: PersonalityRoom;
+  personality_room_users: PersonalityRoomUser[];
+  users: User[];
+}
+
 export type WebSocketEvent =
   | MessageEvent
   | MediaEvent
@@ -218,7 +227,8 @@ export type WebSocketEvent =
   | PersonalityRoomUpdatedEvent
   | PersonalityRoomDeletedEvent
   | UserJoinedPersonalityRoomEvent
-  | UserLeftPersonalityRoomEvent;
+  | UserLeftPersonalityRoomEvent
+  | PersonalityRoomDataEvent;
 
 export interface PostMessage extends WebSocketMessage {
   type: "PostMessage";

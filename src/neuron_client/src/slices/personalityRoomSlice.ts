@@ -8,6 +8,7 @@ import type {
   PersonalityRoomsResponse,
   PersonalityRoomResponse,
 } from "../types/personalityRoom";
+import type { User } from "../types/user";
 
 // WebSocket event types
 export interface PersonalityRoomCreatedEvent {
@@ -47,6 +48,13 @@ export interface UserLeftPersonalityRoomEvent {
   personality_id: string;
   room_id: string;
   user_id: string;
+}
+
+export interface PersonalityRoomDataEvent {
+  type: "personality_room_data";
+  personality_room: PersonalityRoom;
+  personality_room_users: PersonalityRoomUser[];
+  users: User[]; // Users are handled by usersSlice
 }
 
 interface PersonalityRoomState {
@@ -144,6 +152,18 @@ export const personalityRoomSlice = createSlice({
         state.roomMap[room_id].status = status || null;
       }
     },
+
+    handleRoomData: (state, action: PayloadAction<PersonalityRoomDataEvent>) => {
+      const { personality_room, personality_room_users } = action.payload;
+
+      // Upsert the room
+      upsertRoom(state, personality_room);
+
+      // Update room users
+      if (personality_room_users && personality_room_users.length > 0) {
+        upsertRoomUsers(state, personality_room.id, personality_room_users);
+      }
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -237,6 +257,23 @@ export const personalityRoomSlice = createSlice({
         }
       })
 
+      // Update room user
+      .addCase(personalityRoomActions.updatePersonalityRoomUser.fulfilled, (state, action) => {
+        const { roomId, personality_room_user } = action.payload;
+        if (state.roomUsers[roomId]) {
+          const userIndex = state.roomUsers[roomId].findIndex(
+            u => u.user_id === personality_room_user.user_id
+          );
+          if (userIndex !== -1) {
+            state.roomUsers[roomId][userIndex] = {
+              user_id: personality_room_user.user_id,
+              personality_room_id: personality_room_user.personality_room_id,
+              role: personality_room_user.role,
+            };
+          }
+        }
+      })
+
       // Remove room user
       .addCase(personalityRoomActions.removePersonalityRoomUser.fulfilled, (state, action) => {
         const { roomId, userId } = action.payload;
@@ -254,6 +291,7 @@ export const {
   handleUserJoined,
   handleUserLeft,
   handleRoomStatusUpdate,
+  handleRoomData,
 } = personalityRoomSlice.actions;
 
 // Base selectors

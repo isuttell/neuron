@@ -8,6 +8,7 @@ from neuron_server.controllers.auth import requires_auth
 from neuron_server.controllers.csrf import requires_csrf
 from neuron_server.controllers.events.personality_room_events import (
     PersonalityRoomCreatedEvent,
+    PersonalityRoomDataEvent,
     PersonalityRoomDeletedEvent,
     PersonalityRoomUpdatedEvent,
     UserJoinedPersonalityRoomEvent,
@@ -461,9 +462,10 @@ async def add_room_user(personality_id: UUID, room_id: UUID) -> dict[str, dict]:
     payload = PersonalityRoomUserPayload(**body)
 
     # Check if target user exists
-    target_user = await UserModel.get(user_id=payload.user_id)
-    if not target_user:
+    users = await UserModel.get_by_ids([payload.user_id])
+    if not users:
         raise NotFound(f"User with id {payload.user_id} not found")
+    target_user = users[0]
 
     # Check if user already has access to the room
     existing = await PersonalityRoomUserModel.get(room_id, payload.user_id)
@@ -492,9 +494,245 @@ async def add_room_user(personality_id: UUID, room_id: UUID) -> dict[str, dict]:
     )
     await secure_pubsub.publish_personality_room_message(personality_id, join_event)
 
+    # Send complete room data to the newly added user
+    # Get room details
+    room = await PersonalityRoomModel.get(room_id)
+    if room:
+        # Get all room users
+        all_room_users = await PersonalityRoomUserModel.get_room_users(room_id)
+        user_ids = [ru.user_id for ru in all_room_users]
+
+        # Add creator if not in list
+        if room.created_by and room.created_by not in user_ids:
+            user_ids.append(room.created_by)
+
+        # Get user details
+        users = await UserModel.get_by_ids(user_ids) if user_ids else []
+
+        # Build normalized room users data
+        personality_room_users = []
+
+        # Add all room users
+        for ru in all_room_users:
+            personality_room_users.append({
+                "user_id": ru.user_id,
+                "personality_room_id": str(ru.personality_room_id),
+                "role": ru.role,
+            })
+
+        # Add creator as admin if not already in room users
+        if room.created_by:
+            creator_exists = any(ru.user_id == room.created_by for ru in all_room_users)
+            if not creator_exists:
+                personality_room_users.append({
+                    "user_id": room.created_by,
+                    "personality_room_id": str(room_id),
+                    "role": "admin",
+                })
+
+        # Create and send room data event to the newly added user
+        room_data_event = PersonalityRoomDataEvent(
+            personality_room=room.model_dump(),
+            personality_room_users=personality_room_users,
+            users=[user.model_dump() for user in users],
+        )
+        await secure_pubsub.publish_to_user(payload.user_id, room_data_event)
+
     # Return normalized response
     return {
         "user": target_user.model_dump(),
+        "personality_room_user": {
+            "user_id": room_user.user_id,
+            "personality_room_id": str(room_user.personality_room_id),
+            "role": room_user.role,
+        },
+    }
+
+
+@blueprint.post("/<uuid:personality_id>/rooms/<uuid:room_id>/users/email")
+@requires_auth
+@requires_csrf
+async def add_room_user_by_email(
+    personality_id: UUID, room_id: UUID
+) -> dict[str, dict]:
+    """Add a user to a personality room by email.
+
+    Args:
+        personality_id: The ID of the personality
+        room_id: The ID of the room
+
+    Returns:
+        A dictionary with the created room user and user details
+
+    Raises:
+        BadRequest: If email is missing or user already in room
+        NotFound: If personality, room, or user not found
+        Forbidden: If user doesn't have permission
+    """
+    user_id = request.token.user_id
+
+    # Check personality access
+    await check_personality_access(personality_id, user_id)
+
+    # Check if user has admin access to the room
+    has_admin = await PersonalityRoomModel.has_admin_access(room_id, user_id)
+    if not has_admin:
+        raise Forbidden("You do not have permission to add users to this room")
+
+    # Parse request body
+    body = await request.get_json()
+    email = body.get("email")
+    if not email:
+        raise BadRequest("Email is required")
+
+    # Find user by email
+    user = await UserModel.get_by_email(email=email)
+    if not user:
+        raise BadRequest(f"No user found with email: {email}")
+
+    # Check if user already has access to the room
+    existing = await PersonalityRoomUserModel.get(room_id, user.id)
+    if existing:
+        raise BadRequest("User is already a member of this room")
+
+    # Check if user is the creator (already has access)
+    room = await PersonalityRoomModel.get(room_id)
+    if room and room.created_by == user.id:
+        raise BadRequest("User is the creator of this room")
+
+    # Add user to room
+    create_params = PersonalityRoomUserModel.CreateParams(
+        personality_room_id=room_id,
+        user_id=user.id,
+        role=body.get("role", "user"),
+    )
+    room_user = await PersonalityRoomUserModel.create(params=create_params)
+
+    # Broadcast user joined event
+    join_event = UserJoinedPersonalityRoomEvent(
+        personality_id=personality_id,
+        room_id=room_id,
+        user_id=user.id,
+        role=room_user.role,
+    )
+    await secure_pubsub.publish_personality_room_message(personality_id, join_event)
+
+    # Send complete room data to the newly added user
+    # Get room details
+    room_obj = await PersonalityRoomModel.get(room_id)
+    if room_obj:
+        # Get all room users
+        all_room_users = await PersonalityRoomUserModel.get_room_users(room_id)
+        user_ids = [ru.user_id for ru in all_room_users]
+
+        # Add creator if not in list
+        if room_obj.created_by and room_obj.created_by not in user_ids:
+            user_ids.append(room_obj.created_by)
+
+        # Get user details
+        users = await UserModel.get_by_ids(user_ids) if user_ids else []
+
+        # Build normalized room users data
+        personality_room_users = []
+
+        # Add all room users
+        for ru in all_room_users:
+            personality_room_users.append({
+                "user_id": ru.user_id,
+                "personality_room_id": str(ru.personality_room_id),
+                "role": ru.role,
+            })
+
+        # Add creator as admin if not already in room users
+        if room_obj.created_by:
+            creator_exists = any(
+                ru.user_id == room_obj.created_by for ru in all_room_users
+            )
+            if not creator_exists:
+                personality_room_users.append({
+                    "user_id": room_obj.created_by,
+                    "personality_room_id": str(room_id),
+                    "role": "admin",
+                })
+
+        # Create and send room data event to the newly added user
+        room_data_event = PersonalityRoomDataEvent(
+            personality_room=room_obj.model_dump(),
+            personality_room_users=personality_room_users,
+            users=[u.model_dump() for u in users],
+        )
+        await secure_pubsub.publish_to_user(user.id, room_data_event)
+
+    # Return normalized response
+    return {
+        "user": user.model_dump(),
+        "personality_room_user": {
+            "user_id": room_user.user_id,
+            "personality_room_id": str(room_user.personality_room_id),
+            "role": room_user.role,
+        },
+    }
+
+
+@blueprint.put("/<uuid:personality_id>/rooms/<uuid:room_id>/users/<user_id>")
+@requires_auth
+@requires_csrf
+async def update_room_user(
+    personality_id: UUID, room_id: UUID, user_id: str
+) -> dict[str, dict]:
+    """Update a user's properties in a personality room.
+
+    Args:
+        personality_id: The ID of the personality
+        room_id: The ID of the room
+        user_id: The ID of the user to update
+
+    Returns:
+        A dictionary with the updated user details
+
+    Raises:
+        NotFound: If room or user doesn't exist
+        Forbidden: If user doesn't have permission
+        BadRequest: If invalid data provided
+    """
+    requesting_user_id = request.token.user_id
+
+    # Check personality access
+    await check_personality_access(personality_id, requesting_user_id)
+
+    # Check if user has admin access to the room
+    has_admin = await PersonalityRoomModel.has_admin_access(room_id, requesting_user_id)
+    if not has_admin:
+        raise Forbidden("You do not have permission to update users in this room")
+
+    # Parse request body
+    body = await request.get_json()
+
+    # Currently only role can be updated
+    if "role" in body:
+        new_role = body["role"]
+        if new_role not in ["admin", "user"]:
+            raise BadRequest("Invalid role. Must be 'admin' or 'user'")
+
+        # Update user role
+        try:
+            room_user = await PersonalityRoomUserModel.update_role(
+                personality_room_id=room_id, user_id=user_id, role=new_role
+            )
+        except ValueError as err:
+            raise NotFound("User not found in room") from err
+    else:
+        raise BadRequest("No fields to update")
+
+    # Get updated user details
+    users = await UserModel.get_by_ids([user_id])
+    if not users:
+        raise NotFound(f"User with id {user_id} not found")
+    user = users[0]
+
+    # Return normalized response
+    return {
+        "user": user.model_dump(),
         "personality_room_user": {
             "user_id": room_user.user_id,
             "personality_room_id": str(room_user.personality_room_id),
