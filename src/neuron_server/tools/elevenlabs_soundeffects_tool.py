@@ -1,5 +1,6 @@
 import asyncio
 import os
+from uuid import uuid4
 
 from elevenlabs import AsyncElevenLabs
 from langchain.tools import BaseTool
@@ -8,7 +9,6 @@ from pydantic import BaseModel, Field
 
 from neuron_server.config import config as neuron_config
 from neuron_server.logger import logger
-from neuron_server.models.media_item_model import MediaItemModel
 from neuron_server.util.slug import safe_filename
 
 tool_promp_types = """
@@ -56,6 +56,7 @@ must be created with individual effects and later combined using ffmpeg for opti
 quality.
 """.strip()
     args_schema: type[ElevenLabsSoundEffectsToolArgs] = ElevenLabsSoundEffectsToolArgs
+    response_format: str = "content_and_artifact"
 
     def _run(self, prompt: str, duration_seconds: float | None = None) -> str:
         return asyncio.run(self._arun(prompt, duration_seconds))
@@ -88,16 +89,46 @@ quality.
                     file.write(chunk)
             url = neuron_config.static_content_url + "/" + filename
             logger.debug(f"Saved generated audio to {audio_file_path} <{url}>")
-            create_params = MediaItemModel.CreateParams(
-                url=url,
-                media_type="audio",
-                name=name,
-                description=prompt,
-                thread_id=config["configurable"].get("thread_id"),
-                user_id=config["configurable"].get("user_id"),
+
+            # Generate a real UUID for consistent ID between artifact and media_item
+            media_id = uuid4()
+
+            # Prepare artifact for UI using typed models
+            from neuron_server.tools.artifact_types import (
+                ToolArtifactMetadata,
+                ToolMediaArtifact,
+                ToolMediaItem,
             )
-            await MediaItemModel.create(params=create_params)
-            return f'<audio src="{url}"></audio>'
+            from neuron_server.util.media_utilities import get_media_duration
+
+            # Get actual duration from the generated file
+            duration = await get_media_duration(audio_file_path)
+
+            metadata = ToolArtifactMetadata(
+                model="elevenlabs/sound-effects",
+                prompt=name,
+                duration=duration,
+                output_format="mp3",
+            )
+
+            artifact_item = ToolMediaItem(
+                id=media_id,
+                url=url,
+                caption=name,
+                description=prompt,
+                metadata=metadata,
+            )
+
+            artifact = ToolMediaArtifact(media_type="audio", items=[artifact_item])
+
+            xml_content = f"""<audio>
+    <id>{media_id}</id>
+    <url>{url}</url>
+    <caption>{name}</caption>
+    <description>{prompt}</description>
+</audio>"""
+
+            return xml_content, [artifact.model_dump()]
         except Exception as e:
             logger.error(e, exc_info=True)
             raise

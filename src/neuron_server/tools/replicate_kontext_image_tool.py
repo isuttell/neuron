@@ -21,7 +21,6 @@ from PIL import Image, PngImagePlugin
 from pydantic import BaseModel, Field
 
 from neuron_server.config import config as neuron_config
-from neuron_server.models.media_item_model import MediaItemModel
 from neuron_server.util.image_utilities import create_image_url, create_thumbnails
 from neuron_server.util.slug import safe_filename
 
@@ -174,6 +173,7 @@ class ReplicateKontextImageTool(BaseTool):
         "text editing, background swapping, and maintaining character consistency. "
         "Perfect for iterating on generated images or modifying existing photos."
     )
+    response_format: str = "content_and_artifact"
 
     args_schema: type[ReplicateKontextImageToolArgs] = ReplicateKontextImageToolArgs
 
@@ -274,30 +274,52 @@ class ReplicateKontextImageTool(BaseTool):
 
         # Create media item
         url = f"{neuron_config.static_content_url}/{filename}"
-        create_params = MediaItemModel.CreateParams(
-            thread_id=params.config["configurable"].get("thread_id"),
-            user_id=params.config["configurable"].get("user_id"),
-            url=url,
-            media_type="image",
-            name=described_image.caption if described_image else params.name,
-            description=described_image.description if described_image else "",
+
+        # Generate a real UUID for consistent ID between artifact and media_item
+        media_id = uuid4()
+
+        # Prepare artifact for UI using typed models
+        from neuron_server.tools.artifact_types import (
+            ToolArtifactMetadata,
+            ToolMediaArtifact,
+            ToolMediaItem,
         )
-        media_item = await MediaItemModel.create(params=create_params)
+
+        metadata = ToolArtifactMetadata(
+            model=params.model,
+            prompt=params.prompt,
+        )
+
+        artifact_item = ToolMediaItem(
+            id=media_id,
+            url=url,
+            caption=described_image.caption if described_image else params.name,
+            description=described_image.description if described_image else "",
+            prompt_comparison=(
+                described_image.edit_comparison if described_image else None
+            ),
+            metadata=metadata,
+        )
+
+        artifact = ToolMediaArtifact(media_type="image", items=[artifact_item])
 
         # Return formatted result
         if described_image:
-            return f"""\
-<image id="{media_item.id}">
-    <display>![{described_image.caption}]({url})</display>
+            xml_content = f"""<image>
+    <id>{media_id}</id>
+    <url>{url}</url>
+    <caption>{described_image.caption}</caption>
     <description>{described_image.description}</description>
     <edit_comparison>{described_image.edit_comparison}</edit_comparison>
-</image>
-"""
-        return f"""\
-<image id="{media_item.id}">
-    <display>![{params.name}]({url})</display>
-</image>
-"""
+</image>"""
+        else:
+            xml_content = f"""<image>
+    <id>{media_id}</id>
+    <url>{url}</url>
+    <caption>{params.name}</caption>
+</image>"""
+
+        return xml_content, [artifact.model_dump()]
 
     def _run(self, *args: Any, **kwargs: Any) -> str:
         return asyncio.run(self._arun(*args, **kwargs))

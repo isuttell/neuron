@@ -32,7 +32,7 @@ const ImageContent: React.FC<ImageContentProps> = ({
   display_size = "o",
   preload = false,
   showControls = false,
-  objectFit = "cover",
+  objectFit = "contain",
   mediaItem,
   metadata,
 }) => {

@@ -78,9 +78,6 @@ class TestPyodideCodeInterpreterTool:
             patch(
                 "neuron_server.tools.pyodide_code_interpreter_tool.aiofiles.open"
             ) as mock_aio_open,
-            patch(
-                "neuron_server.tools.pyodide_code_interpreter_tool.MediaItemModel"
-            ) as mock_media_model,
         ):
             # Setup mocks
             mock_sandbox = AsyncMock()
@@ -98,11 +95,6 @@ class TestPyodideCodeInterpreterTool:
             mock_file.write = AsyncMock()
             mock_aio_open.return_value.__aenter__ = AsyncMock(return_value=mock_file)
             mock_aio_open.return_value.__aexit__ = AsyncMock()
-
-            # Mock media item creation
-            mock_media_item = MagicMock()
-            mock_media_item.id = "test-media-id"
-            mock_media_model.create = AsyncMock(return_value=mock_media_item)
 
             # Execute
             result = await tool._arun(
@@ -252,9 +244,6 @@ class TestPyodideCodeInterpreterTool:
             patch(
                 "neuron_server.tools.pyodide_code_interpreter_tool.aiofiles.open"
             ) as mock_aio_open,
-            patch(
-                "neuron_server.tools.pyodide_code_interpreter_tool.MediaItemModel"
-            ) as mock_media_model,
         ):
             # Setup mock with variables
             mock_sandbox = AsyncMock()
@@ -278,11 +267,6 @@ class TestPyodideCodeInterpreterTool:
             mock_file.write = AsyncMock()
             mock_aio_open.return_value.__aenter__ = AsyncMock(return_value=mock_file)
             mock_aio_open.return_value.__aexit__ = AsyncMock()
-
-            # Mock media item creation
-            mock_media_item = MagicMock()
-            mock_media_item.id = "test-media-id"
-            mock_media_model.create = AsyncMock(return_value=mock_media_item)
 
             # Execute
             result = await tool._arun(
@@ -378,9 +362,6 @@ class TestPyodideCodeInterpreterTool:
             patch(
                 "neuron_server.tools.pyodide_code_interpreter_tool.aiofiles.open"
             ) as mock_aio_open,
-            patch(
-                "neuron_server.tools.pyodide_code_interpreter_tool.MediaItemModel"
-            ) as mock_media_model,
         ):
             # Setup mock with stderr
             mock_sandbox = AsyncMock()
@@ -398,11 +379,6 @@ class TestPyodideCodeInterpreterTool:
             mock_file.write = AsyncMock()
             mock_aio_open.return_value.__aenter__ = AsyncMock(return_value=mock_file)
             mock_aio_open.return_value.__aexit__ = AsyncMock()
-
-            # Mock media item creation
-            mock_media_item = MagicMock()
-            mock_media_item.id = "test-media-id"
-            mock_media_model.create = AsyncMock(return_value=mock_media_item)
 
             # Execute
             result = await tool._arun(
@@ -430,9 +406,6 @@ class TestPyodideCodeInterpreterTool:
             patch(
                 "neuron_server.tools.pyodide_code_interpreter_tool.aiofiles.open"
             ) as mock_aio_open,
-            patch(
-                "neuron_server.tools.pyodide_code_interpreter_tool.MediaItemModel"
-            ) as mock_media_model,
         ):
             # Setup mock
             mock_sandbox = AsyncMock()
@@ -449,11 +422,6 @@ class TestPyodideCodeInterpreterTool:
             mock_file.write = AsyncMock()
             mock_aio_open.return_value.__aenter__ = AsyncMock(return_value=mock_file)
             mock_aio_open.return_value.__aexit__ = AsyncMock()
-
-            # Mock media item creation
-            mock_media_item = MagicMock()
-            mock_media_item.id = "test-media-id"
-            mock_media_model.create = AsyncMock(return_value=mock_media_item)
 
             # Add delay to simulate execution time
             async def delayed_execute(*args, **kwargs):
@@ -479,8 +447,10 @@ class TestPyodideCodeInterpreterTool:
             assert duration >= 0.1
 
     @pytest.mark.asyncio
-    async def test_user_id_validation(self, tool: PyodideCodeInterpreterTool) -> None:
-        """Test that user_id validation works properly."""
+    async def test_execution_with_different_configs(
+        self, tool: PyodideCodeInterpreterTool
+    ) -> None:
+        """Test that tool executes successfully with different config setups."""
         with (
             patch(
                 "neuron_server.tools.pyodide_code_interpreter_tool.PyodideSandbox"
@@ -507,7 +477,7 @@ class TestPyodideCodeInterpreterTool:
             mock_aio_open.return_value.__aenter__ = AsyncMock(return_value=mock_file)
             mock_aio_open.return_value.__aexit__ = AsyncMock()
 
-            # Test with missing user_id
+            # Test with missing user_id - tool should still work
             config_no_user = RunnableConfig(
                 configurable={
                     "thread_id": "test_thread_123",
@@ -520,10 +490,11 @@ class TestPyodideCodeInterpreterTool:
                 config=config_no_user,
             )
             content, artifacts = result
-            assert "Error: User ID is required" in content
-            assert len(artifacts) == 0
+            assert "hello" in content
+            assert "Execution time:" in content
+            assert len(artifacts) == 1  # Should still create artifact
 
-            # Test with None user_id
+            # Test with None user_id - tool should still work
             config_none_user = RunnableConfig(
                 configurable={
                     "thread_id": "test_thread_123",
@@ -536,10 +507,10 @@ class TestPyodideCodeInterpreterTool:
                 config=config_none_user,
             )
             content, artifacts = result
-            assert "Error: User ID is required" in content
-            assert len(artifacts) == 0
+            assert "hello" in content
+            assert len(artifacts) == 1
 
-            # Test with empty string user_id
+            # Test with empty string user_id - tool should still work
             config_empty_user = RunnableConfig(
                 configurable={
                     "thread_id": "test_thread_123",
@@ -552,8 +523,8 @@ class TestPyodideCodeInterpreterTool:
                 config=config_empty_user,
             )
             content, artifacts = result
-            assert "Error: User ID is required" in content
-            assert len(artifacts) == 0
+            assert "hello" in content
+            assert len(artifacts) == 1
 
     def test_tool_metadata(self, tool: PyodideCodeInterpreterTool) -> None:
         """Test tool metadata and properties."""

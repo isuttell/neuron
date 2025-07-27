@@ -3,6 +3,7 @@ import logging
 import os
 import random
 from typing import Any, Literal
+from uuid import uuid4
 
 import aiofiles
 import aiohttp
@@ -13,7 +14,6 @@ from langchain_core.runnables import RunnableConfig
 from pydantic import BaseModel, ConfigDict, Field
 
 from neuron_server.config import config as neuron_config
-from neuron_server.models.media_item_model import MediaItemModel
 from neuron_server.util.slug import safe_filename
 
 logger = logging.getLogger(__name__)
@@ -200,15 +200,10 @@ class ReplicatePlayDialogTool(BaseTool):
                 )
 
             url = f"{neuron_config.static_content_url}/{filename}"
-            create_params = MediaItemModel.CreateParams(
-                thread_id=config["configurable"].get("thread_id"),
-                user_id=config["configurable"].get("user_id"),
-                url=url,
-                media_type="tts",
-                name=name,
-                description=text,
-            )
-            media_item = await MediaItemModel.create(params=create_params)
+
+            # Generate a real UUID for consistent ID between artifact and media_item
+            media_id = uuid4()
+
             logger.debug(f"Saved generated audio to {file_path} <{url}>")
 
             # Prepare artifact for UI using typed models
@@ -231,7 +226,7 @@ class ReplicatePlayDialogTool(BaseTool):
             )
 
             artifact_item = ToolMediaItem(
-                id=str(media_item.id),
+                id=media_id,
                 url=url,
                 caption=name,
                 description=text,

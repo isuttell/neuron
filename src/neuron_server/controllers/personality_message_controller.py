@@ -1,3 +1,4 @@
+import asyncio
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -22,15 +23,20 @@ from neuron_server.event_router import EventRouter
 from neuron_server.logger import logger
 from neuron_server.models.personality_message_model import PersonalityMessageModel
 from neuron_server.models.personality_model import PersonalityModel
-from neuron_server.models.user_model import UserModel
 from neuron_server.permission_service import permission_service
 from neuron_server.room_manager import room_manager
 from neuron_server.secure_pubsub import secure_pubsub
+from neuron_server.services.personality_chat_orchestrator import (
+    PersonalityChatOrchestrator,
+)
 from neuron_server.type_defs.request_proxy import request
 from neuron_server.websocket_session_manager import WebSocketSession
 
 blueprint = Blueprint("personality_message", __name__)
 router = EventRouter()
+
+# Initialize the chat orchestrator
+chat_orchestrator = PersonalityChatOrchestrator()
 
 
 class CreatePersonalityMessage(BaseModel):
@@ -81,16 +87,27 @@ async def get_personality_messages(personality_id: UUID) -> dict[str, list[dict]
         personality_id=personality_id, limit=limit, offset=offset
     )
 
-    # Get unique user IDs from messages (exclude None values for personality responses)
-    user_ids = list({message.user_id for message in messages if message.user_id})
+    # Get all users who have access to this personality
+    users_dict = await chat_orchestrator.get_personality_users_dict(personality_id)
+    users = list(users_dict.values())
 
-    # Fetch user data if there are any user IDs
-    users = []
-    if user_ids:
-        users = await UserModel.get_by_ids(user_ids=user_ids)
+    # Get media items for each message and include them in the response
+    from neuron_server.models.personality_message_media_item_model import (
+        PersonalityMessageMediaItemModel,
+    )
+
+    messages_with_media = []
+    for message in messages:
+        message_data = message.model_dump()
+        # Get associated media items
+        media_items = await PersonalityMessageMediaItemModel.get_media_for_message(
+            message.id
+        )
+        message_data["media_items"] = [item.model_dump() for item in media_items]
+        messages_with_media.append(message_data)
 
     return {
-        "personality_messages": [message.model_dump() for message in messages],
+        "personality_messages": messages_with_media,
         "personality": personality.model_dump(),
         "users": [user.model_dump() for user in users],
     }
@@ -123,6 +140,9 @@ async def create_personality_message(personality_id: UUID) -> dict[str, dict]:
             f"Personality with id {personality_id} not found or you don't have access"
         )
 
+    # Note: Allow messages even when personality is busy
+    # Quick responses will be handled during analysis
+
     # Parse request body
     body = await request.get_json()
     payload = CreatePersonalityMessage(**body)
@@ -145,6 +165,11 @@ async def create_personality_message(personality_id: UUID) -> dict[str, dict]:
         updated_at=message.updated_at.isoformat(),
     )
     await secure_pubsub.publish_personality_room_message(personality_id, message_event)
+
+    # Start background task to analyze message direction (non-blocking)
+    asyncio.create_task(
+        chat_orchestrator.process_user_message(personality_id, message.id)
+    )
 
     return {"personality_message": message.model_dump()}
 
@@ -314,6 +339,12 @@ async def ajoin_personality_room(
         return
 
     # Join the personality room
+    # Debug: Check room state before join
+    current_members = await room_manager.get_personality_room_members(personality_id)
+    logger.debug(
+        f"Current members in room {personality_id} before join: {current_members}"
+    )
+
     joined = await room_manager.join_personality_room(personality_id, user_id, nickname)
 
     if joined:
@@ -345,7 +376,21 @@ async def ajoin_personality_room(
             f"User {user_id} ({nickname}) joined personality room {personality_id}"
         )
     else:
-        logger.debug(f"User {user_id} already in personality room {personality_id}")
+        # User already in room - treat as successful rejoin
+        # Send confirmation to the user so their client state updates
+        member_count = len(
+            await room_manager.get_personality_room_members(personality_id)
+        )
+        join_event = RoomJoinedEvent(
+            room_type="personality",
+            room_id=str(personality_id),
+            member_count=member_count,
+        )
+        await secure_pubsub.publish_to_user(user_id, join_event)
+
+        logger.info(
+            f"User {user_id} ({nickname}) rejoined personality room {personality_id}"
+        )
 
 
 @router.on(LeavePersonalityRoom)
@@ -396,9 +441,11 @@ async def cleanup_user_personality_rooms(session: WebSocketSession) -> None:
     """Clean up user from all personality rooms when they disconnect."""
     user_id = session.user_id
     nickname = session.nickname
+    logger.info(f"Starting cleanup of user {user_id} from all personality rooms")
 
     # Get all rooms the user is in
     user_rooms = await room_manager.get_user_rooms(user_id)
+    logger.info(f"Found {len(user_rooms)} rooms for user {user_id}: {user_rooms}")
 
     for room_info in user_rooms:
         room_type = room_info["room_type"]
@@ -414,6 +461,7 @@ async def cleanup_user_personality_rooms(session: WebSocketSession) -> None:
 
         # Leave the room
         left = await room_manager.leave_room(room_type, room_id, user_id)
+        logger.info(f"User {user_id} left room {room_type}:{room_id} - success: {left}")
 
         if left and other_members:
             # Notify other room members that this user left

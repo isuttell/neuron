@@ -193,9 +193,23 @@ class RateLimiter:
 
     def _is_authenticated(self) -> bool:
         """Check if the request is from an authenticated user."""
-        # Check for Authorization header
+        # Check for Authorization header (API endpoints)
         auth_header = request.headers.get("Authorization")
-        return bool(auth_header and auth_header.startswith("Bearer "))
+        if auth_header and auth_header.startswith("Bearer "):
+            return True
+
+        # Check session cookie directly (static endpoints)
+        cookie = request.cookies.get("neuron_session")
+        if cookie:
+            # Import and verify cookie using the same logic as @requires_cookie
+            try:
+                from neuron_server.controllers.csrf import verify_cookie_data
+                cookie_data = verify_cookie_data(cookie)
+                return bool(cookie_data)  # Valid cookie = authenticated
+            except Exception:
+                return False  # Invalid cookie = not authenticated
+
+        return False
 
     def _get_rate_limits(self, limit_type: str = "api") -> dict[str, int]:
         """Get rate limits based on authentication status and endpoint type."""

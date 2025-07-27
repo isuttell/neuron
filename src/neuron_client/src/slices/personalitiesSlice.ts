@@ -1,4 +1,4 @@
-import { createSlice } from "@reduxjs/toolkit";
+import { createSlice, createSelector } from "@reduxjs/toolkit";
 import type { PayloadAction } from "@reduxjs/toolkit";
 import type { RootState } from "../store";
 import * as actions from "../actions/personalityActions";
@@ -11,6 +11,7 @@ import type {
   IncomingPersonalitiesEvent,
   PersonalityState,
 } from "./personalitiesSlice.d";
+import type { PersonalityUser } from "../types/personality";
 
 // Define the initial state using that type
 const initialState: PersonalityState = {
@@ -69,6 +70,17 @@ export const personalitiesSlice = createSlice({
       state.personalities = state.personalities.filter(
         (per) => per.id !== action.payload
       );
+    },
+    updatePersonalityStatus: (
+      state,
+      action: PayloadAction<{ personalityId: string; status: string }>
+    ) => {
+      const personality = state.personalities.find(
+        (per) => per.id === action.payload.personalityId
+      );
+      if (personality) {
+        personality.status = action.payload.status;
+      }
     },
   },
   extraReducers: (builder) => {
@@ -232,10 +244,13 @@ export const {
   upsertPersonalities,
   deletePersonality,
   setActivePersonality,
+  updatePersonalityStatus,
 } = personalitiesSlice.actions;
 
-export const getPersonality = (state: RootState, id: string) =>
-  state.personalities.personalities.find((per) => per.id === id);
+export const getPersonality = createSelector(
+  [(state: RootState) => state.personalities.personalities, (_, id: string) => id],
+  (personalities, id) => personalities.find((per) => per.id === id)
+);
 
 export const getPersonalities = (state: RootState) =>
   state.personalities.personalities;
@@ -243,15 +258,13 @@ export const getPersonalities = (state: RootState) =>
 export const getActivePersonalityId = (state: RootState): string | undefined =>
   state.personalities.activePersonalityId;
 
-export const getActivePersonality = (
-  state: RootState
-): Personality | undefined =>
-  state.personalities.activePersonalityId
-    ? state.personalities.personalities.find(
-        (personality) =>
-          personality?.id === state.personalities.activePersonalityId
-      )
-    : undefined;
+export const getActivePersonality = createSelector(
+  [(state: RootState) => state.personalities.personalities, (state: RootState) => state.personalities.activePersonalityId],
+  (personalities, activePersonalityId) =>
+    activePersonalityId
+      ? personalities.find((personality) => personality?.id === activePersonalityId)
+      : undefined
+);
 
 export const getPersonalitiesLoading = (state: RootState) =>
   state.personalities.loading;
@@ -259,7 +272,12 @@ export const getPersonalitiesLoading = (state: RootState) =>
 export const getPersonalitiesError = (state: RootState) =>
   state.personalities.error;
 
-export const getPersonalityUsers = (state: RootState, personalityId: string) =>
-  state.personalities.personalityUsers[personalityId] || [];
+// Stable empty array to prevent new references
+const EMPTY_USER_ARRAY: PersonalityUser[] = [];
+
+export const getPersonalityUsers = createSelector(
+  [(state: RootState, personalityId: string) => state.personalities.personalityUsers[personalityId], (_, personalityId: string) => personalityId],
+  (users) => users || EMPTY_USER_ARRAY
+);
 
 export default personalitiesSlice.reducer;

@@ -23,7 +23,7 @@ export const ImageRenderer: React.FC<ImageRendererProps> = ({
   thumbnail_size = "l",
   display_size = "o",
   preload = false,
-  objectFit = "cover",
+  objectFit = "contain",
   className,
   isThumbnail = false,
 }) => {

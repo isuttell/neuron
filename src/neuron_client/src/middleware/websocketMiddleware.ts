@@ -7,8 +7,13 @@ import {
 import { upsertImage } from "../slices/imagesSlice";
 import { upsertMedia } from "../slices/mediaSlice";
 import { partialMessage, upsertMessage } from "../slices/messagesSlice";
-import { upsertPersonality } from "../slices/personalitiesSlice";
+import { upsertPersonality, updatePersonalityStatus } from "../slices/personalitiesSlice";
 import { upsertPrompt } from "../slices/promptsSlice";
+import {
+  joinRoomSuccess,
+  leaveRoom,
+  clearAllRooms,
+} from "../slices/roomSlice";
 import { connect, disconnect } from "../slices/socketSlice";
 import { upsertThread } from "../slices/threadsSlice";
 import {
@@ -16,6 +21,7 @@ import {
   updateMessage as updatePersonalityChatMessage,
   deleteMessage as deletePersonalityChatMessage,
 } from "../slices/personalityChatSlice";
+import { MediaItem } from "../types/media";
 import type {
   ErrorEvent,
   ImageEvent,
@@ -23,6 +29,7 @@ import type {
   MessageEvent,
   PartialMessageEvent,
   PersonalityEvent,
+  PersonalityStatusUpdateEvent,
   PersonalityChatMessageEvent,
   PersonalityChatUpdateEvent,
   PersonalityChatDeleteEvent,
@@ -38,27 +45,26 @@ import type {
   ThreadEvent,
 } from "../types/websocket";
 import { getCurrentBuildHash } from "../utils/buildHash";
-import WebSocketManager from "../WebSocketManager";
+import { socketManager } from "../WebSocketManager";
 
 // Store persistent disconnection toast ID
 let disconnectionToastId: string | number | undefined;
 
 const websocketMiddleware =
-  (socket: WebSocketManager) =>
   ({ dispatch }: MiddlewareAPI) =>
   (next: Dispatch<Action>) =>
   (action: Action) => {
     if (action.type === "socket/connect") {
-      if (socket.connect()) {
-        socket.on("message", (event: MessageEvent) => {
+      if (socketManager.connect()) {
+        socketManager.on("message", (event: MessageEvent) => {
           dispatch(upsertMessage({ message: event.message }));
         });
 
-        socket.on("media", (event: MediaEvent) => {
+        socketManager.on("media", (event: MediaEvent) => {
           dispatch(upsertMedia({ media: event.media }));
         });
 
-        socket.on("partial_message", (event: PartialMessageEvent) => {
+        socketManager.on("partial_message", (event: PartialMessageEvent) => {
           dispatch(
             partialMessage({
               message: {
@@ -69,19 +75,19 @@ const websocketMiddleware =
           );
         });
 
-        socket.on("thread", (event: ThreadEvent) => {
+        socketManager.on("thread", (event: ThreadEvent) => {
           dispatch(upsertThread({ thread: event.thread }));
         });
 
-        socket.on("sidebar_image", (event: SidebarImageEvent) => {
+        socketManager.on("sidebar_image", (event: SidebarImageEvent) => {
           dispatch(setSidebarImage(event.url));
         });
 
-        socket.on("prompt", (event: PromptEvent) => {
+        socketManager.on("prompt", (event: PromptEvent) => {
           dispatch(upsertPrompt({ type: "prompt", prompt: event.prompt }));
         });
 
-        socket.on("ping", (event: PingEvent) => {
+        socketManager.on("ping", (event: PingEvent) => {
           // Check if we have a static hash from the server
           if (event.static_hash) {
             const currentHash = getCurrentBuildHash();
@@ -92,9 +98,9 @@ const websocketMiddleware =
           }
         });
 
-        socket.onInternal("open", () => {
+        socketManager.onInternal("open", () => {
           // Dispatch an action when connected
-          dispatch(connect(socket));
+          dispatch(connect());
 
           // Dismiss persistent disconnection toast if it exists
           if (disconnectionToastId) {
@@ -107,9 +113,12 @@ const websocketMiddleware =
           });
         });
 
-        socket.onInternal("close", () => {
+        socketManager.onInternal("close", () => {
           // Dispatch an action when disconnected
           dispatch(disconnect());
+
+          // Clear all room subscriptions on disconnect
+          dispatch(clearAllRooms());
 
           // Create persistent disconnection indicator
           disconnectionToastId = toast.warning("Disconnected", {
@@ -119,7 +128,7 @@ const websocketMiddleware =
           });
         });
 
-        socket.onInternal("give_up", () => {
+        socketManager.onInternal("give_up", () => {
           // Update existing persistent toast to error state
           if (disconnectionToastId) {
             toast.dismiss(disconnectionToastId);
@@ -132,11 +141,18 @@ const websocketMiddleware =
           });
         });
 
-        socket.on("personality", (event: PersonalityEvent) => {
+        socketManager.on("personality", (event: PersonalityEvent) => {
           dispatch(upsertPersonality({ personality: event.personality }));
         });
 
-        socket.on("image", (event: ImageEvent) => {
+        socketManager.on("personality_status_update", (event: PersonalityStatusUpdateEvent) => {
+          dispatch(updatePersonalityStatus({
+            personalityId: event.personality_id,
+            status: event.status
+          }));
+        });
+
+        socketManager.on("image", (event: ImageEvent) => {
           const image = {
             ...event.image,
             path: event.image.url,
@@ -147,7 +163,7 @@ const websocketMiddleware =
           dispatch(upsertImage({ image }));
         });
 
-        socket.on("error", (event: ErrorEvent) => {
+        socketManager.on("error", (event: ErrorEvent) => {
           console.error(`ServerError: ${event.message}`);
           toast.error("Server error", {
             description: event.message,
@@ -155,20 +171,20 @@ const websocketMiddleware =
         });
 
         // Personality Chat WebSocket Events
-        socket.on("personality_chat_message", (event: PersonalityChatMessageEvent) => {
+        socketManager.on("personality_chat_message", (event: PersonalityChatMessageEvent) => {
           dispatch(upsertPersonalityChatMessage(event));
         });
 
-        socket.on("personality_chat_update", (event: PersonalityChatUpdateEvent) => {
+        socketManager.on("personality_chat_update", (event: PersonalityChatUpdateEvent) => {
           dispatch(updatePersonalityChatMessage(event));
         });
 
-        socket.on("personality_chat_delete", (event: PersonalityChatDeleteEvent) => {
+        socketManager.on("personality_chat_delete", (event: PersonalityChatDeleteEvent) => {
           dispatch(deletePersonalityChatMessage(event));
         });
 
         // New personality message events from room system
-        socket.on("personality_message", (event: PersonalityMessageEvent) => {
+        socketManager.on("personality_message", (event: PersonalityMessageEvent) => {
           // Convert backend PersonalityMessageEvent to frontend PersonalityChatMessageEvent format
           const personalityChatEvent = {
             type: "personality_chat_message" as const,
@@ -179,12 +195,13 @@ const websocketMiddleware =
               user_id: event.user_id,
               created_at: event.created_at,
               updated_at: event.updated_at,
+              media_items: (event.media_items || []) as MediaItem[],
             }
           };
           dispatch(upsertPersonalityChatMessage(personalityChatEvent));
         });
 
-        socket.on("personality_message_deleted", (event: PersonalityMessageDeletedEvent) => {
+        socketManager.on("personality_message_deleted", (event: PersonalityMessageDeletedEvent) => {
           // Convert backend PersonalityMessageDeletedEvent to frontend format
           const deleteEvent = {
             type: "personality_chat_delete" as const,
@@ -195,27 +212,40 @@ const websocketMiddleware =
         });
 
         // Room WebSocket Events
-        socket.on("room_joined", (event: RoomJoinedEvent) => {
+        socketManager.on("room_joined", (event: RoomJoinedEvent) => {
           console.log(`Joined room: ${event.room_type}:${event.room_id} (${event.member_count} members)`);
+
+          // Update room state
+          dispatch(joinRoomSuccess({
+            roomType: event.room_type,
+            roomId: event.room_id,
+            memberCount: event.member_count,
+          }));
         });
 
-        socket.on("room_left", (event: RoomLeftEvent) => {
+        socketManager.on("room_left", (event: RoomLeftEvent) => {
           console.log(`Left room: ${event.room_type}:${event.room_id}`);
+
+          // Update room state
+          dispatch(leaveRoom({
+            roomType: event.room_type,
+            roomId: event.room_id,
+          }));
         });
 
-        socket.on("user_joined_room", (event: UserJoinedRoomEvent) => {
+        socketManager.on("user_joined_room", (event: UserJoinedRoomEvent) => {
           console.log(`User ${event.nickname} joined room: ${event.room_type}:${event.room_id}`);
           // Could show a toast notification here if desired
         });
 
-        socket.on("user_left_room", (event: UserLeftRoomEvent) => {
+        socketManager.on("user_left_room", (event: UserLeftRoomEvent) => {
           console.log(`User ${event.nickname} left room: ${event.room_type}:${event.room_id}`);
           // Could show a toast notification here if desired
         });
       }
-    } else if (socket.connected && action.type.indexOf("socket/") === 0) {
+    } else if (socketManager.connected && action.type.indexOf("socket/") === 0) {
       action.type = action.type.replace("socket/", "");
-      socket.sendMessage(action);
+      socketManager.sendMessage(action);
     }
     return next(action);
   };

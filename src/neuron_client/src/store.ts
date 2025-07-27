@@ -10,11 +10,11 @@ import messages from "./slices/messagesSlice";
 import personalities from "./slices/personalitiesSlice";
 import personalityChat from "./slices/personalityChatSlice";
 import promptsReducer from "./slices/promptsSlice";
+import room from "./slices/roomSlice";
 import providersReducer from "./slices/providerSlice";
 import schedulerReducer from "./slices/schedulerSlice";
 import socket from "./slices/socketSlice";
 import threads from "./slices/threadsSlice";
-import { socketManager } from "./WebSocketManager";
 
 import usersReducer from "./slices/usersSlice";
 
@@ -26,6 +26,7 @@ export const store = configureStore({
     socket,
     personalities,
     personalityChat,
+    room,
     favorites: favoritesReducer,
     images,
     prompts: promptsReducer,
@@ -59,7 +60,7 @@ export const store = configureStore({
         // Ignore these paths in the state
         ignoredPaths: ["socket.socket"],
       },
-    }).concat(websocketMiddleware(socketManager)),
+    }).concat(websocketMiddleware),
 });
 
 // Infer the `RootState` and `AppDispatch` types from the store itself

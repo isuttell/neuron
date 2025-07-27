@@ -97,7 +97,9 @@ async def test_replicate_play_dialog_with_bytes_output(
 
         # Check XML content
         assert "<audio>" in xml_content
-        assert "<id>media_123</id>" in xml_content
+        assert (
+            "<id>" in xml_content and "</id>" in xml_content
+        )  # UUID generated dynamically
         assert "<caption>test_audio</caption>" in xml_content
 
         # Check artifact - it's returned as a list containing the artifact dict
@@ -108,7 +110,7 @@ async def test_replicate_play_dialog_with_bytes_output(
         assert artifact_dict["type"] == "media"
         assert artifact_dict["media_type"] == "audio"
         assert len(artifact_dict["items"]) == 1
-        assert artifact_dict["items"][0]["id"] == "media_123"
+        assert artifact_dict["items"][0]["id"] is not None  # UUID generated dynamically
         assert artifact_dict["items"][0]["caption"] == "test_audio"
         # Check that duration is from ffprobe
         assert artifact_dict["items"][0]["metadata"]["duration"] == 7.8

@@ -14,7 +14,6 @@ from pydantic import BaseModel, Field
 
 from neuron_server.config import config as neuron_config
 from neuron_server.logger import logger
-from neuron_server.models.media_item_model import MediaItemModel
 from neuron_server.util.slug import safe_filename
 
 # Model version hash
@@ -155,15 +154,10 @@ class ReplicateAudioGenerationTool(BaseTool):
                 async for chunk in output:
                     await file.write(chunk)
             url = f"{neuron_config.static_content_url}/{filename}"
-            create_params = MediaItemModel.CreateParams(
-                thread_id=config["configurable"].get("thread_id"),
-                user_id=config["configurable"].get("user_id"),
-                url=url,
-                media_type="audio",
-                name=name,
-                description=prompt,
-            )
-            media_item = await MediaItemModel.create(params=create_params)
+
+            # Generate a real UUID for consistent ID between artifact and media_item
+            media_id = uuid4()
+
             logger.debug(f"Saved generated video to {file_path} <{url}>")
 
             # Prepare artifact for UI using typed models
@@ -185,7 +179,7 @@ class ReplicateAudioGenerationTool(BaseTool):
             )
 
             artifact_item = ToolMediaItem(
-                id=str(media_item.id),
+                id=media_id,
                 url=url,
                 caption=name,
                 description=prompt,

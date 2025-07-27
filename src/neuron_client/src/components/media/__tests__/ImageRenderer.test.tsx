@@ -277,7 +277,7 @@ describe("ImageRenderer", () => {
     );
 
     const image = screen.getByRole("img");
-    expect(image).toHaveClass("object-cover"); // Default should be cover
+    expect(image).toHaveClass("object-contain"); // Default should be contain
   });
 
   it("handles all thumbnail size options", () => {

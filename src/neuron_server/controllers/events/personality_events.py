@@ -32,3 +32,9 @@ class GetPersonalityResponse(OutgoingEvent):
 class GetPersonalitiesResponse(OutgoingEvent):
     type: Literal["personalities"] = "personalities"
     personalities: list[PersonalityModel]
+
+
+class PersonalityStatusUpdateEvent(OutgoingEvent):
+    type: Literal["personality_status_update"] = "personality_status_update"
+    personality_id: UUID
+    status: str

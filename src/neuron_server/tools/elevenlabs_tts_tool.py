@@ -12,7 +12,6 @@ from pydantic import BaseModel, Field
 
 from neuron_server.config import config as neuron_config
 from neuron_server.logger import logger
-from neuron_server.models.media_item_model import MediaItemModel
 from neuron_server.util.slug import safe_filename
 from neuron_server.util.subprocess_runner import run_subprocess
 from neuron_server.util.text_cleaning import clean_action_text
@@ -211,18 +210,10 @@ need it.
             else:
                 shutil.copy(audio_files[0], output)
             url = neuron_config.static_content_url + "/" + filename
-            create_params = MediaItemModel.CreateParams(
-                url=url,
-                media_type="tts",
-                user_id=config["configurable"].get("user_id"),
-                thread_id=config["configurable"].get("thread_id"),
-                name=name,
-                description="\n".join(
-                    [f"[{line.voice}]\n\n{line.text}" for line in script]
-                ),
-            )
-            media_item = await MediaItemModel.create(params=create_params)
             logger.info(f"Generated audio file saved to {output} <{url}>")
+
+            # Generate a real UUID for consistent ID between artifact and media_item
+            media_id = uuid4()
 
             # Prepare artifact for UI using typed models
             from neuron_server.tools.artifact_types import (
@@ -243,7 +234,7 @@ need it.
             )
 
             artifact_item = ToolMediaItem(
-                id=str(media_item.id),
+                id=media_id,
                 url=url,
                 caption=name,
                 description="\n".join(

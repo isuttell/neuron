@@ -66,6 +66,7 @@ class Personality(Base):
     tool_set = Column(Text, nullable=True, default=None)
     description = Column(Text, nullable=False, default="")
     default = Column(Boolean, nullable=False, default=False)
+    status = Column(String, nullable=True, default="")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
@@ -132,6 +133,9 @@ class MediaItem(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
     media_list_items: Mapped[list["MediaListItem"]] = relationship(
+        back_populates="media_item", cascade="all, delete-orphan"
+    )
+    personality_messages: Mapped[list["PersonalityMessageMediaItem"]] = relationship(
         back_populates="media_item", cascade="all, delete-orphan"
     )
 
@@ -382,6 +386,45 @@ class PersonalityMessage(Base):
 
     # Relationships
     personality: Mapped["Personality"] = relationship("Personality")
+    media_items: Mapped[list["PersonalityMessageMediaItem"]] = relationship(
+        back_populates="personality_message", cascade="all, delete-orphan"
+    )
+
+
+class PersonalityMessageMediaItem(Base):
+    __tablename__ = "personality_message_media_items"
+
+    id = Column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    personality_message_id = Column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("personality_messages.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    media_item_id = Column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("media_items.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Ensure each media item can only be associated with a message once
+    __table_args__ = (
+        UniqueConstraint(
+            "personality_message_id",
+            "media_item_id",
+            name="unique_personality_message_media_item",
+        ),
+    )
+
+    # Relationships
+    personality_message: Mapped["PersonalityMessage"] = relationship(
+        "PersonalityMessage", back_populates="media_items"
+    )
+    media_item: Mapped["MediaItem"] = relationship(
+        "MediaItem", back_populates="personality_messages"
+    )
 
 
 # Create async session maker

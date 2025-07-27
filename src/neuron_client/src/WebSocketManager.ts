@@ -4,6 +4,7 @@ import { getAccessToken } from "./actions/getToken";
 import type { WebSocketEvent, WebSocketPayload } from "./types/websocket";
 
 export default class WebSocketManager {
+  private static instance: WebSocketManager | null = null;
   private socket?: WebSocket;
   private events: EventEmitter;
   private url: string;
@@ -15,10 +16,27 @@ export default class WebSocketManager {
   private reconnectTimer?: number;
   private pingTimeout?: number;
 
-  constructor(url: string) {
+  private constructor(url: string) {
     this.events = new EventEmitter();
     this.url = url;
     this.connected = false;
+  }
+
+  public static getInstance(url?: string): WebSocketManager {
+    if (!WebSocketManager.instance) {
+      if (!url) {
+        throw new Error("WebSocketManager URL required for first initialization");
+      }
+      WebSocketManager.instance = new WebSocketManager(url);
+    }
+    return WebSocketManager.instance;
+  }
+
+  public static resetInstance(): void {
+    if (WebSocketManager.instance) {
+      WebSocketManager.instance.close();
+      WebSocketManager.instance = null;
+    }
   }
 
   connect() {
@@ -199,7 +217,7 @@ export default class WebSocketManager {
   }
 }
 
-export const socketManager = new WebSocketManager(
+export const socketManager = WebSocketManager.getInstance(
   window.location.protocol === "https:"
     ? `wss://${window.location.host}/ws`
     : `ws://${window.location.host}/ws`

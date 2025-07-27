@@ -15,7 +15,6 @@ from pydantic import BaseModel, Field
 
 from neuron_server.config import config as neuron_config
 from neuron_server.logger import logger
-from neuron_server.models.media_item_model import MediaItemModel
 from neuron_server.util.slug import safe_filename
 from neuron_server.util.subprocess_runner import run_subprocess
 
@@ -208,15 +207,9 @@ text prompts with the stackadoc/stable-audio-open-1.0 model. Ideal for:
             url = f"{neuron_config.static_content_url}/{output_filename}"
 
             # Create media item in database
-            create_params = MediaItemModel.CreateParams(
-                thread_id=config["configurable"].get("thread_id"),
-                user_id=config["configurable"].get("user_id"),
-                url=url,
-                media_type="video",
-                name=slug,
-                description=prompt,
-            )
-            media_item = await MediaItemModel.create(params=create_params)
+            # Generate a real UUID for consistent ID between artifact and media_item
+            media_id = uuid4()
+
             logger.debug(f"Saved generated video to {output_file_path} <{url}>")
 
             # Prepare artifact for UI using typed models
@@ -238,7 +231,7 @@ text prompts with the stackadoc/stable-audio-open-1.0 model. Ideal for:
             )
 
             artifact_item = ToolMediaItem(
-                id=str(media_item.id),
+                id=media_id,
                 url=url,
                 caption=slug,
                 description=prompt,

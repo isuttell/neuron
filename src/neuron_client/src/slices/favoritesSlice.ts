@@ -1,4 +1,4 @@
-import { createSlice } from "@reduxjs/toolkit";
+import { createSlice, createSelector } from "@reduxjs/toolkit";
 import type { PayloadAction } from "@reduxjs/toolkit";
 import type { RootState } from "../store";
 import * as actions from "../actions/favoritesActions";
@@ -86,8 +86,10 @@ export const { clearFavorites, addFavorite, removeFavorite } = favoritesSlice.ac
 export const getFavorites = (state: RootState): PersonalityFavorite[] =>
   state.favorites.favorites;
 
-export const getFavoritePersonalityIds = (state: RootState): Set<string> =>
-  new Set(state.favorites.favorites.map(f => f.personality_id));
+export const getFavoritePersonalityIds = createSelector(
+  [getFavorites],
+  (favorites) => new Set(favorites.map(f => f.personality_id))
+);
 
 export const isFavorite = (state: RootState, personalityId: string): boolean =>
   state.favorites.favorites.some(f => f.personality_id === personalityId);

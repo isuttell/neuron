@@ -15,7 +15,6 @@ from pydantic import BaseModel, Field
 
 from neuron_server.config import config as neuron_config
 from neuron_server.logger import logger
-from neuron_server.models.media_item_model import MediaItemModel
 from neuron_server.util.image_utilities import create_thumbnails
 from neuron_server.util.slug import safe_filename
 
@@ -303,22 +302,15 @@ class OpenAIImageGenerationTool(BaseTool):
 
                 url = f"{neuron_config.static_content_url}/{filename}"
 
-                # Create media item record
-                description = getattr(call, "revised_prompt", prompt)
-                create_params = MediaItemModel.CreateParams(
-                    thread_id=config["configurable"].get("thread_id"),
-                    user_id=config["configurable"].get("user_id"),
-                    url=url,
-                    media_type="image",
-                    name=name,
-                    description=description,
-                )
-                media_item = await MediaItemModel.create(params=create_params)
                 logger.debug(f"Saved generated image to {file_path} <{url}>")
+
+                # Generate a real UUID for consistent ID between artifact and media_item
+                description = getattr(call, "revised_prompt", prompt)
+                media_id = uuid4()
 
                 # XML content for LLM
                 llm_content = f"""<image>
-    <id>{media_item.id}</id>
+    <id>{media_id}</id>
     <url>{url}</url>
     <image_id>{call.id}</image_id>
     <caption>{name}</caption>
@@ -344,7 +336,7 @@ class OpenAIImageGenerationTool(BaseTool):
                 )
 
                 artifact_item = ToolMediaItem(
-                    id=str(media_item.id),
+                    id=media_id,
                     url=url,
                     caption=name,
                     description=description,

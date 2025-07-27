@@ -1,4 +1,5 @@
 // TypeScript interfaces for personality chat functionality
+import { MediaItem } from "./media";
 
 export interface PersonalityMessage {
   id: string;
@@ -7,6 +8,7 @@ export interface PersonalityMessage {
   content: string;
   created_at: string;
   updated_at: string;
+  media_items: MediaItem[];
 }
 
 export interface PersonalityChatState {

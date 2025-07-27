@@ -7,21 +7,17 @@ import { useEffect, useRef, useState } from "react";
 import { shallowEqual } from "react-redux";
 import { useParams, useNavigate } from "react-router-dom";
 import {
-  fetchPersonalityMessages,
   sendPersonalityMessage,
   updatePersonalityMessage,
+  fetchPersonalityMessages,
 } from "../actions/personalityChatActions";
-import {
-  joinPersonalityRoom,
-  leavePersonalityRoom,
-} from "../actions/roomActions";
 import { useAppDispatch, useAppSelector } from "../hooks";
+import { usePersonalityRoom } from "../hooks/usePersonalityRoom";
 import PersonalityChatForm from "../messages/PersonalityChatForm";
 import PersonalityChatItem from "../messages/PersonalityChatItem";
 import {
   getPersonalityChatLoading,
   getPersonalityChatMessages,
-  setActivePersonalityId,
 } from "../slices/personalityChatSlice";
 import { getPersonality } from "../slices/personalitiesSlice";
 import { getCurrentUser } from "../slices/appSlice";
@@ -32,6 +28,9 @@ export default function PersonalityChat() {
   const currentUser = useAppSelector(getCurrentUser);
   const lastMessageRef = useRef<HTMLDivElement | null>(null);
   const { personalityId } = useParams();
+
+  // Use the specialized personality room hook
+  const { isSubscribed } = usePersonalityRoom(personalityId);
 
   const personality = useAppSelector(
     (state) => personalityId ? getPersonality(state, personalityId) : undefined,
@@ -47,38 +46,12 @@ export default function PersonalityChat() {
   // Edit state management
   const [editingMessage, setEditingMessage] = useState<{ id: string; content: string } | null>(null);
 
-  // Set active personality when component mounts
+  // Fetch messages when personality ID is available
   useEffect(() => {
     if (personalityId) {
-      dispatch(setActivePersonalityId(personalityId));
+      dispatch(fetchPersonalityMessages({ personalityId }));
     }
-    return () => {
-      dispatch(setActivePersonalityId(null));
-    };
-  }, [personalityId, dispatch]);
-
-  // Join/leave personality room when component mounts/unmounts
-  useEffect(() => {
-    if (!personalityId) {
-      return;
-    }
-
-    // Join the personality room
-    dispatch(joinPersonalityRoom({ personalityId }));
-
-    return () => {
-      // Leave the personality room when component unmounts
-      dispatch(leavePersonalityRoom({ personalityId }));
-    };
-  }, [personalityId, dispatch]);
-
-  // Fetch messages when personality changes
-  useEffect(() => {
-    if (!personalityId) {
-      return;
-    }
-    dispatch(fetchPersonalityMessages({ personalityId }));
-  }, [personalityId, dispatch]);
+  }, [dispatch, personalityId]);
 
   // Auto-scroll to latest message
   useEffect(() => {
@@ -178,9 +151,11 @@ export default function PersonalityChat() {
 
         <div className="bottom-0">
           <PersonalityChatForm
+            personality={personality}
             onSendMessage={handleSendMessage}
             editingMessage={editingMessage}
             onCancelEdit={handleCancelEdit}
+            isSubscribed={isSubscribed}
             className="max-w-3xl w-full mx-auto mt-2"
           />
         </div>

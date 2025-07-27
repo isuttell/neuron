@@ -96,6 +96,7 @@ export const personalityChatSlice = createSlice({
         created_at: Date.now(),
         updated_at: Date.now(),
         isOptimistic: true,
+        media_items: [],
       };
 
       state.messageIds.push(tempId);

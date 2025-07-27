@@ -32,8 +32,28 @@ class PersonalityModel(BaseModel):
     default: bool = Field(
         description="Whether this is the default personality", default=False
     )
+    status: str = Field(
+        description="Current status of the personality (empty string means idle)",
+        default="",
+    )
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC).astimezone())
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC).astimezone())
+
+    @classmethod
+    def _from_db_record(cls, personality: Personality) -> Self:
+        """Create a PersonalityModel from a database record, handling None values.
+
+        Args:
+            personality: The database record to convert
+
+        Returns:
+            A PersonalityModel instance with proper defaults
+        """
+        data = personality.__dict__.copy()
+        # Handle None status values from database (convert to empty string)
+        if data.get("status") is None:
+            data["status"] = ""
+        return cls(**data)
 
     @dataclass
     class CreateParams:
@@ -91,7 +111,7 @@ class PersonalityModel(BaseModel):
             session.add(personality_user)
             await session.commit()
 
-            return cls(**personality.__dict__)
+            return cls._from_db_record(personality)
 
     @staticmethod
     async def delete(personality_id: UUID) -> None:
@@ -122,7 +142,7 @@ class PersonalityModel(BaseModel):
             # Don't update default field in regular update
             session.add(personality)
             await session.commit()
-            return cls(**personality.__dict__)
+            return cls._from_db_record(personality)
 
     @classmethod
     async def set(
@@ -142,7 +162,7 @@ class PersonalityModel(BaseModel):
             setattr(personality, key, value)
             session.add(personality)
             await session.commit()
-            return cls(**personality.__dict__)
+            return cls._from_db_record(personality)
 
     @classmethod
     async def list_all(cls) -> list[Self]:
@@ -154,7 +174,7 @@ class PersonalityModel(BaseModel):
         async with get_session() as session:
             results = await session.execute(select(Personality))
             records = results.scalars().all()
-            return [cls(**personality.__dict__) for personality in records]
+            return [cls._from_db_record(personality) for personality in records]
 
     @classmethod
     async def list_for_user(cls, user_id: str) -> list[Self]:
@@ -181,7 +201,7 @@ class PersonalityModel(BaseModel):
             stmt = select(Personality).where(Personality.id.in_(personality_ids))
             results = await session.execute(stmt)
             records = results.scalars().all()
-            return [cls(**personality.__dict__) for personality in records]
+            return [cls._from_db_record(personality) for personality in records]
 
     @classmethod
     async def get(cls, personality_id: UUID) -> Self | None:
@@ -196,7 +216,7 @@ class PersonalityModel(BaseModel):
         async with get_session() as session:
             data = await session.get(Personality, personality_id)
             if data:
-                return cls(**data.__dict__)
+                return cls._from_db_record(data)
             return None
 
     @classmethod
@@ -295,8 +315,35 @@ class PersonalityModel(BaseModel):
             personality.memory = self.memory
             personality.tool_set = self.tool_set
             personality.logo = self.logo
+            personality.status = self.status
             # Don't update default field in save
             await session.commit()
+
+    @classmethod
+    async def update_status(cls, personality_id: UUID, status: str) -> Self:
+        """Update the status of a personality.
+
+        Args:
+            personality_id: The ID of the personality to update
+            status: The new status (empty string for idle)
+
+        Returns:
+            The updated PersonalityModel instance
+        """
+        return await cls.set(personality_id, "status", status)
+
+    @classmethod
+    async def is_idle(cls, personality_id: UUID) -> bool:
+        """Check if a personality is idle (status is empty).
+
+        Args:
+            personality_id: The ID of the personality to check
+
+        Returns:
+            True if the personality is idle, False otherwise
+        """
+        personality = await cls.get(personality_id)
+        return personality is None or not personality.status
 
     @classmethod
     async def get_many(cls, ids: builtins.list[UUID]) -> builtins.list[Self]:
@@ -305,4 +352,4 @@ class PersonalityModel(BaseModel):
                 select(Personality).where(Personality.id.in_(ids))
             )
             records = results.scalars().all()
-            return [cls(**personality.__dict__) for personality in records]
+            return [cls._from_db_record(personality) for personality in records]

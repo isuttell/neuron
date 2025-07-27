@@ -54,7 +54,8 @@ export function addCSRFHeader(headers: HeadersInit): HeadersInit {
  */
 export function addCSRFToFormData(formData: FormData): FormData {
   const csrfToken = getCSRFToken();
-  if (csrfToken && !formData.has("csrf_token")) {
+  if (csrfToken) {
+    formData.delete("csrf_token");
     formData.append("csrf_token", csrfToken);
   }
   return formData;

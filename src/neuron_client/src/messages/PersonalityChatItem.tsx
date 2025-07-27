@@ -1,10 +1,11 @@
 import React from "react";
 import { Bot, AlertCircle, Loader2, Edit, Pen } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import FuzzyTimeAgo from "@/components/FuzzyTimeAgo";
 import Content from "./Content";
+import MediaItems from "./MediaItems";
 import { PersonalityChatMessage } from "../types/personalityChat";
 import { Personality } from "../types/personality";
 import { useAppSelector } from "../hooks";
@@ -17,6 +18,28 @@ interface PersonalityChatItemProps {
   onEditMessage?: (message: { id: string; content: string }) => void;
 }
 
+const generateInitials = (nickname: string | null | undefined): string => {
+  if (!nickname) return "U";
+
+  // First try splitting by common delimiters (spaces, dashes, underscores)
+  const delimiterSplit = nickname.split(/[\s\-_]+/).filter(part => part.length > 0);
+
+  if (delimiterSplit.length >= 2) {
+    return delimiterSplit.slice(0, 3).map(part => part[0].toUpperCase()).join("");
+  }
+
+  // If no delimiters, try splitting by camelCase (capital letters)
+  const camelCaseSplit = nickname.split(/(?=[A-Z])/).filter(part => part.length > 0);
+
+  if (camelCaseSplit.length >= 2) {
+    return camelCaseSplit.slice(0, 3).map(part => part[0].toUpperCase()).join("");
+  }
+
+  // Fall back to just the first letter
+  return nickname[0].toUpperCase();
+};
+
+
 const PersonalityChatItem: React.FC<PersonalityChatItemProps> = ({
   message,
   personality,
@@ -24,6 +47,7 @@ const PersonalityChatItem: React.FC<PersonalityChatItemProps> = ({
 }) => {
   const currentUser = useAppSelector(getCurrentUser);
   const isCurrentUser = message.user_id === currentUser?.sub;
+
   const isPersonality = message.user_id === null;
   const isOptimistic = 'isOptimistic' in message && message.isOptimistic;
   const hasError = 'error' in message && message.error;
@@ -39,26 +63,26 @@ const PersonalityChatItem: React.FC<PersonalityChatItemProps> = ({
 
   // Create display name and avatar letter
   const displayName = user?.nickname || "Unknown User";
-  const avatarLetter = user?.nickname?.[0]?.toUpperCase() || "U";
+
+  const avatarLetter = generateInitials(user?.nickname);
 
   // Format timestamp
   const timestamp = typeof message.created_at === 'string'
     ? new Date(message.created_at)
     : new Date(message.created_at);
 
-  // Render personality messages with original layout
+  // Render personality messages with chat bubble layout (matching user format)
   if (isPersonality) {
     return (
-      <div className="mb-6 group">
-        <div className="flex items-start space-x-2">
-          {/* Avatar */}
+      <div className="mb-4 group">
+        <div className="flex items-end gap-2 max-w-4xl justify-start">
+          {/* Avatar (bot icon) */}
           <Tooltip delayDuration={0}>
             <TooltipTrigger asChild>
-              <div className="w-10 h-10 mr-4 rounded-full flex items-center justify-center min-w-[40px] bg-primary">
-                <Avatar>
-                  <AvatarImage src={personality.logo || ""} />
+              <div className="w-8 h-8 rounded-full flex items-center justify-center min-w-[32px] mb-1 bg-muted">
+                <Avatar className="w-8 h-8">
                   <AvatarFallback>
-                    <Bot className="text-primary-foreground" size={20} />
+                    <Bot className="text-foreground" size={20} />
                   </AvatarFallback>
                 </Avatar>
               </div>
@@ -68,26 +92,31 @@ const PersonalityChatItem: React.FC<PersonalityChatItemProps> = ({
             </TooltipContent>
           </Tooltip>
 
-          {/* Message Content */}
-          <div className="flex-1 space-y-2">
-            {/* Message Header */}
-            <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-              <span className="font-medium">
-                {personality.name}
-              </span>
-              <span>•</span>
-              <FuzzyTimeAgo timestamp={timestamp.getTime()} />
-            </div>
+          {/* Chat Bubble */}
+          <div className="relative max-w-md px-4 pb-2 pt-2 rounded-sm break-words bg-muted text-foreground">
+            {/* Media Items */}
+            {'media_items' in message && message.media_items && message.media_items.length > 0 && (
+              <MediaItems
+                mediaItems={message.media_items}
+                className="mb-2"
+              />
+            )}
 
-            {/* Message Body */}
+            {/* Message Content */}
             <div className="prose prose-sm max-w-none break-words">
               <Content content={message.content} />
+            </div>
+
+            {/* Timestamp */}
+            <div className="flex items-center justify-end mt-2 text-xs text-muted-foreground">
+              <FuzzyTimeAgo timestamp={timestamp.getTime()} />
             </div>
           </div>
         </div>
       </div>
     );
   }
+
 
   // Render user messages with chat bubble layout (all left-aligned)
   return (
@@ -98,17 +127,14 @@ const PersonalityChatItem: React.FC<PersonalityChatItemProps> = ({
           <TooltipTrigger asChild>
             <div className={cn(
               "w-8 h-8 rounded-full flex items-center justify-center min-w-[32px] mb-1",
-              isCurrentUser ? "bg-primary" : "bg-muted"
+
             )}>
               <Avatar className="w-8 h-8">
-                <AvatarImage src={user?.picture || ""} />
-                <AvatarFallback>
-                  <span className={cn(
-                    "text-xs font-medium",
-                    isCurrentUser ? "text-primary-foreground" : "text-muted-foreground"
-                  )}>
-                    {avatarLetter}
-                  </span>
+                <AvatarFallback className={cn(
+                  "bg-primary text-primary-foreground text-xs font-medium",
+                  isCurrentUser ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
+                )}>
+                  {avatarLetter}
                 </AvatarFallback>
               </Avatar>
             </div>
@@ -197,6 +223,14 @@ const PersonalityChatItem: React.FC<PersonalityChatItemProps> = ({
             <div className="text-sm text-destructive mt-2">
               Failed to send message. Please try again.
             </div>
+          )}
+
+          {/* Media Items */}
+          {'media_items' in message && message.media_items && message.media_items.length > 0 && (
+            <MediaItems
+              mediaItems={message.media_items}
+              className="mt-2"
+            />
           )}
         </div>
       </div>

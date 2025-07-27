@@ -49,6 +49,92 @@ DEFAULT_LOCATION = "San Diego, California at -117.1860 W and 32.84 N."
 _orchestrator = create_agent_orchestrator()
 
 
+async def execute_agent_with_messages(  # noqa: PLR0913
+    messages: list[HumanMessage | AIMessage],
+    personality_id: UUID,
+    user_id: str,
+    username: str,
+    location: str = DEFAULT_LOCATION,
+    thread_id: UUID | None = None,
+    create_media_items: bool = False,
+) -> list[HumanMessage | AIMessage]:
+    """Execute agent with custom messages list.
+
+    Core function that handles graph creation and execution with a custom message list.
+    This function can be reused by other parts of the system that need different
+    message patterns while maintaining the same agent execution logic.
+
+    Args:
+        messages: List of messages to send to the agent
+        personality_id: ID of personality to use
+        user_id: ID of user making request
+        username: Name of user
+        location: Location string (default: San Diego)
+        thread_id: Optional thread ID for creating media items (default: None)
+        create_media_items: Whether to create MediaItem records from artifacts
+            (default: False, requires thread_id)
+
+    Returns:
+        All messages from the agent execution, including tool calls and responses
+
+    Raises:
+        BadRequest: If personality not found
+    """
+    personality = await PersonalityModel.get(personality_id)
+    if personality is None:
+        raise BadRequest("Personality not found")
+
+    llm: LLM = await ProviderModelModel.get_active_llm()
+    tools = await get_tools(personality.tool_set) if personality.tool_set else None
+    graph = llm.create_workflow(tools)
+    graph.checkpointer = None
+    result = await graph.ainvoke(
+        {
+            "messages": messages,
+            "location": location,
+            "username": username,
+            "personality": personality.context,
+            "now": datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S %Z"),
+        },
+        config={
+            "configurable": {
+                "personality_id": str(personality_id),
+                "user_id": str(user_id),
+            },
+        },
+    )
+
+    result_messages = result["messages"]
+
+    # Process artifacts and create media items if requested
+    if create_media_items and thread_id:
+        from langchain_core.messages import ToolMessage
+
+        from neuron_server.util.artifact_to_media_converter import (
+            create_media_items_from_artifacts,
+        )
+
+        # Process tool messages with artifacts
+        for message in result_messages:
+            if (
+                isinstance(message, ToolMessage)
+                and hasattr(message, "artifact")
+                and message.artifact
+            ):
+                artifacts = (
+                    message.artifact
+                    if isinstance(message.artifact, list)
+                    else [message.artifact]
+                )
+                await create_media_items_from_artifacts(
+                    artifacts=artifacts,
+                    thread_id=thread_id,
+                    user_id=user_id,
+                )
+
+    return result_messages
+
+
 async def execute_agent(
     prompt: str,
     personality_id: UUID,
@@ -71,39 +157,23 @@ async def execute_agent(
     Raises:
         BadRequest: If personality not found
     """
-    personality = await PersonalityModel.get(personality_id)
-    if personality is None:
-        raise BadRequest("Personality not found")
+    messages = [
+        HumanMessage(
+            content=(
+                "I can't respond so please try you're best to fulfill my "
+                "next request but don't ask questions or provide prompt "
+                "suggestions. Just respond with the answer to my question."
+            )
+        ),
+        HumanMessage(content=prompt),
+    ]
 
-    llm: LLM = await ProviderModelModel.get_active_llm()
-    tools = await get_tools(personality.tool_set) if personality.tool_set else None
-    graph = llm.create_workflow(tools)
-    graph.checkpointer = None
-    result: AIMessage = await graph.ainvoke(
-        {
-            "messages": [
-                HumanMessage(
-                    content=(
-                        "I can't respond so please try you're best to fulfill my "
-                        "next request but don't ask questions or provide prompt "
-                        "suggestions. Just respond with the answer to my question."
-                    )
-                ),
-                HumanMessage(content=prompt),
-            ],
-            "location": location,
-            "username": username,
-            "personality": personality.context,
-            "now": datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S %Z"),
-        },
-        config={
-            "configurable": {
-                "personality_id": str(personality_id),
-                "user_id": str(user_id),
-            },
-        },
+    result_messages = await execute_agent_with_messages(
+        messages, personality_id, user_id, username, location
     )
-    result: AIMessage = result["messages"][-1]
+
+    # Get the last message for backward compatibility
+    result: AIMessage = result_messages[-1]
     assert isinstance(result, AIMessage)
 
     # Use format_as_string=True to get a string result for backward compatibility

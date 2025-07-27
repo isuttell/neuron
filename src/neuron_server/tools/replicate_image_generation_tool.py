@@ -20,7 +20,6 @@ from PIL import Image, PngImagePlugin
 from pydantic import BaseModel, Field
 
 from neuron_server.config import config as neuron_config
-from neuron_server.models.media_item_model import MediaItemModel
 from neuron_server.util.image_utilities import create_image_url, create_thumbnails
 from neuron_server.util.slug import safe_filename
 
@@ -346,7 +345,7 @@ class ReplicateImageGenerationTool(BaseTool):
         self,
         result: replicate.helpers.FileOutput,
         params: ImageProcessingParams,
-    ) -> tuple[str, dict]:
+    ) -> tuple[str, Any]:
         """Save and process a single generated image."""
         filename = safe_filename(
             params.model.replace("/", "_").split(":")[0],
@@ -385,15 +384,9 @@ class ReplicateImageGenerationTool(BaseTool):
         create_thumbnails(file_path)
 
         url = f"{neuron_config.static_content_url}/{filename}"
-        create_params = MediaItemModel.CreateParams(
-            thread_id=params.config["configurable"].get("thread_id"),
-            user_id=params.config["configurable"].get("user_id"),
-            url=url,
-            media_type="image",
-            name=described_image.caption if described_image else params.name,
-            description=described_image.description if described_image else "",
-        )
-        media_item = await MediaItemModel.create(params=create_params)
+
+        # Generate a real UUID for consistent ID between artifact and media_item
+        media_id = uuid4()
 
         # Prepare artifact for UI using typed models
         from neuron_server.tools.artifact_types import (
@@ -412,7 +405,7 @@ class ReplicateImageGenerationTool(BaseTool):
         )
 
         artifact_item = ToolMediaItem(
-            id=str(media_item.id),
+            id=media_id,
             url=url,
             caption=described_image.caption if described_image else params.name,
             description=described_image.description if described_image else "",
@@ -495,11 +488,11 @@ class ReplicateImageGenerationTool(BaseTool):
                     config=config,
                     index=i,
                 )
-                llm_content, artifact_data = await self._save_and_process_image(
+                llm_content, artifact_item = await self._save_and_process_image(
                     result, params
                 )
                 llm_contents.append(llm_content)
-                artifact_items.append(artifact_data)
+                artifact_items.append(artifact_item)
 
             # Create typed artifact with all images
             from neuron_server.tools.artifact_types import ToolMediaArtifact

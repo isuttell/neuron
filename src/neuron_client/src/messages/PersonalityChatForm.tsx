@@ -4,11 +4,15 @@ import MessageForm from "./MessageForm";
 import { cn } from "@/lib/utils";
 import { getConnectionStatus } from "@/slices/socketSlice";
 import { getPersonalityChatLoading } from "@/slices/personalityChatSlice";
+import { PersonalityStatusMessage } from "@/components/PersonalityStatusMessage";
+import { Personality } from "@/types/personality";
 
 /**
  * Props for the PersonalityChatForm component - a business logic wrapper for personality chat messaging
  */
 interface PersonalityChatFormProps {
+  /** The personality being chatted with */
+  personality: Personality;
   /** Callback fired when a message should be sent */
   onSendMessage: (content: string) => void;
   /** Additional CSS classes to apply to the underlying MessageForm */
@@ -17,6 +21,8 @@ interface PersonalityChatFormProps {
   editingMessage?: { id: string; content: string } | null;
   /** Callback fired when editing should be cancelled */
   onCancelEdit?: () => void;
+  /** Whether the user is subscribed to the personality room */
+  isSubscribed?: boolean;
 }
 
 /**
@@ -41,15 +47,18 @@ interface PersonalityChatFormProps {
  * ```
  */
 export default function PersonalityChatForm({
+  personality,
   onSendMessage,
   className,
   editingMessage,
   onCancelEdit,
+  isSubscribed = true,
 }: PersonalityChatFormProps) {
   const isConnected = useAppSelector(getConnectionStatus);
   const isLoading = useAppSelector(getPersonalityChatLoading);
 
   const isEditMode = !!editingMessage;
+  const isPersonalityBusy = personality.status !== "";
 
   /**
    * Handles message submission
@@ -85,7 +94,7 @@ export default function PersonalityChatForm({
     toast("Attachment removed");
   };
 
-  const isDisabled = !isConnected || isLoading;
+  const isDisabled = !isConnected || isLoading || !isSubscribed;
 
   return (
     <div>
@@ -95,6 +104,10 @@ export default function PersonalityChatForm({
           Editing message...
         </div>
       )}
+
+
+
+      {/* Personality status indicator */}
 
       <MessageForm
         className={cn("bg-background rounded-md drop-shadow-md p-2", className)}
@@ -109,7 +122,17 @@ export default function PersonalityChatForm({
         showUpload={false}
         showRecord={false}
         showPrompts={false}
-      />
+      >
+              {/* Subscription status indicator */}
+      {!isSubscribed && (
+        <div className="text-sm pl-2 pt-2 mx-auto max-w-3xl">
+          Joining...
+        </div>
+      )}
+        {isPersonalityBusy && (
+          <PersonalityStatusMessage personality={personality} />
+        )}
+      </MessageForm>
     </div>
   );
 }

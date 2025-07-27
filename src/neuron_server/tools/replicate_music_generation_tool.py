@@ -13,7 +13,6 @@ from langchain_core.runnables import RunnableConfig
 from pydantic import BaseModel, Field
 
 from neuron_server.config import config as neuron_config
-from neuron_server.models.media_item_model import MediaItemModel
 from neuron_server.util.slug import safe_filename
 
 logger = logging.getLogger(__name__)
@@ -177,15 +176,9 @@ class ReplicateMusicGenerationTool(BaseTool):
                     await file.write(chunk)
 
             url = f"{neuron_config.static_content_url}/{filename}"
-            create_params = MediaItemModel.CreateParams(
-                thread_id=config["configurable"].get("thread_id"),
-                user_id=config["configurable"].get("user_id"),
-                url=url,
-                media_type="audio",
-                name=name,
-                description=prompt,
-            )
-            media_item = await MediaItemModel.create(params=create_params)
+            # Generate a real UUID for consistent ID between artifact and media_item
+            media_id = uuid4()
+
             logger.debug(f"Saved generated audio to {file_path} <{url}>")
 
             # Prepare artifact for UI using typed models
@@ -205,7 +198,7 @@ class ReplicateMusicGenerationTool(BaseTool):
             )
 
             artifact_item = ToolMediaItem(
-                id=str(media_item.id),
+                id=media_id,
                 url=url,
                 caption=name,
                 description=prompt,

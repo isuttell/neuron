@@ -1,5 +1,6 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
-import { getSocket } from "../slices/socketSlice";
+import { socketManager } from "../WebSocketManager";
+import { getConnectionStatus } from "../slices/socketSlice";
 import { RootState } from "../store";
 import { WebSocketPayload } from "../types/websocket";
 
@@ -14,14 +15,14 @@ export const joinPersonalityRoom = createAsyncThunk(
     { getState, rejectWithValue }
   ) => {
     const state = getState() as RootState;
-    const socket = getSocket(state);
+    const connected = getConnectionStatus(state);
 
-    if (!socket) {
+    if (!connected) {
       return rejectWithValue("Socket not connected");
     }
 
     try {
-      socket.sendMessage({
+      socketManager.sendMessage({
         type: "JoinPersonalityRoom",
         personality_id: personalityId,
       } as WebSocketPayload);
@@ -47,14 +48,14 @@ export const leavePersonalityRoom = createAsyncThunk(
     { getState, rejectWithValue }
   ) => {
     const state = getState() as RootState;
-    const socket = getSocket(state);
+    const connected = getConnectionStatus(state);
 
-    if (!socket) {
+    if (!connected) {
       return rejectWithValue("Socket not connected");
     }
 
     try {
-      socket.sendMessage({
+      socketManager.sendMessage({
         type: "LeavePersonalityRoom",
         personality_id: personalityId,
       } as WebSocketPayload);

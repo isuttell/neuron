@@ -289,11 +289,34 @@ async def ws() -> None:
         logger.error(e)
     finally:
         # Clean up session and rooms
+        logger.info(
+            f"WebSocket disconnect cleanup starting - session_id: {session_id}, "
+            f"token: {token}"
+        )
         if session_id:
             # Get session before removing it for room cleanup
             session = await session_manager.get_session(session_id)
+            logger.info(f"Retrieved session for cleanup: {session is not None}")
             if session:
+                logger.info(f"Starting room cleanup for user: {session.user_id}")
                 await cleanup_user_personality_rooms(session)
+                logger.info(f"Room cleanup completed for user: {session.user_id}")
+            # Fallback: if session is gone but we have token, cleanup by user_id
+            elif token:
+                logger.warning(
+                    f"Session gone but token available - attempting fallback cleanup "
+                    f"for user: {token.user_id}"
+                )
+                # Create temporary session-like object for cleanup
+                from neuron_server.websocket_session_manager import WebSocketSession
+
+                temp_session = WebSocketSession(
+                    websocket=None,
+                    user_id=token.user_id,
+                    nickname="unknown",
+                    session_id=session_id,
+                )
+                await cleanup_user_personality_rooms(temp_session)
             await session_manager.remove_session(session_id)
         if token:
             logger.info(f"Disconnected ({token.user_id}) - Session: {session_id}")

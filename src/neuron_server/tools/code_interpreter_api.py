@@ -8,7 +8,6 @@ from langchain_core.runnables import RunnableConfig
 
 from neuron_server.config import config as neuron_config
 from neuron_server.logger import logger
-from neuron_server.models.media_item_model import MediaItemModel
 from neuron_server.tools.artifact_types import (
     ToolArtifactMetadata,
     ToolMediaArtifact,
@@ -183,21 +182,16 @@ async def process_artifacts(
             continue
 
         url = f"{neuron_config.static_content_url}/artifacts/{folder_name}/{file}"
-        create_params = MediaItemModel.CreateParams(
-            url=url,
-            media_type=media_type,
-            user_id=config["configurable"].get("user_id"),
-            thread_id=config["configurable"].get("thread_id"),
-            name=file,
-        )
-        media_item = await MediaItemModel.create(create_params)
+
+        # Generate a real UUID for consistent ID between artifact and media_item
+        media_id = uuid4()
 
         if media_type == "image":
             create_thumbnails(os.path.join(artifacts_folder, file))
 
         # Create structured media item
         artifact_item = ToolMediaItem(
-            id=str(media_item.id),
+            id=media_id,
             url=url,
             caption=file,
             description="",  # Code interpreter doesn't provide descriptions
