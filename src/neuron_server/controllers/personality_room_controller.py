@@ -97,26 +97,35 @@ async def get_personality_rooms(personality_id: UUID) -> dict[str, list[dict]]:
     # Get user details
     users = await UserModel.get_by_ids(user_ids) if user_ids else []
 
-    # Build response with room details and associated users
-    rooms_data = []
+    # Build normalized response with separate arrays
+    personality_room_users = []
+
+    # Add all room users
+    for ru in all_room_users:
+        personality_room_users.append({
+            "user_id": ru.user_id,
+            "personality_room_id": str(ru.personality_room_id),
+            "role": ru.role,
+        })
+
+    # Add creators as admins if not already in room users
     for room in rooms:
-        room_data = room.model_dump()
-
-        # Get users for this room
-        room_user_ids = [
-            ru.user_id for ru in all_room_users if ru.personality_room_id == room.id
-        ]
-        # Add creator if not already in list
-        if room.created_by and room.created_by not in room_user_ids:
-            room_user_ids.append(room.created_by)
-
-        # Add user count
-        room_data["user_count"] = len(room_user_ids)
-
-        rooms_data.append(room_data)
+        if room.created_by:
+            # Check if creator is already in room users
+            creator_exists = any(
+                ru.personality_room_id == room.id and ru.user_id == room.created_by
+                for ru in all_room_users
+            )
+            if not creator_exists:
+                personality_room_users.append({
+                    "user_id": room.created_by,
+                    "personality_room_id": str(room.id),
+                    "role": "admin",
+                })
 
     return {
-        "personality_rooms": rooms_data,
+        "personality_rooms": [room.model_dump() for room in rooms],
+        "personality_room_users": personality_room_users,
         "users": [user.model_dump() for user in users],
     }
 
@@ -221,23 +230,31 @@ async def get_personality_room(
     # Get user details
     users = await UserModel.get_by_ids(user_ids) if user_ids else []
 
-    # Add roles to users
-    users_data = []
-    for user in users:
-        user_data = user.model_dump()
-        # Find role from room_users or check if creator
-        if user.id == room.created_by:
-            user_data["role"] = "admin"
-        else:
-            for ru in room_users:
-                if ru.user_id == user.id:
-                    user_data["role"] = ru.role
-                    break
-        users_data.append(user_data)
+    # Build normalized response
+    personality_room_users = []
+
+    # Add all room users
+    for ru in room_users:
+        personality_room_users.append({
+            "user_id": ru.user_id,
+            "personality_room_id": str(ru.personality_room_id),
+            "role": ru.role,
+        })
+
+    # Add creator as admin if not already in room users
+    if room.created_by:
+        creator_exists = any(ru.user_id == room.created_by for ru in room_users)
+        if not creator_exists:
+            personality_room_users.append({
+                "user_id": room.created_by,
+                "personality_room_id": str(room.id),
+                "role": "admin",
+            })
 
     return {
         "personality_room": room.model_dump(),
-        "users": users_data,
+        "personality_room_users": personality_room_users,
+        "users": [user.model_dump() for user in users],
     }
 
 
@@ -380,22 +397,31 @@ async def get_room_users(personality_id: UUID, room_id: UUID) -> dict[str, list[
     # Get user details
     users = await UserModel.get_by_ids(user_ids) if user_ids else []
 
-    # Build response with roles
-    result = []
-    for user in users:
-        user_data = user.model_dump()
-        # Check if user is creator
-        if user.id == room.created_by:
-            user_data["role"] = "admin"
-        else:
-            # Find role from room_users
-            for ru in room_users:
-                if ru.user_id == user.id:
-                    user_data["role"] = ru.role
-                    break
-        result.append(user_data)
+    # Build normalized response
+    personality_room_users = []
 
-    return {"users": result}
+    # Add all room users
+    for ru in room_users:
+        personality_room_users.append({
+            "user_id": ru.user_id,
+            "personality_room_id": str(ru.personality_room_id),
+            "role": ru.role,
+        })
+
+    # Add creator as admin if not already in room users
+    if room.created_by:
+        creator_exists = any(ru.user_id == room.created_by for ru in room_users)
+        if not creator_exists:
+            personality_room_users.append({
+                "user_id": room.created_by,
+                "personality_room_id": str(room_id),
+                "role": "admin",
+            })
+
+    return {
+        "users": [user.model_dump() for user in users],
+        "personality_room_users": personality_room_users,
+    }
 
 
 @blueprint.post("/<uuid:personality_id>/rooms/<uuid:room_id>/users")
@@ -462,11 +488,15 @@ async def add_room_user(personality_id: UUID, room_id: UUID) -> dict[str, dict]:
     )
     await secure_pubsub.publish_personality_room_message(personality_id, join_event)
 
-    # Return user details with role
-    user_data = target_user.model_dump()
-    user_data["role"] = room_user.role
-
-    return {"user": user_data}
+    # Return normalized response
+    return {
+        "user": target_user.model_dump(),
+        "personality_room_user": {
+            "user_id": room_user.user_id,
+            "personality_room_id": str(room_user.personality_room_id),
+            "role": room_user.role,
+        },
+    }
 
 
 @blueprint.delete("/<uuid:personality_id>/rooms/<uuid:room_id>/users/<user_id>")

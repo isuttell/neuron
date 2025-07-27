@@ -5,6 +5,8 @@ export interface PersonalityMessage {
   id: string;
   personality_id: string;
   user_id: string | null; // null when personality is responding
+  room_id: string;
+  thread_id: string | null;
   content: string;
   created_at: string;
   updated_at: string;
@@ -52,6 +54,7 @@ type JsonValue =
 
 export interface CreatePersonalityMessageRequest extends Record<string, JsonValue> {
   content: string;
+  room_id: string;
 }
 
 export interface UpdatePersonalityMessageRequest extends Record<string, JsonValue> {
