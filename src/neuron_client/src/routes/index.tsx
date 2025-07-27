@@ -19,7 +19,7 @@ import { Label } from "@/components/ui/label";
 import { createPersonalityRoom } from "../actions/personalityRoomActions";
 import { sendPersonalityMessage } from "../actions/personalityChatActions";
 import { getCurrentUser } from "../slices/appSlice";
-
+import PersonalitySelector from "../components/PersonalitySelector";
 
 export default function Index() {
   const dispatch = useAppDispatch();
@@ -144,19 +144,22 @@ export default function Index() {
                 : "Select a personality first"
             }
           >
-            <div className="flex items-center gap-2">
-              <Label htmlFor="mode-switch" className="text-sm text-muted-foreground">
-                Chat
-              </Label>
-              <Switch
-                id="mode-switch"
-                checked={!isChatMode}
-                onCheckedChange={(checked) => setIsChatMode(!checked)}
-                disabled={!activePersonalityId || !isConnected}
-              />
-              <Label htmlFor="mode-switch" className="text-sm text-muted-foreground">
-                Agent
-              </Label>
+            <div className="flex items-center gap-4">
+              <PersonalitySelector />
+              <div className="flex items-center gap-2">
+                <Label htmlFor="mode-switch" className="text-sm text-muted-foreground">
+                  Chat
+                </Label>
+                <Switch
+                  id="mode-switch"
+                  checked={!isChatMode}
+                  onCheckedChange={(checked) => setIsChatMode(!checked)}
+                  disabled={!activePersonalityId || !isConnected}
+                />
+                <Label htmlFor="mode-switch" className="text-sm text-muted-foreground">
+                  Agent
+                </Label>
+              </div>
             </div>
           </MessageForm>
         </div>
