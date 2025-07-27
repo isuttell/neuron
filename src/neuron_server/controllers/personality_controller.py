@@ -177,7 +177,20 @@ async def get_personality(personality_id: UUID) -> dict[str, dict]:
             f"Personality with id {personality_id} not found or you don't have access"
         )
 
-    return {"personality": personality.model_dump()}
+    # Get personality users for this personality
+    personality_users = await PersonalityUserModel.get_personality_users(
+        personality_id=personality_id
+    )
+
+    # Get all users with access to this personality
+    user_ids = [pu.user_id for pu in personality_users]
+    users = await UserModel.get_by_ids(user_ids=user_ids) if user_ids else []
+
+    return {
+        "personality": personality.model_dump(),
+        "users": [user.model_dump() for user in users],
+        "personality_users": [pu.model_dump() for pu in personality_users],
+    }
 
 
 @blueprint.get("/<uuid:personality_id>/embeddings")
@@ -274,8 +287,27 @@ async def get_personalities() -> dict[str, list[dict]]:
     # Get personalities the user has access to
     personalities = await PersonalityModel.list_for_user(user_id=user_id)
 
+    # Get all personality users for the personalities user has access to
+    personality_ids = [p.id for p in personalities]
+    all_personality_users = []
+    all_user_ids = set()
+
+    for personality_id in personality_ids:
+        personality_users = await PersonalityUserModel.get_personality_users(
+            personality_id=personality_id
+        )
+        all_personality_users.extend(personality_users)
+        all_user_ids.update(pu.user_id for pu in personality_users)
+
+    # Get all unique users
+    users = (
+        await UserModel.get_by_ids(user_ids=list(all_user_ids)) if all_user_ids else []
+    )
+
     return {
-        "personalities": [personality.model_dump() for personality in personalities]
+        "personalities": [personality.model_dump() for personality in personalities],
+        "users": [user.model_dump() for user in users],
+        "personality_users": [pu.model_dump() for pu in all_personality_users],
     }
 
 

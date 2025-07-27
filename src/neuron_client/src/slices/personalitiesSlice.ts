@@ -10,6 +10,7 @@ import type {
   IncomingPersonalityEvent,
   IncomingPersonalitiesEvent,
   PersonalityState,
+  UserWithRole,
 } from "./personalitiesSlice.d";
 import type { PersonalityUser } from "../types/personality";
 
@@ -37,6 +38,25 @@ function upsert(state: PersonalityState, personality: Personality) {
   } else {
     state.personalities.push(personality);
   }
+}
+
+function groupPersonalityUsersByPersonalityId(personalityUsers: PersonalityUser[]): Record<string, PersonalityUser[]> {
+  const grouped: Record<string, PersonalityUser[]> = {};
+  for (const pu of personalityUsers) {
+    if (!grouped[pu.personality_id]) {
+      grouped[pu.personality_id] = [];
+    }
+    grouped[pu.personality_id].push(pu);
+  }
+  return grouped;
+}
+
+function convertUserWithRoleToPersonalityUser(userWithRole: UserWithRole, personalityId: string): PersonalityUser {
+  return {
+    user_id: userWithRole.id,
+    personality_id: personalityId,
+    role: userWithRole.role
+  };
 }
 
 export const personalitiesSlice = createSlice({
@@ -95,6 +115,12 @@ export const personalitiesSlice = createSlice({
         (state, action: PayloadAction<IncomingPersonalityEvent>) => {
           state.loading = false;
           upsert(state, action.payload.personality);
+
+          // Store personality users if provided
+          if (action.payload.personality_users) {
+            const grouped = groupPersonalityUsersByPersonalityId(action.payload.personality_users);
+            Object.assign(state.personalityUsers, grouped);
+          }
         }
       )
       .addCase(actions.fetchPersonality.rejected, (state, action) => {
@@ -112,6 +138,12 @@ export const personalitiesSlice = createSlice({
           state.loading = false;
           state.personalities = action.payload.personalities;
           state.hasInitiallyFetched = true;
+
+          // Store personality users if provided
+          if (action.payload.personality_users) {
+            const grouped = groupPersonalityUsersByPersonalityId(action.payload.personality_users);
+            state.personalityUsers = grouped;
+          }
 
           // Validate activePersonalityId after fetching personalities
           if (state.activePersonalityId) {
@@ -222,19 +254,31 @@ export const personalitiesSlice = createSlice({
       })
       // Fetch personality users
       .addCase(actions.fetchPersonalityUsers.fulfilled, (state, action) => {
-        state.personalityUsers[action.payload.personalityId] = action.payload.users;
+        const convertedUsers = action.payload.users.map(user =>
+          convertUserWithRoleToPersonalityUser(user, action.payload.personalityId)
+        );
+        state.personalityUsers[action.payload.personalityId] = convertedUsers;
       })
       // Add personality user
       .addCase(actions.addPersonalityUser.fulfilled, (state, action) => {
-        state.personalityUsers[action.payload.personalityId] = action.payload.users;
+        const convertedUsers = action.payload.users.map(user =>
+          convertUserWithRoleToPersonalityUser(user, action.payload.personalityId)
+        );
+        state.personalityUsers[action.payload.personalityId] = convertedUsers;
       })
       // Update personality user role
       .addCase(actions.updatePersonalityUserRole.fulfilled, (state, action) => {
-        state.personalityUsers[action.payload.personalityId] = action.payload.users;
+        const convertedUsers = action.payload.users.map(user =>
+          convertUserWithRoleToPersonalityUser(user, action.payload.personalityId)
+        );
+        state.personalityUsers[action.payload.personalityId] = convertedUsers;
       })
       // Remove personality user
       .addCase(actions.removePersonalityUser.fulfilled, (state, action) => {
-        state.personalityUsers[action.payload.personalityId] = action.payload.users;
+        const convertedUsers = action.payload.users.map(user =>
+          convertUserWithRoleToPersonalityUser(user, action.payload.personalityId)
+        );
+        state.personalityUsers[action.payload.personalityId] = convertedUsers;
       })
   },
 });

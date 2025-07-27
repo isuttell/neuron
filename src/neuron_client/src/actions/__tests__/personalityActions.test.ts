@@ -1,6 +1,7 @@
 import { vi } from 'vitest';
 import { configureStore } from "@reduxjs/toolkit";
 import personalitiesReducer from "@/slices/personalitiesSlice";
+import usersReducer from "@/slices/usersSlice";
 import { api } from "@/lib/api";
 import {
   fetchPersonalities,
@@ -24,7 +25,7 @@ vi.mock("@/lib/api", () => ({
 }));
 
 describe("personalityActions", () => {
-  let store: ReturnType<typeof configureStore<{ personalities: PersonalityState }>>;
+  let store: ReturnType<typeof configureStore>;
 
   const mockPersonality: Personality = {
     id: "123e4567-e89b-12d3-a456-426614174000",
@@ -34,6 +35,7 @@ describe("personalityActions", () => {
     memory: "Test memory",
     logo: "test-logo.png",
     tool_set: "default",
+    status: "",
     created_at: "2024-01-01T00:00:00Z",
     updated_at: "2024-01-01T00:00:00Z",
   };
@@ -43,13 +45,22 @@ describe("personalityActions", () => {
     store = configureStore({
       reducer: {
         personalities: personalitiesReducer,
+        users: usersReducer,
       },
     });
   });
 
   describe("fetchPersonalities", () => {
     it("should handle successful fetch with correct response structure", async () => {
-      const mockResponse = { personalities: [mockPersonality] };
+      const mockResponse = {
+        personalities: [mockPersonality],
+        users: [
+          { id: "user1", email: "user1@example.com", nickname: "User 1", picture: "", created_at: "2024-01-01T00:00:00Z", updated_at: "2024-01-01T00:00:00Z" }
+        ],
+        personality_users: [
+          { user_id: "user1", personality_id: mockPersonality.id, role: "admin" }
+        ]
+      };
       (api.get as vi.Mock).mockResolvedValueOnce(mockResponse);
 
       await store.dispatch(fetchPersonalities());
@@ -59,12 +70,18 @@ describe("personalityActions", () => {
       const state = store.getState();
       expect(state.personalities.personalities).toHaveLength(1);
       expect(state.personalities.personalities[0]).toEqual(mockPersonality);
+      expect(state.personalities.personalityUsers[mockPersonality.id]).toHaveLength(1);
+      expect(state.personalities.personalityUsers[mockPersonality.id][0]).toEqual({
+        user_id: "user1",
+        personality_id: mockPersonality.id,
+        role: "admin"
+      });
       expect(state.personalities.loading).toBe(false);
       expect(state.personalities.error).toBeNull();
     });
 
     it("should handle empty personalities array", async () => {
-      const mockResponse = { personalities: [] };
+      const mockResponse = { personalities: [], users: [], personality_users: [] };
       (api.get as vi.Mock).mockResolvedValueOnce(mockResponse);
 
       await store.dispatch(fetchPersonalities());
@@ -88,7 +105,16 @@ describe("personalityActions", () => {
 
   describe("fetchPersonality", () => {
     it("should handle successful fetch of single personality", async () => {
-      (api.get as vi.Mock).mockResolvedValueOnce({ personality: mockPersonality });
+      const mockResponse = {
+        personality: mockPersonality,
+        users: [
+          { id: "user1", email: "user1@example.com", nickname: "User 1", picture: "", created_at: "2024-01-01T00:00:00Z", updated_at: "2024-01-01T00:00:00Z" }
+        ],
+        personality_users: [
+          { user_id: "user1", personality_id: mockPersonality.id, role: "admin" }
+        ]
+      };
+      (api.get as vi.Mock).mockResolvedValueOnce(mockResponse);
 
       await store.dispatch(fetchPersonality(mockPersonality.id));
 
@@ -97,6 +123,12 @@ describe("personalityActions", () => {
       const state = store.getState();
       expect(state.personalities.personalities).toHaveLength(1);
       expect(state.personalities.personalities[0]).toEqual(mockPersonality);
+      expect(state.personalities.personalityUsers[mockPersonality.id]).toHaveLength(1);
+      expect(state.personalities.personalityUsers[mockPersonality.id][0]).toEqual({
+        user_id: "user1",
+        personality_id: mockPersonality.id,
+        role: "admin"
+      });
     });
   });
 

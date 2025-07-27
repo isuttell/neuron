@@ -27,17 +27,10 @@ export function usePersonalityPermissions(personalityId: string | undefined) {
   );
 
   return useMemo(() => {
-    // Convert UserWithRole[] from Redux to PersonalityUser[] format
-    const convertedPersonalityUsers = personalityUsers.map(userWithRole => ({
-      user_id: userWithRole.id,
-      personality_id: personalityId || '',
-      role: userWithRole.role
-    }));
-
-    // Merge personality_users from Redux store into personality object
+    // personalityUsers now contains PersonalityUser[] directly, no conversion needed
     const personalityWithUsers: Personality | undefined = personality ? {
       ...personality,
-      personality_users: convertedPersonalityUsers
+      personality_users: personalityUsers
     } : undefined;
 
     const userRole = getPersonalityUserRole(user, personalityWithUsers);
@@ -70,5 +63,5 @@ export function usePersonalityPermissions(personalityId: string | undefined) {
       // Component visibility
       shouldShowComponent: hasAnyActions,
     };
-  }, [user, personality, personalityUsers, personalityId]);
+  }, [user, personality, personalityUsers]);
 }

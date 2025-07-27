@@ -204,6 +204,7 @@ class RateLimiter:
             # Import and verify cookie using the same logic as @requires_cookie
             try:
                 from neuron_server.controllers.csrf import verify_cookie_data
+
                 cookie_data = verify_cookie_data(cookie)
                 return bool(cookie_data)  # Valid cookie = authenticated
             except Exception:

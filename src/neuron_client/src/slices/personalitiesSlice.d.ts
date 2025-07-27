@@ -1,4 +1,5 @@
 import type { User } from "../types/user";
+import type { PersonalityUser } from "../types/personality";
 
 // User with role for personality users
 export interface UserWithRole extends User {
@@ -21,17 +22,21 @@ export interface Personality {
 
 export interface IncomingPersonalityEvent {
   personality: Personality;
+  users?: User[];
+  personality_users?: PersonalityUser[];
 }
 
 export interface IncomingPersonalitiesEvent {
   personalities: Personality[];
+  users?: User[];
+  personality_users?: PersonalityUser[];
 }
 
 // Define a type for the slice state
 export interface PersonalityState {
   activePersonalityId?: string;
   personalities: Personality[];
-  personalityUsers: Record<string, UserWithRole[]>; // personalityId -> users with role
+  personalityUsers: Record<string, PersonalityUser[]>; // personalityId -> personality user relationships
   loading: boolean;
   error: string | null;
   hasInitiallyFetched: boolean;

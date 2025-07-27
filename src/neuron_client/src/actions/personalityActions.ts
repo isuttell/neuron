@@ -1,6 +1,7 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import { Embedding } from "@/slices/embeddingsSlice";
 import type { Personality, UserWithRole } from "../slices/personalitiesSlice.d";
+import type { PersonalityUser } from "../types/personality";
 import { api } from "@/lib/api";
 import { User } from "@/types/user";
 
@@ -8,7 +9,7 @@ export const fetchPersonality = createAsyncThunk(
   "personalities/fetchPersonality",
   async (personalityId: string, thunkAPI) => {
     try {
-      const response = await api.get<{personality: Personality}>(`/personalities/${personalityId}`);
+      const response = await api.get<{personality: Personality; users?: User[]; personality_users?: PersonalityUser[]}>(`/personalities/${personalityId}`);
       return response;
     } catch (error) {
       if (error instanceof Error) {
@@ -23,7 +24,7 @@ export const fetchPersonalities = createAsyncThunk(
   "personalities/fetchPersonalities",
   async (_, thunkAPI) => {
     try {
-      const response = await api.get<{ personalities: Personality[] }>(`/personalities/`);
+      const response = await api.get<{ personalities: Personality[]; users?: User[]; personality_users?: PersonalityUser[] }>(`/personalities/`);
       return response;
     } catch (error) {
       if (error instanceof Error) {
