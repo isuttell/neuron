@@ -30,7 +30,6 @@ import {
 } from "lucide-react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 
-import { ThreadsUpdating } from "@/components/ThreadsUpdating";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { useAppSelector } from "@/hooks";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -95,8 +94,6 @@ export function MainSidebar() {
           >
             <img src={logo} alt="Neuron" className="size-6 -ml-1" />
             <span>Neuron</span>
-            <div className="flex-1" />
-            <ThreadsUpdating />
           </Link>
         </div>
         <SidebarMenu>
