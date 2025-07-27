@@ -4,6 +4,7 @@ import { fetchMessagesByThread } from "../actions/messageActions";
 import { addUserByEmail } from "../actions/threadActions";
 import { fetchPersonalityMessages, loadMorePersonalityMessages } from "../actions/personalityChatActions";
 import { fetchPersonality, fetchPersonalities, fetchPersonalityUsers, addPersonalityUser, updatePersonalityUserRole, removePersonalityUser } from "../actions/personalityActions";
+import * as personalityRoomActions from "../actions/personalityRoomActions";
 import type { RootState } from "../store";
 import { MessageResponse } from "../types/message";
 import { User } from "../types/user";
@@ -137,6 +138,34 @@ export const usersSlice = createSlice({
             for (const user of action.payload.users) {
               upsertUser(state, user);
             }
+          }
+        }
+      )
+      .addCase(
+        personalityRoomActions.fetchPersonalityRooms.fulfilled,
+        (state, action) => {
+          if (action.payload.users) {
+            for (const user of action.payload.users) {
+              upsertUser(state, user);
+            }
+          }
+        }
+      )
+      .addCase(
+        personalityRoomActions.getPersonalityRoom.fulfilled,
+        (state, action) => {
+          if (action.payload.users) {
+            for (const user of action.payload.users) {
+              upsertUser(state, user);
+            }
+          }
+        }
+      )
+      .addCase(
+        personalityRoomActions.addPersonalityRoomUser.fulfilled,
+        (state, action) => {
+          if (action.payload.user) {
+            upsertUser(state, action.payload.user);
           }
         }
       );

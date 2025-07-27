@@ -45,7 +45,9 @@ chat_orchestrator = PersonalityChatOrchestrator()
 
 class CreatePersonalityMessage(BaseModel):
     content: str = Field(description="The message content")
-    room_id: UUID = Field(description="The ID of the room to create the message in")
+    personality_room_id: UUID = Field(
+        description="The ID of the room to create the message in"
+    )
 
 
 class UpdatePersonalityMessage(BaseModel):
@@ -158,29 +160,33 @@ async def create_personality_message(personality_id: UUID) -> dict[str, dict]:
 
     # Verify user has access to the room
     room = await PersonalityRoomModel.get_for_user(
-        payload.room_id, user_id, personality_id
+        payload.personality_room_id, user_id, personality_id
     )
     if not room:
         raise NotFound(
-            f"Room with id {payload.room_id} not found or you don't have access"
+            f"Room with id {payload.personality_room_id} not found "
+            f"or you don't have access"
         )
 
     # Create the message
     create_params = PersonalityMessageModel.CreateParams(
         personality_id=personality_id,
-        personality_room_id=payload.room_id,
+        personality_room_id=payload.personality_room_id,
         content=payload.content,
         user_id=user_id,  # Message is from the user
     )
     message = await PersonalityMessageModel.create(params=create_params)
 
     # Update room message count
-    await PersonalityRoomModel.update_message_count(payload.room_id, increment=1)
+    await PersonalityRoomModel.update_message_count(
+        payload.personality_room_id, increment=1
+    )
 
     # Broadcast the new message to users in the personality chat room
     message_event = PersonalityMessageEvent(
         personality_id=personality_id,
         message_id=message.id,
+        room_id=message.personality_room_id,
         content=message.content,
         user_id=message.user_id,
         created_at=message.created_at.isoformat(),
@@ -257,6 +263,7 @@ async def update_personality_message(
     message_event = PersonalityMessageEvent(
         personality_id=personality_id,
         message_id=updated_message.id,
+        room_id=updated_message.personality_room_id,
         content=updated_message.content,
         user_id=updated_message.user_id,
         created_at=updated_message.created_at.isoformat(),

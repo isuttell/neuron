@@ -6,6 +6,7 @@ import { getConnectionStatus } from "@/slices/socketSlice";
 import { getPersonalityChatLoading } from "@/slices/personalityChatSlice";
 import { PersonalityStatusMessage } from "@/components/PersonalityStatusMessage";
 import { Personality } from "@/types/personality";
+import { PersonalityRoom } from "@/types/personalityRoom";
 
 /**
  * Props for the PersonalityChatForm component - a business logic wrapper for personality chat messaging
@@ -13,6 +14,8 @@ import { Personality } from "@/types/personality";
 interface PersonalityChatFormProps {
   /** The personality being chatted with */
   personality: Personality;
+  /** The room being chatted in (optional, for room-specific status) */
+  room?: PersonalityRoom;
   /** Callback fired when a message should be sent */
   onSendMessage: (content: string) => void;
   /** Additional CSS classes to apply to the underlying MessageForm */
@@ -48,6 +51,7 @@ interface PersonalityChatFormProps {
  */
 export default function PersonalityChatForm({
   personality,
+  room,
   onSendMessage,
   className,
   editingMessage,
@@ -58,7 +62,8 @@ export default function PersonalityChatForm({
   const isLoading = useAppSelector(getPersonalityChatLoading);
 
   const isEditMode = !!editingMessage;
-  const isPersonalityBusy = personality.status !== "";
+  // Check room status if available, otherwise fall back to personality status
+  const isPersonalityBusy = room ? (room.status ?? "") !== "" : personality.status !== "";
 
   /**
    * Handles message submission
@@ -130,7 +135,7 @@ export default function PersonalityChatForm({
         </div>
       )}
         {isPersonalityBusy && (
-          <PersonalityStatusMessage personality={personality} />
+          <PersonalityStatusMessage personality={personality} room={room} />
         )}
       </MessageForm>
     </div>

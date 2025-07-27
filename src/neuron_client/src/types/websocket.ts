@@ -56,6 +56,13 @@ export interface PersonalityStatusUpdateEvent extends WebSocketMessage {
   status: string;
 }
 
+export interface PersonalityRoomStatusUpdateEvent extends WebSocketMessage {
+  type: "personality_room_status_update";
+  personality_id: string;
+  room_id: string;
+  status: string;
+}
+
 export interface ImageEvent extends WebSocketMessage {
   type: "image";
   image: MediaItem;
@@ -99,10 +106,12 @@ export interface PersonalityMessageEvent extends WebSocketMessage {
   type: "personality_message";
   personality_id: string;
   message_id: string;
+  room_id?: string;
   content: string;
   user_id: string | null;
   created_at: string;
   updated_at: string;
+  media_items?: MediaItem[];
 }
 
 export interface PersonalityMessageDeletedEvent extends WebSocketMessage {
@@ -190,6 +199,7 @@ export type WebSocketEvent =
   | PromptEvent
   | PersonalityEvent
   | PersonalityStatusUpdateEvent
+  | PersonalityRoomStatusUpdateEvent
   | ImageEvent
   | ErrorEvent
   | PingEvent

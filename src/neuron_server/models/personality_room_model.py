@@ -16,6 +16,7 @@ class PersonalityRoomModel(BaseModel):
     name: str = Field(description="The name of the room")
     type: str = Field(description="Room type: private or shared", default="private")
     message_count: int = Field(description="Number of messages in the room", default=0)
+    status: str | None = Field(description="Room-specific status", default=None)
     created_by: str | None = Field(
         description="User ID of the room creator", default=None
     )
@@ -190,6 +191,30 @@ class PersonalityRoomModel(BaseModel):
             if params.type is not None:
                 room.type = params.type
 
+            room.updated_at = datetime.now(UTC).astimezone()
+            await session.commit()
+            return cls(**room.__dict__)
+
+    @classmethod
+    async def update_status(cls, room_id: UUID, status: str) -> Self | None:
+        """Update the status of a personality room.
+
+        Args:
+            room_id: The ID of the room to update
+            status: The new status (empty string for idle)
+
+        Returns:
+            The updated PersonalityRoomModel instance or None if not found
+        """
+        async with get_session() as session:
+            stmt = select(PersonalityRoom).where(PersonalityRoom.id == room_id)
+            result = await session.execute(stmt)
+            room = result.scalars().first()
+
+            if not room:
+                return None
+
+            room.status = status if status else None
             room.updated_at = datetime.now(UTC).astimezone()
             await session.commit()
             return cls(**room.__dict__)

@@ -11,47 +11,57 @@ import {
   updatePersonalityMessage,
   fetchPersonalityMessages,
 } from "../actions/personalityChatActions";
+import * as personalityRoomActions from "../actions/personalityRoomActions";
 import { useAppDispatch, useAppSelector } from "../hooks";
 import { usePersonalityRoom } from "../hooks/usePersonalityRoom";
 import PersonalityChatForm from "../messages/PersonalityChatForm";
 import PersonalityChatItem from "../messages/PersonalityChatItem";
 import {
   getPersonalityChatLoading,
-  getPersonalityChatMessages,
+  getPersonalityChatMessagesByRoom,
 } from "../slices/personalityChatSlice";
 import { getPersonality } from "../slices/personalitiesSlice";
+import { getPersonalityRoom } from "../slices/personalityRoomSlice";
 import { getCurrentUser } from "../slices/appSlice";
 
-export default function PersonalityChat() {
+export default function PersonalityChatRoom() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const currentUser = useAppSelector(getCurrentUser);
   const lastMessageRef = useRef<HTMLDivElement | null>(null);
-  const { personalityId } = useParams();
+  const { personalityId, roomId } = useParams();
 
-  // Use the specialized personality room hook
-  const { isSubscribed } = usePersonalityRoom(personalityId);
+  // Use the specialized personality room hook with roomId
+  const { isSubscribed } = usePersonalityRoom(personalityId, roomId);
 
   const personality = useAppSelector(
     (state) => personalityId ? getPersonality(state, personalityId) : undefined,
     shallowEqual
   );
 
+  const room = useAppSelector(
+    (state) => roomId ? getPersonalityRoom(state, roomId) : undefined,
+    shallowEqual
+  );
+
   const loading = useAppSelector(getPersonalityChatLoading);
   const messages = useAppSelector(
-    (state) => getPersonalityChatMessages(state, personalityId),
+    (state) => getPersonalityChatMessagesByRoom(state, personalityId, roomId),
     shallowEqual
   );
 
   // Edit state management
   const [editingMessage, setEditingMessage] = useState<{ id: string; content: string } | null>(null);
 
-  // Fetch messages when personality ID is available
+  // Fetch room details and messages when IDs are available
   useEffect(() => {
-    if (personalityId) {
-      dispatch(fetchPersonalityMessages({ personalityId }));
+    if (personalityId && roomId) {
+      // Fetch room details
+      dispatch(personalityRoomActions.getPersonalityRoom({ personalityId, roomId }));
+      // Fetch messages for the room
+      dispatch(fetchPersonalityMessages({ personalityId, roomId }));
     }
-  }, [dispatch, personalityId]);
+  }, [dispatch, personalityId, roomId]);
 
   // Auto-scroll to latest message
   useEffect(() => {
@@ -65,12 +75,12 @@ export default function PersonalityChat() {
     }, 100);
   }, [messages.length]);
 
-  if (!personality || (loading && messages.length === 0)) {
+  if (!personality || !room || (loading && messages.length === 0)) {
     return <Loading />;
   }
 
   const handleSendMessage = debounce<[string], void>((content) => {
-    if (!personalityId || !currentUser?.sub) return;
+    if (!personalityId || !roomId || !currentUser?.sub) return;
 
     if (editingMessage) {
       // Update existing message
@@ -87,6 +97,7 @@ export default function PersonalityChat() {
       dispatch(
         sendPersonalityMessage({
           personalityId,
+          roomId,
           content,
           userId: currentUser.sub,
         })
@@ -107,7 +118,7 @@ export default function PersonalityChat() {
       <div className="flex items-center justify-between mb-2 border-b pb-2 mobile-safe-top">
         <SidebarTrigger className="size-10 mr-2" />
         <h1 className="text-lg lg:text-2xl font-bold">
-          {personality.name} Chat
+          {room.name}
         </h1>
         <div className="flex-1" />
         <PersonalityChatHeaderActions
@@ -152,6 +163,7 @@ export default function PersonalityChat() {
         <div className="bottom-0">
           <PersonalityChatForm
             personality={personality}
+            room={room}
             onSendMessage={handleSendMessage}
             editingMessage={editingMessage}
             onCancelEdit={handleCancelEdit}

@@ -83,18 +83,21 @@ export const personalityChatSlice = createSlice({
         tempId: string;
         content: string;
         personalityId: string;
+        roomId: string;
         userId: string;
       }>
     ) => {
-      const { tempId, content, personalityId, userId } = action.payload;
+      const { tempId, content, personalityId, roomId, userId } = action.payload;
       const optimisticMessage: OptimisticPersonalityMessage = {
         id: tempId,
         tempId,
         personality_id: personalityId,
+        personality_room_id: roomId,
         user_id: userId,
         content,
         created_at: Date.now(),
         updated_at: Date.now(),
+        thread_id: null,
         isOptimistic: true,
         media_items: [],
       };
@@ -413,5 +416,23 @@ export const getActivePersonalityMessages = createSelector(
       ? messages.filter((message) => message.personality_id === activePersonalityId)
       : []
 );
+
+// Selector for messages by personality and room
+export const getPersonalityChatMessagesByRoom = createSelector(
+  [getAllPersonalityChatMessages, (_, personalityId?: string, roomId?: string) => ({ personalityId, roomId })],
+  (messages, { personalityId, roomId }) =>
+    messages
+      .filter((message) => {
+        const matchesPersonality = personalityId ? message.personality_id === personalityId : true;
+        const matchesRoom = roomId ? message.personality_room_id === roomId : true;
+        return matchesPersonality && matchesRoom;
+      })
+      .sort((a, b) => {
+        const aTime = typeof a.created_at === 'number' ? a.created_at : new Date(a.created_at).getTime();
+        const bTime = typeof b.created_at === 'number' ? b.created_at : new Date(b.created_at).getTime();
+        return aTime - bTime;
+      })
+);
+
 
 export default personalityChatSlice.reducer;

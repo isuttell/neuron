@@ -38,3 +38,10 @@ class PersonalityStatusUpdateEvent(OutgoingEvent):
     type: Literal["personality_status_update"] = "personality_status_update"
     personality_id: UUID
     status: str
+
+
+class PersonalityRoomStatusUpdateEvent(OutgoingEvent):
+    type: Literal["personality_room_status_update"] = "personality_room_status_update"
+    personality_id: UUID
+    room_id: UUID
+    status: str

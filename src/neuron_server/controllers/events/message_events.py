@@ -54,6 +54,7 @@ class PersonalityMessageEvent(OutgoingEvent):
     type: Literal["personality_message"] = "personality_message"
     personality_id: UUID
     message_id: UUID
+    room_id: UUID
     content: str
     user_id: str | None
     created_at: str

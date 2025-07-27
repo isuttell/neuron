@@ -27,7 +27,7 @@ router = EventRouter()
 
 
 class CreatePersonalityRoom(BaseModel):
-    name: str = Field(description="The name of the room")
+    name: str | None = Field(description="The name of the room", default=None)
     type: str = Field(description="Room type: private or shared", default="private")
 
 
@@ -159,6 +159,12 @@ async def create_personality_room(personality_id: UUID) -> dict[str, dict]:
     # Validate room type
     if payload.type not in ["private", "shared"]:
         raise BadRequest("Room type must be 'private' or 'shared'")
+
+    # Generate default name if not provided
+    if payload.name is None:
+        from datetime import datetime
+        timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M")
+        payload.name = f"Room {timestamp}"
 
     # Create the room
     create_params = PersonalityRoomModel.CreateParams(

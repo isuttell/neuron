@@ -382,6 +382,7 @@ class PersonalityRoom(Base):
     name = Column(Text, nullable=False)
     type = Column(String, nullable=False, default="private")  # 'private' or 'shared'
     message_count = Column(Integer, nullable=False, default=0)
+    status = Column(String, nullable=True)  # Room-specific status
     created_by = Column(
         String,
         ForeignKey("users.id", ondelete="SET NULL"),

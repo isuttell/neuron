@@ -5,7 +5,7 @@ export interface PersonalityMessage {
   id: string;
   personality_id: string;
   user_id: string | null; // null when personality is responding
-  room_id: string;
+  personality_room_id: string;
   thread_id: string | null;
   content: string;
   created_at: string;
@@ -54,7 +54,7 @@ type JsonValue =
 
 export interface CreatePersonalityMessageRequest extends Record<string, JsonValue> {
   content: string;
-  room_id: string;
+  personality_room_id: string;
 }
 
 export interface UpdatePersonalityMessageRequest extends Record<string, JsonValue> {
@@ -70,9 +70,10 @@ export interface UpdatePersonalityMessageResponse {
 }
 
 // Optimistic message interface for UI updates
-export interface OptimisticPersonalityMessage extends Omit<PersonalityMessage, 'created_at' | 'updated_at'> {
+export interface OptimisticPersonalityMessage extends Omit<PersonalityMessage, 'created_at' | 'updated_at' | 'thread_id'> {
   created_at: number; // timestamp for optimistic messages
   updated_at: number;
+  thread_id: string | null;
   isOptimistic?: boolean;
   tempId?: string;
   error?: string;

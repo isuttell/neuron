@@ -7,13 +7,23 @@ from langchain_core.runnables import Runnable
 from lxml import etree
 from pydantic import BaseModel, Field
 
+from neuron_server.controllers.events.message_events import (
+    PersonalityMessageEvent,
+)
 from neuron_server.controllers.events.personality_events import (
+    PersonalityRoomStatusUpdateEvent,
     PersonalityStatusUpdateEvent,
 )
 from neuron_server.llms.agent import execute_agent_with_messages
+from neuron_server.llms.message_processor import get_message_content
 from neuron_server.logger import logger
+from neuron_server.models.media_item_model import MediaItemModel
+from neuron_server.models.personality_message_media_item_model import (
+    PersonalityMessageMediaItemModel,
+)
 from neuron_server.models.personality_message_model import PersonalityMessageModel
 from neuron_server.models.personality_model import PersonalityModel
+from neuron_server.models.personality_room_model import PersonalityRoomModel
 from neuron_server.models.personality_user_model import PersonalityUserModel
 from neuron_server.models.provider_model import ProviderModelModel
 from neuron_server.models.user_model import UserModel
@@ -105,6 +115,32 @@ class PersonalityChatOrchestrator:
         except Exception as e:
             logger.error(
                 f"Error broadcasting personality status update: {e}", exc_info=True
+            )
+
+    async def broadcast_personality_room_status_update(
+        self, personality_id: UUID, room_id: UUID, status: str
+    ) -> None:
+        """Broadcast personality room status update to users in that room.
+
+        Args:
+            personality_id: The ID of the personality
+            room_id: The ID of the room
+            status: The new status to broadcast
+        """
+        try:
+            status_event = PersonalityRoomStatusUpdateEvent(
+                personality_id=personality_id,
+                room_id=room_id,
+                status=status,
+            )
+            # Broadcast to room-specific channel
+            await secure_pubsub.publish_personality_room_message(
+                personality_id, status_event
+            )
+            logger.debug(f"Broadcast room {room_id} status: {status}")
+        except Exception as e:
+            logger.error(
+                f"Error broadcasting room status update: {e}", exc_info=True
             )
 
     async def get_personality_users_dict(
@@ -228,10 +264,6 @@ class PersonalityChatOrchestrator:
             return etree.tostring(root, encoding="unicode", pretty_print=True).strip()
 
         # Batch fetch media items for all messages to minimize database queries
-        from neuron_server.models.personality_message_media_item_model import (
-            PersonalityMessageMediaItemModel,
-        )
-
         message_media_map = {}
         for message in messages:
             media_items = await PersonalityMessageMediaItemModel.get_media_for_message(
@@ -439,6 +471,7 @@ AGENT ACTION: {action}"""
     async def update_status_with_generation(  # noqa: PLR0913
         self,
         personality_id: UUID,
+        room_id: UUID,
         fast_model: Runnable,
         personality: PersonalityModel,
         chat_history: str,
@@ -469,21 +502,22 @@ AGENT ACTION: {action}"""
                 action=action,
             )
 
-            await PersonalityModel.update_status(personality_id, custom_status)
-            await self.broadcast_personality_status_update(
-                personality_id, custom_status
+            # Update room status instead of personality status
+            await PersonalityRoomModel.update_status(room_id, custom_status)
+            await self.broadcast_personality_room_status_update(
+                personality_id, room_id, custom_status
             )
             logger.debug(
-                f"Updated {personality.name} status to: {custom_status} "
+                f"Updated room {room_id} status to: {custom_status} "
                 f"(triggered by user {user_id})"
             )
 
         except Exception as e:
             logger.error(f"Error in update_status_with_generation: {e}", exc_info=True)
             fallback_status = "working"
-            await PersonalityModel.update_status(personality_id, fallback_status)
-            await self.broadcast_personality_status_update(
-                personality_id, fallback_status
+            await PersonalityRoomModel.update_status(room_id, fallback_status)
+            await self.broadcast_personality_room_status_update(
+                personality_id, room_id, fallback_status
             )
 
     async def generate_personality_response(  # noqa: PLR0913
@@ -537,8 +571,6 @@ AGENT ACTION: {action}"""
             # Extract response text from last AI message
             response_text = ""
             if result_messages and isinstance(result_messages[-1], AIMessage):
-                from neuron_server.llms.message_processor import get_message_content
-
                 content = get_message_content(
                     result_messages[-1], format_as_string=True
                 )
@@ -590,6 +622,7 @@ AGENT ACTION: {action}"""
     async def create_and_broadcast_personality_response(
         self,
         personality_id: UUID,
+        room_id: UUID,
         response_content: str,
         user_id: str,
         media_artifacts: list[ToolMediaArtifact] = None,
@@ -598,18 +631,16 @@ AGENT ACTION: {action}"""
 
         Args:
             personality_id: The ID of the personality
+            room_id: The ID of the personality room
             response_content: The response text to broadcast
             user_id: The ID of the user who triggered this response
             media_artifacts: Optional list of media artifacts to associate
         """
         try:
-            from neuron_server.controllers.events.message_events import (
-                PersonalityMessageEvent,
-            )
-
             # Create AI response message (user_id=None indicates AI message)
             create_params = PersonalityMessageModel.CreateParams(
                 personality_id=personality_id,
+                personality_room_id=room_id,
                 content=response_content,
                 user_id=None,  # AI message
             )
@@ -618,8 +649,6 @@ AGENT ACTION: {action}"""
             # Create media items from artifacts and associate them with the message
             created_media_items = []
             if media_artifacts:
-                from neuron_server.models.media_item_model import MediaItemModel
-
                 for artifact in media_artifacts:
                     for item in artifact.items:
                         # Create MediaItem record
@@ -647,6 +676,7 @@ AGENT ACTION: {action}"""
             message_event = PersonalityMessageEvent(
                 personality_id=personality_id,
                 message_id=ai_message.id,
+                room_id=room_id,
                 content=ai_message.content,
                 user_id=ai_message.user_id,  # None for AI
                 created_at=ai_message.created_at.isoformat(),
@@ -688,9 +718,12 @@ AGENT ACTION: {action}"""
                 )
                 return
 
-            await PersonalityModel.update_status(personality_id, "contemplating")
-            await self.broadcast_personality_status_update(
-                personality_id, "contemplating"
+            # Update room status instead of personality status
+            await PersonalityRoomModel.update_status(
+                message.personality_room_id, "contemplating"
+            )
+            await self.broadcast_personality_room_status_update(
+                personality_id, message.personality_room_id, "contemplating"
             )
 
             # Analyze direction with current status
@@ -709,7 +742,10 @@ AGENT ACTION: {action}"""
             if analysis.should_use_quick_response and analysis.quick_response:
                 # Create and broadcast quick response immediately
                 await self.create_and_broadcast_personality_response(
-                    personality_id, analysis.quick_response, message.user_id
+                    personality_id,
+                    message.personality_room_id,
+                    analysis.quick_response,
+                    message.user_id
                 )
                 return
 
@@ -741,6 +777,7 @@ AGENT ACTION: {action}"""
                 asyncio.create_task(
                     self.update_status_with_generation(
                         personality_id=personality_id,
+                        room_id=message.personality_room_id,
                         fast_model=fast_model,
                         personality=personality,
                         chat_history=chat_history,
@@ -769,7 +806,11 @@ AGENT ACTION: {action}"""
 
                 # Create and broadcast the response
                 await self.create_and_broadcast_personality_response(
-                    personality_id, response_text, message.user_id, media_artifacts
+                    personality_id,
+                    message.personality_room_id,
+                    response_text,
+                    message.user_id,
+                    media_artifacts
                 )
 
         except Exception as e:
@@ -779,11 +820,16 @@ AGENT ACTION: {action}"""
                 exc_info=True,
             )
         finally:
-            # Clear personality status
+            # Clear room status
             try:
-                await PersonalityModel.update_status(personality_id, "")
-                await self.broadcast_personality_status_update(personality_id, "")
+                if message and message.personality_room_id:
+                    await PersonalityRoomModel.update_status(
+                        message.personality_room_id, ""
+                    )
+                    await self.broadcast_personality_room_status_update(
+                        personality_id, message.personality_room_id, ""
+                    )
             except Exception as status_error:
                 logger.error(
-                    f"Failed to clear personality status after error: {status_error}"
+                    f"Failed to clear room status after error: {status_error}"
                 )
