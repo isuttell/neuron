@@ -29,7 +29,7 @@ class AnthropicLLM(LLM):
         # Store model creation params for dynamic instantiation
         self.model_params = {
             "model": model_id,
-            "temperature": 1,
+            "temperature": 0.7,
             "streaming": True,
             "max_tokens": max_tokens,
             "verbose": True,
@@ -41,7 +41,7 @@ class AnthropicLLM(LLM):
 
         fast_model = ChatAnthropic(
             model="claude-3-5-haiku-20241022",
-            temperature=1,
+            temperature=0.7,
             max_retries=3,
         )
 
