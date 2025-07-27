@@ -115,7 +115,7 @@ const Auth0ProviderWithNavigate = ({
 }) => {
   // Make the callback async
   const onRedirectCallback = async (
-    appState: { returnTo?: string } | undefined,
+    _appState: { returnTo?: string } | undefined,
     user: User | undefined
   ) => {
     if (user) {
@@ -128,7 +128,7 @@ const Auth0ProviderWithNavigate = ({
       store.dispatch(setCurrentUser(null));
     }
     // Navigate after API call and dispatch
-    router.navigate(appState?.returnTo || window.location.pathname);
+    router.navigate(window.location.pathname);
   };
 
   return (
@@ -143,6 +143,7 @@ const Auth0ProviderWithNavigate = ({
       onRedirectCallback={onRedirectCallback}
       useRefreshTokens={true}
       cacheLocation="localstorage"
+
     >
       {children}
     </Auth0Provider>
