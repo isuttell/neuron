@@ -14,6 +14,9 @@ from neuron_server.controllers.events.personality_events import (
     PersonalityRoomStatusUpdateEvent,
     PersonalityStatusUpdateEvent,
 )
+from neuron_server.controllers.events.personality_room_events import (
+    PersonalityRoomUpdatedEvent,
+)
 from neuron_server.llms.agent import execute_agent_with_messages
 from neuron_server.llms.message_processor import get_message_content
 from neuron_server.logger import logger
@@ -58,6 +61,16 @@ class PersonalityDirectedAnalysis(BaseModel):
     )
     should_use_quick_response: bool = Field(
         description="Whether to use the quick response instead of full processing",
+        default=False,
+    )
+    suggested_room_name: str | None = Field(
+        description="Suggested new room name if it should be updated (max 50 chars)",
+        default=None,
+    )
+    should_update_room_name: bool = Field(
+        description=(
+            "Whether the room name should be updated based on conversation context"
+        ),
         default=False,
     )
 
@@ -324,6 +337,7 @@ class PersonalityChatOrchestrator:
         latest_message: PersonalityMessageModel,
         personality: PersonalityModel,
         current_status: str = "",
+        current_room_name: str = "",
     ) -> PersonalityDirectedAnalysis:
         """Analyze if the latest user message is directed at the personality.
 
@@ -332,6 +346,7 @@ class PersonalityChatOrchestrator:
             latest_message: The latest message to analyze
             personality: The PersonalityModel instance
             current_status: Current status of the personality (empty if idle)
+            current_room_name: Current name of the room
 
         Returns:
             PersonalityDirectedAnalysis with direction analysis and quick response
@@ -385,6 +400,7 @@ Name: {personality.name}
 Personality Custom Instructions for responses:
 <instructions>{personality.context}</instructions>
 Current Status: {current_status if is_busy else "Idle"}
+Current Room Name: "{current_room_name}"
 
 CHAT HISTORY:
 {chat_history}
@@ -395,8 +411,23 @@ ANALYSIS REQUIREMENTS:
 1. Determine if the message is directed at {personality_name}
 2. Provide confidence score (0.0-1.0)
 3. Explain your reasoning
+4. Analyze if the room name should be updated based on conversation context
 
 {status_section}
+
+ROOM NAME ANALYSIS:
+- Only suggest updating the room name if:
+  * The conversation has established a clear, specific topic
+  * The current room name is generic or doesn't reflect the conversation
+  * There's enough context to create a meaningful name
+- Keep suggested names:
+  * Under 50 characters
+  * Concise and descriptive
+  * Relevant to the ongoing conversation topic
+- Don't update room name for:
+  * Casual greetings or small talk
+  * Very early in the conversation
+  * If the current name already fits well
 
 CONSIDERATION FACTORS:
 - This is {personality_name}'s personal chat room
@@ -718,6 +749,12 @@ AGENT ACTION: {action}"""
                 )
                 return
 
+            # Get the current room to get its name
+            room = await PersonalityRoomModel.get(message.personality_room_id)
+            if not room:
+                logger.error(f"Room {message.personality_room_id} not found")
+                return
+
             # Update room status instead of personality status
             await PersonalityRoomModel.update_status(
                 message.personality_room_id, "contemplating"
@@ -726,9 +763,9 @@ AGENT ACTION: {action}"""
                 personality_id, message.personality_room_id, "contemplating"
             )
 
-            # Analyze direction with current status
+            # Analyze direction with current status and room name
             analysis = await self.analyze_message_direction(
-                personality_id, message, personality, personality.status
+                personality_id, message, personality, personality.status, room.name
             )
 
             # Log results for monitoring/debugging
@@ -737,6 +774,34 @@ AGENT ACTION: {action}"""
                 f"{analysis.is_directed} (confidence: {analysis.confidence:.2f}) - "
                 f"{analysis.reasoning} | Quick: {analysis.should_use_quick_response}"
             )
+
+            # Handle room name update if suggested
+            if analysis.should_update_room_name and analysis.suggested_room_name:
+                try:
+                    # Update the room name
+                    update_params = PersonalityRoomModel.UpdateParams(
+                        room_id=message.personality_room_id,
+                        name=analysis.suggested_room_name,
+                    )
+                    updated_room = await PersonalityRoomModel.update(update_params)
+
+                    if updated_room:
+                        # Broadcast room update event
+                        room_update_event = PersonalityRoomUpdatedEvent(
+                            personality_id=personality_id,
+                            room_id=message.personality_room_id,
+                            name=analysis.suggested_room_name,
+                            room_type=updated_room.type,
+                        )
+                        await secure_pubsub.publish_personality_room_message(
+                            personality_id, room_update_event
+                        )
+                        logger.debug(
+                            f"Updated room {message.personality_room_id} name to: "
+                            f"{analysis.suggested_room_name}"
+                        )
+                except Exception as e:
+                    logger.error(f"Failed to update room name: {e}", exc_info=True)
 
             # Handle quick response for busy personality
             if analysis.should_use_quick_response and analysis.quick_response:

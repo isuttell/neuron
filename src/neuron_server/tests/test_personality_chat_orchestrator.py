@@ -1,5 +1,6 @@
 """Tests for the PersonalityChatOrchestrator class."""
 
+import unittest.mock
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import UUID, uuid4
 
@@ -58,6 +59,7 @@ class TestPersonalityChatOrchestrator:
         message.id = sample_message_id
         message.user_id = sample_user_id
         message.content = "Hello, can you help me?"
+        message.personality_room_id = uuid4()  # Add room ID
         message.created_at = MagicMock()
         message.created_at.isoformat.return_value = "2023-01-01T12:00:00"
         return message
@@ -523,8 +525,9 @@ class TestPersonalityChatOrchestrator:
 
             mock_pubsub.publish_personality_room_message = AsyncMock()
 
+            room_id = uuid4()
             await orchestrator.create_and_broadcast_personality_response(
-                sample_personality_id, "Test response", sample_user_id
+                sample_personality_id, room_id, "Test response", sample_user_id
             )
 
             # Verify message was created
@@ -551,17 +554,19 @@ class TestPersonalityChatOrchestrator:
                 orchestrator, "generate_personality_status_message"
             ) as mock_generate,
             patch(
-                "neuron_server.models.personality_model.PersonalityModel.update_status"
+                "neuron_server.models.personality_room_model.PersonalityRoomModel.update_status"
             ) as mock_update,
             patch.object(
-                orchestrator, "broadcast_personality_status_update"
+                orchestrator, "broadcast_personality_room_status_update"
             ) as mock_broadcast,
         ):
             mock_generate.return_value = "thinking deeply"
             mock_fast_model = MagicMock(spec=Runnable)
+            room_id = uuid4()
 
             await orchestrator.update_status_with_generation(
                 personality_id=sample_personality_id,
+                room_id=room_id,
                 fast_model=mock_fast_model,
                 personality=mock_personality,
                 chat_history="<chat_history>Test</chat_history>",
@@ -574,12 +579,12 @@ class TestPersonalityChatOrchestrator:
 
             # Verify status update
             mock_update.assert_called_once_with(
-                sample_personality_id, "thinking deeply"
+                room_id, "thinking deeply"
             )
 
             # Verify broadcast
             mock_broadcast.assert_called_once_with(
-                sample_personality_id, "thinking deeply"
+                sample_personality_id, room_id, "thinking deeply"
             )
 
     @pytest.mark.asyncio
@@ -601,10 +606,13 @@ class TestPersonalityChatOrchestrator:
                 "neuron_server.models.personality_model.PersonalityModel.get"
             ) as mock_get_personality,
             patch(
-                "neuron_server.models.personality_model.PersonalityModel.update_status"
-            ) as mock_update_status,
+                "neuron_server.models.personality_room_model.PersonalityRoomModel.get"
+            ) as mock_get_room,
+            patch(
+                "neuron_server.models.personality_room_model.PersonalityRoomModel.update_status"
+            ) as mock_update_room_status,
             patch.object(
-                orchestrator, "broadcast_personality_status_update"
+                orchestrator, "broadcast_personality_room_status_update"
             ) as mock_broadcast,
             patch.object(orchestrator, "analyze_message_direction") as mock_analyze,
             patch.object(orchestrator, "get_personality_users_dict") as mock_get_users,
@@ -623,6 +631,13 @@ class TestPersonalityChatOrchestrator:
             # Setup mocks
             mock_get_message.return_value = mock_user_message
             mock_get_personality.return_value = mock_personality
+
+            # Mock room
+            mock_room = MagicMock()
+            mock_room.id = mock_user_message.personality_room_id
+            mock_room.name = "Test Room"
+            mock_get_room.return_value = mock_room
+
             mock_get_users.return_value = mock_users_dict
             mock_get_history.return_value = []
             mock_convert.return_value = "<chat_history>Test</chat_history>"
@@ -635,6 +650,8 @@ class TestPersonalityChatOrchestrator:
                 reasoning="Direct question",
                 quick_response=None,
                 should_use_quick_response=False,
+                suggested_room_name=None,
+                should_update_room_name=False,
             )
             mock_analyze.return_value = mock_analysis
 
@@ -645,8 +662,8 @@ class TestPersonalityChatOrchestrator:
                 sample_personality_id, sample_message_id
             )
 
-            # Verify status updates
-            assert mock_update_status.call_count >= 2  # contemplating and clear
+            # Verify room status updates
+            assert mock_update_room_status.call_count >= 2  # contemplating and clear
             assert mock_broadcast.call_count >= 2
 
             # Verify analysis was called
@@ -674,9 +691,12 @@ class TestPersonalityChatOrchestrator:
                 "neuron_server.models.personality_model.PersonalityModel.get"
             ) as mock_get_personality,
             patch(
-                "neuron_server.models.personality_model.PersonalityModel.update_status"
+                "neuron_server.models.personality_room_model.PersonalityRoomModel.get"
+            ) as mock_get_room,
+            patch(
+                "neuron_server.models.personality_room_model.PersonalityRoomModel.update_status"
             ),
-            patch.object(orchestrator, "broadcast_personality_status_update"),
+            patch.object(orchestrator, "broadcast_personality_room_status_update"),
             patch.object(orchestrator, "analyze_message_direction") as mock_analyze,
             patch.object(
                 orchestrator, "create_and_broadcast_personality_response"
@@ -686,6 +706,12 @@ class TestPersonalityChatOrchestrator:
             mock_get_message.return_value = mock_user_message
             mock_get_personality.return_value = mock_personality
 
+            # Mock room
+            mock_room = MagicMock()
+            mock_room.id = mock_user_message.personality_room_id
+            mock_room.name = "Test Room"
+            mock_get_room.return_value = mock_room
+
             # Mock analysis - quick response needed
             mock_analysis = PersonalityDirectedAnalysis(
                 is_directed=True,
@@ -693,6 +719,8 @@ class TestPersonalityChatOrchestrator:
                 reasoning="Question while busy",
                 quick_response="I'm busy right now, please wait.",
                 should_use_quick_response=True,
+                suggested_room_name=None,
+                should_update_room_name=False,
             )
             mock_analyze.return_value = mock_analysis
 
@@ -703,7 +731,7 @@ class TestPersonalityChatOrchestrator:
             # Verify quick response was broadcast
             mock_create_broadcast.assert_called_once()
             call_args = mock_create_broadcast.call_args
-            assert call_args[0][1] == "I'm busy right now, please wait."
+            assert call_args[0][2] == "I'm busy right now, please wait."
 
     @pytest.mark.asyncio
     async def test_process_user_message_not_directed(
@@ -723,9 +751,12 @@ class TestPersonalityChatOrchestrator:
                 "neuron_server.models.personality_model.PersonalityModel.get"
             ) as mock_get_personality,
             patch(
-                "neuron_server.models.personality_model.PersonalityModel.update_status"
+                "neuron_server.models.personality_room_model.PersonalityRoomModel.get"
+            ) as mock_get_room,
+            patch(
+                "neuron_server.models.personality_room_model.PersonalityRoomModel.update_status"
             ) as mock_update_status,
-            patch.object(orchestrator, "broadcast_personality_status_update"),
+            patch.object(orchestrator, "broadcast_personality_room_status_update"),
             patch.object(orchestrator, "analyze_message_direction") as mock_analyze,
             patch.object(
                 orchestrator, "generate_personality_response"
@@ -735,6 +766,12 @@ class TestPersonalityChatOrchestrator:
             mock_get_message.return_value = mock_user_message
             mock_get_personality.return_value = mock_personality
 
+            # Mock room
+            mock_room = MagicMock()
+            mock_room.id = mock_user_message.personality_room_id
+            mock_room.name = "Test Room"
+            mock_get_room.return_value = mock_room
+
             # Mock analysis - not directed
             mock_analysis = PersonalityDirectedAnalysis(
                 is_directed=False,
@@ -742,6 +779,8 @@ class TestPersonalityChatOrchestrator:
                 reasoning="General conversation",
                 quick_response=None,
                 should_use_quick_response=False,
+                suggested_room_name=None,
+                should_update_room_name=False,
             )
             mock_analyze.return_value = mock_analysis
 
@@ -752,5 +791,129 @@ class TestPersonalityChatOrchestrator:
             # Verify no response was generated
             mock_generate.assert_not_called()
 
-            # Verify status was cleared
-            mock_update_status.assert_called_with(sample_personality_id, "")
+            # Verify room status was cleared
+            mock_update_status.assert_called_with(
+                mock_user_message.personality_room_id, ""
+            )
+
+    @pytest.mark.asyncio
+    async def test_process_user_message_with_room_name_update(
+        self,
+        orchestrator: PersonalityChatOrchestrator,
+        sample_personality_id: UUID,
+        sample_message_id: UUID,
+        mock_personality: PersonalityModel,
+        mock_user_message: PersonalityMessageModel,
+        mock_users_dict: dict[str, UserModel],
+    ) -> None:
+        """Test processing user message that triggers room name update."""
+        with (
+            patch(
+                "neuron_server.models.personality_message_model.PersonalityMessageModel.get"
+            ) as mock_get_message,
+            patch(
+                "neuron_server.models.personality_model.PersonalityModel.get"
+            ) as mock_get_personality,
+            patch(
+                "neuron_server.models.personality_room_model.PersonalityRoomModel.get"
+            ) as mock_get_room,
+            patch(
+                "neuron_server.models.personality_room_model.PersonalityRoomModel.update_status"
+            ),
+            patch(
+                "neuron_server.models.personality_room_model.PersonalityRoomModel.update"
+            ) as mock_update_room,
+            patch.object(
+                orchestrator, "broadcast_personality_room_status_update"
+            ),
+            patch(
+                "neuron_server.services.personality_chat_orchestrator.secure_pubsub"
+            ) as mock_pubsub,
+            patch.object(orchestrator, "analyze_message_direction") as mock_analyze,
+            patch.object(orchestrator, "get_personality_users_dict") as mock_get_users,
+            patch.object(
+                orchestrator, "get_token_limited_message_history"
+            ) as mock_get_history,
+            patch.object(orchestrator, "convert_to_chat_history") as mock_convert,
+            patch.object(orchestrator, "get_personality_fast_model") as mock_get_model,
+            patch.object(
+                orchestrator, "generate_personality_response"
+            ) as mock_generate,
+            patch.object(
+                orchestrator, "create_and_broadcast_personality_response"
+            ) as mock_create_broadcast,
+        ):
+            # Setup mocks
+            mock_get_message.return_value = mock_user_message
+            mock_get_personality.return_value = mock_personality
+
+            # Mock room with generic name
+            mock_room = MagicMock()
+            mock_room.id = mock_user_message.personality_room_id
+            mock_room.name = "New Chat"
+            mock_room.type = "private"
+            mock_get_room.return_value = mock_room
+
+            # Mock updated room
+            mock_updated_room = MagicMock()
+            mock_updated_room.id = mock_user_message.personality_room_id
+            mock_updated_room.name = "Python Debugging Help"
+            mock_updated_room.type = "private"
+            mock_update_room.return_value = mock_updated_room
+
+            mock_get_users.return_value = mock_users_dict
+            mock_get_history.return_value = []
+            mock_convert.return_value = "<chat_history>Test</chat_history>"
+            mock_get_model.return_value = MagicMock(spec=Runnable)
+            mock_pubsub.publish_personality_room_message = AsyncMock()
+
+            # Mock analysis - message is directed and room name should update
+            mock_analysis = PersonalityDirectedAnalysis(
+                is_directed=True,
+                confidence=0.9,
+                reasoning="User asking for Python debugging help",
+                quick_response=None,
+                should_use_quick_response=False,
+                suggested_room_name="Python Debugging Help",
+                should_update_room_name=True,
+            )
+            mock_analyze.return_value = mock_analysis
+
+            # Mock response generation
+            mock_generate.return_value = ("I'll help you debug your Python code.", [])
+
+            await orchestrator.process_user_message(
+                sample_personality_id, sample_message_id
+            )
+
+            # Verify room name was updated
+            mock_update_room.assert_called_once()
+            update_params = mock_update_room.call_args[0][0]
+            assert update_params.room_id == mock_user_message.personality_room_id
+            assert update_params.name == "Python Debugging Help"
+
+            # Verify room update event was broadcast
+            mock_pubsub.publish_personality_room_message.assert_any_call(
+                sample_personality_id,
+                unittest.mock.ANY  # We'll check the event type below
+            )
+
+            # Check that a PersonalityRoomUpdatedEvent was broadcast
+            calls = mock_pubsub.publish_personality_room_message.call_args_list
+            room_update_call = None
+            for call in calls:
+                event = call[0][1]
+                if hasattr(event, "type") and event.type == "personality_room_updated":
+                    room_update_call = call
+                    break
+
+            assert (
+                room_update_call is not None
+            ), "PersonalityRoomUpdatedEvent not broadcast"
+            event = room_update_call[0][1]
+            assert event.room_id == mock_user_message.personality_room_id
+            assert event.name == "Python Debugging Help"
+
+            # Verify response was still generated
+            mock_generate.assert_called_once()
+            mock_create_broadcast.assert_called_once()

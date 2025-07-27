@@ -162,9 +162,7 @@ async def create_personality_room(personality_id: UUID) -> dict[str, dict]:
 
     # Generate default name if not provided
     if payload.name is None:
-        from datetime import datetime
-        timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M")
-        payload.name = f"Room {timestamp}"
+        payload.name = "Chat Room"
 
     # Create the room
     create_params = PersonalityRoomModel.CreateParams(
