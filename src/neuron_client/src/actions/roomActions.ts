@@ -22,7 +22,6 @@ export const joinPersonalityRoom = createAsyncThunk(
     }
 
     try {
-      console.log("Joining personality room", personalityId);
       socketManager.sendMessage({
         type: "JoinPersonalityRoom",
         personality_id: personalityId,
