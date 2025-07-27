@@ -15,6 +15,10 @@ from neuron_server.database import PersonalityMessage, get_session
 class PersonalityMessageModel(BaseModel):
     id: UUID = Field(default_factory=lambda: uuid4())
     personality_id: UUID = Field(description="The ID of the personality")
+    personality_room_id: UUID = Field(description="The ID of the personality room")
+    thread_id: UUID | None = Field(
+        default=None, description="The ID of the associated thread"
+    )
     user_id: str | None = Field(
         default=None, description="The user ID or None if personality is responding"
     )
@@ -25,8 +29,10 @@ class PersonalityMessageModel(BaseModel):
     @dataclass
     class CreateParams:
         personality_id: UUID
+        personality_room_id: UUID
         content: str
         user_id: str | None = None
+        thread_id: UUID | None = None
         message_id: UUID | None = None
 
     @classmethod
@@ -36,6 +42,8 @@ class PersonalityMessageModel(BaseModel):
             new_message = PersonalityMessage(
                 id=params.message_id or uuid4(),
                 personality_id=params.personality_id,
+                personality_room_id=params.personality_room_id,
+                thread_id=params.thread_id,
                 user_id=params.user_id,
                 content=params.content,
             )
@@ -46,8 +54,10 @@ class PersonalityMessageModel(BaseModel):
     @dataclass
     class UpsertParams:
         personality_id: UUID
+        personality_room_id: UUID
         content: str
         user_id: str | None = None
+        thread_id: UUID | None = None
         message_id: UUID | None = None
 
     @classmethod
@@ -59,6 +69,8 @@ class PersonalityMessageModel(BaseModel):
                 .values(
                     id=params.message_id or uuid4(),
                     personality_id=params.personality_id,
+                    personality_room_id=params.personality_room_id,
+                    thread_id=params.thread_id,
                     user_id=params.user_id,
                     content=params.content,
                 )
@@ -67,6 +79,7 @@ class PersonalityMessageModel(BaseModel):
                     set_={
                         "content": params.content,
                         "user_id": params.user_id,
+                        "thread_id": params.thread_id,
                     },
                 )
                 .returning(PersonalityMessage)
@@ -77,14 +90,23 @@ class PersonalityMessageModel(BaseModel):
 
     @classmethod
     async def list(
-        cls, personality_id: UUID, limit: int = 50, offset: int = 0
+        cls,
+        personality_id: UUID,
+        room_id: UUID | None = None,
+        limit: int = 50,
+        offset: int = 0,
     ) -> list[Self]:
-        """List messages for a personality."""
+        """List messages for a personality, optionally filtered by room."""
         async with get_session() as session:
+            query = select(PersonalityMessage).where(
+                PersonalityMessage.personality_id == personality_id
+            )
+
+            if room_id:
+                query = query.where(PersonalityMessage.personality_room_id == room_id)
+
             result = await session.execute(
-                select(PersonalityMessage)
-                .where(PersonalityMessage.personality_id == personality_id)
-                .order_by(PersonalityMessage.created_at.desc())
+                query.order_by(PersonalityMessage.created_at.desc())
                 .limit(limit)
                 .offset(offset)
             )

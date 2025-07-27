@@ -21,8 +21,12 @@ from neuron_server.controllers.events.room_events import (
 )
 from neuron_server.event_router import EventRouter
 from neuron_server.logger import logger
+from neuron_server.models.personality_message_media_item_model import (
+    PersonalityMessageMediaItemModel,
+)
 from neuron_server.models.personality_message_model import PersonalityMessageModel
 from neuron_server.models.personality_model import PersonalityModel
+from neuron_server.models.personality_room_model import PersonalityRoomModel
 from neuron_server.permission_service import permission_service
 from neuron_server.room_manager import room_manager
 from neuron_server.secure_pubsub import secure_pubsub
@@ -41,6 +45,7 @@ chat_orchestrator = PersonalityChatOrchestrator()
 
 class CreatePersonalityMessage(BaseModel):
     content: str = Field(description="The message content")
+    room_id: UUID = Field(description="The ID of the room to create the message in")
 
 
 class UpdatePersonalityMessage(BaseModel):
@@ -72,9 +77,11 @@ async def get_personality_messages(personality_id: UUID) -> dict[str, list[dict]
             f"Personality with id {personality_id} not found or you don't have access"
         )
 
-    # Get query parameters for pagination
+    # Get query parameters for pagination and filtering
     limit = int(request.args.get("limit", 50))
     offset = int(request.args.get("offset", 0))
+    room_id_str = request.args.get("room_id", None)
+    room_id = UUID(room_id_str) if room_id_str else None
 
     # Validate pagination parameters
     limit = min(limit, 100)
@@ -82,9 +89,15 @@ async def get_personality_messages(personality_id: UUID) -> dict[str, list[dict]
         limit = 50
     offset = max(offset, 0)
 
+    # If room_id is provided, verify user has access to the room
+    if room_id:
+        room = await PersonalityRoomModel.get_for_user(room_id, user_id, personality_id)
+        if not room:
+            raise NotFound(f"Room with id {room_id} not found or you don't have access")
+
     # Get messages for the personality
     messages = await PersonalityMessageModel.list(
-        personality_id=personality_id, limit=limit, offset=offset
+        personality_id=personality_id, room_id=room_id, limit=limit, offset=offset
     )
 
     # Get all users who have access to this personality
@@ -92,10 +105,6 @@ async def get_personality_messages(personality_id: UUID) -> dict[str, list[dict]
     users = list(users_dict.values())
 
     # Get media items for each message and include them in the response
-    from neuron_server.models.personality_message_media_item_model import (
-        PersonalityMessageMediaItemModel,
-    )
-
     messages_with_media = []
     for message in messages:
         message_data = message.model_dump()
@@ -147,13 +156,26 @@ async def create_personality_message(personality_id: UUID) -> dict[str, dict]:
     body = await request.get_json()
     payload = CreatePersonalityMessage(**body)
 
+    # Verify user has access to the room
+    room = await PersonalityRoomModel.get_for_user(
+        payload.room_id, user_id, personality_id
+    )
+    if not room:
+        raise NotFound(
+            f"Room with id {payload.room_id} not found or you don't have access"
+        )
+
     # Create the message
     create_params = PersonalityMessageModel.CreateParams(
         personality_id=personality_id,
+        personality_room_id=payload.room_id,
         content=payload.content,
         user_id=user_id,  # Message is from the user
     )
     message = await PersonalityMessageModel.create(params=create_params)
+
+    # Update room message count
+    await PersonalityRoomModel.update_message_count(payload.room_id, increment=1)
 
     # Broadcast the new message to users in the personality chat room
     message_event = PersonalityMessageEvent(
@@ -304,6 +326,12 @@ async def delete_personality_message(
 
     # Delete the message
     await PersonalityMessageModel.delete(message_id)
+
+    # Update room message count
+    if message.personality_room_id:
+        await PersonalityRoomModel.update_message_count(
+            message.personality_room_id, increment=-1
+        )
 
     # Broadcast the message deletion to users in the personality chat room
     delete_event = PersonalityMessageDeletedEvent(

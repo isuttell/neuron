@@ -54,6 +54,12 @@ from neuron_server.controllers.personality_message_controller import (
 from neuron_server.controllers.personality_message_controller import (
     router as personality_message_router,
 )
+from neuron_server.controllers.personality_room_controller import (
+    blueprint as personality_room_blueprint,
+)
+from neuron_server.controllers.personality_room_controller import (
+    router as personality_room_router,
+)
 from neuron_server.controllers.prompt_controller import (
     blueprint as prompt_blueprint,
 )
@@ -95,6 +101,7 @@ router.register_controller(personality_router)
 router.register_controller(image_router)
 router.register_controller(prompt_router)
 router.register_controller(personality_message_router)
+router.register_controller(personality_room_router)
 
 app = Quart(
     __name__,
@@ -337,6 +344,7 @@ app.register_blueprint(personality_blueprint, url_prefix="/api/personalities")
 app.register_blueprint(
     personality_message_blueprint, url_prefix="/api/personality-messages"
 )
+app.register_blueprint(personality_room_blueprint, url_prefix="/api/personality-rooms")
 app.register_blueprint(favorites_blueprint, url_prefix="/api/favorites")
 app.register_blueprint(image_blueprint, url_prefix="/api/images")
 app.register_blueprint(graph_blueprint, url_prefix="/api/graph")

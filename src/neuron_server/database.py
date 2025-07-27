@@ -81,6 +81,9 @@ class Personality(Base):
     personality_users: Mapped[list["PersonalityUser"]] = relationship(
         back_populates="personality", cascade="all, delete-orphan"
     )
+    personality_rooms: Mapped[list["PersonalityRoom"]] = relationship(
+        back_populates="personality", cascade="all, delete-orphan"
+    )
 
 
 class Thread(Base):
@@ -265,6 +268,9 @@ class User(Base):
     personality_users: Mapped[list["PersonalityUser"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
+    personality_room_users: Mapped[list["PersonalityRoomUser"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
 
 
 class ThreadUser(Base):
@@ -363,6 +369,79 @@ class PersonalityFavorite(Base):
     user: Mapped["User"] = relationship("User")
 
 
+class PersonalityRoom(Base):
+    __tablename__ = "personality_rooms"
+
+    id = Column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    personality_id = Column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("personalities.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    name = Column(Text, nullable=False)
+    type = Column(String, nullable=False, default="private")  # 'private' or 'shared'
+    message_count = Column(Integer, nullable=False, default=0)
+    created_by = Column(
+        String,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    # Relationships
+    personality: Mapped["Personality"] = relationship(
+        "Personality", back_populates="personality_rooms"
+    )
+    personality_room_users: Mapped[list["PersonalityRoomUser"]] = relationship(
+        back_populates="personality_room", cascade="all, delete-orphan"
+    )
+    personality_messages: Mapped[list["PersonalityMessage"]] = relationship(
+        back_populates="personality_room", cascade="all, delete-orphan"
+    )
+    creator: Mapped[Optional["User"]] = relationship("User", foreign_keys=[created_by])
+
+
+class PersonalityRoomUser(Base):
+    __tablename__ = "personality_room_users"
+
+    id = Column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    personality_room_id = Column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("personality_rooms.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    user_id = Column(
+        String,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    role = Column(String, nullable=False, default="user")  # 'admin' or 'user'
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    # Ensure each user is only associated with a personality room once
+    __table_args__ = (
+        UniqueConstraint(
+            "personality_room_id", "user_id", name="unique_personality_room_user"
+        ),
+    )
+
+    # Relationships
+    personality_room: Mapped["PersonalityRoom"] = relationship(
+        "PersonalityRoom", back_populates="personality_room_users"
+    )
+    user: Mapped["User"] = relationship("User", back_populates="personality_room_users")
+
+
 class PersonalityMessage(Base):
     __tablename__ = "personality_messages"
 
@@ -371,6 +450,18 @@ class PersonalityMessage(Base):
         PG_UUID(as_uuid=True),
         ForeignKey("personalities.id", ondelete="CASCADE"),
         nullable=False,
+        index=True,
+    )
+    personality_room_id = Column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("personality_rooms.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    thread_id = Column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("threads.id", ondelete="SET NULL"),
+        nullable=True,
         index=True,
     )
     user_id = Column(
@@ -386,6 +477,10 @@ class PersonalityMessage(Base):
 
     # Relationships
     personality: Mapped["Personality"] = relationship("Personality")
+    personality_room: Mapped["PersonalityRoom"] = relationship(
+        "PersonalityRoom", back_populates="personality_messages"
+    )
+    thread: Mapped[Optional["Thread"]] = relationship("Thread")
     media_items: Mapped[list["PersonalityMessageMediaItem"]] = relationship(
         back_populates="personality_message", cascade="all, delete-orphan"
     )
