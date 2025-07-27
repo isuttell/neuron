@@ -270,7 +270,7 @@ describe("ImageContent", () => {
     const thumbnail = screen.getByTestId("image-thumbnail");
     const props = JSON.parse(thumbnail.getAttribute("data-props") || "{}");
 
-    expect(props.objectFit).toBe("cover");
+    expect(props.objectFit).toBe("contain");
     expect(props.preload).toBe(false);
   });
 });

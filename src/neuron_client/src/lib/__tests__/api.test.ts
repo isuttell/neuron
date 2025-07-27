@@ -356,5 +356,79 @@ describe("ApiClient", () => {
       // Original token should remain
       expect(getCSRFToken()).toBe(csrfToken);
     });
+
+    it("should replace existing CSRF token in FormData during retry", async () => {
+      const oldToken = "old-csrf-token";
+      const newToken = "new-csrf-token";
+
+      // Set initial CSRF token
+      setCSRFToken(oldToken);
+
+      const formData = new FormData();
+      formData.append("test", "value");
+      formData.append("csrf_token", oldToken); // Simulate existing token
+
+      // First call fails with CSRF error
+      (global.fetch as vi.Mock)
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 403,
+          headers: new Map([["content-type", "application/json"]]),
+          json: () => Promise.resolve({ error: "CSRF validation failed" }),
+        })
+        // Refresh CSRF call succeeds
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: new Map([["content-type", "application/json"]]),
+          json: () => Promise.resolve({ csrf_token: newToken }),
+        })
+        // Retry succeeds
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: new Map([["content-type", "application/json"]]),
+          json: () => Promise.resolve(mockResponse),
+        });
+
+      await api.post("/test", formData);
+
+      // Verify the retry call used the new token
+      const retryCalls = (global.fetch as vi.Mock).mock.calls;
+      const retryCall = retryCalls[2]; // Third call is the retry
+      const retryBody = retryCall[1].body as FormData;
+
+      expect(retryBody.get("csrf_token")).toBe(newToken);
+      expect(retryBody.get("test")).toBe("value");
+    });
+
+    it("should handle FormData with existing token when none was initially set", async () => {
+      const existingToken = "existing-token";
+      const newToken = "new-csrf-token";
+
+      // No initial CSRF token set
+      clearCSRFToken();
+
+      // Create FormData with existing token (edge case)
+      const formData = new FormData();
+      formData.append("test", "value");
+      formData.append("csrf_token", existingToken);
+
+      // Set new token
+      setCSRFToken(newToken);
+
+      (global.fetch as vi.Mock).mockResolvedValueOnce({
+        ok: true,
+        headers: new Map([["content-type", "application/json"]]),
+        json: () => Promise.resolve(mockResponse),
+      });
+
+      await api.post("/test", formData);
+
+      // Should replace the existing token with the new one
+      const fetchCall = (global.fetch as vi.Mock).mock.calls[0];
+      const requestBody = fetchCall[1].body as FormData;
+
+      expect(requestBody.get("csrf_token")).toBe(newToken);
+      expect(requestBody.get("test")).toBe("value");
+    });
   });
 });
