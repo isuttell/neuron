@@ -37,25 +37,20 @@ describe('usePersonalityPermissions', () => {
     context: 'Test context',
     memory: 'Test memory',
     tool_set: 'default',
+    status: '',
     created_at: '2024-01-01T00:00:00Z',
     updated_at: '2024-01-01T00:00:00Z',
   };
 
   const mockPersonalityUsers = [
     {
-      id: 'user-123',
-      email: 'admin@test.com',
-      nickname: 'admin',
-      created_at: '2024-01-01T00:00:00Z',
-      updated_at: '2024-01-01T00:00:00Z',
+      user_id: 'user-123',
+      personality_id: 'personality-123',
       role: 'admin',
     },
     {
-      id: 'user-456',
-      email: 'user@test.com',
-      nickname: 'user',
-      created_at: '2024-01-01T00:00:00Z',
-      updated_at: '2024-01-01T00:00:00Z',
+      user_id: 'user-456',
+      personality_id: 'personality-123',
       role: 'user',
     },
   ];
@@ -115,7 +110,7 @@ describe('usePersonalityPermissions', () => {
       expect(result.current.shouldShowComponent).toBe(true);
     });
 
-    it('returns personality with converted users', () => {
+    it('returns personality with personality users', () => {
       const { result } = renderHookWithProvider('personality-123');
 
       expect(result.current.personality).toBeDefined();
@@ -338,8 +333,8 @@ describe('usePersonalityPermissions', () => {
     });
   });
 
-  describe('conversion from UserWithRole to PersonalityUser', () => {
-    it('correctly converts Redux UserWithRole format to PersonalityUser format', () => {
+  describe('PersonalityUser format handling', () => {
+    it('correctly uses PersonalityUser format from Redux state', () => {
       mockUseAuth0.mockReturnValue({
         user: {
           sub: 'user-123',

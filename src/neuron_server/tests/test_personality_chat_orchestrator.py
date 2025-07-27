@@ -227,7 +227,7 @@ class TestPersonalityChatOrchestrator:
         # Mock the media item fetch to return empty lists
         with patch(
             "neuron_server.models.personality_message_media_item_model.PersonalityMessageMediaItemModel.get_media_for_message",
-            return_value=[]
+            return_value=[],
         ):
             result = await orchestrator.convert_to_chat_history(
                 messages, mock_personality, mock_users_dict
@@ -279,7 +279,7 @@ class TestPersonalityChatOrchestrator:
         # Mock the media item fetch to return our mock media items
         with patch(
             "neuron_server.models.personality_message_media_item_model.PersonalityMessageMediaItemModel.get_media_for_message",
-            return_value=[media_item1, media_item2]
+            return_value=[media_item1, media_item2],
         ):
             result = await orchestrator.convert_to_chat_history(
                 messages, mock_personality, mock_users_dict
@@ -329,7 +329,7 @@ class TestPersonalityChatOrchestrator:
         # Mock the media item fetch to return our mock media item
         with patch(
             "neuron_server.models.personality_message_media_item_model.PersonalityMessageMediaItemModel.get_media_for_message",
-            return_value=[media_item]
+            return_value=[media_item],
         ):
             result = await orchestrator.convert_to_chat_history(
                 messages, mock_personality, mock_users_dict
@@ -676,9 +676,7 @@ class TestPersonalityChatOrchestrator:
             patch(
                 "neuron_server.models.personality_model.PersonalityModel.update_status"
             ),
-            patch.object(
-                orchestrator, "broadcast_personality_status_update"
-            ),
+            patch.object(orchestrator, "broadcast_personality_status_update"),
             patch.object(orchestrator, "analyze_message_direction") as mock_analyze,
             patch.object(
                 orchestrator, "create_and_broadcast_personality_response"
@@ -727,9 +725,7 @@ class TestPersonalityChatOrchestrator:
             patch(
                 "neuron_server.models.personality_model.PersonalityModel.update_status"
             ) as mock_update_status,
-            patch.object(
-                orchestrator, "broadcast_personality_status_update"
-            ),
+            patch.object(orchestrator, "broadcast_personality_status_update"),
             patch.object(orchestrator, "analyze_message_direction") as mock_analyze,
             patch.object(
                 orchestrator, "generate_personality_response"

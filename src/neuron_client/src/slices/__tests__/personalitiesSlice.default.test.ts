@@ -22,6 +22,7 @@ describe("personalitiesSlice - default personality selection", () => {
     memory: `${name} memory`,
     tool_set: "default",
     logo: undefined,
+    status: "",
     default: isDefault,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),

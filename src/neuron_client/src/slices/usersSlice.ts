@@ -3,6 +3,7 @@ import { createSlice, createSelector } from "@reduxjs/toolkit";
 import { fetchMessagesByThread } from "../actions/messageActions";
 import { addUserByEmail } from "../actions/threadActions";
 import { fetchPersonalityMessages, loadMorePersonalityMessages } from "../actions/personalityChatActions";
+import { fetchPersonality, fetchPersonalities, fetchPersonalityUsers, addPersonalityUser, updatePersonalityUserRole, removePersonalityUser } from "../actions/personalityActions";
 import type { RootState } from "../store";
 import { MessageResponse } from "../types/message";
 import { User } from "../types/user";
@@ -71,6 +72,66 @@ export const usersSlice = createSlice({
       )
       .addCase(
         loadMorePersonalityMessages.fulfilled,
+        (state, action) => {
+          if (action.payload.users) {
+            for (const user of action.payload.users) {
+              upsertUser(state, user);
+            }
+          }
+        }
+      )
+      .addCase(
+        fetchPersonality.fulfilled,
+        (state, action) => {
+          if (action.payload.users) {
+            for (const user of action.payload.users) {
+              upsertUser(state, user);
+            }
+          }
+        }
+      )
+      .addCase(
+        fetchPersonalities.fulfilled,
+        (state, action) => {
+          if (action.payload.users) {
+            for (const user of action.payload.users) {
+              upsertUser(state, user);
+            }
+          }
+        }
+      )
+      .addCase(
+        fetchPersonalityUsers.fulfilled,
+        (state, action) => {
+          if (action.payload.users) {
+            for (const user of action.payload.users) {
+              upsertUser(state, user);
+            }
+          }
+        }
+      )
+      .addCase(
+        addPersonalityUser.fulfilled,
+        (state, action) => {
+          if (action.payload.users) {
+            for (const user of action.payload.users) {
+              upsertUser(state, user);
+            }
+          }
+        }
+      )
+      .addCase(
+        updatePersonalityUserRole.fulfilled,
+        (state, action) => {
+          if (action.payload.users) {
+            for (const user of action.payload.users) {
+              upsertUser(state, user);
+            }
+          }
+        }
+      )
+      .addCase(
+        removePersonalityUser.fulfilled,
         (state, action) => {
           if (action.payload.users) {
             for (const user of action.payload.users) {

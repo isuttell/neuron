@@ -23,7 +23,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { User } from "@/types/user";
-import { UserWithRole } from "@/slices/personalitiesSlice.d";
 import { Trash2, Users } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 import {
@@ -199,11 +198,11 @@ export default function PersonalityUsersDialog({
             </div>
           ) : (
             <div className="space-y-2">
-              {personalityUsers.map((personalityUser: UserWithRole) => {
-                const user = getUserDetails(personalityUser.id);
+              {personalityUsers.map((personalityUser) => {
+                const user = getUserDetails(personalityUser.user_id);
                 return (
                   <div
-                    key={personalityUser.id}
+                    key={personalityUser.user_id}
                     className="flex items-center justify-between p-2 border rounded-md"
                   >
                     <div className="flex items-center gap-2">
@@ -212,15 +211,15 @@ export default function PersonalityUsersDialog({
                           <AvatarImage src={user.picture} alt={user.nickname} />
                         ) : null}
                         <AvatarFallback>
-                          {user?.nickname?.substring(0, 2) || personalityUser.nickname?.substring(0, 2) || "U"}
+                          {user?.nickname?.substring(0, 2) || "U"}
                         </AvatarFallback>
                       </Avatar>
                       <div>
                         <div className="font-medium">
-                          {user?.nickname || personalityUser.nickname || "Unknown"}
+                          {user?.nickname || "Unknown"}
                         </div>
                         <div className="text-xs text-muted-foreground">
-                          {user?.email || personalityUser.email || ""}
+                          {user?.email || ""}
                         </div>
                       </div>
                     </div>
@@ -228,7 +227,7 @@ export default function PersonalityUsersDialog({
                       <Select
                         defaultValue={personalityUser.role}
                         onValueChange={(value) =>
-                          handleRoleChange(personalityUser.id, value)
+                          handleRoleChange(personalityUser.user_id, value)
                         }
                       >
                         <SelectTrigger className="w-[100px]">
@@ -242,7 +241,7 @@ export default function PersonalityUsersDialog({
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => handleRemoveUser(personalityUser.id)}
+                        onClick={() => handleRemoveUser(personalityUser.user_id)}
                       >
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
