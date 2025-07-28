@@ -227,7 +227,9 @@ class TestRoomManager:
         mock_redis_client.expire.return_value = True
         mock_redis_client.hset.return_value = 1
 
-        await room_manager.join_room("personality_room", "room123", "user456", "TestUser")
+        await room_manager.join_room(
+            "personality_room", "room123", "user456", "TestUser"
+        )
 
         # Should set TTL on room keys
         expire_calls = mock_redis_client.expire.call_args_list
@@ -246,7 +248,9 @@ class TestRoomManager:
 
         # Simulate concurrent join operations
         tasks = [
-            room_manager.join_room("personality_room", "room123", f"user{i}", f"User{i}")
+            room_manager.join_room(
+                "personality_room", "room123", f"user{i}", f"User{i}"
+            )
             for i in range(5)
         ]
 
@@ -264,7 +268,9 @@ class TestRoomManager:
         mock_redis_client.expire.return_value = True
         mock_redis_client.hset.return_value = 1
 
-        await room_manager.join_room("personality_room", "room123", "user456", "TestUser")
+        await room_manager.join_room(
+            "personality_room", "room123", "user456", "TestUser"
+        )
 
         # Should set TTL on room members, metadata, and user rooms keys
         expire_calls = mock_redis_client.expire.call_args_list

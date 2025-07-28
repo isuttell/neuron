@@ -104,15 +104,15 @@ class TestPersonalityChatOrchestrator:
         with patch(
             "neuron_server.services.personality_chat_orchestrator.secure_pubsub"
         ) as mock_pubsub:
-            mock_pubsub.publish_personality_room_message = AsyncMock()
+            mock_pubsub.publish_personality_event = AsyncMock()
 
             await orchestrator.broadcast_personality_status_update(
                 sample_personality_id, "thinking"
             )
 
             # Verify pubsub was called
-            mock_pubsub.publish_personality_room_message.assert_called_once()
-            call_args = mock_pubsub.publish_personality_room_message.call_args
+            mock_pubsub.publish_personality_event.assert_called_once()
+            call_args = mock_pubsub.publish_personality_event.call_args
             assert call_args[0][0] == sample_personality_id
             assert call_args[0][1].status == "thinking"
 
@@ -578,9 +578,7 @@ class TestPersonalityChatOrchestrator:
             mock_generate.assert_called_once()
 
             # Verify status update
-            mock_update.assert_called_once_with(
-                room_id, "thinking deeply"
-            )
+            mock_update.assert_called_once_with(room_id, "thinking deeply")
 
             # Verify broadcast
             mock_broadcast.assert_called_once_with(
@@ -823,9 +821,7 @@ class TestPersonalityChatOrchestrator:
             patch(
                 "neuron_server.models.personality_room_model.PersonalityRoomModel.update"
             ) as mock_update_room,
-            patch.object(
-                orchestrator, "broadcast_personality_room_status_update"
-            ),
+            patch.object(orchestrator, "broadcast_personality_room_status_update"),
             patch(
                 "neuron_server.services.personality_chat_orchestrator.secure_pubsub"
             ) as mock_pubsub,
@@ -864,7 +860,14 @@ class TestPersonalityChatOrchestrator:
             mock_get_users.return_value = mock_users_dict
             mock_get_history.return_value = []
             mock_convert.return_value = "<chat_history>Test</chat_history>"
-            mock_get_model.return_value = MagicMock(spec=Runnable)
+            # Create a mock model with with_structured_output method
+            mock_model = MagicMock(spec=Runnable)
+            mock_structured = MagicMock()
+            mock_structured.ainvoke = AsyncMock(
+                return_value=MagicMock(status="thinking")
+            )
+            mock_model.with_structured_output = MagicMock(return_value=mock_structured)
+            mock_get_model.return_value = mock_model
             mock_pubsub.publish_personality_room_message = AsyncMock()
 
             # Mock analysis - message is directed and room name should update
@@ -895,22 +898,23 @@ class TestPersonalityChatOrchestrator:
             # Verify room update event was broadcast
             mock_pubsub.publish_personality_room_message.assert_any_call(
                 sample_personality_id,
-                unittest.mock.ANY  # We'll check the event type below
+                mock_user_message.personality_room_id,
+                unittest.mock.ANY,  # We'll check the event type below
             )
 
             # Check that a PersonalityRoomUpdatedEvent was broadcast
             calls = mock_pubsub.publish_personality_room_message.call_args_list
             room_update_call = None
             for call in calls:
-                event = call[0][1]
+                event = call[0][2]  # Third argument is the event
                 if hasattr(event, "type") and event.type == "personality_room_updated":
                     room_update_call = call
                     break
 
-            assert (
-                room_update_call is not None
-            ), "PersonalityRoomUpdatedEvent not broadcast"
-            event = room_update_call[0][1]
+            assert room_update_call is not None, (
+                "PersonalityRoomUpdatedEvent not broadcast"
+            )
+            event = room_update_call[0][2]  # Third argument is the event
             assert event.room_id == mock_user_message.personality_room_id
             assert event.name == "Python Debugging Help"
 

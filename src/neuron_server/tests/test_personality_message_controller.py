@@ -4,22 +4,8 @@ from uuid import uuid4
 import pytest
 from quart import Quart
 
-# Mock database connections and PersonalityChatOrchestrator before importing
-mock_engine = Mock()
-mock_session = AsyncMock()
-mock_session.__aenter__ = AsyncMock(return_value=mock_session)
-mock_session.__aexit__ = AsyncMock(return_value=None)
-
-with (
-    patch("sqlalchemy.ext.asyncio.create_async_engine", return_value=mock_engine),
-    patch("neuron_server.database.get_session", return_value=mock_session),
-    patch("neuron_server.database.engine", mock_engine),
-    patch("neuron_server.services.personality_chat_orchestrator.PersonalityChatOrchestrator"),
-):
-    from neuron_server.api import app as neuron_app
-import neuron_server.models.personality_message_media_item_model
-
 # Import models after mocking database in conftest
+import neuron_server.models.personality_message_media_item_model
 import neuron_server.models.personality_message_model
 import neuron_server.models.personality_model
 import neuron_server.models.personality_room_model
@@ -35,14 +21,35 @@ from neuron_server.controllers.personality_message_controller import (
     aleave_personality_room,
     cleanup_user_personality_rooms,
 )
+from neuron_server.websocket_session_manager import WebSocketSession
 
-PersonalityMessageModel = neuron_server.models.personality_message_model.PersonalityMessageModel
+# Mock database connections and PersonalityChatOrchestrator before importing
+mock_engine = Mock()
+mock_session = AsyncMock()
+mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+mock_session.__aexit__ = AsyncMock(return_value=None)
+
+with (
+    patch("sqlalchemy.ext.asyncio.create_async_engine", return_value=mock_engine),
+    patch("neuron_server.database.get_session", return_value=mock_session),
+    patch("neuron_server.database.engine", mock_engine),
+    patch(
+        "neuron_server.services.personality_chat_orchestrator.PersonalityChatOrchestrator"
+    ),
+):
+    from neuron_server.api import app as neuron_app
+
+PersonalityMessageModel = (
+    neuron_server.models.personality_message_model.PersonalityMessageModel
+)
 PersonalityModel = neuron_server.models.personality_model.PersonalityModel
 PersonalityUserModel = neuron_server.models.personality_user_model.PersonalityUserModel
 UserModel = neuron_server.models.user_model.UserModel
-PersonalityMessageMediaItemModel = neuron_server.models.personality_message_media_item_model.PersonalityMessageMediaItemModel
+PersonalityMessageMediaItemModel = (
+    neuron_server.models.personality_message_media_item_model
+    .PersonalityMessageMediaItemModel
+)
 PersonalityRoomModel = neuron_server.models.personality_room_model.PersonalityRoomModel
-from neuron_server.websocket_session_manager import WebSocketSession
 
 # Constants
 TEST_JWT_TOKEN = "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0In0.abc"
@@ -163,9 +170,15 @@ class TestPersonalityMessageController:
 
         with (
             patch.object(
-                PersonalityModel, "get_for_user", AsyncMock(return_value=mock_personality)
+                PersonalityModel,
+                "get_for_user",
+                AsyncMock(return_value=mock_personality),
             ),
-            patch.object(PersonalityMessageModel, "list", AsyncMock(return_value=[mock_message])),
+            patch.object(
+                PersonalityMessageModel,
+                "list",
+                AsyncMock(return_value=[mock_message]),
+            ),
             patch.object(
                 PersonalityUserModel,
                 "get_personality_users",
@@ -178,13 +191,13 @@ class TestPersonalityMessageController:
             patch.object(
                 PersonalityMessageMediaItemModel,
                 "get_media_for_message",
-                AsyncMock(return_value={})
+                AsyncMock(return_value={}),
             ),
         ):
             # Mock the chat orchestrator method
-            mock_orchestrator.get_personality_users_dict = AsyncMock(return_value={
-                mock_user.id: mock_user
-            })
+            mock_orchestrator.get_personality_users_dict = AsyncMock(
+                return_value={mock_user.id: mock_user}
+            )
             async with app.test_client() as client:
                 response = await client.get(
                     f"/api/personality-messages/{personality_id}?limit=50&offset=0",
@@ -204,7 +217,9 @@ class TestPersonalityMessageController:
         """Test getting messages for non-existent personality."""
         personality_id = uuid4()
 
-        with patch.object(PersonalityModel, "get_for_user", AsyncMock(return_value=None)):
+        with patch.object(
+            PersonalityModel, "get_for_user", AsyncMock(return_value=None)
+        ):
             async with app.test_client() as client:
                 response = await client.get(
                     f"/api/personality-messages/{personality_id}",
@@ -224,19 +239,28 @@ class TestPersonalityMessageController:
 
         with (
             patch.object(
-                PersonalityModel, "get_for_user", AsyncMock(return_value=mock_personality)
+                PersonalityModel,
+                "get_for_user",
+                AsyncMock(return_value=mock_personality),
             ),
-            patch.object(PersonalityMessageModel, "create", AsyncMock(return_value=mock_message)),
+            patch.object(
+                PersonalityMessageModel, "create", AsyncMock(return_value=mock_message)
+            ),
             patch(
                 "neuron_server.controllers.personality_message_controller.secure_pubsub"
             ) as mock_pubsub,
             patch(
                 "neuron_server.controllers.personality_message_controller.chat_orchestrator"
             ) as mock_orchestrator,
-            patch.object(PersonalityRoomModel, "get_for_user", AsyncMock(return_value=MagicMock(
-                id=personality_room_id,
-                personality_id=personality_id
-            ))),
+            patch.object(
+                PersonalityRoomModel,
+                "get_for_user",
+                AsyncMock(
+                    return_value=MagicMock(
+                        id=personality_room_id, personality_id=personality_id
+                    )
+                ),
+            ),
             patch.object(PersonalityRoomModel, "update_message_count", AsyncMock()),
         ):
             mock_pubsub.publish_personality_room_message = AsyncMock()
@@ -246,7 +270,10 @@ class TestPersonalityMessageController:
                 response = await client.post(
                     f"/api/personality-messages/{personality_id}",
                     headers={"Authorization": TEST_JWT_TOKEN},
-                    json={"content": "Test message", "personality_room_id": str(personality_room_id)},
+                    json={
+                        "content": "Test message",
+                        "personality_room_id": str(personality_room_id),
+                    },
                 )
 
                 assert response.status_code == 200
@@ -266,10 +293,16 @@ class TestPersonalityMessageController:
 
         with (
             patch.object(
-                PersonalityModel, "get_for_user", AsyncMock(return_value=mock_personality)
+                PersonalityModel,
+                "get_for_user",
+                AsyncMock(return_value=mock_personality),
             ),
-            patch.object(PersonalityMessageModel, "get", AsyncMock(return_value=mock_message)),
-            patch.object(PersonalityMessageModel, "update", AsyncMock(return_value=mock_message)),
+            patch.object(
+                PersonalityMessageModel, "get", AsyncMock(return_value=mock_message)
+            ),
+            patch.object(
+                PersonalityMessageModel, "update", AsyncMock(return_value=mock_message)
+            ),
             patch(
                 "neuron_server.controllers.personality_message_controller.secure_pubsub"
             ) as mock_pubsub,
@@ -303,9 +336,13 @@ class TestPersonalityMessageController:
 
         with (
             patch.object(
-                PersonalityModel, "get_for_user", AsyncMock(return_value=mock_personality)
+                PersonalityModel,
+                "get_for_user",
+                AsyncMock(return_value=mock_personality),
             ),
-            patch.object(PersonalityMessageModel, "get", AsyncMock(return_value=mock_message)),
+            patch.object(
+                PersonalityMessageModel, "get", AsyncMock(return_value=mock_message)
+            ),
         ):
             async with app.test_client() as client:
                 response = await client.put(
@@ -327,11 +364,17 @@ class TestPersonalityMessageController:
         mock_message.user_id = "test_user_id"
 
         with (
-            patch.object(PersonalityModel, "has_admin_access", AsyncMock(return_value=False)),
             patch.object(
-                PersonalityModel, "get_for_user", AsyncMock(return_value=mock_personality)
+                PersonalityModel, "has_admin_access", AsyncMock(return_value=False)
             ),
-            patch.object(PersonalityMessageModel, "get", AsyncMock(return_value=mock_message)),
+            patch.object(
+                PersonalityModel,
+                "get_for_user",
+                AsyncMock(return_value=mock_personality),
+            ),
+            patch.object(
+                PersonalityMessageModel, "get", AsyncMock(return_value=mock_message)
+            ),
             patch.object(PersonalityMessageModel, "delete", AsyncMock()) as mock_delete,
             patch(
                 "neuron_server.controllers.personality_message_controller.secure_pubsub"
@@ -366,8 +409,12 @@ class TestPersonalityMessageController:
         )
 
         with (
-            patch.object(PersonalityModel, "has_admin_access", AsyncMock(return_value=True)),
-            patch.object(PersonalityMessageModel, "get", AsyncMock(return_value=mock_message)),
+            patch.object(
+                PersonalityModel, "has_admin_access", AsyncMock(return_value=True)
+            ),
+            patch.object(
+                PersonalityMessageModel, "get", AsyncMock(return_value=mock_message)
+            ),
             patch.object(PersonalityMessageModel, "delete", AsyncMock()) as mock_delete,
             patch(
                 "neuron_server.controllers.personality_message_controller.secure_pubsub"
@@ -402,36 +449,38 @@ class TestPersonalityRoomEvents:
             type="JoinPersonalityRoom", personality_id=personality_id, room_id=room_id
         )
 
-        with patch(
-            "neuron_server.controllers.personality_message_controller.permission_service"
-        ) as mock_permission:
-            mock_permission.user_has_personality_access = AsyncMock(return_value=True)
-
-            with patch.object(
+        with (
+            patch(
+                "neuron_server.controllers.personality_message_controller.permission_service"
+            ) as mock_permission,
+            patch.object(
                 PersonalityRoomModel, "get_for_user", AsyncMock(return_value=Mock())
-            ):
-                with patch(
-                    "neuron_server.controllers.personality_message_controller.room_manager"
-                ) as mock_room_manager:
-                    mock_room_manager.join_room = AsyncMock(return_value=True)
-                    mock_room_manager.get_room_members = AsyncMock(
-                        return_value=["test_user_id", "other_user"]
-                    )
+            ),
+            patch(
+                "neuron_server.controllers.personality_message_controller.room_manager"
+            ) as mock_room_manager,
+        ):
+            mock_permission.user_has_personality_access = AsyncMock(return_value=True)
+            mock_room_manager.join_room = AsyncMock(return_value=True)
+            mock_room_manager.get_room_members = AsyncMock(
+                return_value=["test_user_id", "other_user"]
+            )
 
-                    with patch(
-                        "neuron_server.controllers.personality_message_controller.secure_pubsub"
-                    ) as mock_pubsub:
-                        mock_pubsub.publish_to_user = AsyncMock()
-                        mock_pubsub.publish_to_users = AsyncMock()
+            with patch(
+                "neuron_server.controllers.personality_message_controller.secure_pubsub"
+            ) as mock_pubsub:
+                mock_pubsub.publish_to_user = AsyncMock()
+                mock_pubsub.publish_to_users = AsyncMock()
 
-                        await ajoin_personality_room(event, mock_websocket_session)
+                await ajoin_personality_room(event, mock_websocket_session)
 
-                        mock_room_manager.join_room.assert_called_with(
-                            "personality_room", str(room_id), "test_user_id", "test_user"
-                        )
-                        # Should publish join event to user and user joined event to others
-                        assert mock_pubsub.publish_to_user.call_count == 1
-                        assert mock_pubsub.publish_to_users.call_count == 1
+                mock_room_manager.join_room.assert_called_with(
+                    "personality_room", str(room_id), "test_user_id", "test_user"
+                )
+                # Should publish join event to user and user joined event
+                # to others
+                assert mock_pubsub.publish_to_user.call_count == 1
+                assert mock_pubsub.publish_to_users.call_count == 1
 
     @pytest.mark.asyncio
     async def test_join_personality_room_no_access(self, mock_websocket_session):

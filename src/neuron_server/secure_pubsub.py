@@ -187,9 +187,7 @@ class SecurePubSub:
         ]
 
         if not room_authorized_users:
-            logger.debug(
-                f"No authorized users in personality room {room_id}"
-            )
+            logger.debug(f"No authorized users in personality room {room_id}")
             return
 
         # Update room activity

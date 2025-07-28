@@ -103,11 +103,13 @@ async def get_personality_rooms(personality_id: UUID) -> dict[str, list[dict]]:
 
     # Add all room users
     for ru in all_room_users:
-        personality_room_users.append({
-            "user_id": ru.user_id,
-            "personality_room_id": str(ru.personality_room_id),
-            "role": ru.role,
-        })
+        personality_room_users.append(
+            {
+                "user_id": ru.user_id,
+                "personality_room_id": str(ru.personality_room_id),
+                "role": ru.role,
+            }
+        )
 
     # Add creators as admins if not already in room users
     for room in rooms:
@@ -118,11 +120,13 @@ async def get_personality_rooms(personality_id: UUID) -> dict[str, list[dict]]:
                 for ru in all_room_users
             )
             if not creator_exists:
-                personality_room_users.append({
-                    "user_id": room.created_by,
-                    "personality_room_id": str(room.id),
-                    "role": "admin",
-                })
+                personality_room_users.append(
+                    {
+                        "user_id": room.created_by,
+                        "personality_room_id": str(room.id),
+                        "role": "admin",
+                    }
+                )
 
     return {
         "personality_rooms": [room.model_dump() for room in rooms],
@@ -242,21 +246,25 @@ async def get_personality_room(
 
     # Add all room users
     for ru in room_users:
-        personality_room_users.append({
-            "user_id": ru.user_id,
-            "personality_room_id": str(ru.personality_room_id),
-            "role": ru.role,
-        })
+        personality_room_users.append(
+            {
+                "user_id": ru.user_id,
+                "personality_room_id": str(ru.personality_room_id),
+                "role": ru.role,
+            }
+        )
 
     # Add creator as admin if not already in room users
     if room.created_by:
         creator_exists = any(ru.user_id == room.created_by for ru in room_users)
         if not creator_exists:
-            personality_room_users.append({
-                "user_id": room.created_by,
-                "personality_room_id": str(room.id),
-                "role": "admin",
-            })
+            personality_room_users.append(
+                {
+                    "user_id": room.created_by,
+                    "personality_room_id": str(room.id),
+                    "role": "admin",
+                }
+            )
 
     return {
         "personality_room": room.model_dump(),
@@ -413,21 +421,25 @@ async def get_room_users(personality_id: UUID, room_id: UUID) -> dict[str, list[
 
     # Add all room users
     for ru in room_users:
-        personality_room_users.append({
-            "user_id": ru.user_id,
-            "personality_room_id": str(ru.personality_room_id),
-            "role": ru.role,
-        })
+        personality_room_users.append(
+            {
+                "user_id": ru.user_id,
+                "personality_room_id": str(ru.personality_room_id),
+                "role": ru.role,
+            }
+        )
 
     # Add creator as admin if not already in room users
     if room.created_by:
         creator_exists = any(ru.user_id == room.created_by for ru in room_users)
         if not creator_exists:
-            personality_room_users.append({
-                "user_id": room.created_by,
-                "personality_room_id": str(room_id),
-                "role": "admin",
-            })
+            personality_room_users.append(
+                {
+                    "user_id": room.created_by,
+                    "personality_room_id": str(room_id),
+                    "role": "admin",
+                }
+            )
 
     return {
         "users": [user.model_dump() for user in users],
@@ -522,21 +534,25 @@ async def add_room_user(personality_id: UUID, room_id: UUID) -> dict[str, dict]:
 
         # Add all room users
         for ru in all_room_users:
-            personality_room_users.append({
-                "user_id": ru.user_id,
-                "personality_room_id": str(ru.personality_room_id),
-                "role": ru.role,
-            })
+            personality_room_users.append(
+                {
+                    "user_id": ru.user_id,
+                    "personality_room_id": str(ru.personality_room_id),
+                    "role": ru.role,
+                }
+            )
 
         # Add creator as admin if not already in room users
         if room.created_by:
             creator_exists = any(ru.user_id == room.created_by for ru in all_room_users)
             if not creator_exists:
-                personality_room_users.append({
-                    "user_id": room.created_by,
-                    "personality_room_id": str(room_id),
-                    "role": "admin",
-                })
+                personality_room_users.append(
+                    {
+                        "user_id": room.created_by,
+                        "personality_room_id": str(room_id),
+                        "role": "admin",
+                    }
+                )
 
         # Create and send room data event to the newly added user
         room_data_event = PersonalityRoomDataEvent(
@@ -647,11 +663,13 @@ async def add_room_user_by_email(
 
         # Add all room users
         for ru in all_room_users:
-            personality_room_users.append({
-                "user_id": ru.user_id,
-                "personality_room_id": str(ru.personality_room_id),
-                "role": ru.role,
-            })
+            personality_room_users.append(
+                {
+                    "user_id": ru.user_id,
+                    "personality_room_id": str(ru.personality_room_id),
+                    "role": ru.role,
+                }
+            )
 
         # Add creator as admin if not already in room users
         if room_obj.created_by:
@@ -659,11 +677,13 @@ async def add_room_user_by_email(
                 ru.user_id == room_obj.created_by for ru in all_room_users
             )
             if not creator_exists:
-                personality_room_users.append({
-                    "user_id": room_obj.created_by,
-                    "personality_room_id": str(room_id),
-                    "role": "admin",
-                })
+                personality_room_users.append(
+                    {
+                        "user_id": room_obj.created_by,
+                        "personality_room_id": str(room_id),
+                        "role": "admin",
+                    }
+                )
 
         # Create and send room data event to the newly added user
         room_data_event = PersonalityRoomDataEvent(

@@ -123,9 +123,7 @@ class PersonalityChatOrchestrator:
                 personality_id=personality_id,
                 status=status,
             )
-            await secure_pubsub.publish_personality_event(
-                personality_id, status_event
-            )
+            await secure_pubsub.publish_personality_event(personality_id, status_event)
             logger.debug(f"Broadcast personality {personality_id} status: {status}")
         except Exception as e:
             logger.error(
@@ -154,9 +152,7 @@ class PersonalityChatOrchestrator:
             )
             logger.debug(f"Broadcast room {room_id} status: {status}")
         except Exception as e:
-            logger.error(
-                f"Error broadcasting room status update: {e}", exc_info=True
-            )
+            logger.error(f"Error broadcasting room status update: {e}", exc_info=True)
 
     async def get_personality_users_dict(
         self, personality_id: UUID
@@ -800,7 +796,7 @@ AGENT ACTION: {action}"""
                         await secure_pubsub.publish_personality_room_message(
                             personality_id,
                             message.personality_room_id,
-                            room_update_event
+                            room_update_event,
                         )
                         logger.debug(
                             f"Updated room {message.personality_room_id} name to: "
@@ -816,7 +812,7 @@ AGENT ACTION: {action}"""
                     personality_id,
                     message.personality_room_id,
                     analysis.quick_response,
-                    message.user_id
+                    message.user_id,
                 )
                 return
 
@@ -881,7 +877,7 @@ AGENT ACTION: {action}"""
                     message.personality_room_id,
                     response_text,
                     message.user_id,
-                    media_artifacts
+                    media_artifacts,
                 )
 
         except Exception as e:
@@ -901,6 +897,4 @@ AGENT ACTION: {action}"""
                         personality_id, message.personality_room_id, ""
                     )
             except Exception as status_error:
-                logger.error(
-                    f"Failed to clear room status after error: {status_error}"
-                )
+                logger.error(f"Failed to clear room status after error: {status_error}")

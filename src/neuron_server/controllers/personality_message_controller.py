@@ -394,9 +394,7 @@ async def ajoin_personality_room(
     current_members = await room_manager.get_room_members(
         "personality_room", str(room_id)
     )
-    logger.debug(
-        f"Current members in room {room_id} before join: {current_members}"
-    )
+    logger.debug(f"Current members in room {room_id} before join: {current_members}")
 
     joined = await room_manager.join_room(
         "personality_room", str(room_id), user_id, nickname
@@ -429,9 +427,7 @@ async def ajoin_personality_room(
             )
             await secure_pubsub.publish_to_users(other_members, user_joined_event)
 
-        logger.info(
-            f"User {user_id} ({nickname}) joined personality room {room_id}"
-        )
+        logger.info(f"User {user_id} ({nickname}) joined personality room {room_id}")
     else:
         # User already in room - treat as successful rejoin
         # Send confirmation to the user so their client state updates
@@ -445,9 +441,7 @@ async def ajoin_personality_room(
         )
         await secure_pubsub.publish_to_user(user_id, join_event)
 
-        logger.info(
-            f"User {user_id} ({nickname}) rejoined personality room {room_id}"
-        )
+        logger.info(f"User {user_id} ({nickname}) rejoined personality room {room_id}")
 
 
 @router.on(LeavePersonalityRoom)
@@ -472,9 +466,7 @@ async def aleave_personality_room(
 
     if left:
         # Send confirmation to the user who left
-        leave_event = RoomLeftEvent(
-            room_type="personality_room", room_id=str(room_id)
-        )
+        leave_event = RoomLeftEvent(room_type="personality_room", room_id=str(room_id))
         await secure_pubsub.publish_to_user(user_id, leave_event)
 
         # Notify other room members that this user left
@@ -487,9 +479,7 @@ async def aleave_personality_room(
             )
             await secure_pubsub.publish_to_users(other_members, user_left_event)
 
-        logger.info(
-            f"User {user_id} ({nickname}) left personality room {room_id}"
-        )
+        logger.info(f"User {user_id} ({nickname}) left personality room {room_id}")
     else:
         logger.debug(f"User {user_id} was not in personality room {room_id}")
 
