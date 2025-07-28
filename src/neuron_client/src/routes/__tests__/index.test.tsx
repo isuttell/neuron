@@ -149,6 +149,7 @@ describe("Index Route", () => {
         app: (state = {
           currentUser: { sub: "user123", email: "test@example.com" }
         }) => state,
+        socket: (state = { connected: true }) => state,
       },
     });
 
@@ -309,6 +310,30 @@ describe("Index Route", () => {
 
   describe("Audio recording", () => {
     it("should handle audio recording", async () => {
+      // Override the default mock to ensure proper state
+      (useAppSelector as vi.MockedFunction<typeof useAppSelector>).mockImplementation((selector) => {
+        const mockState = {
+          personalities: {
+            personalities: [mockActivePersonality],
+            activePersonalityId: "1",
+            loading: false,
+            error: null
+          },
+          threads: {
+            threads: {},
+            loading: false,
+            error: null
+          },
+          socket: {
+            connected: true
+          },
+          app: {
+            currentUser: { sub: "user123", email: "test@example.com" }
+          }
+        };
+        return selector(mockState);
+      });
+
       renderComponent();
 
       const audioRecorder = screen.getByTestId("audio-recorder");
