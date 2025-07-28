@@ -4,7 +4,6 @@ import { useAppDispatch, useAppSelector } from "../hooks";
 import {
   joinRoomStart,
   joinRoomFailure,
-  leaveRoom,
   selectIsRoomSubscribed,
   selectRoomJoinPending,
   selectRoomError,
@@ -59,16 +58,7 @@ export const usePersonalityRoom = (
 
   // Manual join function for personality rooms
   const joinRoom = useCallback(async (): Promise<void> => {
-    console.log('[usePersonalityRoom] joinRoom called', {
-      personalityId,
-      roomId,
-      isConnected,
-      isSubscribed,
-      isJoining
-    });
-
     if (!personalityId || !roomId || !isConnected || isSubscribed) {
-      console.log('[usePersonalityRoom] Skipping join - missing requirements');
       return;
     }
 
@@ -94,7 +84,6 @@ export const usePersonalityRoom = (
 
     try {
       dispatch(leavePersonalityRoom({ personalityId, roomId }));
-      dispatch(leaveRoom({ roomType: "personality_room", roomId }));
     } catch (err) {
       console.error(`Failed to leave personality room:`, err);
     }
@@ -102,14 +91,6 @@ export const usePersonalityRoom = (
 
   // Auto-join effect
   useEffect(() => {
-    console.log('[usePersonalityRoom] Auto-join effect', {
-      personalityId,
-      roomId,
-      isConnected,
-      isSubscribed,
-      isJoining
-    });
-
     if (!personalityId || !roomId || !isConnected || isSubscribed || isJoining) {
       return;
     }
@@ -126,12 +107,7 @@ export const usePersonalityRoom = (
 
     return () => {
       if (currentPersonalityId && currentRoomId) {
-        console.log('[usePersonalityRoom] Cleanup - leaving room', {
-          personalityId: currentPersonalityId,
-          roomId: currentRoomId
-        });
         dispatch(leavePersonalityRoom({ personalityId: currentPersonalityId, roomId: currentRoomId }));
-        dispatch(leaveRoom({ roomType: "personality_room", roomId: currentRoomId }));
       }
     };
   }, []); // Only run on mount/unmount

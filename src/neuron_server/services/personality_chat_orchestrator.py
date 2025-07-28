@@ -46,7 +46,8 @@ class PersonalityDirectedAnalysis(BaseModel):
     """Structured output for personality message direction analysis."""
 
     is_directed: bool = Field(
-        description="Whether the message is directed at this personality"
+        description="Whether the message is directed at this personality, they should "
+        "respond, or it's the first message in the room"
     )
     confidence: float = Field(
         description="Confidence score from 0.0 to 1.0", ge=0.0, le=1.0
@@ -54,7 +55,8 @@ class PersonalityDirectedAnalysis(BaseModel):
     reasoning: str = Field(description="Terse explanation of the decision")
     quick_response: str | None = Field(
         description=(
-            "A brief response to provide immediately when personality is busy "
+            "A brief response to provide immediately when personality is busy or if a "
+            "terse response like a confirmation is appropriate "
             "(None if not busy or not directed)"
         ),
         default=None,
@@ -339,7 +341,8 @@ class PersonalityChatOrchestrator:
         current_status: str = "",
         current_room_name: str = "",
     ) -> PersonalityDirectedAnalysis:
-        """Analyze if the latest user message is directed at the personality.
+        """Analyze if the latest user message is directed at the personality or
+        the personality should otherwise respond.
 
         Args:
             personality_id: The ID of the personality
@@ -431,6 +434,7 @@ ROOM NAME ANALYSIS:
 
 CONSIDERATION FACTORS:
 - This is {personality_name}'s personal chat room
+- If no one is in the room, the personality should likely respond
 - Direct mentions of the personality name
 - Context clues from conversation flow
 - Questions or statements directed at this specific personality

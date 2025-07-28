@@ -47,8 +47,6 @@ import type {
   PersonalityMessageDeletedEvent,
   RoomJoinedEvent,
   RoomLeftEvent,
-  UserJoinedRoomEvent,
-  UserLeftRoomEvent,
   PersonalityRoomCreatedEvent,
   PersonalityRoomUpdatedEvent,
   PersonalityRoomDeletedEvent,
@@ -238,8 +236,6 @@ const websocketMiddleware =
 
         // Room WebSocket Events
         socketManager.on("room_joined", (event: RoomJoinedEvent) => {
-          console.log(`Joined room: ${event.room_type}:${event.room_id} (${event.member_count} members)`);
-
           // Update room state
           dispatch(joinRoomSuccess({
             roomType: event.room_type,
@@ -249,23 +245,11 @@ const websocketMiddleware =
         });
 
         socketManager.on("room_left", (event: RoomLeftEvent) => {
-          console.log(`Left room: ${event.room_type}:${event.room_id}`);
-
           // Update room state
           dispatch(leaveRoom({
             roomType: event.room_type,
             roomId: event.room_id,
           }));
-        });
-
-        socketManager.on("user_joined_room", (event: UserJoinedRoomEvent) => {
-          console.log(`User ${event.nickname} joined room: ${event.room_type}:${event.room_id}`);
-          // Could show a toast notification here if desired
-        });
-
-        socketManager.on("user_left_room", (event: UserLeftRoomEvent) => {
-          console.log(`User ${event.nickname} left room: ${event.room_type}:${event.room_id}`);
-          // Could show a toast notification here if desired
         });
 
         // Personality Room WebSocket Events
