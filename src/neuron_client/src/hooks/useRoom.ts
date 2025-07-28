@@ -10,7 +10,6 @@ import {
   selectRoomMemberCount,
 } from "../slices/roomSlice";
 import { getConnectionStatus } from "../slices/socketSlice";
-import { joinPersonalityRoom, leavePersonalityRoom } from "../actions/roomActions";
 
 export interface UseRoomOptions {
   /** Whether to automatically join the room when dependencies are ready */
@@ -81,11 +80,11 @@ export const useRoom = (
       dispatch(joinRoomStart({ roomType, roomId }));
 
       // Use appropriate join action based on room type
-      if (roomType === "personality") {
-        const result = await dispatch(joinPersonalityRoom({ personalityId: roomId }));
-        if (joinPersonalityRoom.rejected.match(result)) {
-          throw new Error(result.payload as string);
-        }
+      if (roomType === "personality_room") {
+        // For personality rooms, we need both personalityId and roomId
+        // The roomId parameter contains the actual room ID
+        // We'll need to get the personalityId from somewhere else
+        throw new Error("personality room type requires usePersonalityRoom hook");
       } else {
         throw new Error(`Unsupported room type: ${roomType}`);
       }
@@ -104,16 +103,16 @@ export const useRoom = (
 
     try {
       // Use appropriate leave action based on room type
-      if (roomType === "personality") {
-        dispatch(leavePersonalityRoom({ personalityId: roomId }));
+      if (roomType === "personality_room") {
+        // For personality rooms, we need both personalityId and roomId
+        throw new Error("personality room type requires usePersonalityRoom hook");
       } else {
         throw new Error(`Unsupported room type: ${roomType}`);
       }
-
-      // Update local state immediately
-      dispatch(leaveRoom({ roomType, roomId }));
     } catch (err) {
       console.error(`Failed to leave ${roomType} room:`, err);
+      // Update local state even if the action fails
+      dispatch(leaveRoom({ roomType, roomId }));
     }
   };
 
@@ -141,8 +140,10 @@ export const useRoom = (
         console.log("Cleanup: leaving room", initialRoomType, initialRoomId);
 
         // Direct dispatch without going through functions to avoid stale references
-        if (initialRoomType === "personality") {
-          dispatch(leavePersonalityRoom({ personalityId: initialRoomId }));
+        if (initialRoomType === "personality_room") {
+          // Note: personality rooms require both IDs, so this won't work
+          // They should use usePersonalityRoom hook instead
+          console.warn("personality room type requires usePersonalityRoom hook for cleanup");
         }
 
         // Update local state

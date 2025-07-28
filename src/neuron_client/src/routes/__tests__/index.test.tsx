@@ -108,6 +108,9 @@ vi.mock("../../hooks", () => ({
       },
       socket: {
         connected: true  // Mock WebSocket as connected by default
+      },
+      app: {
+        currentUser: { sub: "user123", email: "test@example.com" }
       }
     };
 
@@ -142,6 +145,9 @@ describe("Index Route", () => {
           activePersonalityId: "1",  // Correct property name
           loading: false,
           error: null
+        }) => state,
+        app: (state = {
+          currentUser: { sub: "user123", email: "test@example.com" }
         }) => state,
       },
     });
@@ -209,6 +215,9 @@ describe("Index Route", () => {
           },
           socket: {
             connected: true  // Add socket state
+          },
+          app: {
+            currentUser: { sub: "user123", email: "test@example.com" }
           }
         };
 
@@ -237,6 +246,9 @@ describe("Index Route", () => {
           },
           socket: {
             connected: true  // Add socket state
+          },
+          app: {
+            currentUser: { sub: "user123", email: "test@example.com" }
           }
         };
 

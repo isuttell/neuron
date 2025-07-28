@@ -1,4 +1,17 @@
-import { useRoom, UseRoomReturn } from "./useRoom";
+import { useEffect, useCallback } from "react";
+import { UseRoomReturn } from "./useRoom";
+import { useAppDispatch, useAppSelector } from "../hooks";
+import {
+  joinRoomStart,
+  joinRoomFailure,
+  leaveRoom,
+  selectIsRoomSubscribed,
+  selectRoomJoinPending,
+  selectRoomError,
+  selectRoomMemberCount,
+} from "../slices/roomSlice";
+import { getConnectionStatus } from "../slices/socketSlice";
+import { joinPersonalityRoom, leavePersonalityRoom } from "../actions/roomActions";
 
 
 export interface UsePersonalityRoomReturn extends UseRoomReturn {
@@ -26,14 +39,110 @@ export const usePersonalityRoom = (
   personalityId: string | undefined,
   roomId: string | undefined,
 ): UsePersonalityRoomReturn => {
+  // Import needed hooks and actions
+  const dispatch = useAppDispatch();
+  const isConnected = useAppSelector(getConnectionStatus);
 
-  // Use base room hook with personality room type
-  // For now, we still join the personality-wide room for WebSocket events
-  // TODO: Update backend to support room-specific WebSocket subscriptions
-  const roomState = useRoom("personality", personalityId);
+  // Room state selectors - use room-specific subscriptions
+  const isSubscribed = useAppSelector((state) =>
+    roomId ? selectIsRoomSubscribed(state, "personality_room", roomId) : false
+  );
+  const isJoining = useAppSelector((state) =>
+    roomId ? selectRoomJoinPending(state, "personality_room", roomId) : false
+  );
+  const error = useAppSelector((state) =>
+    roomId ? selectRoomError(state, "personality_room", roomId) : undefined
+  );
+  const memberCount = useAppSelector((state) =>
+    roomId ? selectRoomMemberCount(state, "personality_room", roomId) : 0
+  );
+
+  // Manual join function for personality rooms
+  const joinRoom = useCallback(async (): Promise<void> => {
+    console.log('[usePersonalityRoom] joinRoom called', {
+      personalityId,
+      roomId,
+      isConnected,
+      isSubscribed,
+      isJoining
+    });
+
+    if (!personalityId || !roomId || !isConnected || isSubscribed) {
+      console.log('[usePersonalityRoom] Skipping join - missing requirements');
+      return;
+    }
+
+    try {
+      dispatch(joinRoomStart({ roomType: "personality_room", roomId }));
+
+      const result = await dispatch(joinPersonalityRoom({ personalityId, roomId }));
+      if (joinPersonalityRoom.rejected.match(result)) {
+        throw new Error(result.payload as string);
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to join room";
+      dispatch(joinRoomFailure({ roomType: "personality_room", roomId, error: errorMessage }));
+      throw err;
+    }
+  }, [personalityId, roomId, isConnected, isSubscribed, dispatch]);
+
+  // Manual leave function
+  const leaveRoomManual = (): void => {
+    if (!personalityId || !roomId || !isSubscribed) {
+      return;
+    }
+
+    try {
+      dispatch(leavePersonalityRoom({ personalityId, roomId }));
+      dispatch(leaveRoom({ roomType: "personality_room", roomId }));
+    } catch (err) {
+      console.error(`Failed to leave personality room:`, err);
+    }
+  };
+
+  // Auto-join effect
+  useEffect(() => {
+    console.log('[usePersonalityRoom] Auto-join effect', {
+      personalityId,
+      roomId,
+      isConnected,
+      isSubscribed,
+      isJoining
+    });
+
+    if (!personalityId || !roomId || !isConnected || isSubscribed || isJoining) {
+      return;
+    }
+
+    joinRoom().catch((err) => {
+      console.error(`Failed to auto-join personality room:`, err);
+    });
+  }, [personalityId, roomId, isConnected, isSubscribed, isJoining, joinRoom]);
+
+  // Cleanup effect
+  useEffect(() => {
+    const currentPersonalityId = personalityId;
+    const currentRoomId = roomId;
+
+    return () => {
+      if (currentPersonalityId && currentRoomId) {
+        console.log('[usePersonalityRoom] Cleanup - leaving room', {
+          personalityId: currentPersonalityId,
+          roomId: currentRoomId
+        });
+        dispatch(leavePersonalityRoom({ personalityId: currentPersonalityId, roomId: currentRoomId }));
+        dispatch(leaveRoom({ roomType: "personality_room", roomId: currentRoomId }));
+      }
+    };
+  }, []); // Only run on mount/unmount
 
   return {
-    ...roomState,
+    isSubscribed,
+    isJoining,
+    error,
+    memberCount,
+    joinRoom,
+    leaveRoom: leaveRoomManual,
     personalityId,
     roomId,
   };

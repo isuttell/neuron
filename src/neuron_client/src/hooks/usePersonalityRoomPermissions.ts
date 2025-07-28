@@ -6,7 +6,7 @@ import { getPersonalityRoom, getRoomUsers } from "../slices/personalityRoomSlice
 /**
  * Hook to get personality room-level permissions for the current user
  */
-export function usePersonalityRoomPermissions(personalityId: string | undefined, roomId: string | undefined) {
+export function usePersonalityRoomPermissions(_personalityId: string | undefined, roomId: string | undefined) {
   const { user } = useAuth0();
   const room = useAppSelector((state) =>
     roomId ? getPersonalityRoom(state, roomId) : undefined

@@ -192,7 +192,9 @@ async def create_personality_room(personality_id: UUID) -> dict[str, dict]:
         created_by=room.created_by,
         message_count=room.message_count,
     )
-    await secure_pubsub.publish_personality_room_message(personality_id, room_event)
+    await secure_pubsub.publish_personality_room_message(
+        personality_id, room.id, room_event
+    )
 
     return {"personality_room": room.model_dump()}
 
@@ -319,7 +321,9 @@ async def update_personality_room(
         name=room.name,
         room_type=room.type,
     )
-    await secure_pubsub.publish_personality_room_message(personality_id, update_event)
+    await secure_pubsub.publish_personality_room_message(
+        personality_id, room.id, update_event
+    )
 
     return {"personality_room": room.model_dump()}
 
@@ -361,7 +365,9 @@ async def delete_personality_room(personality_id: UUID, room_id: UUID) -> Respon
         personality_id=personality_id,
         room_id=room_id,
     )
-    await secure_pubsub.publish_personality_room_message(personality_id, delete_event)
+    await secure_pubsub.publish_personality_room_message(
+        personality_id, room_id, delete_event
+    )
 
     return Response(status=204)
 
@@ -492,7 +498,9 @@ async def add_room_user(personality_id: UUID, room_id: UUID) -> dict[str, dict]:
         user_id=payload.user_id,
         role=payload.role,
     )
-    await secure_pubsub.publish_personality_room_message(personality_id, join_event)
+    await secure_pubsub.publish_personality_room_message(
+        personality_id, room_id, join_event
+    )
 
     # Send complete room data to the newly added user
     # Get room details
@@ -615,7 +623,9 @@ async def add_room_user_by_email(
         user_id=user.id,
         role=room_user.role,
     )
-    await secure_pubsub.publish_personality_room_message(personality_id, join_event)
+    await secure_pubsub.publish_personality_room_message(
+        personality_id, room_id, join_event
+    )
 
     # Send complete room data to the newly added user
     # Get room details
@@ -793,6 +803,8 @@ async def remove_room_user(
         room_id=room_id,
         user_id=user_id,
     )
-    await secure_pubsub.publish_personality_room_message(personality_id, leave_event)
+    await secure_pubsub.publish_personality_room_message(
+        personality_id, room_id, leave_event
+    )
 
     return Response(status=204)

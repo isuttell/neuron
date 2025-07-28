@@ -164,14 +164,16 @@ class SecurePubSub:
         await self.publish_to_users(authorized_users, event)
 
     async def publish_personality_room_message(
-        self, personality_id: UUID, event: BaseModel
+        self, personality_id: UUID, room_id: UUID, event: BaseModel
     ) -> None:
-        """Publish a personality message to users in the personality chat room."""
-        # Get users currently in the personality chat room
-        room_members = await room_manager.get_personality_room_members(personality_id)
+        """Publish a personality message to users in a specific personality room."""
+        # Get users currently in the specific personality room
+        room_members = await room_manager.get_room_members(
+            "personality_room", str(room_id)
+        )
 
         if not room_members:
-            logger.debug(f"No users in personality {personality_id} chat room")
+            logger.debug(f"No users in personality room {room_id}")
             return
 
         # Also check permissions to ensure room members have access
@@ -186,17 +188,18 @@ class SecurePubSub:
 
         if not room_authorized_users:
             logger.debug(
-                f"No authorized users in personality {personality_id} chat room"
+                f"No authorized users in personality room {room_id}"
             )
             return
 
         # Update room activity
-        await room_manager.update_room_activity("personality", str(personality_id))
+        await room_manager.update_room_activity("personality_room", str(room_id))
 
         # Send to authorized room members only
         await self.publish_to_users(room_authorized_users, event)
         logger.debug(
-            f"Published personality room message to {len(room_authorized_users)} users"
+            f"Published personality room message to {len(room_authorized_users)} "
+            f"users in room {room_id}"
         )
 
     async def publish_error_to_user(self, user_id: str, error_event: BaseModel) -> None:

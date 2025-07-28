@@ -121,7 +121,7 @@ class PersonalityChatOrchestrator:
                 personality_id=personality_id,
                 status=status,
             )
-            await secure_pubsub.publish_personality_room_message(
+            await secure_pubsub.publish_personality_event(
                 personality_id, status_event
             )
             logger.debug(f"Broadcast personality {personality_id} status: {status}")
@@ -148,7 +148,7 @@ class PersonalityChatOrchestrator:
             )
             # Broadcast to room-specific channel
             await secure_pubsub.publish_personality_room_message(
-                personality_id, status_event
+                personality_id, room_id, status_event
             )
             logger.debug(f"Broadcast room {room_id} status: {status}")
         except Exception as e:
@@ -715,7 +715,7 @@ AGENT ACTION: {action}"""
                 media_items=media_items_data,
             )
             await secure_pubsub.publish_personality_room_message(
-                personality_id, message_event
+                personality_id, room_id, message_event
             )
 
             logger.info(f"Broadcast personality response: {response_content[:100]}...")
@@ -794,7 +794,9 @@ AGENT ACTION: {action}"""
                             room_type=updated_room.type,
                         )
                         await secure_pubsub.publish_personality_room_message(
-                            personality_id, room_update_event
+                            personality_id,
+                            message.personality_room_id,
+                            room_update_event
                         )
                         logger.debug(
                             f"Updated room {message.personality_room_id} name to: "
