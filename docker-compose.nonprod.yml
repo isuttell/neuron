@@ -9,10 +9,16 @@
 services:
   neuron_migration:
     image: gitea.zaks.io/isuttell/neuron-server:latest
-    restart: "no"
+    restart: unless-stopped
     env_file:
       - .env
-    command: ["-m", "neuron_server", "--migration"]
+    # Override entrypoint to use shell instead of python
+    entrypoint: ["/bin/sh", "-c"]
+    # Run migrations then sleep forever to keep container alive
+    command: ["python -m neuron_server --migration && exec sleep infinity"]
+    # Disable healthcheck since this container doesn't run the web server
+    healthcheck:
+      disable: true
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
 
