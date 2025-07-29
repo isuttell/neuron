@@ -19,10 +19,12 @@ export const fetchPersonalityMessages = createAsyncThunk(
   async (
     {
       personalityId,
+      roomId,
       limit = 50,
       offset = 0,
     }: {
       personalityId: string;
+      roomId?: string;
       limit?: number;
       offset?: number;
     },
@@ -33,6 +35,11 @@ export const fetchPersonalityMessages = createAsyncThunk(
         limit: limit.toString(),
         offset: offset.toString(),
       });
+
+      // Add room_id if provided
+      if (roomId) {
+        params.append("room_id", roomId);
+      }
 
       const response = await api.get<PersonalityMessagesResponse>(
         `/personality-messages/${personalityId}?${params}`
@@ -103,10 +110,12 @@ export const sendPersonalityMessage = createAsyncThunk(
   async (
     {
       personalityId,
+      roomId,
       content,
       userId,
     }: {
       personalityId: string;
+      roomId: string;
       content: string;
       userId: string;
     },
@@ -121,6 +130,7 @@ export const sendPersonalityMessage = createAsyncThunk(
         tempId,
         content,
         personalityId,
+        roomId,
         userId,
       })
     );
@@ -128,6 +138,7 @@ export const sendPersonalityMessage = createAsyncThunk(
     try {
       const requestBody: CreatePersonalityMessageRequest = {
         content,
+        personality_room_id: roomId,
       };
 
       const response = await api.post<CreatePersonalityMessageResponse>(

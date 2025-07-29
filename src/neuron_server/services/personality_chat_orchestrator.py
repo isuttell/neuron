@@ -7,13 +7,26 @@ from langchain_core.runnables import Runnable
 from lxml import etree
 from pydantic import BaseModel, Field
 
+from neuron_server.controllers.events.message_events import (
+    PersonalityMessageEvent,
+)
 from neuron_server.controllers.events.personality_events import (
+    PersonalityRoomStatusUpdateEvent,
     PersonalityStatusUpdateEvent,
 )
+from neuron_server.controllers.events.personality_room_events import (
+    PersonalityRoomUpdatedEvent,
+)
 from neuron_server.llms.agent import execute_agent_with_messages
+from neuron_server.llms.message_processor import get_message_content
 from neuron_server.logger import logger
+from neuron_server.models.media_item_model import MediaItemModel
+from neuron_server.models.personality_message_media_item_model import (
+    PersonalityMessageMediaItemModel,
+)
 from neuron_server.models.personality_message_model import PersonalityMessageModel
 from neuron_server.models.personality_model import PersonalityModel
+from neuron_server.models.personality_room_model import PersonalityRoomModel
 from neuron_server.models.personality_user_model import PersonalityUserModel
 from neuron_server.models.provider_model import ProviderModelModel
 from neuron_server.models.user_model import UserModel
@@ -33,7 +46,8 @@ class PersonalityDirectedAnalysis(BaseModel):
     """Structured output for personality message direction analysis."""
 
     is_directed: bool = Field(
-        description="Whether the message is directed at this personality"
+        description="Whether the message is directed at this personality, they should "
+        "respond, or it's the first message in the room"
     )
     confidence: float = Field(
         description="Confidence score from 0.0 to 1.0", ge=0.0, le=1.0
@@ -41,13 +55,24 @@ class PersonalityDirectedAnalysis(BaseModel):
     reasoning: str = Field(description="Terse explanation of the decision")
     quick_response: str | None = Field(
         description=(
-            "A brief response to provide immediately when personality is busy "
+            "A brief response to provide immediately when personality is busy or if a "
+            "terse response like a confirmation is appropriate "
             "(None if not busy or not directed)"
         ),
         default=None,
     )
     should_use_quick_response: bool = Field(
         description="Whether to use the quick response instead of full processing",
+        default=False,
+    )
+    suggested_room_name: str | None = Field(
+        description="Suggested new room name if it should be updated (max 50 chars)",
+        default=None,
+    )
+    should_update_room_name: bool = Field(
+        description=(
+            "Whether the room name should be updated based on conversation context"
+        ),
         default=False,
     )
 
@@ -98,14 +123,36 @@ class PersonalityChatOrchestrator:
                 personality_id=personality_id,
                 status=status,
             )
-            await secure_pubsub.publish_personality_room_message(
-                personality_id, status_event
-            )
+            await secure_pubsub.publish_personality_event(personality_id, status_event)
             logger.debug(f"Broadcast personality {personality_id} status: {status}")
         except Exception as e:
             logger.error(
                 f"Error broadcasting personality status update: {e}", exc_info=True
             )
+
+    async def broadcast_personality_room_status_update(
+        self, personality_id: UUID, room_id: UUID, status: str
+    ) -> None:
+        """Broadcast personality room status update to users in that room.
+
+        Args:
+            personality_id: The ID of the personality
+            room_id: The ID of the room
+            status: The new status to broadcast
+        """
+        try:
+            status_event = PersonalityRoomStatusUpdateEvent(
+                personality_id=personality_id,
+                room_id=room_id,
+                status=status,
+            )
+            # Broadcast to room-specific channel
+            await secure_pubsub.publish_personality_room_message(
+                personality_id, room_id, status_event
+            )
+            logger.debug(f"Broadcast room {room_id} status: {status}")
+        except Exception as e:
+            logger.error(f"Error broadcasting room status update: {e}", exc_info=True)
 
     async def get_personality_users_dict(
         self, personality_id: UUID
@@ -228,10 +275,6 @@ class PersonalityChatOrchestrator:
             return etree.tostring(root, encoding="unicode", pretty_print=True).strip()
 
         # Batch fetch media items for all messages to minimize database queries
-        from neuron_server.models.personality_message_media_item_model import (
-            PersonalityMessageMediaItemModel,
-        )
-
         message_media_map = {}
         for message in messages:
             media_items = await PersonalityMessageMediaItemModel.get_media_for_message(
@@ -292,14 +335,17 @@ class PersonalityChatOrchestrator:
         latest_message: PersonalityMessageModel,
         personality: PersonalityModel,
         current_status: str = "",
+        current_room_name: str = "",
     ) -> PersonalityDirectedAnalysis:
-        """Analyze if the latest user message is directed at the personality.
+        """Analyze if the latest user message is directed at the personality or
+        the personality should otherwise respond.
 
         Args:
             personality_id: The ID of the personality
             latest_message: The latest message to analyze
             personality: The PersonalityModel instance
             current_status: Current status of the personality (empty if idle)
+            current_room_name: Current name of the room
 
         Returns:
             PersonalityDirectedAnalysis with direction analysis and quick response
@@ -353,6 +399,7 @@ Name: {personality.name}
 Personality Custom Instructions for responses:
 <instructions>{personality.context}</instructions>
 Current Status: {current_status if is_busy else "Idle"}
+Current Room Name: "{current_room_name}"
 
 CHAT HISTORY:
 {chat_history}
@@ -363,11 +410,27 @@ ANALYSIS REQUIREMENTS:
 1. Determine if the message is directed at {personality_name}
 2. Provide confidence score (0.0-1.0)
 3. Explain your reasoning
+4. Analyze if the room name should be updated based on conversation context
 
 {status_section}
 
+ROOM NAME ANALYSIS:
+- Only suggest updating the room name if:
+  * The conversation has established a clear, specific topic
+  * The current room name is generic or doesn't reflect the conversation
+  * There's enough context to create a meaningful name
+- Keep suggested names:
+  * Under 50 characters
+  * Concise and descriptive
+  * Relevant to the ongoing conversation topic
+- Don't update room name for:
+  * Casual greetings or small talk
+  * Very early in the conversation
+  * If the current name already fits well
+
 CONSIDERATION FACTORS:
 - This is {personality_name}'s personal chat room
+- If no one is in the room, the personality should likely respond
 - Direct mentions of the personality name
 - Context clues from conversation flow
 - Questions or statements directed at this specific personality
@@ -439,6 +502,7 @@ AGENT ACTION: {action}"""
     async def update_status_with_generation(  # noqa: PLR0913
         self,
         personality_id: UUID,
+        room_id: UUID,
         fast_model: Runnable,
         personality: PersonalityModel,
         chat_history: str,
@@ -469,21 +533,22 @@ AGENT ACTION: {action}"""
                 action=action,
             )
 
-            await PersonalityModel.update_status(personality_id, custom_status)
-            await self.broadcast_personality_status_update(
-                personality_id, custom_status
+            # Update room status instead of personality status
+            await PersonalityRoomModel.update_status(room_id, custom_status)
+            await self.broadcast_personality_room_status_update(
+                personality_id, room_id, custom_status
             )
             logger.debug(
-                f"Updated {personality.name} status to: {custom_status} "
+                f"Updated room {room_id} status to: {custom_status} "
                 f"(triggered by user {user_id})"
             )
 
         except Exception as e:
             logger.error(f"Error in update_status_with_generation: {e}", exc_info=True)
             fallback_status = "working"
-            await PersonalityModel.update_status(personality_id, fallback_status)
-            await self.broadcast_personality_status_update(
-                personality_id, fallback_status
+            await PersonalityRoomModel.update_status(room_id, fallback_status)
+            await self.broadcast_personality_room_status_update(
+                personality_id, room_id, fallback_status
             )
 
     async def generate_personality_response(  # noqa: PLR0913
@@ -537,8 +602,6 @@ AGENT ACTION: {action}"""
             # Extract response text from last AI message
             response_text = ""
             if result_messages and isinstance(result_messages[-1], AIMessage):
-                from neuron_server.llms.message_processor import get_message_content
-
                 content = get_message_content(
                     result_messages[-1], format_as_string=True
                 )
@@ -590,6 +653,7 @@ AGENT ACTION: {action}"""
     async def create_and_broadcast_personality_response(
         self,
         personality_id: UUID,
+        room_id: UUID,
         response_content: str,
         user_id: str,
         media_artifacts: list[ToolMediaArtifact] = None,
@@ -598,18 +662,16 @@ AGENT ACTION: {action}"""
 
         Args:
             personality_id: The ID of the personality
+            room_id: The ID of the personality room
             response_content: The response text to broadcast
             user_id: The ID of the user who triggered this response
             media_artifacts: Optional list of media artifacts to associate
         """
         try:
-            from neuron_server.controllers.events.message_events import (
-                PersonalityMessageEvent,
-            )
-
             # Create AI response message (user_id=None indicates AI message)
             create_params = PersonalityMessageModel.CreateParams(
                 personality_id=personality_id,
+                personality_room_id=room_id,
                 content=response_content,
                 user_id=None,  # AI message
             )
@@ -618,8 +680,6 @@ AGENT ACTION: {action}"""
             # Create media items from artifacts and associate them with the message
             created_media_items = []
             if media_artifacts:
-                from neuron_server.models.media_item_model import MediaItemModel
-
                 for artifact in media_artifacts:
                     for item in artifact.items:
                         # Create MediaItem record
@@ -647,6 +707,7 @@ AGENT ACTION: {action}"""
             message_event = PersonalityMessageEvent(
                 personality_id=personality_id,
                 message_id=ai_message.id,
+                room_id=room_id,
                 content=ai_message.content,
                 user_id=ai_message.user_id,  # None for AI
                 created_at=ai_message.created_at.isoformat(),
@@ -654,7 +715,7 @@ AGENT ACTION: {action}"""
                 media_items=media_items_data,
             )
             await secure_pubsub.publish_personality_room_message(
-                personality_id, message_event
+                personality_id, room_id, message_event
             )
 
             logger.info(f"Broadcast personality response: {response_content[:100]}...")
@@ -688,14 +749,23 @@ AGENT ACTION: {action}"""
                 )
                 return
 
-            await PersonalityModel.update_status(personality_id, "contemplating")
-            await self.broadcast_personality_status_update(
-                personality_id, "contemplating"
+            # Get the current room to get its name
+            room = await PersonalityRoomModel.get(message.personality_room_id)
+            if not room:
+                logger.error(f"Room {message.personality_room_id} not found")
+                return
+
+            # Update room status instead of personality status
+            await PersonalityRoomModel.update_status(
+                message.personality_room_id, "contemplating"
+            )
+            await self.broadcast_personality_room_status_update(
+                personality_id, message.personality_room_id, "contemplating"
             )
 
-            # Analyze direction with current status
+            # Analyze direction with current status and room name
             analysis = await self.analyze_message_direction(
-                personality_id, message, personality, personality.status
+                personality_id, message, personality, personality.status, room.name
             )
 
             # Log results for monitoring/debugging
@@ -705,11 +775,44 @@ AGENT ACTION: {action}"""
                 f"{analysis.reasoning} | Quick: {analysis.should_use_quick_response}"
             )
 
+            # Handle room name update if suggested
+            if analysis.should_update_room_name and analysis.suggested_room_name:
+                try:
+                    # Update the room name
+                    update_params = PersonalityRoomModel.UpdateParams(
+                        room_id=message.personality_room_id,
+                        name=analysis.suggested_room_name,
+                    )
+                    updated_room = await PersonalityRoomModel.update(update_params)
+
+                    if updated_room:
+                        # Broadcast room update event
+                        room_update_event = PersonalityRoomUpdatedEvent(
+                            personality_id=personality_id,
+                            room_id=message.personality_room_id,
+                            name=analysis.suggested_room_name,
+                            room_type=updated_room.type,
+                        )
+                        await secure_pubsub.publish_personality_room_message(
+                            personality_id,
+                            message.personality_room_id,
+                            room_update_event,
+                        )
+                        logger.debug(
+                            f"Updated room {message.personality_room_id} name to: "
+                            f"{analysis.suggested_room_name}"
+                        )
+                except Exception as e:
+                    logger.error(f"Failed to update room name: {e}", exc_info=True)
+
             # Handle quick response for busy personality
             if analysis.should_use_quick_response and analysis.quick_response:
                 # Create and broadcast quick response immediately
                 await self.create_and_broadcast_personality_response(
-                    personality_id, analysis.quick_response, message.user_id
+                    personality_id,
+                    message.personality_room_id,
+                    analysis.quick_response,
+                    message.user_id,
                 )
                 return
 
@@ -741,6 +844,7 @@ AGENT ACTION: {action}"""
                 asyncio.create_task(
                     self.update_status_with_generation(
                         personality_id=personality_id,
+                        room_id=message.personality_room_id,
                         fast_model=fast_model,
                         personality=personality,
                         chat_history=chat_history,
@@ -769,7 +873,11 @@ AGENT ACTION: {action}"""
 
                 # Create and broadcast the response
                 await self.create_and_broadcast_personality_response(
-                    personality_id, response_text, message.user_id, media_artifacts
+                    personality_id,
+                    message.personality_room_id,
+                    response_text,
+                    message.user_id,
+                    media_artifacts,
                 )
 
         except Exception as e:
@@ -779,11 +887,14 @@ AGENT ACTION: {action}"""
                 exc_info=True,
             )
         finally:
-            # Clear personality status
+            # Clear room status
             try:
-                await PersonalityModel.update_status(personality_id, "")
-                await self.broadcast_personality_status_update(personality_id, "")
+                if message and message.personality_room_id:
+                    await PersonalityRoomModel.update_status(
+                        message.personality_room_id, ""
+                    )
+                    await self.broadcast_personality_room_status_update(
+                        personality_id, message.personality_room_id, ""
+                    )
             except Exception as status_error:
-                logger.error(
-                    f"Failed to clear personality status after error: {status_error}"
-                )
+                logger.error(f"Failed to clear room status after error: {status_error}")

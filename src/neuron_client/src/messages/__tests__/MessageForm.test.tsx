@@ -287,8 +287,13 @@ describe("MessageForm", () => {
     const childContent = <div data-testid="child-content">Test Child</div>;
     render(<MessageForm onSubmit={mockOnSubmit}>{childContent}</MessageForm>);
 
-    expect(screen.getByTestId("child-content")).toBeInTheDocument();
-    expect(screen.getByText("Test Child")).toBeInTheDocument();
+    const childElements = screen.getAllByTestId("child-content");
+    // Children are rendered twice for responsive design (mobile and desktop)
+    expect(childElements).toHaveLength(2);
+    expect(childElements[0]).toBeInTheDocument();
+    expect(childElements[1]).toBeInTheDocument();
+    // But text content should still be present
+    expect(screen.getAllByText("Test Child")).toHaveLength(2);
   });
 
   it("does not render children container when no children provided", () => {
@@ -299,18 +304,19 @@ describe("MessageForm", () => {
   });
 
   it("positions children correctly relative to form controls", () => {
-    const childContent = <div data-testid="child-content">Test Child</div>;
+    const childContent = <div data-testid="child-content-position">Test Child</div>;
     render(<MessageForm onSubmit={mockOnSubmit}>{childContent}</MessageForm>);
 
-    const childElement = screen.getByTestId("child-content");
+    const childElements = screen.getAllByTestId("child-content-position");
     const submitButton = screen.getByTestId("submit-button");
 
-    // Both should be in the document
-    expect(childElement).toBeInTheDocument();
+    // Both versions of children and submit button should be in the document
+    expect(childElements).toHaveLength(2); // One for mobile, one for desktop
     expect(submitButton).toBeInTheDocument();
 
-    // The children should appear before the submit button in the button row
+    // At least one child element should be in the same button row as submit button
     const buttonRow = submitButton.closest(".flex.flex-row");
-    expect(buttonRow).toContainElement(childElement);
+    const desktopChild = childElements.find(el => buttonRow?.contains(el));
+    expect(desktopChild).toBeTruthy();
   });
 });

@@ -196,101 +196,114 @@ export default function MessageForm({
           />
         )}
       </div>
-      <div className="flex flex-row flex-nowrap items-center gap-2 pt-2">
-        {children && <div>
-          {children}
-        </div>}
-        <div className="flex-1" />
-        {showUpload && (
-          <Button
-            type="button"
-            size="sm"
-            variant={file ? "default" : "outline"}
-            className="size-10 gap-1.5 flex-shrink-0"
-            disabled={isDisabled}
-            onClick={() => {
-              if (file) {
-                setFile(undefined);
-                setIsAudioRecording(false);
-                onFileRemove?.();
-              } else {
-                document.getElementById("file-upload")?.click();
-              }
-            }}
-          >
-            <Upload className="size-3.5" />
-          </Button>
-        )}
-        {showRecord && (
-          <AudioRecorder
-            className="size-10 flex-shrink-0"
-            disabled={isDisabled || !!file}
-            onRecordingComplete={(blob) => {
-              setFile(blob);
-              setIsAudioRecording(true);
-              onFileAdd?.(blob, true);
-            }}
-            onAutoSend={(blob) => {
-              onSubmit(value, blob);
-              setValue("");
-              setFile(undefined);
-              setIsAudioRecording(false);
-            }}
-          />
-        )}
-        {showPrompts && (
-          <PromptDropdown
-            disabled={isDisabled}
-            onSelectPrompt={(promptText) => setValue(promptText)}
-          />
-        )}
-        {showUpload && (
-          <input
-            id="file-upload"
-            type="file"
-            className="hidden"
-            onChange={handleFileUpload}
-            accept=".png,.jpg,.jpeg,.gif,.webp,.pdf,.md,.txt,.csv,.srt,.vtt,.mp3,.wav,.mp4,.heic,.heif"
-          />
-        )}
-        {/* Cancel button for edit mode */}
-        {editMode && !isLoading && (
-          <Button
-            onClick={() => onCancelEdit?.()}
-            type="button"
-            size="sm"
-            variant="outline"
-            data-testid="cancel-edit-button"
-            className="size-10 flex-shrink-0"
-          >
-            <X className="size-3.5" />
-          </Button>
+      <div className="flex flex-col sm:flex-row gap-2 pt-2">
+        {/* Children on narrow screens: rendered above buttons */}
+        {children && (
+          <div className="flex justify-center sm:hidden">
+            {children}
+          </div>
         )}
 
-        {/* Submit/Update button */}
-        <Button
-          onClick={() => isLoading ? onCancel?.() : handleSubmit()}
-          type={isLoading ? "button" : "submit"}
-          size="sm"
-          data-testid={isLoading ? "cancel-button" : editMode ? "update-button" : "submit-button"}
-          disabled={!isLoading && (isSubmitDisabled || isDisabled)}
-          className={cn(
-            "size-10 flex-shrink-0",
-            isLoading
-              ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              : isSubmitDisabled || isDisabled
-              ? "bg-muted text-muted-foreground cursor-not-allowed"
-              : "bg-accent text-accent-foreground"
+        {/* Buttons row */}
+        <div className="flex flex-row flex-nowrap items-center gap-2 sm:flex-1">
+          {/* Children on wider screens: rendered inline with buttons */}
+          {children && (
+            <div className="hidden sm:block">
+              {children}
+            </div>
           )}
-        >
-          {isLoading ? (
-            <X className="size-3.5" />
-          ) : editMode ? (
-            <Check className="size-3.5" />
-          ) : (
-            <CornerDownLeft className="size-3.5" />
+          <div className="flex-1" />
+          {showUpload && (
+            <Button
+              type="button"
+              size="sm"
+              variant={file ? "default" : "outline"}
+              className="size-10 gap-1.5 flex-shrink-0"
+              disabled={isDisabled}
+              onClick={() => {
+                if (file) {
+                  setFile(undefined);
+                  setIsAudioRecording(false);
+                  onFileRemove?.();
+                } else {
+                  document.getElementById("file-upload")?.click();
+                }
+              }}
+            >
+              <Upload className="size-3.5" />
+            </Button>
           )}
-        </Button>
+          {showRecord && (
+            <AudioRecorder
+              className="size-10 flex-shrink-0"
+              disabled={isDisabled || !!file}
+              onRecordingComplete={(blob) => {
+                setFile(blob);
+                setIsAudioRecording(true);
+                onFileAdd?.(blob, true);
+              }}
+              onAutoSend={(blob) => {
+                onSubmit(value, blob);
+                setValue("");
+                setFile(undefined);
+                setIsAudioRecording(false);
+              }}
+            />
+          )}
+          {showPrompts && (
+            <PromptDropdown
+              disabled={isDisabled}
+              onSelectPrompt={(promptText) => setValue(promptText)}
+            />
+          )}
+          {showUpload && (
+            <input
+              id="file-upload"
+              type="file"
+              className="hidden"
+              onChange={handleFileUpload}
+              accept=".png,.jpg,.jpeg,.gif,.webp,.pdf,.md,.txt,.csv,.srt,.vtt,.mp3,.wav,.mp4,.heic,.heif"
+            />
+          )}
+          {/* Cancel button for edit mode */}
+          {editMode && !isLoading && (
+            <Button
+              onClick={() => onCancelEdit?.()}
+              type="button"
+              size="sm"
+              variant="outline"
+              data-testid="cancel-edit-button"
+              className="size-10 flex-shrink-0"
+            >
+              <X className="size-3.5" />
+            </Button>
+          )}
+
+          {/* Submit/Update button */}
+          <Button
+            onClick={() => isLoading ? onCancel?.() : handleSubmit()}
+            type={isLoading ? "button" : "submit"}
+            size="sm"
+            data-testid={isLoading ? "cancel-button" : editMode ? "update-button" : "submit-button"}
+            disabled={!isLoading && (isSubmitDisabled || isDisabled)}
+            className={cn(
+              "size-10 flex-shrink-0",
+              isLoading
+                ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                : isSubmitDisabled || isDisabled
+                ? "bg-muted text-muted-foreground cursor-not-allowed"
+                : "bg-accent text-accent-foreground"
+            )}
+          >
+            {isLoading ? (
+              <X className="size-3.5" />
+            ) : editMode ? (
+              <Check className="size-3.5" />
+            ) : (
+              <CornerDownLeft className="size-3.5" />
+            )}
+          </Button>
+        </div>
       </div>
     </form>
   );

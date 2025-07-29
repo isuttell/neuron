@@ -1,6 +1,7 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import { socketManager } from "../WebSocketManager";
 import { getConnectionStatus } from "../slices/socketSlice";
+import { leaveRoom } from "../slices/roomSlice";
 import { RootState } from "../store";
 import { WebSocketPayload } from "../types/websocket";
 
@@ -9,8 +10,10 @@ export const joinPersonalityRoom = createAsyncThunk(
   async (
     {
       personalityId,
+      roomId,
     }: {
       personalityId: string;
+      roomId: string;
     },
     { getState, rejectWithValue }
   ) => {
@@ -25,9 +28,10 @@ export const joinPersonalityRoom = createAsyncThunk(
       socketManager.sendMessage({
         type: "JoinPersonalityRoom",
         personality_id: personalityId,
+        room_id: roomId,
       } as WebSocketPayload);
 
-      return { personalityId };
+      return { personalityId, roomId };
     } catch (error) {
       if (error instanceof Error) {
         return rejectWithValue(error.message);
@@ -42,10 +46,12 @@ export const leavePersonalityRoom = createAsyncThunk(
   async (
     {
       personalityId,
+      roomId,
     }: {
       personalityId: string;
+      roomId: string;
     },
-    { getState, rejectWithValue }
+    { getState, rejectWithValue, dispatch }
   ) => {
     const state = getState() as RootState;
     const connected = getConnectionStatus(state);
@@ -58,9 +64,13 @@ export const leavePersonalityRoom = createAsyncThunk(
       socketManager.sendMessage({
         type: "LeavePersonalityRoom",
         personality_id: personalityId,
+        room_id: roomId,
       } as WebSocketPayload);
 
-      return { personalityId };
+      // Update local room state after sending WebSocket message
+      dispatch(leaveRoom({ roomType: "personality_room", roomId }));
+
+      return { personalityId, roomId };
     } catch (error) {
       if (error instanceof Error) {
         return rejectWithValue(error.message);

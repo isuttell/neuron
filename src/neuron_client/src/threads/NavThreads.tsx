@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { MessageCircle, MessageCircleDashed } from "lucide-react";
+import { MessageCircle, MessageCircleDashed, Bot } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { useAppSelector, useAppDispatch } from "../hooks";
 import NewThreadButton from "../threads/NewThreadButton";
@@ -10,8 +10,8 @@ import {
   getActivePersonality,
 } from "../slices/personalitiesSlice";
 import { fetchThreadsByPersonality } from "../actions/threadActions";
-import { RootState } from "../store";
 import { fetchPersonality } from "@/actions/personalityActions";
+import { fetchPersonalityRooms } from "@/actions/personalityRoomActions";
 import {
   SidebarMenuItem,
   SidebarMenuButton,
@@ -19,14 +19,7 @@ import {
   SidebarGroupLabel,
   SidebarGroupContent,
 } from "@/components/ui/sidebar";
-
-const selectThreads = (state: RootState, personalityId?: string) =>
-  state.threads.threads
-    .filter((thread) => thread.personality_id === personalityId)
-    .sort(
-      (a, b) =>
-        new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
-    );
+import { selectRecentSidebarItems } from "@/utils/sidebarSelectors";
 
 interface NavThreadsProps {
   activePathname?: string;
@@ -36,8 +29,8 @@ export default function NavThreads({ activePathname }: NavThreadsProps) {
   const dispatch = useAppDispatch();
   const activePersonalityId = useAppSelector(getActivePersonalityId);
   const activePersonality = useAppSelector(getActivePersonality);
-  const threads = useAppSelector(
-    (state) => selectThreads(state, activePersonalityId),
+  const sidebarItems = useAppSelector(
+    (state) => selectRecentSidebarItems(state, activePersonalityId),
     shallowEqual
   );
   const [loading, setLoading] = useState(false);
@@ -49,6 +42,7 @@ export default function NavThreads({ activePathname }: NavThreadsProps) {
     Promise.all([
       dispatch(fetchPersonality(activePersonalityId)),
       dispatch(fetchThreadsByPersonality({ personalityId: activePersonalityId })),
+      dispatch(fetchPersonalityRooms(activePersonalityId)),
     ]).finally(() => {
       setLoading(false);
     });
@@ -66,7 +60,7 @@ export default function NavThreads({ activePathname }: NavThreadsProps) {
     <SidebarGroup>
       <SidebarGroupLabel>
         {activePersonality.name}
-        {threads.length >= 50 && (
+        {sidebarItems.length >= 50 && (
           <span className="text-xs text-muted-foreground/60 ml-2 italic">
             recent
           </span>
@@ -74,7 +68,7 @@ export default function NavThreads({ activePathname }: NavThreadsProps) {
       </SidebarGroupLabel>
       <NewThreadButton />
       <SidebarGroupContent className="space-y-2">
-        {loading && threads.length === 0 && (
+        {loading && sidebarItems.length === 0 && (
           <SidebarMenuItem>
             <SidebarMenuButton>
               <Skeleton className="h-4 w-[150px]" />
@@ -87,28 +81,47 @@ export default function NavThreads({ activePathname }: NavThreadsProps) {
             </SidebarMenuButton>
           </SidebarMenuItem>
         )}
-        {!loading && threads.length === 0 && (
+        {!loading && sidebarItems.length === 0 && (
           <SidebarMenuItem className="text-small text-muted-foreground">
-            <SidebarMenuButton>No threads yet...</SidebarMenuButton>
+            <SidebarMenuButton>No threads or rooms yet...</SidebarMenuButton>
           </SidebarMenuItem>
         )}
-        {threads.map((thread) => (
-          <SidebarMenuItem key={thread.id} className="gap-2 space-y-1">
-            <SidebarMenuButton
-              isActive={activePathname === `/thread/${thread.id}`}
-              asChild
-            >
-              <NavLink to={`/thread/${thread.id}`} className="text-gray-300">
-                {thread.status === "idle" ? (
-                  <MessageCircle className="size-4 min-w-[20px]" />
-                ) : (
-                  <MessageCircleDashed className="size-4 min-w-[20px] text-accent" />
-                )}
-                <span>{thread.name || "Start conversation"}</span>
-              </NavLink>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        ))}
+        {sidebarItems.map((item) => {
+          if (item.type === "thread") {
+            return (
+              <SidebarMenuItem key={item.id} className="gap-2 space-y-1">
+                <SidebarMenuButton
+                  isActive={activePathname === `/thread/${item.id}`}
+                  asChild
+                >
+                  <NavLink to={`/thread/${item.id}`} className="text-gray-300">
+                    <Bot className="size-4 min-w-[20px]" />
+                    <span>{item.name || "Start conversation"}</span>
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            );
+          } else {
+            // Room
+            return (
+              <SidebarMenuItem key={item.id} className="gap-2 space-y-1">
+                <SidebarMenuButton
+                  isActive={activePathname === `/personality/${item.personality_id}/room/${item.id}`}
+                  asChild
+                >
+                  <NavLink to={`/personality/${item.personality_id}/room/${item.id}`} className="text-gray-300">
+                    {!item.status || item.status === "" || item.status === "contemplating" ? (
+                      <MessageCircle className="size-4 min-w-[20px]" />
+                    ) : (
+                      <MessageCircleDashed className="size-4 min-w-[20px] text-accent" />
+                    )}
+                    <span>{item.name || "Unnamed room"}</span>
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            );
+          }
+        })}
       </SidebarGroupContent>
     </SidebarGroup>
   );

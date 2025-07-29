@@ -43,7 +43,7 @@ class RoomManager:
         """Add a user to a room.
 
         Args:
-            room_type: Type of room (e.g., 'personality', 'thread')
+            room_type: Type of room (e.g., 'personality_room', 'thread')
             room_id: Room identifier
             user_id: User ID joining the room
             nickname: User nickname for display
@@ -243,7 +243,7 @@ class RoomManager:
             True if user joined room, False if already in room
         """
         return await self.join_room(
-            "personality", str(personality_id), user_id, nickname
+            "personality_room", str(personality_id), user_id, nickname
         )
 
     async def leave_personality_room(self, personality_id: UUID, user_id: str) -> bool:
@@ -256,7 +256,7 @@ class RoomManager:
         Returns:
             True if user left room, False if not in room
         """
-        return await self.leave_room("personality", str(personality_id), user_id)
+        return await self.leave_room("personality_room", str(personality_id), user_id)
 
     async def get_personality_room_members(self, personality_id: UUID) -> list[str]:
         """Get all members of a personality chat room.
@@ -267,7 +267,7 @@ class RoomManager:
         Returns:
             List of user IDs in the personality room
         """
-        return await self.get_room_members("personality", str(personality_id))
+        return await self.get_room_members("personality_room", str(personality_id))
 
 
 # Create global room manager instance

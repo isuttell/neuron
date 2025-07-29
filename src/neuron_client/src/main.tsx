@@ -17,7 +17,7 @@ import Index from "./routes/index.tsx";
 import MediaLists from "./routes/media-lists.tsx";
 import Personalities from "./routes/personalities.tsx";
 import Personality from "./routes/personality.tsx";
-import PersonalityChat from "./routes/PersonalityChat.tsx";
+import PersonalityChatRoom from "./routes/PersonalityChatRoom.tsx";
 import Privacy from "./routes/privacy.tsx";
 import Prompts from "./routes/prompts.tsx";
 import ProvidersPage from "./routes/providers";
@@ -62,8 +62,8 @@ const router = createBrowserRouter(
           element: <Personality />,
         },
         {
-          path: "/personality/:personalityId/chat",
-          element: <PersonalityChat />,
+          path: "/personality/:personalityId/room/:roomId",
+          element: <PersonalityChatRoom />,
         },
         {
           path: "/personality/:personalityId/embeddings",

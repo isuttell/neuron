@@ -222,6 +222,11 @@ const PersonalityItem: React.FC<PersonalityItemProps> = ({
     }
   };
 
+  const handlePersonalityClick = () => {
+    dispatch(setActivePersonality(personality.id));
+    navigate('/');
+  };
+
   const handleUpdateLogo = async () => {
     setIsUpdatingLogo(true);
     try {
@@ -281,9 +286,7 @@ const PersonalityItem: React.FC<PersonalityItemProps> = ({
                 isUpdatingLogo && "opacity-30"
               )}
               alt={`${personality.name} logo`}
-              onClick={() => {
-                navigate(`/personality/${personality.id}/chat`);
-              }}
+              onClick={handlePersonalityClick}
             />
           ) : (
             <div
@@ -291,9 +294,7 @@ const PersonalityItem: React.FC<PersonalityItemProps> = ({
                 "w-full h-full flex items-center justify-center bg-muted text-center p-4 cursor-pointer",
                 isUpdatingLogo && "opacity-30"
               )}
-              onClick={() => {
-                navigate(`/personality/${personality.id}/chat`);
-              }}
+              onClick={handlePersonalityClick}
             >
               <p className="text-xs text-muted-foreground">
                 {personality.description}

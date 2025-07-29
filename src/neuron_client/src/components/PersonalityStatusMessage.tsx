@@ -1,9 +1,11 @@
 import { cn } from "@/lib/utils";
 import { Personality } from "@/types/personality";
+import { PersonalityRoom } from "@/types/personalityRoom";
 import { useEffect, useState, useRef } from "react";
 
 interface PersonalityStatusMessageProps {
   personality: Personality;
+  room?: PersonalityRoom;
   className?: string;
 }
 
@@ -27,16 +29,19 @@ const formatStatus = (status: string): string => {
  * Displays the current personality status when the personality is not idle.
  * This provides visibility into what the personality is currently doing.
  */
-export function PersonalityStatusMessage({ personality, className }: PersonalityStatusMessageProps) {
+export function PersonalityStatusMessage({ personality, room, className }: PersonalityStatusMessageProps) {
   const [displayedText, setDisplayedText] = useState("");
   const [currentIndex, setCurrentIndex] = useState(0);
   const previousStatusRef = useRef<string>("");
   const animationRef = useRef<number | null>(null);
-  const currentStatus = personality && personality.status && personality.status !== "" ? formatStatus(personality.status) : "";
+
+  // Use room status if available, otherwise fall back to personality status
+  const rawStatus = room?.status || personality?.status || "";
+  const currentStatus = rawStatus !== "" ? formatStatus(rawStatus) : "";
 
   useEffect(() => {
     // Reset animation when status changes or becomes idle
-    if (!personality || personality.status === "") {
+    if (rawStatus === "") {
       previousStatusRef.current = "";
       setDisplayedText("");
       setCurrentIndex(0);
@@ -45,7 +50,7 @@ export function PersonalityStatusMessage({ personality, className }: Personality
       setDisplayedText("");
       setCurrentIndex(0);
     }
-  }, [currentStatus, personality]);
+  }, [currentStatus, rawStatus]);
 
   useEffect(() => {
     // Animate text character by character
@@ -63,7 +68,7 @@ export function PersonalityStatusMessage({ personality, className }: Personality
     };
   }, [currentIndex, currentStatus]);
 
-  if (!personality || personality.status === "") {
+  if (!personality || rawStatus === "") {
     return null;
   }
 

@@ -21,8 +21,12 @@ from neuron_server.controllers.events.room_events import (
 )
 from neuron_server.event_router import EventRouter
 from neuron_server.logger import logger
+from neuron_server.models.personality_message_media_item_model import (
+    PersonalityMessageMediaItemModel,
+)
 from neuron_server.models.personality_message_model import PersonalityMessageModel
 from neuron_server.models.personality_model import PersonalityModel
+from neuron_server.models.personality_room_model import PersonalityRoomModel
 from neuron_server.permission_service import permission_service
 from neuron_server.room_manager import room_manager
 from neuron_server.secure_pubsub import secure_pubsub
@@ -41,6 +45,9 @@ chat_orchestrator = PersonalityChatOrchestrator()
 
 class CreatePersonalityMessage(BaseModel):
     content: str = Field(description="The message content")
+    personality_room_id: UUID = Field(
+        description="The ID of the room to create the message in"
+    )
 
 
 class UpdatePersonalityMessage(BaseModel):
@@ -72,9 +79,11 @@ async def get_personality_messages(personality_id: UUID) -> dict[str, list[dict]
             f"Personality with id {personality_id} not found or you don't have access"
         )
 
-    # Get query parameters for pagination
+    # Get query parameters for pagination and filtering
     limit = int(request.args.get("limit", 50))
     offset = int(request.args.get("offset", 0))
+    room_id_str = request.args.get("room_id", None)
+    room_id = UUID(room_id_str) if room_id_str else None
 
     # Validate pagination parameters
     limit = min(limit, 100)
@@ -82,9 +91,15 @@ async def get_personality_messages(personality_id: UUID) -> dict[str, list[dict]
         limit = 50
     offset = max(offset, 0)
 
+    # If room_id is provided, verify user has access to the room
+    if room_id:
+        room = await PersonalityRoomModel.get_for_user(room_id, user_id, personality_id)
+        if not room:
+            raise NotFound(f"Room with id {room_id} not found or you don't have access")
+
     # Get messages for the personality
     messages = await PersonalityMessageModel.list(
-        personality_id=personality_id, limit=limit, offset=offset
+        personality_id=personality_id, room_id=room_id, limit=limit, offset=offset
     )
 
     # Get all users who have access to this personality
@@ -92,10 +107,6 @@ async def get_personality_messages(personality_id: UUID) -> dict[str, list[dict]
     users = list(users_dict.values())
 
     # Get media items for each message and include them in the response
-    from neuron_server.models.personality_message_media_item_model import (
-        PersonalityMessageMediaItemModel,
-    )
-
     messages_with_media = []
     for message in messages:
         message_data = message.model_dump()
@@ -147,24 +158,43 @@ async def create_personality_message(personality_id: UUID) -> dict[str, dict]:
     body = await request.get_json()
     payload = CreatePersonalityMessage(**body)
 
+    # Verify user has access to the room
+    room = await PersonalityRoomModel.get_for_user(
+        payload.personality_room_id, user_id, personality_id
+    )
+    if not room:
+        raise NotFound(
+            f"Room with id {payload.personality_room_id} not found "
+            f"or you don't have access"
+        )
+
     # Create the message
     create_params = PersonalityMessageModel.CreateParams(
         personality_id=personality_id,
+        personality_room_id=payload.personality_room_id,
         content=payload.content,
         user_id=user_id,  # Message is from the user
     )
     message = await PersonalityMessageModel.create(params=create_params)
 
-    # Broadcast the new message to users in the personality chat room
+    # Update room message count
+    await PersonalityRoomModel.update_message_count(
+        payload.personality_room_id, increment=1
+    )
+
+    # Broadcast the new message to users in the specific personality room
     message_event = PersonalityMessageEvent(
         personality_id=personality_id,
         message_id=message.id,
+        room_id=message.personality_room_id,
         content=message.content,
         user_id=message.user_id,
         created_at=message.created_at.isoformat(),
         updated_at=message.updated_at.isoformat(),
     )
-    await secure_pubsub.publish_personality_room_message(personality_id, message_event)
+    await secure_pubsub.publish_personality_room_message(
+        personality_id, message.personality_room_id, message_event
+    )
 
     # Start background task to analyze message direction (non-blocking)
     asyncio.create_task(
@@ -231,16 +261,19 @@ async def update_personality_message(
     if not updated_message:
         raise NotFound(f"Message with id {message_id} not found")
 
-    # Broadcast the updated message to users in the personality chat room
+    # Broadcast the updated message to users in the specific personality room
     message_event = PersonalityMessageEvent(
         personality_id=personality_id,
         message_id=updated_message.id,
+        room_id=updated_message.personality_room_id,
         content=updated_message.content,
         user_id=updated_message.user_id,
         created_at=updated_message.created_at.isoformat(),
         updated_at=updated_message.updated_at.isoformat(),
     )
-    await secure_pubsub.publish_personality_room_message(personality_id, message_event)
+    await secure_pubsub.publish_personality_room_message(
+        personality_id, updated_message.personality_room_id, message_event
+    )
 
     return {"personality_message": updated_message.model_dump()}
 
@@ -305,12 +338,20 @@ async def delete_personality_message(
     # Delete the message
     await PersonalityMessageModel.delete(message_id)
 
-    # Broadcast the message deletion to users in the personality chat room
+    # Update room message count
+    if message.personality_room_id:
+        await PersonalityRoomModel.update_message_count(
+            message.personality_room_id, increment=-1
+        )
+
+    # Broadcast the message deletion to users in the specific personality room
     delete_event = PersonalityMessageDeletedEvent(
         personality_id=personality_id,
         message_id=message_id,
     )
-    await secure_pubsub.publish_personality_room_message(personality_id, delete_event)
+    await secure_pubsub.publish_personality_room_message(
+        personality_id, message.personality_room_id, delete_event
+    )
 
     return Response(status=204)
 
@@ -319,7 +360,7 @@ async def delete_personality_message(
 async def ajoin_personality_room(
     event: JoinPersonalityRoom, session: WebSocketSession | None = None
 ) -> None:
-    """Handle joining a personality chat room with permission checks."""
+    """Handle joining a specific personality room with permission checks."""
     if not session:
         logger.error("JoinPersonalityRoom event received without session context")
         return
@@ -327,6 +368,7 @@ async def ajoin_personality_room(
     user_id = session.user_id
     nickname = session.nickname
     personality_id = event.personality_id
+    room_id = event.room_id
 
     # Check if user has access to this personality
     has_access = await permission_service.user_has_personality_access(
@@ -338,103 +380,108 @@ async def ajoin_personality_room(
         )
         return
 
-    # Join the personality room
-    # Debug: Check room state before join
-    current_members = await room_manager.get_personality_room_members(personality_id)
-    logger.debug(
-        f"Current members in room {personality_id} before join: {current_members}"
-    )
+    # Verify user has access to the specific room
+    room = await PersonalityRoomModel.get_for_user(room_id, user_id, personality_id)
+    if not room:
+        logger.warning(
+            f"User {user_id} denied access to room {room_id} "
+            f"in personality {personality_id}"
+        )
+        return
 
-    joined = await room_manager.join_personality_room(personality_id, user_id, nickname)
+    # Join the specific room
+    # Debug: Check room state before join
+    current_members = await room_manager.get_room_members(
+        "personality_room", str(room_id)
+    )
+    logger.debug(f"Current members in room {room_id} before join: {current_members}")
+
+    joined = await room_manager.join_room(
+        "personality_room", str(room_id), user_id, nickname
+    )
 
     if joined:
         # Send confirmation to the user who joined
         member_count = len(
-            await room_manager.get_personality_room_members(personality_id)
+            await room_manager.get_room_members("personality_room", str(room_id))
         )
         join_event = RoomJoinedEvent(
-            room_type="personality",
-            room_id=str(personality_id),
+            room_type="personality_room",
+            room_id=str(room_id),
             member_count=member_count,
         )
         await secure_pubsub.publish_to_user(user_id, join_event)
 
         # Notify other room members that this user joined
-        room_members = await room_manager.get_personality_room_members(personality_id)
+        room_members = await room_manager.get_room_members(
+            "personality_room", str(room_id)
+        )
         other_members = [member for member in room_members if member != user_id]
 
         if other_members:
             user_joined_event = UserJoinedRoomEvent(
-                room_type="personality",
-                room_id=str(personality_id),
+                room_type="personality_room",
+                room_id=str(room_id),
                 user_id=user_id,
                 nickname=nickname,
             )
             await secure_pubsub.publish_to_users(other_members, user_joined_event)
 
-        logger.info(
-            f"User {user_id} ({nickname}) joined personality room {personality_id}"
-        )
+        logger.info(f"User {user_id} ({nickname}) joined personality room {room_id}")
     else:
         # User already in room - treat as successful rejoin
         # Send confirmation to the user so their client state updates
         member_count = len(
-            await room_manager.get_personality_room_members(personality_id)
+            await room_manager.get_room_members("personality_room", str(room_id))
         )
         join_event = RoomJoinedEvent(
-            room_type="personality",
-            room_id=str(personality_id),
+            room_type="personality_room",
+            room_id=str(room_id),
             member_count=member_count,
         )
         await secure_pubsub.publish_to_user(user_id, join_event)
 
-        logger.info(
-            f"User {user_id} ({nickname}) rejoined personality room {personality_id}"
-        )
+        logger.info(f"User {user_id} ({nickname}) rejoined personality room {room_id}")
 
 
 @router.on(LeavePersonalityRoom)
 async def aleave_personality_room(
     event: LeavePersonalityRoom, session: WebSocketSession | None = None
 ) -> None:
-    """Handle leaving a personality chat room."""
+    """Handle leaving a specific personality room."""
     if not session:
         logger.error("LeavePersonalityRoom event received without session context")
         return
 
     user_id = session.user_id
     nickname = session.nickname
-    personality_id = event.personality_id
+    room_id = event.room_id
 
     # Get current room members before leaving
-    room_members = await room_manager.get_personality_room_members(personality_id)
+    room_members = await room_manager.get_room_members("personality_room", str(room_id))
     other_members = [member for member in room_members if member != user_id]
 
-    # Leave the personality room
-    left = await room_manager.leave_personality_room(personality_id, user_id)
+    # Leave the specific room
+    left = await room_manager.leave_room("personality_room", str(room_id), user_id)
 
     if left:
         # Send confirmation to the user who left
-        leave_event = RoomLeftEvent(
-            room_type="personality", room_id=str(personality_id)
-        )
+        leave_event = RoomLeftEvent(room_type="personality_room", room_id=str(room_id))
         await secure_pubsub.publish_to_user(user_id, leave_event)
 
         # Notify other room members that this user left
         if other_members:
             user_left_event = UserLeftRoomEvent(
-                room_type="personality",
-                room_id=str(personality_id),
+                room_type="personality_room",
+                room_id=str(room_id),
                 user_id=user_id,
                 nickname=nickname,
             )
             await secure_pubsub.publish_to_users(other_members, user_left_event)
 
-        logger.info(
-            f"User {user_id} ({nickname}) left personality room {personality_id}"
-        )
+        logger.info(f"User {user_id} ({nickname}) left personality room {room_id}")
     else:
-        logger.debug(f"User {user_id} was not in personality room {personality_id}")
+        logger.debug(f"User {user_id} was not in personality room {room_id}")
 
 
 async def cleanup_user_personality_rooms(session: WebSocketSession) -> None:
@@ -452,7 +499,7 @@ async def cleanup_user_personality_rooms(session: WebSocketSession) -> None:
         room_id = room_info["room_id"]
 
         # Only clean up personality rooms since this controller only handles those
-        if room_type != "personality":
+        if room_type != "personality_room":
             continue
 
         # Get current room members before leaving

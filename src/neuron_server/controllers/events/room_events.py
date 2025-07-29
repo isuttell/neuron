@@ -24,12 +24,14 @@ class JoinPersonalityRoom(IncomingEvent):
     """Event to join a personality chat room."""
 
     personality_id: UUID
+    room_id: UUID
 
 
 class LeavePersonalityRoom(IncomingEvent):
     """Event to leave a personality chat room."""
 
     personality_id: UUID
+    room_id: UUID
 
 
 class RoomJoinedEvent(OutgoingEvent):

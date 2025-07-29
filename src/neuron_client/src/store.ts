@@ -9,6 +9,7 @@ import mediaReducer from "./slices/mediaSlice";
 import messages from "./slices/messagesSlice";
 import personalities from "./slices/personalitiesSlice";
 import personalityChat from "./slices/personalityChatSlice";
+import personalityRoom from "./slices/personalityRoomSlice";
 import promptsReducer from "./slices/promptsSlice";
 import room from "./slices/roomSlice";
 import providersReducer from "./slices/providerSlice";
@@ -26,6 +27,7 @@ export const store = configureStore({
     socket,
     personalities,
     personalityChat,
+    personalityRoom,
     room,
     favorites: favoritesReducer,
     images,

@@ -3,6 +3,8 @@ import { MediaItem } from "./media";
 import { Personality } from "./personality";
 import { PersonalityMessage } from "./personalityChat";
 import { Thread } from "./thread";
+import { PersonalityRoom, PersonalityRoomUser } from "./personalityRoom";
+import { User } from "./user";
 
 export interface WebSocketMessage<T = unknown> {
   type: string;
@@ -56,6 +58,13 @@ export interface PersonalityStatusUpdateEvent extends WebSocketMessage {
   status: string;
 }
 
+export interface PersonalityRoomStatusUpdateEvent extends WebSocketMessage {
+  type: "personality_room_status_update";
+  personality_id: string;
+  room_id: string;
+  status: string;
+}
+
 export interface ImageEvent extends WebSocketMessage {
   type: "image";
   image: MediaItem;
@@ -99,10 +108,12 @@ export interface PersonalityMessageEvent extends WebSocketMessage {
   type: "personality_message";
   personality_id: string;
   message_id: string;
+  room_id?: string;
   content: string;
   user_id: string | null;
   created_at: string;
   updated_at: string;
+  media_items?: MediaItem[];
 }
 
 export interface PersonalityMessageDeletedEvent extends WebSocketMessage {
@@ -141,6 +152,53 @@ export interface UserLeftRoomEvent extends WebSocketMessage {
   nickname: string;
 }
 
+// Personality Room WebSocket Events
+export interface PersonalityRoomCreatedEvent extends WebSocketMessage {
+  type: "personality_room_created";
+  personality_id: string;
+  room_id: string;
+  name: string;
+  room_type: string;
+  created_by: string | null;
+  message_count: number;
+}
+
+export interface PersonalityRoomUpdatedEvent extends WebSocketMessage {
+  type: "personality_room_updated";
+  personality_id: string;
+  room_id: string;
+  name: string;
+  room_type: string;
+}
+
+export interface PersonalityRoomDeletedEvent extends WebSocketMessage {
+  type: "personality_room_deleted";
+  personality_id: string;
+  room_id: string;
+}
+
+export interface UserJoinedPersonalityRoomEvent extends WebSocketMessage {
+  type: "user_joined_personality_room";
+  personality_id: string;
+  room_id: string;
+  user_id: string;
+  role: string;
+}
+
+export interface UserLeftPersonalityRoomEvent extends WebSocketMessage {
+  type: "user_left_personality_room";
+  personality_id: string;
+  room_id: string;
+  user_id: string;
+}
+
+export interface PersonalityRoomDataEvent extends WebSocketMessage {
+  type: "personality_room_data";
+  personality_room: PersonalityRoom;
+  personality_room_users: PersonalityRoomUser[];
+  users: User[];
+}
+
 export type WebSocketEvent =
   | MessageEvent
   | MediaEvent
@@ -150,6 +208,7 @@ export type WebSocketEvent =
   | PromptEvent
   | PersonalityEvent
   | PersonalityStatusUpdateEvent
+  | PersonalityRoomStatusUpdateEvent
   | ImageEvent
   | ErrorEvent
   | PingEvent
@@ -163,7 +222,13 @@ export type WebSocketEvent =
   | RoomJoinedEvent
   | RoomLeftEvent
   | UserJoinedRoomEvent
-  | UserLeftRoomEvent;
+  | UserLeftRoomEvent
+  | PersonalityRoomCreatedEvent
+  | PersonalityRoomUpdatedEvent
+  | PersonalityRoomDeletedEvent
+  | UserJoinedPersonalityRoomEvent
+  | UserLeftPersonalityRoomEvent
+  | PersonalityRoomDataEvent;
 
 export interface PostMessage extends WebSocketMessage {
   type: "PostMessage";

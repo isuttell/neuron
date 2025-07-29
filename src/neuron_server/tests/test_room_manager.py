@@ -25,12 +25,12 @@ class TestRoomManager:
     def test_room_keys_generation(self, room_manager):
         """Test Redis key generation methods."""
         assert (
-            room_manager._room_members_key("personality", "123")
-            == "room:personality:123:members"
+            room_manager._room_members_key("personality_room", "123")
+            == "room:personality_room:123:members"
         )
         assert (
-            room_manager._room_metadata_key("personality", "123")
-            == "room:personality:123:metadata"
+            room_manager._room_metadata_key("personality_room", "123")
+            == "room:personality_room:123:metadata"
         )
         assert room_manager._user_rooms_key("user123") == "user:user123:rooms"
 
@@ -43,7 +43,7 @@ class TestRoomManager:
         mock_redis_client.hset.return_value = 1
 
         result = await room_manager.join_room(
-            "personality", "room123", "user456", "TestUser"
+            "personality_room", "room123", "user456", "TestUser"
         )
 
         assert result is True
@@ -59,7 +59,7 @@ class TestRoomManager:
         mock_redis_client.expire.return_value = True
 
         result = await room_manager.join_room(
-            "personality", "room123", "user456", "TestUser"
+            "personality_room", "room123", "user456", "TestUser"
         )
 
         assert result is False
@@ -76,7 +76,7 @@ class TestRoomManager:
         mock_redis_client.sismember.return_value = True  # User is in room
         mock_redis_client.srem.return_value = 1  # User was removed
 
-        result = await room_manager.leave_room("personality", "room123", "user456")
+        result = await room_manager.leave_room("personality_room", "room123", "user456")
 
         assert result is True
         # Should check membership and then remove from both sets
@@ -88,7 +88,7 @@ class TestRoomManager:
         """Test leaving a room as a non-existent user."""
         mock_redis_client.sismember.return_value = False  # User not in room
 
-        result = await room_manager.leave_room("personality", "room123", "user456")
+        result = await room_manager.leave_room("personality_room", "room123", "user456")
 
         assert result is False
         # Should check membership but not call srem
@@ -100,12 +100,12 @@ class TestRoomManager:
         """Test getting room members."""
         mock_redis_client.smembers.return_value = {b"user1", b"user2", b"user3"}
 
-        members = await room_manager.get_room_members("personality", "room123")
+        members = await room_manager.get_room_members("personality_room", "room123")
 
         # Set order doesn't matter, just check all members are present
         assert set(members) == {"user1", "user2", "user3"}
         mock_redis_client.smembers.assert_called_with(
-            "room:personality:room123:members"
+            "room:personality_room:room123:members"
         )
 
     @pytest.mark.asyncio
@@ -113,7 +113,7 @@ class TestRoomManager:
         """Test getting members from empty room."""
         mock_redis_client.smembers.return_value = set()
 
-        members = await room_manager.get_room_members("personality", "room123")
+        members = await room_manager.get_room_members("personality_room", "room123")
 
         assert members == []
 
@@ -121,14 +121,14 @@ class TestRoomManager:
     async def test_get_user_rooms(self, room_manager, mock_redis_client):
         """Test getting rooms a user is in."""
         mock_redis_client.smembers.return_value = {
-            b"personality:room1",
+            b"personality_room:room1",
             b"thread:room2",
         }
 
         rooms = await room_manager.get_user_rooms("user456")
 
         expected = [
-            {"room_type": "personality", "room_id": "room1"},
+            {"room_type": "personality_room", "room_id": "room1"},
             {"room_type": "thread", "room_id": "room2"},
         ]
         # Set doesn't guarantee order, so check both possible orders
@@ -185,7 +185,7 @@ class TestRoomManager:
         # Set order doesn't matter, just check all members are present
         assert set(members) == {"user1", "user2"}
         mock_redis_client.smembers.assert_called_with(
-            "room:personality:" + str(personality_id) + ":members"
+            "room:personality_room:" + str(personality_id) + ":members"
         )
 
     @pytest.mark.asyncio
@@ -193,11 +193,11 @@ class TestRoomManager:
         """Test updating room activity timestamp."""
         mock_redis_client.hset.return_value = 1
 
-        await room_manager.update_room_activity("personality", "room123")
+        await room_manager.update_room_activity("personality_room", "room123")
 
         mock_redis_client.hset.assert_called_once()
         call_args = mock_redis_client.hset.call_args[0]
-        assert call_args[0] == "room:personality:room123:metadata"
+        assert call_args[0] == "room:personality_room:room123:metadata"
         assert call_args[1] == "last_activity"
         # Should set a timestamp (just check it's a number)
         assert isinstance(call_args[2], (int, float))
@@ -207,7 +207,7 @@ class TestRoomManager:
         """Test cleaning up user from all rooms."""
         # Mock user rooms
         mock_redis_client.smembers.return_value = {
-            b"personality:room1",
+            b"personality_room:room1",
             b"thread:room2",
         }
         mock_redis_client.srem.return_value = 1
@@ -227,7 +227,9 @@ class TestRoomManager:
         mock_redis_client.expire.return_value = True
         mock_redis_client.hset.return_value = 1
 
-        await room_manager.join_room("personality", "room123", "user456", "TestUser")
+        await room_manager.join_room(
+            "personality_room", "room123", "user456", "TestUser"
+        )
 
         # Should set TTL on room keys
         expire_calls = mock_redis_client.expire.call_args_list
@@ -246,7 +248,9 @@ class TestRoomManager:
 
         # Simulate concurrent join operations
         tasks = [
-            room_manager.join_room("personality", "room123", f"user{i}", f"User{i}")
+            room_manager.join_room(
+                "personality_room", "room123", f"user{i}", f"User{i}"
+            )
             for i in range(5)
         ]
 
@@ -264,7 +268,9 @@ class TestRoomManager:
         mock_redis_client.expire.return_value = True
         mock_redis_client.hset.return_value = 1
 
-        await room_manager.join_room("personality", "room123", "user456", "TestUser")
+        await room_manager.join_room(
+            "personality_room", "room123", "user456", "TestUser"
+        )
 
         # Should set TTL on room members, metadata, and user rooms keys
         expire_calls = mock_redis_client.expire.call_args_list

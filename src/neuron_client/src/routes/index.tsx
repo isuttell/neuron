@@ -14,16 +14,27 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { fetchPersonalities } from "../actions/personalityActions";
 import MessageForm from "../messages/MessageForm";
 import { getConnectionStatus } from "../slices/socketSlice";
-
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { createPersonalityRoom } from "../actions/personalityRoomActions";
+import { sendPersonalityMessage } from "../actions/personalityChatActions";
+import { getCurrentUser } from "../slices/appSlice";
+import PersonalitySelector from "../components/PersonalitySelector";
 
 export default function Index() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const [isLoading, setLoading] = useState(false);
+  const [isChatMode, setIsChatMode] = useState(() => {
+    // Load preference from localStorage, default to true (Chat mode)
+    const saved = localStorage.getItem("neuron_mode_preference");
+    return saved !== null ? saved === "chat" : true;
+  });
   const activePersonalityId = useAppSelector(getActivePersonalityId);
   const activePersonality = useAppSelector(getActivePersonality);
   const personalities = useAppSelector(getPersonalities);
   const isConnected = useAppSelector(getConnectionStatus);
+  const currentUser = useAppSelector(getCurrentUser);
 
   const personalitiesLoading = useAppSelector(
     (state) => state.personalities.loading
@@ -43,32 +54,74 @@ export default function Index() {
     }
   }, [personalities, personalitiesLoading, activePersonalityId, dispatch]);
 
+  // Save mode preference to localStorage when it changes
+  useEffect(() => {
+    localStorage.setItem("neuron_mode_preference", isChatMode ? "chat" : "agent");
+  }, [isChatMode]);
+
   const handleSubmit = (prompt: string, file?: File | Blob) => {
     if (!activePersonalityId || isLoading) {
       return;
     }
 
     setLoading(true);
-    dispatch(
-      createThread({
-        personalityId: activePersonalityId,
-        prompt,
-        greeting: false,
-        file,
-      })
-    )
-      .unwrap()
-      .then(({ thread }) => {
-        navigate(`/thread/${thread.id}`);
-      })
-      .catch((error) => {
-        toast.error("Failed to create thread", {
-          description: error?.message || "An unexpected error occurred",
+
+    if (isChatMode) {
+      // Chat mode: Create personality room and redirect
+      dispatch(
+        createPersonalityRoom({
+          personalityId: activePersonalityId,
+          data: {
+            type: 'private'
+          }
+        })
+      )
+        .unwrap()
+        .then(({ personality_room }) => {
+          // Send the user's initial message to the room
+          if (currentUser?.sub) {
+            dispatch(
+              sendPersonalityMessage({
+                personalityId: activePersonalityId,
+                roomId: personality_room.id,
+                content: prompt,
+                userId: currentUser.sub,
+              })
+            );
+          }
+          navigate(`/personality/${activePersonalityId}/room/${personality_room.id}`);
+        })
+        .catch((error) => {
+          toast.error("Failed to create chat room", {
+            description: error?.message || "An unexpected error occurred",
+          });
+        })
+        .finally(() => {
+          setLoading(false);
         });
-      })
-      .finally(() => {
-        setLoading(false);
-      });
+    } else {
+      // Agent mode: Create thread (existing behavior)
+      dispatch(
+        createThread({
+          personalityId: activePersonalityId,
+          prompt,
+          greeting: false,
+          file,
+        })
+      )
+        .unwrap()
+        .then(({ thread }) => {
+          navigate(`/thread/${thread.id}`);
+        })
+        .catch((error) => {
+          toast.error("Failed to create thread", {
+            description: error?.message || "An unexpected error occurred",
+          });
+        })
+        .finally(() => {
+          setLoading(false);
+        });
+    }
   };
 
   return (
@@ -91,11 +144,23 @@ export default function Index() {
                 : "Select a personality first"
             }
           >
-            {activePersonality && (
-              <div className="text-xs text-gray-600 pl-1">
-                {activePersonality.name}
+            <div className="flex items-center gap-4">
+              <PersonalitySelector />
+              <div className="flex items-center gap-2">
+                <Label htmlFor="mode-switch" className="text-sm text-muted-foreground">
+                  Chat
+                </Label>
+                <Switch
+                  id="mode-switch"
+                  checked={!isChatMode}
+                  onCheckedChange={(checked) => setIsChatMode(!checked)}
+                  disabled={!activePersonalityId || !isConnected}
+                />
+                <Label htmlFor="mode-switch" className="text-sm text-muted-foreground">
+                  Agent
+                </Label>
               </div>
-            )}
+            </div>
           </MessageForm>
         </div>
       </div>

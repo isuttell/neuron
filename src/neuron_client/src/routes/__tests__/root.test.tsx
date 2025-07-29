@@ -4,7 +4,6 @@ import "@testing-library/jest-dom";
 import { render, screen, act } from "@testing-library/react";
 import React from "react";
 import { Provider } from "react-redux";
-import { MemoryRouter, Routes, Route } from "react-router-dom";
 import * as hooks from "../../hooks";
 import { RootComponent } from "../root";
 
@@ -25,6 +24,15 @@ vi.mock("../../lib/api", () => ({
   },
 }));
 
+// Mock react-router-dom Outlet to avoid router context issues
+vi.mock("react-router-dom", async () => {
+  const actual = await vi.importActual("react-router-dom");
+  return {
+    ...actual,
+    Outlet: () => <div data-testid="outlet">Outlet Content</div>,
+  };
+});
+
 // Mock all the imported components
 vi.mock("@/components/layout/MainSidebar", () => ({
   MainSidebar: () => <div data-testid="main-sidebar">MainSidebar</div>,
@@ -40,6 +48,10 @@ vi.mock("@/components/ui/spinner", () => ({
 
 vi.mock("@/components/ui/sidebar", () => ({
   SidebarProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+
+vi.mock("@/components/AppUpdateNotification", () => ({
+  AppUpdateNotification: () => <div>AppUpdateNotification</div>,
 }));
 
 // Mock dispatch and selector hooks
@@ -105,14 +117,10 @@ describe("RootComponent", () => {
       },
     });
 
-    // Use Routes with a specific path to avoid pathname issues
+    // Render without Routes since we're mocking Outlet
     return render(
       <Provider store={store}>
-        <MemoryRouter initialEntries={["/"]}>
-          <Routes>
-            <Route path="/" element={<RootComponent />} />
-          </Routes>
-        </MemoryRouter>
+        <RootComponent />
       </Provider>
     );
   };
@@ -238,11 +246,7 @@ describe("RootComponent", () => {
             socket: (state = { connected: true }) => state,
           },
         })}>
-          <MemoryRouter initialEntries={["/"]}>
-            <Routes>
-              <Route path="/" element={<RootComponent />} />
-            </Routes>
-          </MemoryRouter>
+          <RootComponent />
         </Provider>,
         { container }
       );
@@ -342,11 +346,7 @@ describe("RootComponent", () => {
             socket: (state = { connected: true }) => state,
           },
         })}>
-          <MemoryRouter initialEntries={["/"]}>
-            <Routes>
-              <Route path="/" element={<RootComponent />} />
-            </Routes>
-          </MemoryRouter>
+          <RootComponent />
         </Provider>,
         { container }
       );

@@ -21,6 +21,15 @@ import {
   updateMessage as updatePersonalityChatMessage,
   deleteMessage as deletePersonalityChatMessage,
 } from "../slices/personalityChatSlice";
+import {
+  handleRoomCreated,
+  handleRoomUpdated,
+  handleRoomDeleted,
+  handleUserJoined,
+  handleUserLeft,
+  handleRoomStatusUpdate,
+  handleRoomData,
+} from "../slices/personalityRoomSlice";
 import { MediaItem } from "../types/media";
 import type {
   ErrorEvent,
@@ -30,6 +39,7 @@ import type {
   PartialMessageEvent,
   PersonalityEvent,
   PersonalityStatusUpdateEvent,
+  PersonalityRoomStatusUpdateEvent,
   PersonalityChatMessageEvent,
   PersonalityChatUpdateEvent,
   PersonalityChatDeleteEvent,
@@ -37,8 +47,12 @@ import type {
   PersonalityMessageDeletedEvent,
   RoomJoinedEvent,
   RoomLeftEvent,
-  UserJoinedRoomEvent,
-  UserLeftRoomEvent,
+  PersonalityRoomCreatedEvent,
+  PersonalityRoomUpdatedEvent,
+  PersonalityRoomDeletedEvent,
+  UserJoinedPersonalityRoomEvent,
+  UserLeftPersonalityRoomEvent,
+  PersonalityRoomDataEvent,
   PingEvent,
   PromptEvent,
   SidebarImageEvent,
@@ -152,6 +166,13 @@ const websocketMiddleware =
           }));
         });
 
+        socketManager.on("personality_room_status_update", (event: PersonalityRoomStatusUpdateEvent) => {
+          dispatch(handleRoomStatusUpdate({
+            room_id: event.room_id,
+            status: event.status
+          }));
+        });
+
         socketManager.on("image", (event: ImageEvent) => {
           const image = {
             ...event.image,
@@ -191,11 +212,13 @@ const websocketMiddleware =
             message: {
               id: event.message_id,
               personality_id: event.personality_id,
+              personality_room_id: event.room_id || "", // Default to empty string if not provided
               content: event.content,
               user_id: event.user_id,
               created_at: event.created_at,
               updated_at: event.updated_at,
               media_items: (event.media_items || []) as MediaItem[],
+              thread_id: null, // Personality messages don't have threads
             }
           };
           dispatch(upsertPersonalityChatMessage(personalityChatEvent));
@@ -213,8 +236,6 @@ const websocketMiddleware =
 
         // Room WebSocket Events
         socketManager.on("room_joined", (event: RoomJoinedEvent) => {
-          console.log(`Joined room: ${event.room_type}:${event.room_id} (${event.member_count} members)`);
-
           // Update room state
           dispatch(joinRoomSuccess({
             roomType: event.room_type,
@@ -224,8 +245,6 @@ const websocketMiddleware =
         });
 
         socketManager.on("room_left", (event: RoomLeftEvent) => {
-          console.log(`Left room: ${event.room_type}:${event.room_id}`);
-
           // Update room state
           dispatch(leaveRoom({
             roomType: event.room_type,
@@ -233,14 +252,29 @@ const websocketMiddleware =
           }));
         });
 
-        socketManager.on("user_joined_room", (event: UserJoinedRoomEvent) => {
-          console.log(`User ${event.nickname} joined room: ${event.room_type}:${event.room_id}`);
-          // Could show a toast notification here if desired
+        // Personality Room WebSocket Events
+        socketManager.on("personality_room_created", (event: PersonalityRoomCreatedEvent) => {
+          dispatch(handleRoomCreated(event));
         });
 
-        socketManager.on("user_left_room", (event: UserLeftRoomEvent) => {
-          console.log(`User ${event.nickname} left room: ${event.room_type}:${event.room_id}`);
-          // Could show a toast notification here if desired
+        socketManager.on("personality_room_updated", (event: PersonalityRoomUpdatedEvent) => {
+          dispatch(handleRoomUpdated(event));
+        });
+
+        socketManager.on("personality_room_deleted", (event: PersonalityRoomDeletedEvent) => {
+          dispatch(handleRoomDeleted(event));
+        });
+
+        socketManager.on("user_joined_personality_room", (event: UserJoinedPersonalityRoomEvent) => {
+          dispatch(handleUserJoined(event));
+        });
+
+        socketManager.on("user_left_personality_room", (event: UserLeftPersonalityRoomEvent) => {
+          dispatch(handleUserLeft(event));
+        });
+
+        socketManager.on("personality_room_data", (event: PersonalityRoomDataEvent) => {
+          dispatch(handleRoomData(event));
         });
       }
     } else if (socketManager.connected && action.type.indexOf("socket/") === 0) {

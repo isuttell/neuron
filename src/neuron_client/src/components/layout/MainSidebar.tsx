@@ -16,7 +16,6 @@ import {
 } from "@/components/ui/sidebar";
 import ImageContent from "@/messages/ImageContent";
 import NavThreads from "@/threads/NavThreads";
-import FavoritePersonalities from "@/components/sidebar/FavoritePersonalities";
 import {
   Calendar,
   ChevronUp,
@@ -119,7 +118,6 @@ export function MainSidebar() {
             </SidebarMenuItem>
           ))}
         </SidebarMenu>
-        <FavoritePersonalities className="mt-0" />
       </SidebarHeader>
 
       <SidebarContent>
