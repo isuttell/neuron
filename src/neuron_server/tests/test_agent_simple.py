@@ -6,10 +6,10 @@ from uuid import uuid4
 import pytest
 
 from neuron_server.llms.agent_orchestrator import create_agent_orchestrator
+from neuron_server.llms.agent_status_manager import AgentStatusManager
 from neuron_server.llms.cancellation_manager import get_cancellation_manager
 from neuron_server.llms.message_processor import get_message_content
 from neuron_server.llms.stream_event_processor import create_stream_event_processor
-from neuron_server.llms.thread_status_manager import get_status_manager
 
 
 class TestFactoryFunctions:
@@ -23,11 +23,14 @@ class TestFactoryFunctions:
         assert orchestrator.stream_processor is not None
         assert orchestrator.cancellation_manager is not None
 
-    def test_get_status_manager(self) -> None:
-        """Test status manager singleton."""
-        manager1 = get_status_manager()
-        manager2 = get_status_manager()
-        assert manager1 is manager2
+    def test_agent_status_manager(self) -> None:
+        """Test status manager creation."""
+        manager1 = AgentStatusManager()
+        manager2 = AgentStatusManager()
+        # They should be different instances now (no singleton)
+        assert manager1 is not manager2
+        assert manager1 is not None
+        assert manager2 is not None
 
     def test_get_cancellation_manager(self) -> None:
         """Test cancellation manager singleton."""
@@ -37,7 +40,7 @@ class TestFactoryFunctions:
 
     def test_create_stream_event_processor(self) -> None:
         """Test stream processor factory."""
-        status_manager = get_status_manager()
+        status_manager = AgentStatusManager()
         processor = create_stream_event_processor(status_manager)
         assert processor is not None
         assert processor.status_manager is status_manager
@@ -85,7 +88,7 @@ class TestStatusManagerBasics:
 
     def test_status_manager_init(self) -> None:
         """Test status manager initializes correctly."""
-        manager = get_status_manager()
+        manager = AgentStatusManager()
         assert hasattr(manager, "_status_events")
         assert hasattr(manager, "_status_agents")
         assert hasattr(manager, "_thread_personalities")
@@ -93,7 +96,7 @@ class TestStatusManagerBasics:
 
     def test_personality_info_management(self) -> None:
         """Test personality info management."""
-        manager = get_status_manager()
+        manager = AgentStatusManager()
         thread_id = uuid4()
 
         manager.set_personality_info(thread_id, "Test", "Context")
@@ -102,7 +105,7 @@ class TestStatusManagerBasics:
 
     def test_cancellation_tracking(self) -> None:
         """Test cancellation tracking."""
-        manager = get_status_manager()
+        manager = AgentStatusManager()
         thread_id = uuid4()
 
         assert not manager.is_cancelled(thread_id)
@@ -142,7 +145,7 @@ class TestStreamEventProcessorBasics:
 
     def test_clean_run_id(self) -> None:
         """Test run ID cleaning functionality."""
-        status_manager = get_status_manager()
+        status_manager = AgentStatusManager()
         processor = create_stream_event_processor(status_manager)
 
         # Test cleaning run IDs
@@ -152,7 +155,7 @@ class TestStreamEventProcessorBasics:
 
     def test_processor_has_status_manager(self) -> None:
         """Test processor is connected to status manager."""
-        status_manager = get_status_manager()
+        status_manager = AgentStatusManager()
         processor = create_stream_event_processor(status_manager)
         assert processor.status_manager is status_manager
 
@@ -178,9 +181,11 @@ class TestComponentIntegration:
         """Test that singletons are consistent across the system."""
         orchestrator = create_agent_orchestrator()
 
-        # Should use singleton instances
-        assert orchestrator.status_manager is get_status_manager()
+        # Cancellation manager is still a singleton
         assert orchestrator.cancellation_manager is get_cancellation_manager()
+
+        # Status manager is no longer a singleton - each orchestrator gets its own
+        assert isinstance(orchestrator.status_manager, AgentStatusManager)
 
 
 if __name__ == "__main__":

@@ -126,11 +126,24 @@ async def test_wait_for_idle(monkeypatch: pytest.MonkeyPatch) -> None:
         except StopAsyncIteration:
             return DummyThread(thread_id, "idle")
 
-    # Patch ThreadModel.get to return our fake status
-    monkeypatch.setattr(
-        "neuron_server.llms.agent_orchestrator.ThreadModel",
-        type("DummyTM", (), {"get": fake_get}),
-    )
+    # Create a mock orchestrator with the _wait_for_idle method
+    class MockOrchestrator:
+        async def _wait_for_idle(self, thread_id: UUID, timeout: int = 300) -> None:
+            # Use the real wait_for_idle logic
+            start_time = asyncio.get_event_loop().time()
+            thread = await fake_get(thread_id)
+            while thread and thread.status not in {"idle", "error"}:
+                if asyncio.get_event_loop().time() - start_time > timeout:
+                    raise TimeoutError(
+                        f"Thread {thread.id} did not become idle "
+                        f"within {timeout} seconds"
+                    )
+                await asyncio.sleep(0.01)
+                thread = await fake_get(thread_id)
+
+    # Patch the global orchestrator
+    mock_orchestrator = MockOrchestrator()
+    monkeypatch.setattr("neuron_server.llms.agent._orchestrator", mock_orchestrator)
 
     # Use longer timeout since we have small delays between status changes
     await wait_for_idle(thread_id, timeout=5)

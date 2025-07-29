@@ -1,14 +1,15 @@
 """Complete tests for stream event processing."""
 
+from datetime import datetime
 from uuid import uuid4
 
 import pytest
 
+from neuron_server.llms.agent_status_manager import AgentStatusManager
 from neuron_server.llms.stream_event_processor import (
     StreamEventProcessor,
     create_stream_event_processor,
 )
-from neuron_server.llms.thread_status_manager import get_status_manager
 
 
 class MockThread:
@@ -129,7 +130,7 @@ class TestFactoryFunction:
 
     def test_create_stream_event_processor(self) -> None:
         """Test create_stream_event_processor factory function."""
-        status_manager = get_status_manager()
+        status_manager = AgentStatusManager()
         processor = create_stream_event_processor(status_manager)
 
         assert isinstance(processor, StreamEventProcessor)
@@ -242,6 +243,38 @@ class TestRunIdCleaning:
         assert (
             self.processor._clean_run_id("run--") == "run--"
         )  # Returns original if empty
+
+
+class TestStreamProcessorCallbacks:
+    """Test StreamEventProcessor callback integration."""
+
+    def setup_method(self) -> None:
+        """Set up test fixtures."""
+        self.mock_status_manager = MockStatusManager()
+        self.processor = StreamEventProcessor(self.mock_status_manager)
+        self.test_thread = MockThread()
+
+    @pytest.mark.asyncio
+    async def test_process_stream_events_with_callbacks(self) -> None:
+        """Test process_stream_events accepts callbacks parameter."""
+        from neuron_server.llms.callback_handlers import CallbackHandlers
+
+        # Mock dependencies
+        async def mock_event_stream():
+            """Mock async event stream."""
+            return
+            yield  # Make it a generator
+
+        callbacks = CallbackHandlers()
+
+        # Test that method accepts callbacks parameter without error
+        await self.processor.process_stream_events(
+            self.test_thread,
+            mock_event_stream(),
+            "Test message",
+            datetime.now(),
+            callbacks=callbacks,
+        )
 
 
 if __name__ == "__main__":

@@ -2,7 +2,7 @@ import asyncio
 from uuid import UUID
 
 import tiktoken
-from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
+from langchain_core.messages import HumanMessage
 from langchain_core.runnables import Runnable
 from lxml import etree
 from pydantic import BaseModel, Field
@@ -17,8 +17,7 @@ from neuron_server.controllers.events.personality_events import (
 from neuron_server.controllers.events.personality_room_events import (
     PersonalityRoomUpdatedEvent,
 )
-from neuron_server.llms.agent import execute_agent_with_messages
-from neuron_server.llms.message_processor import get_message_content
+from neuron_server.llms.agent import execute_agent_with_messages_streaming
 from neuron_server.logger import logger
 from neuron_server.models.media_item_model import MediaItemModel
 from neuron_server.models.personality_message_media_item_model import (
@@ -554,6 +553,7 @@ AGENT ACTION: {action}"""
     async def generate_personality_response(  # noqa: PLR0913
         self,
         personality_id: UUID,
+        room_id: UUID,
         personality: PersonalityModel,
         chat_history: str,
         latest_message: str,
@@ -564,6 +564,7 @@ AGENT ACTION: {action}"""
 
         Args:
             personality_id: The ID of the personality
+            room_id: The ID of the personality room
             personality: The PersonalityModel instance
             chat_history: Formatted chat history string
             latest_message: The latest message content
@@ -590,56 +591,45 @@ AGENT ACTION: {action}"""
             # Create message list for agent
             messages = [HumanMessage(content=prompt)]
 
-            # Execute agent with personality context
-            result_messages = await execute_agent_with_messages(
+            # Create status callback that updates room status
+            async def status_callback(
+                thread_id: UUID,
+                raw_status: str,
+                generated_message: str,
+                human_message: str | None,
+            ) -> None:
+                """Callback to update personality room status based on agent status.
+
+                Args:
+                    thread_id: The thread ID (temporary for personality chat)
+                    raw_status: The raw status (e.g., "update_memory", "thinking")
+                    generated_message: The AI-generated status message
+                    human_message: The user's message that triggered this
+                """
+                logger.debug(
+                    f"Status callback called: raw_status={raw_status}, "
+                    f"generated_message={generated_message}"
+                )
+
+                # Don't update room status for idle/error
+                if raw_status in ["idle", "error"]:
+                    return
+
+                # Use the generated message directly as room status
+                await PersonalityRoomModel.update_status(room_id, generated_message)
+                await self.broadcast_personality_room_status_update(
+                    personality_id, room_id, generated_message
+                )
+
+            # Execute agent with personality context and status callback
+            response_result = await execute_agent_with_messages_streaming(
                 messages=messages,
                 personality_id=personality_id,
                 user_id=user_id,
                 username=username,  # Use actual username of message sender
-                create_media_items=False,  # No media items needed for personality chat
+                status_callback=status_callback,
             )
-
-            # Extract response text from last AI message
-            response_text = ""
-            if result_messages and isinstance(result_messages[-1], AIMessage):
-                content = get_message_content(
-                    result_messages[-1], format_as_string=True
-                )
-                response_text = content.strip() if content else ""
-
-            # Extract media artifacts from all tool messages
-            media_artifacts = []
-            for message in result_messages:
-                if (
-                    isinstance(message, ToolMessage)
-                    and hasattr(message, "artifact")
-                    and message.artifact
-                ):
-                    # Handle both single artifact and list of artifacts
-                    artifacts = (
-                        message.artifact
-                        if isinstance(message.artifact, list)
-                        else [message.artifact]
-                    )
-
-                    for artifact_dict in artifacts:
-                        # Only process media artifacts
-                        if (
-                            isinstance(artifact_dict, dict)
-                            and artifact_dict.get("type") == "media"
-                        ):
-                            try:
-                                # Parse the artifact using Pydantic model for validation
-                                artifact = ToolMediaArtifact.model_validate(
-                                    artifact_dict
-                                )
-                                media_artifacts.append(artifact)
-                            except Exception as e:
-                                logger.error(
-                                    f"Failed to parse media artifact: {e}",
-                                    exc_info=True,
-                                )
-                                continue
+            response_text, media_artifacts = response_result
 
             return response_text, media_artifacts
 
@@ -837,10 +827,10 @@ AGENT ACTION: {action}"""
                     messages, personality, users
                 )
 
-                # Get fast model for status generation
+                # Get fast model for initial status generation
                 fast_model = await self.get_personality_fast_model(personality_id)
 
-                # Generate dynamic status message in background and broadcast update
+                # Generate initial custom status using fast model in background
                 asyncio.create_task(
                     self.update_status_with_generation(
                         personality_id=personality_id,
@@ -850,6 +840,7 @@ AGENT ACTION: {action}"""
                         chat_history=chat_history,
                         latest_message=message.content,
                         user_id=message.user_id,
+                        action="thinking about your message",
                     )
                 )
 
@@ -864,6 +855,7 @@ AGENT ACTION: {action}"""
                     media_artifacts,
                 ) = await self.generate_personality_response(
                     personality_id=personality_id,
+                    room_id=message.personality_room_id,
                     personality=personality,
                     chat_history=chat_history,
                     latest_message=message.content,

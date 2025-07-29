@@ -7,10 +7,13 @@ from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from werkzeug.exceptions import BadRequest
 
 from neuron_server.database import pool
-from neuron_server.llms.agent_orchestrator import create_agent_orchestrator
+from neuron_server.llms.agent_orchestrator import (
+    AgentOrchestrator,
+    create_agent_orchestrator,
+)
+from neuron_server.llms.agent_status_manager import StatusCallback
 from neuron_server.llms.llm import LLM
 from neuron_server.llms.message_processor import get_message_content
-from neuron_server.llms.thread_status_manager import get_status_manager
 from neuron_server.llms.tools import get_tools
 from neuron_server.models.personality_model import PersonalityModel
 from neuron_server.models.provider_model import ProviderModelModel
@@ -45,8 +48,27 @@ class StreamArgs(TypedDict, total=False):
 DEFAULT_LOCATION = "San Diego, California at -117.1860 W and 32.84 N."
 
 
-# Create global orchestrator instance
-_orchestrator = create_agent_orchestrator()
+# Singleton orchestrator management
+class _OrchestratorManager:
+    """Manages the singleton orchestrator instance."""
+
+    def __init__(self) -> None:
+        self._instance = None
+
+    def get(self) -> "AgentOrchestrator":
+        """Get or create the orchestrator instance."""
+        if self._instance is None:
+            self._instance = create_agent_orchestrator()
+        return self._instance
+
+
+# Create the singleton manager
+_orchestrator_manager = _OrchestratorManager()
+
+
+def get_orchestrator() -> "AgentOrchestrator":
+    """Get or create the global orchestrator instance."""
+    return _orchestrator_manager.get()
 
 
 async def execute_agent_with_messages(  # noqa: PLR0913
@@ -184,6 +206,80 @@ async def execute_agent(
     return content.strip() if isinstance(content, str) else ""
 
 
+async def execute_agent_with_messages_streaming(  # noqa: PLR0913
+    messages: list[HumanMessage | AIMessage],
+    personality_id: UUID,
+    user_id: str,
+    username: str,
+    location: str = DEFAULT_LOCATION,
+    status_callback: StatusCallback | None = None,
+) -> tuple[str, list]:
+    """Execute agent with custom messages list using streaming and status callbacks.
+
+    Similar to execute_agent_with_messages but uses the orchestrator to enable
+    streaming and status callbacks. This is useful for personality chat where
+    we want to track agent status changes.
+
+    Args:
+        messages: List of messages to send to the agent
+        personality_id: ID of personality to use
+        user_id: ID of user making request
+        username: Name of user
+        location: Location string (default: San Diego)
+        status_callback: Optional callback for status updates
+
+    Returns:
+        Tuple of (response text, media artifacts)
+
+    Raises:
+        BadRequest: If personality not found
+    """
+    # Create a temporary thread for this execution
+    thread = await ThreadModel.create(
+        ThreadModel.CreateParams(
+            personality_id=personality_id,
+            user_id=user_id,
+            name="Personality Chat Response",
+        )
+    )
+
+    # Format the messages into a single prompt
+    # For personality chat, we typically have a single HumanMessage with context
+    prompt = ""
+    for msg in messages:
+        if isinstance(msg, HumanMessage):
+            content = get_message_content(msg, format_as_string=True)
+            if content:
+                prompt = content
+                break
+
+    # Execute using the orchestrator with streaming
+    args = StreamArgs(
+        thread_id=thread.id,
+        personality_id=personality_id,
+        user_id=user_id,
+        username=username,
+        prompt=prompt,
+        location=location,
+    )
+
+    # Create callbacks with just the status callback
+    from neuron_server.llms.callback_handlers import CallbackHandlers
+
+    callbacks = (
+        CallbackHandlers(on_status_change=status_callback) if status_callback else None
+    )
+
+    # Use the global orchestrator
+    orchestrator = get_orchestrator()
+    result_text, media_artifacts = await orchestrator.execute_stream(args, callbacks)
+
+    # Clean up the temporary thread
+    await ThreadModel.delete(thread.id)
+
+    return result_text or "", media_artifacts
+
+
 async def aget_state(thread_id: UUID) -> dict[str, Any]:
     """Get the current state for a thread.
 
@@ -212,7 +308,12 @@ async def astream(args: StreamArgs) -> str | None:
     Returns:
         The final message content or None if no messages
     """
-    return await _orchestrator.execute_stream(args)
+    from neuron_server.llms.websocket_callbacks import create_websocket_callbacks
+
+    # Get orchestrator and execute with websocket callbacks
+    orchestrator = get_orchestrator()
+    result, _ = await orchestrator.execute_stream(args, create_websocket_callbacks())
+    return result
 
 
 # Backward compatibility functions
@@ -226,7 +327,10 @@ async def update_thread_status(
 
     Backward compatibility wrapper for the status manager.
     """
-    status_manager = get_status_manager()
+    from neuron_server.llms.agent_status_manager import AgentStatusManager
+
+    # Create a temporary status manager for backward compatibility
+    status_manager = AgentStatusManager()
     await status_manager.update_thread_status(
         thread, status, force_update, human_message
     )
@@ -237,4 +341,5 @@ async def wait_for_idle(thread_id: UUID, timeout: int = 300) -> None:
 
     Backward compatibility function.
     """
-    await _orchestrator._wait_for_idle(thread_id, timeout)
+    orchestrator = get_orchestrator()
+    await orchestrator._wait_for_idle(thread_id, timeout)

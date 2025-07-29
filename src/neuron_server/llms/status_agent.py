@@ -1,18 +1,15 @@
 import asyncio
 import time
 from datetime import datetime
-from typing import Optional
+from typing import Callable, Optional
 from uuid import UUID
 
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
 from pydantic import BaseModel, Field
 
-from neuron_server.controllers.events.thread_events import GetThreadResponse
 from neuron_server.llms.llm import LLM
 from neuron_server.logger import logger
 from neuron_server.models.provider_model import ProviderModelModel
-from neuron_server.models.thread_model import ThreadModel
-from neuron_server.secure_pubsub import secure_pubsub
 
 
 class StatusMessage(BaseModel):
@@ -35,7 +32,10 @@ class StatusAgent:
         self.pending_task: Optional[asyncio.Task] = None
         self.pending_status: Optional[str] = None
         self.pending_human_message: Optional[str] = None
+        self.last_generated_status: Optional[str] = None
         self.throttle_seconds = 5
+        self.pending_callback: Optional[Callable] = None
+        self.pending_events: Optional[list] = None
 
         # Build system message with personality context
         system_content = (
@@ -87,23 +87,26 @@ class StatusAgent:
 
     async def update_status(
         self,
-        thread: ThreadModel,
         status: str,
         recent_events: list = None,
         human_message: str | None = None,
-    ) -> str:
-        """Update status with throttling.
+        callback: Callable = None,
+    ) -> tuple[str, bool]:
+        """Generate status message with throttling.
 
         Args:
-            thread: The thread model to update
             status: The status operation being performed
             recent_events: List of recent status events
             human_message: The user's message that triggered this operation
+            callback: Optional callback to invoke when status is generated
+
+        Returns:
+            Tuple of (status message, whether a new message was generated)
         """
         # Special handling for idle - just reset and return
         if status == "idle":
             self.reset()
-            return status  # Return "idle" directly, no LLM call
+            return status, True  # Return "idle" directly, no LLM call
 
         now = datetime.now()
 
@@ -116,53 +119,65 @@ class StatusAgent:
             generated_status = await self._generate_status_message(
                 status, recent_events or [], human_message
             )
-            # Update thread with generated status
-            thread.status = generated_status
-            await self._publish_status_update(thread)
-            return generated_status
+            self.last_generated_status = generated_status
+
+            # Invoke callback if provided
+            if callback:
+                await callback(self.thread_id, status, generated_status, human_message)
+
+            return generated_status, True  # New message was generated
 
         # Too soon - queue for later
         self.pending_status = status
         self.pending_human_message = human_message
+        self.pending_callback = callback
+        self.pending_events = recent_events
         if not self.pending_task or self.pending_task.done():
             # Schedule execution exactly throttle_seconds after last execution
             wait_time = (
                 self.throttle_seconds - (now - self.last_execution_time).total_seconds()
             )
-            self.pending_task = asyncio.create_task(
-                self._execute_pending(thread, wait_time)
-            )
+            self.pending_task = asyncio.create_task(self._execute_pending(wait_time))
             logger.debug(
-                f"Queued status update for thread {self.thread_id}, "
+                f"Queued status update for agent {self.thread_id}, "
                 f"will fire in {wait_time:.1f}s"
             )
 
-        # Return the current raw status for now
-        return status
+        # Return the last generated status if available, otherwise raw status
+        return self.last_generated_status or status, False  # No new message generated
 
-    async def _execute_pending(self, thread: ThreadModel, wait_time: float) -> None:
+    async def _execute_pending(self, wait_time: float) -> None:
         """Execute pending update after throttle period."""
         try:
             await asyncio.sleep(wait_time)
             if self.pending_status:
                 self.last_execution_time = datetime.now()
-                # For pending updates, we might have human message
+                # Use accumulated events for the status message
                 generated_status = await self._generate_status_message(
-                    self.pending_status, [], self.pending_human_message
+                    self.pending_status,
+                    self.pending_events or [],
+                    self.pending_human_message,
                 )
-                # Update thread with generated status
-                thread.status = generated_status
-                await self._publish_status_update(thread)
+                # Store the generated status for retrieval
+                self.last_generated_status = generated_status
+
+                # Invoke callback if provided
+                if self.pending_callback:
+                    await self.pending_callback(
+                        self.thread_id,
+                        self.pending_status,
+                        generated_status,
+                        self.pending_human_message,
+                    )
+
+                # Clear pending state
                 self.pending_status = None
                 self.pending_human_message = None
+                self.pending_callback = None
+                self.pending_events = None
         except asyncio.CancelledError:
-            logger.debug(f"Pending status update cancelled for thread {self.thread_id}")
+            logger.debug(f"Pending status update cancelled for agent {self.thread_id}")
             raise
-
-    async def _publish_status_update(self, thread: ThreadModel) -> None:
-        """Publish the thread status update."""
-        await ThreadModel.set(thread.id, "status", thread.status)
-        await secure_pubsub.publish_thread_update(GetThreadResponse(thread=thread))
 
     async def _generate_status_message(
         self, current_status: str, recent_events: list, human_message: str | None = None
@@ -185,9 +200,9 @@ class StatusAgent:
                 event_context = "Recent activity:\n" + "\n".join(event_lines) + "\n\n"
 
             # Get description for current operation
-            from neuron_server.llms.thread_status_manager import ThreadStatusManager
+            from neuron_server.llms.agent_status_manager import AgentStatusManager
 
-            tool_descriptions = ThreadStatusManager.TOOL_DESCRIPTIONS
+            tool_descriptions = AgentStatusManager.TOOL_DESCRIPTIONS
 
             # Handle comma-separated tools
             if "," in current_status:
@@ -275,7 +290,7 @@ class StatusAgent:
     def _format_simple_status(self, status: str) -> str:
         """Simple fallback formatting."""
         # Import here to avoid circular import
-        from neuron_server.llms.thread_status_manager import ThreadStatusManager
+        from neuron_server.llms.agent_status_manager import AgentStatusManager
 
         # Handle comma-separated tools first
         if "," in status:
@@ -283,7 +298,7 @@ class StatusAgent:
             return f"Working on {len(tools)} tasks"
 
         # Use tool description if available
-        tool_descriptions = ThreadStatusManager.TOOL_DESCRIPTIONS
+        tool_descriptions = AgentStatusManager.TOOL_DESCRIPTIONS
         if status in tool_descriptions:
             return tool_descriptions[status]
 
@@ -318,6 +333,8 @@ class StatusAgent:
         self.pending_task = None
         self.pending_status = None
         self.pending_human_message = None
+        self.pending_callback = None
+        self.pending_events = None
         # Reset message history to just the system message
         self.message_history = [self.message_history[0]] if self.message_history else []
         logger.debug(f"Status agent reset for thread {self.thread_id}")

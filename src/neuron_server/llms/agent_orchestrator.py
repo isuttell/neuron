@@ -10,20 +10,19 @@ from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from langgraph.graph import StateGraph
 
-from neuron_server.controllers.events.message_events import MessageEvent, ThreadMessage
+from neuron_server.controllers.events.message_events import ThreadMessage
 from neuron_server.database import pool
-from neuron_server.event_router import ErrorEvent
+from neuron_server.llms.agent_status_manager import AgentStatusManager
+from neuron_server.llms.callback_handlers import CallbackHandlers
 from neuron_server.llms.cancellation_manager import CancellationManager
 from neuron_server.llms.llm import LLM
 from neuron_server.llms.message_processor import get_message_content
 from neuron_server.llms.stream_event_processor import StreamEventProcessor
-from neuron_server.llms.thread_status_manager import ThreadStatusManager
 from neuron_server.llms.tools import get_tools
 from neuron_server.logger import logger
 from neuron_server.models.personality_model import PersonalityModel
 from neuron_server.models.provider_model import ProviderModelModel
 from neuron_server.models.thread_model import ThreadModel
-from neuron_server.secure_pubsub import secure_pubsub
 
 
 @dataclass
@@ -43,7 +42,7 @@ class AgentOrchestrator:
 
     def __init__(
         self,
-        status_manager: ThreadStatusManager,
+        status_manager: AgentStatusManager,
         stream_processor: StreamEventProcessor,
         cancellation_manager: CancellationManager,
     ) -> None:
@@ -187,14 +186,16 @@ class AgentOrchestrator:
     async def _process_stream_with_cancellation(
         self,
         stream_config: StreamProcessingConfig,
-    ) -> str | None:
+        callbacks: CallbackHandlers | None = None,
+    ) -> tuple[str | None, list]:
         """Process stream events with cancellation support.
 
         Args:
             stream_config: Configuration for stream processing
+            callbacks: Optional callbacks for various events
 
         Returns:
-            Final message content or None if cancelled
+            Tuple of (final message content, media artifacts)
         """
         # Extract human message content for status updates (limit to 1000 chars)
         human_message_content_raw = get_message_content(
@@ -240,22 +241,27 @@ class AgentOrchestrator:
             version="v2",
         )
 
-        # Process events
-        await self.stream_processor.process_stream_events(
+        # Process events and collect media artifacts
+        media_artifacts = await self.stream_processor.process_stream_events(
             stream_config.thread,
             event_stream,
             human_message_content,
             stream_config.start_time,
+            callbacks,
         )
 
         # Get final state
-        return await self._get_final_state(stream_config.config["thread_id"])
+        final_message = await self._get_final_state(stream_config.config["thread_id"])
+        return final_message, media_artifacts
 
-    async def _validate_and_prepare_thread(self, config: dict[str, Any]) -> ThreadModel:
+    async def _validate_and_prepare_thread(
+        self, config: dict[str, Any], callbacks: CallbackHandlers | None = None
+    ) -> ThreadModel:
         """Validate and prepare thread for processing.
 
         Args:
             config: Stream configuration
+            callbacks: Optional callbacks for various events
 
         Returns:
             Thread model instance
@@ -270,14 +276,14 @@ class AgentOrchestrator:
             await self._wait_for_idle(config["thread_id"])
 
         await self.status_manager.update_thread_status(
-            thread, "thinking", human_message=config["prompt"]
+            thread, "thinking", human_message=config["prompt"], callbacks=callbacks
         )
         return thread
 
-    async def _create_and_publish_message(
+    async def _create_message(
         self, thread: ThreadModel, config: dict[str, Any], args: dict[str, Any]
     ) -> HumanMessage:
-        """Create and publish human message.
+        """Create human message.
 
         Args:
             thread: Thread model instance
@@ -287,35 +293,21 @@ class AgentOrchestrator:
         Returns:
             Created human message
         """
-        human_message = HumanMessage(
+        return HumanMessage(
             id=str(uuid4()),
             user_id=config["user_id"],
             content=f"<|AI|>User: {config['username']}<|AI|>\n{config['prompt']}",
             created_at=datetime.now().astimezone().isoformat(),
         )
 
-        message_data = human_message.model_dump()
-        # Include temp_id if provided for optimistic updates
-        if args.get("temp_id"):
-            message_data["temp_id"] = args["temp_id"]
-
-        await secure_pubsub.publish_thread_message(
-            MessageEvent(
-                message=ThreadMessage(
-                    **message_data,
-                    thread_id=thread.id,
-                )
-            )
-        )
-        return human_message
-
-    async def _setup_stream_tasks(
+    async def _setup_stream_tasks(  # noqa: PLR0913
         self,
         thread: ThreadModel,
         personality: PersonalityModel,
         human_message: HumanMessage,
         config: dict[str, Any],
         start_time: datetime,
+        callbacks: CallbackHandlers | None = None,
     ) -> tuple[asyncio.Task, asyncio.Task]:
         """Set up stream processing and cancellation tasks.
 
@@ -325,6 +317,7 @@ class AgentOrchestrator:
             human_message: Human message to process
             config: Stream configuration
             start_time: Processing start time
+            callbacks: Optional callbacks for various events
 
         Returns:
             Tuple of (stream_task, cancel_task)
@@ -347,7 +340,7 @@ class AgentOrchestrator:
             start_time=start_time,
         )
         stream_task = asyncio.create_task(
-            self._process_stream_with_cancellation(stream_config)
+            self._process_stream_with_cancellation(stream_config, callbacks)
         )
 
         cancel_task = asyncio.create_task(
@@ -364,7 +357,7 @@ class AgentOrchestrator:
         cancel_task: asyncio.Task,
         thread: ThreadModel,
         config: dict[str, Any],
-    ) -> str | None:
+    ) -> tuple[str | None, list]:
         """Handle stream completion and cancellation.
 
         Args:
@@ -374,7 +367,7 @@ class AgentOrchestrator:
             config: Stream configuration
 
         Returns:
-            Final result or None if cancelled
+            Tuple of (final result, media artifacts) or (None, []) if cancelled
         """
         # Handle cancellation or completion
         was_cancelled, result = await self.cancellation_manager.handle_cancellation(
@@ -384,23 +377,27 @@ class AgentOrchestrator:
         if was_cancelled:
             logger.info(f"Thread {config['thread_id']} cancelled and reset to idle")
             await self.status_manager.reset_cancelled_thread(thread)
-            result = None
+            return None, []
 
         # Clean up pending tasks
         await self.cancellation_manager.cleanup_pending_tasks(
             {stream_task, cancel_task}
         )
 
-        return result
+        # Result is a tuple of (message, artifacts)
+        return result if isinstance(result, tuple) else (result, [])
 
-    async def execute_stream(self, args: dict[str, Any]) -> str | None:
+    async def execute_stream(  # noqa: PLR0912
+        self, args: dict[str, Any], callbacks: CallbackHandlers | None = None
+    ) -> tuple[str | None, list]:
         """Execute agent stream with full orchestration.
 
         Args:
             args: Stream arguments containing thread_id, personality_id, etc.
+            callbacks: Optional callbacks for various events
 
         Returns:
-            Final message content or None if cancelled or no messages
+            Tuple of (final message content, media artifacts)
         """
         default_location = "San Diego, California at -117.1860 W and 32.84 N."
 
@@ -416,23 +413,49 @@ class AgentOrchestrator:
         start_time = datetime.now().astimezone()
         logger.debug(f"Agent started for {config['thread_id']}")
         thread = None
-        result: str | None = None
+        result: tuple[str | None, list] = (None, [])
 
         try:
             # Validate and prepare thread
-            thread = await self._validate_and_prepare_thread(config)
+            thread = await self._validate_and_prepare_thread(config, callbacks)
+
+            # Register callbacks if provided
+            logger.debug(
+                f"Callbacks provided: {callbacks is not None}, "
+                f"on_status_change: {callbacks.on_status_change if callbacks else None}"
+            )
+            if callbacks and callbacks.on_status_change:
+                logger.debug(
+                    f"Registering status callback for thread {config['thread_id']}"
+                )
+                self.status_manager.register_status_callback(
+                    config["thread_id"], callbacks.on_status_change
+                )
 
             # Get personality
             personality = await PersonalityModel.get(config["personality_id"])
             if personality is None:
                 raise Exception("Personality not found")
 
-            # Create and publish human message
-            human_message = await self._create_and_publish_message(thread, config, args)
+            # Create human message (publishing handled by callbacks if needed)
+            human_message = await self._create_message(thread, config, args)
+
+            # Notify callback if provided
+            if callbacks and callbacks.on_human_message:
+                message_data = human_message.model_dump()
+                # Include temp_id if provided for optimistic updates
+                if args.get("temp_id"):
+                    message_data["temp_id"] = args["temp_id"]
+
+                thread_message = ThreadMessage(
+                    **message_data,
+                    thread_id=thread.id,
+                )
+                await callbacks.on_human_message(thread_message)
 
             # Set up stream processing and cancellation tasks
             stream_task, cancel_task = await self._setup_stream_tasks(
-                thread, personality, human_message, config, start_time
+                thread, personality, human_message, config, start_time, callbacks
             )
 
             # Handle completion and cleanup
@@ -452,23 +475,33 @@ class AgentOrchestrator:
             logger.error(f"AgentError: {e!r}")
             if thread:
                 await self.status_manager.update_thread_status(
-                    thread, status="error", human_message=config.get("prompt")
+                    thread,
+                    status="error",
+                    human_message=config.get("prompt"),
+                    callbacks=callbacks,
                 )
-            # Send error to the specific user who triggered the action
-            user_id = config.get("user_id")
-            if user_id and user_id != "Unknown":
-                await secure_pubsub.publish_error_to_user(
-                    user_id, ErrorEvent(message=str(e))
+            # Notify error callback if provided
+            if callbacks and callbacks.on_error:
+                user_id = config.get("user_id")
+                await callbacks.on_error(
+                    str(e), user_id if user_id != "Unknown" else None
                 )
-            else:
-                logger.warning("Could not send error to user: user_id not available")
 
         finally:
+            # Unregister status callback if it was registered
+            if callbacks and callbacks.on_status_change and thread:
+                self.status_manager.unregister_status_callback(
+                    thread.id, callbacks.on_status_change
+                )
+
             if thread:
                 # Only update status if thread wasn't cancelled
                 if not self.status_manager.is_cancelled(thread.id):
                     await self.status_manager.update_thread_status(
-                        thread, status="idle", human_message=config.get("prompt")
+                        thread,
+                        status="idle",
+                        human_message=config.get("prompt"),
+                        callbacks=callbacks,
                     )
                 else:
                     # Clean up cancelled thread from tracking
@@ -485,11 +518,11 @@ def create_agent_orchestrator() -> AgentOrchestrator:
     Returns:
         AgentOrchestrator instance
     """
+    from neuron_server.llms.agent_status_manager import AgentStatusManager
     from neuron_server.llms.cancellation_manager import get_cancellation_manager
     from neuron_server.llms.stream_event_processor import create_stream_event_processor
-    from neuron_server.llms.thread_status_manager import get_status_manager
 
-    status_manager = get_status_manager()
+    status_manager = AgentStatusManager()
     stream_processor = create_stream_event_processor(status_manager)
     cancellation_manager = get_cancellation_manager()
 
