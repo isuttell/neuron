@@ -207,21 +207,25 @@ class PersonalityChatOrchestrator:
         return active_llm.fast_model
 
     async def get_token_limited_message_history(
-        self, personality_id: UUID, users: dict[str, UserModel] | None = None
+        self,
+        personality_id: UUID,
+        room_id: UUID,
+        users: dict[str, UserModel] | None = None,
     ) -> list[PersonalityMessageModel]:
-        """Get recent messages limited by token count for optimal context usage.
+        """Get recent messages from a specific room, limited by token count.
 
         Args:
             personality_id: The ID of the personality
+            room_id: The ID of the room to get messages from
             users: Dictionary mapping user_id to UserModel instances for token counting
 
         Returns:
             List of PersonalityMessageModel instances within token limit,
             ordered chronologically (oldest first)
         """
-        # Get all messages for this personality ordered by creation time (newest first)
+        # Get messages for this specific room ordered by creation time (newest first)
         all_messages = await PersonalityMessageModel.list(
-            personality_id=personality_id, limit=1000, offset=0
+            personality_id=personality_id, room_id=room_id, limit=1000, offset=0
         )
 
         if not all_messages:
@@ -358,9 +362,9 @@ class PersonalityChatOrchestrator:
             # Get all users who have access to this personality
             users = await self.get_personality_users_dict(personality_id)
 
-            # Get token-limited message history
+            # Get token-limited message history from the same room
             messages = await self.get_token_limited_message_history(
-                personality_id, users
+                personality_id, latest_message.personality_room_id, users
             )
             chat_history = await self.convert_to_chat_history(
                 messages, personality, users
@@ -829,9 +833,9 @@ AGENT ACTION: {action}"""
                 # Get all users who have access to this personality
                 users = await self.get_personality_users_dict(personality_id)
 
-                # Get token-limited chat history for context
+                # Get token-limited chat history for context from the same room
                 messages = await self.get_token_limited_message_history(
-                    personality_id, users
+                    personality_id, message.personality_room_id, users
                 )
                 chat_history = await self.convert_to_chat_history(
                     messages, personality, users

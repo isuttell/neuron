@@ -24,7 +24,7 @@ export const fetchPersonalityMessages = createAsyncThunk(
       offset = 0,
     }: {
       personalityId: string;
-      roomId?: string;
+      roomId: string;
       limit?: number;
       offset?: number;
     },
@@ -36,13 +36,8 @@ export const fetchPersonalityMessages = createAsyncThunk(
         offset: offset.toString(),
       });
 
-      // Add room_id if provided
-      if (roomId) {
-        params.append("room_id", roomId);
-      }
-
       const response = await api.get<PersonalityMessagesResponse>(
-        `/personality-messages/${personalityId}?${params}`
+        `/personality-messages/${personalityId}/rooms/${roomId}/messages?${params}`
       );
 
       return {
@@ -64,16 +59,21 @@ export const loadMorePersonalityMessages = createAsyncThunk(
   async (
     {
       personalityId,
+      roomId,
       limit = 50,
     }: {
       personalityId: string;
+      roomId: string;
       limit?: number;
     },
     thunkAPI
   ) => {
     const state = thunkAPI.getState() as RootState;
     const existingMessages = state.personalityChat.messageIds
-      .filter((id) => state.personalityChat.messageMap[id].personality_id === personalityId);
+      .filter((id) => {
+        const message = state.personalityChat.messageMap[id];
+        return message.personality_id === personalityId && message.personality_room_id === roomId;
+      });
 
     const offset = existingMessages.length;
 
@@ -87,7 +87,7 @@ export const loadMorePersonalityMessages = createAsyncThunk(
       });
 
       const response = await api.get<PersonalityMessagesResponse>(
-        `/personality-messages/${personalityId}?${params}`
+        `/personality-messages/${personalityId}/rooms/${roomId}/messages?${params}`
       );
 
       return {

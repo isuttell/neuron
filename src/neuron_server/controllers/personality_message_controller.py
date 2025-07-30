@@ -54,19 +54,22 @@ class UpdatePersonalityMessage(BaseModel):
     content: str = Field(description="The updated message content")
 
 
-@blueprint.get("/<uuid:personality_id>")
+@blueprint.get("/<uuid:personality_id>/rooms/<uuid:room_id>/messages")
 @requires_auth
-async def get_personality_messages(personality_id: UUID) -> dict[str, list[dict]]:
-    """Get messages for a personality.
+async def get_personality_messages(
+    personality_id: UUID, room_id: UUID
+) -> dict[str, list[dict]]:
+    """Get messages for a specific personality room.
 
     Args:
-        personality_id: The ID of the personality to get messages for
+        personality_id: The ID of the personality
+        room_id: The ID of the room to get messages for
 
     Returns:
         A dictionary with a list of personality messages
 
     Raises:
-        NotFound: If the personality doesn't exist or user doesn't have access
+        NotFound: If the personality or room doesn't exist or user doesn't have access
     """
     user_id = request.token.user_id
 
@@ -79,11 +82,14 @@ async def get_personality_messages(personality_id: UUID) -> dict[str, list[dict]
             f"Personality with id {personality_id} not found or you don't have access"
         )
 
-    # Get query parameters for pagination and filtering
+    # Verify user has access to the room
+    room = await PersonalityRoomModel.get_for_user(room_id, user_id, personality_id)
+    if not room:
+        raise NotFound(f"Room with id {room_id} not found or you don't have access")
+
+    # Get query parameters for pagination
     limit = int(request.args.get("limit", 50))
     offset = int(request.args.get("offset", 0))
-    room_id_str = request.args.get("room_id", None)
-    room_id = UUID(room_id_str) if room_id_str else None
 
     # Validate pagination parameters
     limit = min(limit, 100)
@@ -91,13 +97,7 @@ async def get_personality_messages(personality_id: UUID) -> dict[str, list[dict]
         limit = 50
     offset = max(offset, 0)
 
-    # If room_id is provided, verify user has access to the room
-    if room_id:
-        room = await PersonalityRoomModel.get_for_user(room_id, user_id, personality_id)
-        if not room:
-            raise NotFound(f"Room with id {room_id} not found or you don't have access")
-
-    # Get messages for the personality
+    # Get messages for the specific room
     messages = await PersonalityMessageModel.list(
         personality_id=personality_id, room_id=room_id, limit=limit, offset=offset
     )
@@ -247,6 +247,13 @@ async def update_personality_message(
     if message.user_id != user_id:
         raise Forbidden("You can only edit your own messages")
 
+    # Verify the user still has access to the room containing the message
+    room = await PersonalityRoomModel.get_for_user(
+        message.personality_room_id, user_id, personality_id
+    )
+    if not room:
+        raise Forbidden("You don't have access to the room containing this message")
+
     # Parse request body
     body = await request.get_json()
     payload = UpdatePersonalityMessage(**body)
@@ -326,6 +333,13 @@ async def delete_personality_message(
         # Non-admin users can only delete their own messages
         if message.user_id != user_id:
             raise Forbidden("You can only delete your own messages")
+
+        # Verify the user still has access to the room containing the message
+        room = await PersonalityRoomModel.get_for_user(
+            message.personality_room_id, user_id, personality_id
+        )
+        if not room:
+            raise Forbidden("You don't have access to the room containing this message")
     else:
         # Admin can delete any message, but verify message exists
         message = await PersonalityMessageModel.get(message_id)

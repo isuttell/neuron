@@ -167,12 +167,24 @@ class TestPersonalityMessageController:
     ):
         """Test successfully getting personality messages."""
         personality_id = uuid4()
+        room_id = uuid4()
+
+        # Create a mock room
+        mock_room = MagicMock()
+        mock_room.id = room_id
+        mock_room.name = "Test Room"
+        mock_room.type = "private"
 
         with (
             patch.object(
                 PersonalityModel,
                 "get_for_user",
                 AsyncMock(return_value=mock_personality),
+            ),
+            patch.object(
+                PersonalityRoomModel,
+                "get_for_user",
+                AsyncMock(return_value=mock_room),
             ),
             patch.object(
                 PersonalityMessageModel,
@@ -200,7 +212,7 @@ class TestPersonalityMessageController:
             )
             async with app.test_client() as client:
                 response = await client.get(
-                    f"/api/personality-messages/{personality_id}?limit=50&offset=0",
+                    f"/api/personality-messages/{personality_id}/rooms/{room_id}/messages?limit=50&offset=0",
                     headers={"Authorization": TEST_JWT_TOKEN},
                 )
 
@@ -216,13 +228,14 @@ class TestPersonalityMessageController:
     async def test_get_personality_messages_not_found(self, app, mock_decode_token):
         """Test getting messages for non-existent personality."""
         personality_id = uuid4()
+        room_id = uuid4()
 
         with patch.object(
             PersonalityModel, "get_for_user", AsyncMock(return_value=None)
         ):
             async with app.test_client() as client:
                 response = await client.get(
-                    f"/api/personality-messages/{personality_id}",
+                    f"/api/personality-messages/{personality_id}/rooms/{room_id}/messages",
                     headers={"Authorization": TEST_JWT_TOKEN},
                 )
 
@@ -288,8 +301,14 @@ class TestPersonalityMessageController:
         """Test successfully updating a personality message."""
         personality_id = uuid4()
         message_id = uuid4()
+        room_id = uuid4()
         mock_message.personality_id = personality_id
         mock_message.user_id = "test_user_id"
+        mock_message.personality_room_id = room_id
+
+        # Create a mock room
+        mock_room = MagicMock()
+        mock_room.id = room_id
 
         with (
             patch.object(
@@ -302,6 +321,11 @@ class TestPersonalityMessageController:
             ),
             patch.object(
                 PersonalityMessageModel, "update", AsyncMock(return_value=mock_message)
+            ),
+            patch.object(
+                PersonalityRoomModel,
+                "get_for_user",
+                AsyncMock(return_value=mock_room),
             ),
             patch(
                 "neuron_server.controllers.personality_message_controller.secure_pubsub"
@@ -360,8 +384,14 @@ class TestPersonalityMessageController:
         """Test successfully deleting own message."""
         personality_id = uuid4()
         message_id = uuid4()
+        room_id = uuid4()
         mock_message.personality_id = personality_id
         mock_message.user_id = "test_user_id"
+        mock_message.personality_room_id = room_id
+
+        # Create a mock room
+        mock_room = MagicMock()
+        mock_room.id = room_id
 
         with (
             patch.object(
@@ -374,6 +404,11 @@ class TestPersonalityMessageController:
             ),
             patch.object(
                 PersonalityMessageModel, "get", AsyncMock(return_value=mock_message)
+            ),
+            patch.object(
+                PersonalityRoomModel,
+                "get_for_user",
+                AsyncMock(return_value=mock_room),
             ),
             patch.object(PersonalityMessageModel, "delete", AsyncMock()) as mock_delete,
             patch(
