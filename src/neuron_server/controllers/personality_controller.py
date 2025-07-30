@@ -49,8 +49,13 @@ class CreatePersonality(BaseModel):
     tool_set: str | None = None
 
 
-class UpdatePersonality(CreatePersonality):
-    pass
+class UpdatePersonality(BaseModel):
+    name: str | None = None
+    description: str | None = None
+    context: str | None = None
+    memory: str | None = None
+    logo: str | None = None
+    tool_set: str | None = None
 
 
 class GeneratePersonality(BaseModel):
@@ -389,29 +394,53 @@ async def update_personality(personality_id: UUID) -> dict[str, dict]:
     if not has_admin:
         raise Forbidden("You do not have permission to update this personality")
 
+    # Get the existing personality to check for tool_set changes
+    existing_personality = await PersonalityModel.get(personality_id=personality_id)
+    if not existing_personality:
+        raise NotFound(f"Personality with id {personality_id} not found")
+
     body = await request.get_json()
     payload = UpdatePersonality(**body)
 
-    # Validate tool set permissions
-    validate_tool_set_permissions(payload.tool_set, request.token.roles)
+    # Only validate tool set permissions if the tool_set is being changed
+    if (
+        payload.tool_set is not None
+        and payload.tool_set != existing_personality.tool_set
+    ):
+        validate_tool_set_permissions(payload.tool_set, request.token.roles)
 
     llm: LLM = await ProviderModelModel.get_active_llm()
 
+    # Use existing values for fields not provided in the update
+    name = payload.name if payload.name is not None else existing_personality.name
+    context = (
+        payload.context if payload.context is not None else existing_personality.context
+    )
+    memory = (
+        payload.memory if payload.memory is not None else existing_personality.memory
+    )
+    tool_set = (
+        payload.tool_set
+        if payload.tool_set is not None
+        else existing_personality.tool_set
+    )
+    logo = payload.logo if payload.logo is not None else existing_personality.logo
+
     # If there is no description, generate one from the context
     description = payload.description
-    if (description is None or len(description.strip()) == 0) and len(
-        payload.context
-    ) > 0:
-        description = await ainvoke_description(llm=llm, context=payload.context)
+    if description is None:
+        description = existing_personality.description
+    elif len(description.strip()) == 0 and len(context) > 0:
+        description = await ainvoke_description(llm=llm, context=context)
 
     update_params = PersonalityModel.UpdateParams(
         personality_id=personality_id,
-        name=payload.name,
+        name=name,
         description=description,
-        context=payload.context,
-        memory=payload.memory,
-        tool_set=payload.tool_set,
-        logo=payload.logo,
+        context=context,
+        memory=memory,
+        tool_set=tool_set,
+        logo=logo,
     )
     personality = await PersonalityModel.update(params=update_params)
     return {"personality": personality.model_dump()}
