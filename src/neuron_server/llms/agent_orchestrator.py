@@ -254,14 +254,11 @@ class AgentOrchestrator:
         final_message = await self._get_final_state(stream_config.config["thread_id"])
         return final_message, media_artifacts
 
-    async def _validate_and_prepare_thread(
-        self, config: dict[str, Any], callbacks: CallbackHandlers | None = None
-    ) -> ThreadModel:
+    async def _validate_and_prepare_thread(self, config: dict[str, Any]) -> ThreadModel:
         """Validate and prepare thread for processing.
 
         Args:
             config: Stream configuration
-            callbacks: Optional callbacks for various events
 
         Returns:
             Thread model instance
@@ -275,9 +272,6 @@ class AgentOrchestrator:
         if thread.status not in {"idle", "error"}:
             await self._wait_for_idle(config["thread_id"])
 
-        await self.status_manager.update_thread_status(
-            thread, "thinking", human_message=config["prompt"], callbacks=callbacks
-        )
         return thread
 
     async def _create_message(
@@ -417,7 +411,7 @@ class AgentOrchestrator:
 
         try:
             # Validate and prepare thread
-            thread = await self._validate_and_prepare_thread(config, callbacks)
+            thread = await self._validate_and_prepare_thread(config)
 
             # Register callbacks if provided
             logger.debug(
@@ -431,6 +425,11 @@ class AgentOrchestrator:
                 self.status_manager.register_status_callback(
                     config["thread_id"], callbacks.on_status_change
                 )
+
+            # Set initial thinking status AFTER callback registration
+            await self.status_manager.update_thread_status(
+                thread, "thinking", human_message=config["prompt"], callbacks=callbacks
+            )
 
             # Get personality
             personality = await PersonalityModel.get(config["personality_id"])
@@ -488,25 +487,24 @@ class AgentOrchestrator:
                 )
 
         finally:
+            if thread:
+                # Always set status to idle and trigger callback
+                await self.status_manager.update_thread_status(
+                    thread,
+                    status="idle",
+                    human_message=config.get("prompt"),
+                    callbacks=callbacks,
+                )
+                # Clean up cancelled thread from tracking if it was cancelled
+                if self.status_manager.is_cancelled(thread.id):
+                    self.status_manager.unmark_cancelled(thread.id)
+                logger.debug(f"Agent completed for {thread.id}")
+
             # Unregister status callback if it was registered
             if callbacks and callbacks.on_status_change and thread:
                 self.status_manager.unregister_status_callback(
                     thread.id, callbacks.on_status_change
                 )
-
-            if thread:
-                # Only update status if thread wasn't cancelled
-                if not self.status_manager.is_cancelled(thread.id):
-                    await self.status_manager.update_thread_status(
-                        thread,
-                        status="idle",
-                        human_message=config.get("prompt"),
-                        callbacks=callbacks,
-                    )
-                else:
-                    # Clean up cancelled thread from tracking
-                    self.status_manager.unmark_cancelled(thread.id)
-                logger.debug(f"Agent completed for {thread.id}")
 
         return result
 
