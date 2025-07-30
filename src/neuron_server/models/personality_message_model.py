@@ -92,18 +92,16 @@ class PersonalityMessageModel(BaseModel):
     async def list(
         cls,
         personality_id: UUID,
-        room_id: UUID | None = None,
+        room_id: UUID,
         limit: int = 50,
         offset: int = 0,
     ) -> list[Self]:
-        """List messages for a personality, optionally filtered by room."""
+        """List messages for a specific personality room."""
         async with get_session() as session:
             query = select(PersonalityMessage).where(
-                PersonalityMessage.personality_id == personality_id
+                PersonalityMessage.personality_id == personality_id,
+                PersonalityMessage.personality_room_id == room_id,
             )
-
-            if room_id:
-                query = query.where(PersonalityMessage.personality_room_id == room_id)
 
             result = await session.execute(
                 query.order_by(PersonalityMessage.created_at.desc())
