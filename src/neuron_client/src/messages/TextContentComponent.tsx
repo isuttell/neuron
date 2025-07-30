@@ -33,7 +33,7 @@ const TextContentComponent: React.FC<TextContentProps> = ({
     <div className={cn("inline-block", className)}>
       <Badge
         variant="outline"
-        className="group hover:bg-muted/50 transition-colors cursor-pointer max-w-48"
+        className="group hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-colors cursor-pointer max-w-48"
       >
         <IconComponent className="h-3 w-3 mr-1 flex-shrink-0" />
         <span className="truncate">{caption}</span>

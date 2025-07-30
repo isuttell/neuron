@@ -146,7 +146,7 @@ const PersonalityChatItem: React.FC<PersonalityChatItemProps> = ({
           </Tooltip>
 
           {/* Chat Bubble */}
-          <div className="relative px-4 py-2 mr-4 rounded-sm break-words bg-muted text-foreground">
+          <div className="relative px-4 py-2 mr-4 rounded-sm break-words bg-zinc-900 text-foreground">
             {/* Personality Name */}
             <div className="text-xs font-semibold mb-1 text-blue-600">
               {personality.name}
