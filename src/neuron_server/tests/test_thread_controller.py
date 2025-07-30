@@ -210,9 +210,22 @@ async def test_get_thread(
 
     with (
         patch.object(ThreadModel, "get", new_callable=AsyncMock) as mock_get,
+        patch.object(
+            ThreadUserModel, "get", new_callable=AsyncMock
+        ) as mock_get_thread_user,
+        patch.object(
+            ThreadUserModel, "get_thread_users", new_callable=AsyncMock
+        ) as mock_get_thread_users,
     ):
         # Setup mocks
         mock_get.return_value = mock_thread
+        # User has access via thread_users
+        mock_get_thread_user.return_value = MagicMock(
+            thread_id=thread_id, user_id=mock_token.user_id, role="admin"
+        )
+        mock_get_thread_users.return_value = [
+            MagicMock(thread_id=thread_id, user_id=mock_token.user_id, role="admin")
+        ]
 
         # Create request context
         async with app.test_request_context(
@@ -330,14 +343,23 @@ async def test_get_threads_for_personality(
     personality_id = mock_thread.personality_id
 
     with (
-        patch.object(ThreadModel, "list", new_callable=AsyncMock) as mock_list,
         patch.object(
             ThreadUserModel, "get_user_threads", new_callable=AsyncMock
         ) as mock_get_user_threads,
+        patch.object(
+            ThreadModel, "get_by_ids", new_callable=AsyncMock
+        ) as mock_get_by_ids,
+        patch.object(
+            ThreadUserModel, "get_bulk_thread_users", new_callable=AsyncMock
+        ) as mock_get_bulk_thread_users,
     ):
         # Setup mocks
-        mock_list.return_value = [mock_thread]
-        mock_get_user_threads.return_value = []  # No shared threads
+        thread_user = MagicMock(
+            thread_id=mock_thread.id, user_id=mock_token.user_id, role="admin"
+        )
+        mock_get_user_threads.return_value = [thread_user]
+        mock_get_by_ids.return_value = [mock_thread]
+        mock_get_bulk_thread_users.return_value = [thread_user]
 
         # Create request context
         async with app.test_request_context(
@@ -358,9 +380,6 @@ async def test_get_threads_for_personality(
             assert result["threads"][0]["id"] == str(mock_thread.id)
 
         # Verify mocks were called correctly
-        mock_list.assert_called_once_with(
-            personality_id=personality_id, user_id=mock_token.user_id, limit=50
-        )
         mock_get_user_threads.assert_called_once_with(user_id=mock_token.user_id)
 
 
@@ -543,9 +562,16 @@ async def test_delete_thread(
     with (
         patch.object(ThreadModel, "get", new_callable=AsyncMock) as mock_get,
         patch.object(ThreadModel, "delete", new_callable=AsyncMock) as mock_delete,
+        patch.object(
+            ThreadUserModel, "get", new_callable=AsyncMock
+        ) as mock_thread_user_get,
     ):
         # Setup mocks
         mock_get.return_value = mock_thread
+        # User has admin access
+        mock_thread_user_get.return_value = MagicMock(
+            thread_id=thread_id, user_id=mock_token.user_id, role="admin"
+        )
 
         # Create request context
         async with app.test_request_context(
@@ -618,9 +644,18 @@ async def test_delete_thread_not_owner(
     # Change thread owner to be different from token user
     mock_thread.user_id = "different_user_id"
 
-    with patch.object(ThreadModel, "get", new_callable=AsyncMock) as mock_get:
+    with (
+        patch.object(ThreadModel, "get", new_callable=AsyncMock) as mock_get,
+        patch.object(
+            ThreadUserModel, "get", new_callable=AsyncMock
+        ) as mock_thread_user_get,
+    ):
         # Setup mocks
         mock_get.return_value = mock_thread
+        # User doesn't have admin access
+        mock_thread_user_get.return_value = MagicMock(
+            thread_id=thread_id, user_id=mock_token.user_id, role="user"
+        )
 
         # Create request context
         async with app.test_request_context(
@@ -638,7 +673,7 @@ async def test_delete_thread_not_owner(
                 await delete_thread(thread_id)
 
             # Verify error message
-            assert "Only the thread owner" in str(excinfo.value)
+            assert "Only thread admins can delete threads" in str(excinfo.value)
 
         # Verify mocks were called correctly
         mock_get.assert_called_once_with(thread_id=thread_id)
@@ -670,7 +705,10 @@ async def test_update_thread(
     ):
         # Setup mocks
         mock_get.return_value = mock_thread
-        mock_thread_user_get.return_value = None  # Not relevant for this test
+        # User has admin access to the thread
+        mock_thread_user_get.return_value = MagicMock(
+            thread_id=thread_id, user_id=mock_token.user_id, role="admin"
+        )
         mock_update.return_value = mock_thread
 
         # Create request context
@@ -886,8 +924,11 @@ async def test_add_thread_user(thread_test_context: dict) -> None:
         # Setup mocks
         mock_get_thread.return_value = mock_thread
         mock_get_by_ids.return_value = [mock_user]
-        # First call returns None (user not found), second call returns mock
-        mock_get_thread_user.side_effect = [None]
+        # First call for current user (admin), second call for new user (not found)
+        mock_get_thread_user.side_effect = [
+            MagicMock(thread_id=thread_id, user_id=mock_token.user_id, role="admin"),
+            None,
+        ]
         mock_create_thread_user.return_value = mock_thread_user
 
         # Create request context
@@ -939,8 +980,11 @@ async def test_add_thread_user_already_exists(thread_test_context: dict) -> None
         # Setup mocks
         mock_get_thread.return_value = mock_thread
         mock_get_by_ids.return_value = [mock_user]
-        # User already exists in thread
-        mock_get_thread_user.return_value = mock_thread_user
+        # First call for current user (admin), second call for existing user (found)
+        mock_get_thread_user.side_effect = [
+            MagicMock(thread_id=thread_id, user_id=mock_token.user_id, role="admin"),
+            mock_thread_user,
+        ]
 
         # Create request context
         async with app.test_request_context(
@@ -993,8 +1037,11 @@ async def test_add_thread_user_by_email(thread_test_context: dict) -> None:
         # Setup mocks
         mock_get_thread.return_value = mock_thread
         mock_get_by_email.return_value = mock_user
-        # User not in thread
-        mock_get_thread_user.return_value = None
+        # First call for current user (admin), second call for new user (not found)
+        mock_get_thread_user.side_effect = [
+            MagicMock(thread_id=thread_id, user_id=mock_token.user_id, role="admin"),
+            None,
+        ]
         mock_create_thread_user.return_value = mock_thread_user
 
         # Create request context

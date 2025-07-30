@@ -356,7 +356,6 @@ class TestOrchestratorCallbacks:
     async def test_execute_with_callbacks_parameter(self) -> None:
         """Test execute method accepts callbacks parameter."""
 
-
         callbacks = CallbackHandlers()
 
         args = {
@@ -392,7 +391,6 @@ class TestOrchestratorCallbacks:
     @pytest.mark.asyncio
     async def test_callback_registration_lifecycle(self) -> None:
         """Test callback registration and unregistration lifecycle."""
-
 
         # Track callback registration
         register_calls = []
@@ -461,7 +459,6 @@ class TestOrchestratorCallbacks:
     @pytest.mark.asyncio
     async def test_error_callback_invocation(self) -> None:
         """Test error callback is invoked on errors."""
-
 
         # Mock error callback
         error_callback = AsyncMock()
@@ -561,7 +558,6 @@ class TestOrchestratorCallbacks:
     @pytest.mark.asyncio
     async def test_status_callback_registration_conditional(self) -> None:
         """Test status callback is only registered when provided."""
-
 
         register_calls = []
 

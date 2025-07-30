@@ -46,8 +46,7 @@ PersonalityModel = neuron_server.models.personality_model.PersonalityModel
 PersonalityUserModel = neuron_server.models.personality_user_model.PersonalityUserModel
 UserModel = neuron_server.models.user_model.UserModel
 PersonalityMessageMediaItemModel = (
-    neuron_server.models.personality_message_media_item_model
-    .PersonalityMessageMediaItemModel
+    neuron_server.models.personality_message_media_item_model.PersonalityMessageMediaItemModel
 )
 PersonalityRoomModel = neuron_server.models.personality_room_model.PersonalityRoomModel
 
