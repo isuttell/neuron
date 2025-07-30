@@ -211,6 +211,7 @@ async def execute_agent_with_messages_streaming(  # noqa: PLR0913
     personality_id: UUID,
     user_id: str,
     username: str,
+    thread_id: UUID,
     location: str = DEFAULT_LOCATION,
     status_callback: StatusCallback | None = None,
 ) -> tuple[str, list]:
@@ -225,6 +226,7 @@ async def execute_agent_with_messages_streaming(  # noqa: PLR0913
         personality_id: ID of personality to use
         user_id: ID of user making request
         username: Name of user
+        thread_id: ID of thread to use for execution
         location: Location string (default: San Diego)
         status_callback: Optional callback for status updates
 
@@ -234,15 +236,6 @@ async def execute_agent_with_messages_streaming(  # noqa: PLR0913
     Raises:
         BadRequest: If personality not found
     """
-    # Create a temporary thread for this execution
-    thread = await ThreadModel.create(
-        ThreadModel.CreateParams(
-            personality_id=personality_id,
-            user_id=user_id,
-            name="Personality Chat Response",
-        )
-    )
-
     # Format the messages into a single prompt
     # For personality chat, we typically have a single HumanMessage with context
     prompt = ""
@@ -255,7 +248,7 @@ async def execute_agent_with_messages_streaming(  # noqa: PLR0913
 
     # Execute using the orchestrator with streaming
     args = StreamArgs(
-        thread_id=thread.id,
+        thread_id=thread_id,
         personality_id=personality_id,
         user_id=user_id,
         username=username,
@@ -273,9 +266,6 @@ async def execute_agent_with_messages_streaming(  # noqa: PLR0913
     # Use the global orchestrator
     orchestrator = get_orchestrator()
     result_text, media_artifacts = await orchestrator.execute_stream(args, callbacks)
-
-    # Clean up the temporary thread
-    await ThreadModel.delete(thread.id)
 
     return result_text or "", media_artifacts
 

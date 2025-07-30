@@ -622,11 +622,13 @@ AGENT ACTION: {action}"""
                 )
 
             # Execute agent with personality context and status callback
+            # Use room_id as thread_id for personality chat context
             response_result = await execute_agent_with_messages_streaming(
                 messages=messages,
                 personality_id=personality_id,
                 user_id=user_id,
                 username=username,  # Use actual username of message sender
+                thread_id=room_id,  # Use room_id as thread_id for context
                 status_callback=status_callback,
             )
             response_text, media_artifacts = response_result
