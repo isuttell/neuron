@@ -28,6 +28,7 @@ from neuron_server.models.personality_model import PersonalityModel
 from neuron_server.models.personality_room_model import PersonalityRoomModel
 from neuron_server.models.personality_user_model import PersonalityUserModel
 from neuron_server.models.provider_model import ProviderModelModel
+from neuron_server.models.thread_model import ThreadModel
 from neuron_server.models.user_model import UserModel
 from neuron_server.secure_pubsub import secure_pubsub
 from neuron_server.tools.artifact_types import ToolMediaArtifact
@@ -554,6 +555,26 @@ AGENT ACTION: {action}"""
                 personality_id, room_id, fallback_status
             )
 
+    async def _update_room_status_background(
+        self, room_id: UUID, personality_id: UUID, status: str
+    ) -> None:
+        """Update room status in background without blocking agent execution.
+
+        Args:
+            room_id: The ID of the room to update
+            personality_id: The ID of the personality
+            status: The status message to set
+        """
+        try:
+            await PersonalityRoomModel.update_status(room_id, status)
+            await self.broadcast_personality_room_status_update(
+                personality_id, room_id, status
+            )
+        except Exception as e:
+            logger.error(
+                f"Error updating room status in background: {e}", exc_info=True
+            )
+
     async def generate_personality_response(  # noqa: PLR0913
         self,
         personality_id: UUID,
@@ -563,7 +584,7 @@ AGENT ACTION: {action}"""
         latest_message: str,
         user_id: str,
         username: str,
-    ) -> tuple[str, list[ToolMediaArtifact]]:
+    ) -> tuple[str, list[ToolMediaArtifact], UUID | None]:
         """Generate a personality response using the agent system.
 
         Args:
@@ -576,11 +597,23 @@ AGENT ACTION: {action}"""
             username: The username of the user who sent the message
 
         Returns:
-            Tuple of (response text, list of media artifacts).
+            Tuple of (response text, list of media artifacts, thread_id).
             Response text is empty string if failed.
             Media artifacts list contains ToolMediaArtifact objects from agent.
+            Thread ID is the UUID of the thread created for this agent execution.
         """
         try:
+            # Create a thread for this agent execution
+            thread_params = ThreadModel.CreateParams(
+                personality_id=personality_id,
+                user_id=user_id,
+                name=f"Personality Chat - {personality.name[:30]}",  # Limit name length
+                context="",
+                memory="",
+                status="idle",
+            )
+            thread = await ThreadModel.create(params=thread_params)
+
             # Construct contextual prompt for terse chat response
             prompt = (
                 f"Based on this chat history, provide a brief, appropriate response "
@@ -619,40 +652,41 @@ AGENT ACTION: {action}"""
                 if raw_status in ["idle", "error"]:
                     return
 
-                # Use the generated message directly as room status
-                await PersonalityRoomModel.update_status(room_id, generated_message)
-                await self.broadcast_personality_room_status_update(
-                    personality_id, room_id, generated_message
+                # Execute status updates in background without blocking agent
+                asyncio.create_task(
+                    self._update_room_status_background(
+                        room_id, personality_id, generated_message
+                    )
                 )
 
             # Execute agent with personality context and status callback
-            # Use room_id as thread_id for personality chat context
             response_result = await execute_agent_with_messages_streaming(
                 messages=messages,
                 personality_id=personality_id,
                 user_id=user_id,
                 username=username,  # Use actual username of message sender
-                thread_id=room_id,  # Use room_id as thread_id for context
+                thread_id=thread.id,  # Use real thread_id
                 status_callback=status_callback,
             )
             response_text, media_artifacts = response_result
 
-            return response_text, media_artifacts
+            return response_text, media_artifacts, thread.id
 
         except Exception as e:
             logger.error(
                 f"Error generating personality response for {personality.name}: {e}",
                 exc_info=True,
             )
-            return "", []
+            return "", [], None
 
-    async def create_and_broadcast_personality_response(
+    async def create_and_broadcast_personality_response(  # noqa: PLR0913
         self,
         personality_id: UUID,
         room_id: UUID,
         response_content: str,
         user_id: str,
         media_artifacts: list[ToolMediaArtifact] = None,
+        thread_id: UUID | None = None,
     ) -> None:
         """Create personality message and broadcast to chat room.
 
@@ -662,6 +696,7 @@ AGENT ACTION: {action}"""
             response_content: The response text to broadcast
             user_id: The ID of the user who triggered this response
             media_artifacts: Optional list of media artifacts to associate
+            thread_id: Optional thread ID if agent was used for response
         """
         try:
             # Create AI response message (user_id=None indicates AI message)
@@ -670,6 +705,7 @@ AGENT ACTION: {action}"""
                 personality_room_id=room_id,
                 content=response_content,
                 user_id=None,  # AI message
+                thread_id=thread_id,  # Include thread_id if agent was used
             )
             ai_message = await PersonalityMessageModel.create(params=create_params)
 
@@ -859,6 +895,7 @@ AGENT ACTION: {action}"""
                 (
                     response_text,
                     media_artifacts,
+                    thread_id,
                 ) = await self.generate_personality_response(
                     personality_id=personality_id,
                     room_id=message.personality_room_id,
@@ -876,6 +913,7 @@ AGENT ACTION: {action}"""
                     response_text,
                     message.user_id,
                     media_artifacts,
+                    thread_id,
                 )
 
         except Exception as e:

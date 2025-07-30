@@ -465,9 +465,19 @@ class TestPersonalityChatOrchestrator:
         sample_user_id: str,
     ) -> None:
         """Test generating personality response."""
-        with patch(
-            "neuron_server.services.personality_chat_orchestrator.execute_agent_with_messages_streaming"
-        ) as mock_execute:
+        with (
+            patch(
+                "neuron_server.services.personality_chat_orchestrator.execute_agent_with_messages_streaming"
+            ) as mock_execute,
+            patch(
+                "neuron_server.models.thread_model.ThreadModel.create"
+            ) as mock_thread_create,
+        ):
+            # Mock thread creation
+            mock_thread = MagicMock()
+            mock_thread.id = uuid4()
+            mock_thread_create.return_value = mock_thread
+
             # Mock agent response - streaming version returns a tuple
             mock_execute.return_value = ("I'd be happy to help you!", [])
 
@@ -485,12 +495,13 @@ class TestPersonalityChatOrchestrator:
             )
 
             assert isinstance(result, tuple)
-            assert len(result) == 2
-            response_text, media_artifacts = result
+            assert len(result) == 3
+            response_text, media_artifacts, thread_id = result
 
             assert response_text == "I'd be happy to help you!"
             assert isinstance(media_artifacts, list)
             assert len(media_artifacts) == 0  # No tool calls in this test
+            assert thread_id == mock_thread.id
 
             # Verify agent was called with correct parameters
             mock_execute.assert_called_once()
@@ -662,7 +673,7 @@ class TestPersonalityChatOrchestrator:
             mock_analyze.return_value = mock_analysis
 
             # Mock response generation
-            mock_generate.return_value = ("Here's my response", [])
+            mock_generate.return_value = ("Here's my response", [], uuid4())
 
             await orchestrator.process_user_message(
                 sample_personality_id, sample_message_id
@@ -891,7 +902,9 @@ class TestPersonalityChatOrchestrator:
             mock_analyze.return_value = mock_analysis
 
             # Mock response generation
-            mock_generate.return_value = ("I'll help you debug your Python code.", [])
+            mock_generate.return_value = (
+                "I'll help you debug your Python code.", [], uuid4()
+            )
 
             await orchestrator.process_user_message(
                 sample_personality_id, sample_message_id
