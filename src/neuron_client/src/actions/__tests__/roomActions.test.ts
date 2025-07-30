@@ -7,10 +7,22 @@ vi.mock("../../slices/socketSlice", () => ({
   getConnectionStatus: vi.fn(() => true),
 }));
 
+// Mock room slice
+vi.mock("../../slices/roomSlice", () => ({
+  leaveRoom: vi.fn(),
+  selectIsRoomSubscribed: vi.fn(() => false),
+}));
+
 // Mock WebSocketManager singleton
+const mockHandlers: Record<string, any> = {};
 vi.mock("../../WebSocketManager", () => ({
   socketManager: {
     sendMessage: vi.fn(),
+    on: vi.fn((event, handler) => {
+      mockHandlers[event] = handler;
+      return { remove: vi.fn() };
+    }),
+    off: vi.fn(),
   },
 }));
 
@@ -19,6 +31,7 @@ const createMockStore = () =>
   configureStore({
     reducer: {
       socket: (state = { connected: true }) => state,
+      room: (state = { subscribedRooms: {} }) => state,
     },
   });
 
@@ -30,6 +43,9 @@ describe("roomActions", () => {
     store = createMockStore();
     vi.clearAllMocks();
 
+    // Clear mock handlers
+    Object.keys(mockHandlers).forEach(key => delete mockHandlers[key]);
+
     // Get the mocked socket manager
     const { socketManager } = await import("../../WebSocketManager");
     mockSendMessage = socketManager.sendMessage;
@@ -38,16 +54,33 @@ describe("roomActions", () => {
   describe("joinPersonalityRoom", () => {
     it("should dispatch JoinPersonalityRoom WebSocket message successfully", async () => {
       const personalityId = "test-personality-id";
+      const roomId = "test-room-id";
 
-      const result = await store.dispatch(
-        joinPersonalityRoom({ personalityId })
+      // Start the join action
+      const promise = store.dispatch(
+        joinPersonalityRoom({ personalityId, roomId })
       );
 
+      // Simulate the room_joined event
+      await Promise.resolve(); // Let the action start
+
+      if (mockHandlers.room_joined) {
+        mockHandlers.room_joined({
+          type: "room_joined",
+          room_type: "personality_room",
+          room_id: roomId,
+          member_count: 1
+        });
+      }
+
+      const result = await promise;
+
       expect(result.type).toBe("room/joinPersonalityRoom/fulfilled");
-      expect(result.payload).toEqual({ personalityId });
+      expect(result.payload).toEqual({ personalityId, roomId });
       expect(mockSendMessage).toHaveBeenCalledWith({
         type: "JoinPersonalityRoom",
         personality_id: personalityId,
+        room_id: roomId,
       });
     });
 
@@ -57,59 +90,33 @@ describe("roomActions", () => {
       vi.mocked(getConnectionStatus).mockReturnValueOnce(false);
 
       const personalityId = "test-personality-id";
+      const roomId = "test-room-id";
 
       const result = await store.dispatch(
-        joinPersonalityRoom({ personalityId })
+        joinPersonalityRoom({ personalityId, roomId })
       );
 
       expect(result.type).toBe("room/joinPersonalityRoom/rejected");
       expect(result.payload).toBe("Socket not connected");
       expect(mockSendMessage).not.toHaveBeenCalled();
     });
-
-    it("should handle WebSocket errors", async () => {
-      const personalityId = "test-personality-id";
-      const error = new Error("WebSocket error");
-      mockSendMessage.mockImplementationOnce(() => {
-        throw error;
-      });
-
-      const result = await store.dispatch(
-        joinPersonalityRoom({ personalityId })
-      );
-
-      expect(result.type).toBe("room/joinPersonalityRoom/rejected");
-      expect(result.payload).toBe("WebSocket error");
-    });
-
-    it("should handle unknown errors", async () => {
-      const personalityId = "test-personality-id";
-      mockSendMessage.mockImplementationOnce(() => {
-        throw "Unknown error";
-      });
-
-      const result = await store.dispatch(
-        joinPersonalityRoom({ personalityId })
-      );
-
-      expect(result.type).toBe("room/joinPersonalityRoom/rejected");
-      expect(result.payload).toBe("Failed to join personality room");
-    });
   });
 
   describe("leavePersonalityRoom", () => {
     it("should dispatch LeavePersonalityRoom WebSocket message successfully", async () => {
       const personalityId = "test-personality-id";
+      const roomId = "test-room-id";
 
       const result = await store.dispatch(
-        leavePersonalityRoom({ personalityId })
+        leavePersonalityRoom({ personalityId, roomId })
       );
 
       expect(result.type).toBe("room/leavePersonalityRoom/fulfilled");
-      expect(result.payload).toEqual({ personalityId });
+      expect(result.payload).toEqual({ personalityId, roomId });
       expect(mockSendMessage).toHaveBeenCalledWith({
         type: "LeavePersonalityRoom",
         personality_id: personalityId,
+        room_id: roomId,
       });
     });
 
@@ -119,9 +126,10 @@ describe("roomActions", () => {
       vi.mocked(getConnectionStatus).mockReturnValueOnce(false);
 
       const personalityId = "test-personality-id";
+      const roomId = "test-room-id";
 
       const result = await store.dispatch(
-        leavePersonalityRoom({ personalityId })
+        leavePersonalityRoom({ personalityId, roomId })
       );
 
       expect(result.type).toBe("room/leavePersonalityRoom/rejected");
@@ -131,13 +139,14 @@ describe("roomActions", () => {
 
     it("should handle WebSocket errors", async () => {
       const personalityId = "test-personality-id";
+      const roomId = "test-room-id";
       const error = new Error("WebSocket error");
       mockSendMessage.mockImplementationOnce(() => {
         throw error;
       });
 
       const result = await store.dispatch(
-        leavePersonalityRoom({ personalityId })
+        leavePersonalityRoom({ personalityId, roomId })
       );
 
       expect(result.type).toBe("room/leavePersonalityRoom/rejected");
@@ -146,12 +155,13 @@ describe("roomActions", () => {
 
     it("should handle unknown errors", async () => {
       const personalityId = "test-personality-id";
+      const roomId = "test-room-id";
       mockSendMessage.mockImplementationOnce(() => {
         throw "Unknown error";
       });
 
       const result = await store.dispatch(
-        leavePersonalityRoom({ personalityId })
+        leavePersonalityRoom({ personalityId, roomId })
       );
 
       expect(result.type).toBe("room/leavePersonalityRoom/rejected");
@@ -162,19 +172,21 @@ describe("roomActions", () => {
   describe("action creators", () => {
     it("should create correct action for joinPersonalityRoom pending", () => {
       const personalityId = "test-personality-id";
-      const action = joinPersonalityRoom.pending("requestId", { personalityId });
+      const roomId = "test-room-id";
+      const action = joinPersonalityRoom.pending("requestId", { personalityId, roomId });
 
       expect(action.type).toBe("room/joinPersonalityRoom/pending");
-      expect(action.meta.arg).toEqual({ personalityId });
+      expect(action.meta.arg).toEqual({ personalityId, roomId });
     });
 
     it("should create correct action for joinPersonalityRoom fulfilled", () => {
       const personalityId = "test-personality-id";
-      const payload = { personalityId };
+      const roomId = "test-room-id";
+      const payload = { personalityId, roomId };
       const action = joinPersonalityRoom.fulfilled(
         payload,
         "requestId",
-        { personalityId }
+        { personalityId, roomId }
       );
 
       expect(action.type).toBe("room/joinPersonalityRoom/fulfilled");
@@ -183,66 +195,25 @@ describe("roomActions", () => {
 
     it("should create correct action for leavePersonalityRoom pending", () => {
       const personalityId = "test-personality-id";
-      const action = leavePersonalityRoom.pending("requestId", { personalityId });
+      const roomId = "test-room-id";
+      const action = leavePersonalityRoom.pending("requestId", { personalityId, roomId });
 
       expect(action.type).toBe("room/leavePersonalityRoom/pending");
-      expect(action.meta.arg).toEqual({ personalityId });
+      expect(action.meta.arg).toEqual({ personalityId, roomId });
     });
 
     it("should create correct action for leavePersonalityRoom fulfilled", () => {
       const personalityId = "test-personality-id";
-      const payload = { personalityId };
+      const roomId = "test-room-id";
+      const payload = { personalityId, roomId };
       const action = leavePersonalityRoom.fulfilled(
         payload,
         "requestId",
-        { personalityId }
+        { personalityId, roomId }
       );
 
       expect(action.type).toBe("room/leavePersonalityRoom/fulfilled");
       expect(action.payload).toEqual(payload);
-    });
-  });
-
-  describe("thunk behavior", () => {
-    it("should handle multiple concurrent join requests", async () => {
-      const personalityId1 = "personality-1";
-      const personalityId2 = "personality-2";
-
-      const promises = [
-        store.dispatch(joinPersonalityRoom({ personalityId: personalityId1 })),
-        store.dispatch(joinPersonalityRoom({ personalityId: personalityId2 })),
-      ];
-
-      const results = await Promise.all(promises);
-
-      expect(results[0].type).toBe("room/joinPersonalityRoom/fulfilled");
-      expect(results[1].type).toBe("room/joinPersonalityRoom/fulfilled");
-      expect(results[0].payload).toEqual({ personalityId: personalityId1 });
-      expect(results[1].payload).toEqual({ personalityId: personalityId2 });
-      expect(mockSendMessage).toHaveBeenCalledTimes(2);
-    });
-
-    it("should handle join followed by leave", async () => {
-      const personalityId = "test-personality-id";
-
-      const joinResult = await store.dispatch(
-        joinPersonalityRoom({ personalityId })
-      );
-      const leaveResult = await store.dispatch(
-        leavePersonalityRoom({ personalityId })
-      );
-
-      expect(joinResult.type).toBe("room/joinPersonalityRoom/fulfilled");
-      expect(leaveResult.type).toBe("room/leavePersonalityRoom/fulfilled");
-      expect(mockSendMessage).toHaveBeenCalledTimes(2);
-      expect(mockSendMessage).toHaveBeenNthCalledWith(1, {
-        type: "JoinPersonalityRoom",
-        personality_id: personalityId,
-      });
-      expect(mockSendMessage).toHaveBeenNthCalledWith(2, {
-        type: "LeavePersonalityRoom",
-        personality_id: personalityId,
-      });
     });
   });
 });

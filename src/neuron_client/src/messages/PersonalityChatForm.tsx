@@ -7,6 +7,7 @@ import { getPersonalityChatLoading } from "@/slices/personalityChatSlice";
 import { PersonalityStatusMessage } from "@/components/PersonalityStatusMessage";
 import { Personality } from "@/types/personality";
 import { PersonalityRoom } from "@/types/personalityRoom";
+import { Spinner } from "@/components/ui/spinner";
 
 /**
  * Props for the PersonalityChatForm component - a business logic wrapper for personality chat messaging
@@ -130,8 +131,8 @@ export default function PersonalityChatForm({
       >
               {/* Subscription status indicator */}
       {!isSubscribed && (
-        <div className="text-sm pl-2 pt-2 mx-auto max-w-3xl">
-          Joining...
+        <div className="flex items-center pl-2 pt-2 mx-auto max-w-3xl">
+          <Spinner size={16} className="text-muted-foreground" />
         </div>
       )}
         {isPersonalityBusy && (
