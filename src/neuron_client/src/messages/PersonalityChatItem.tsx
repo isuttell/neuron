@@ -11,10 +11,12 @@ import { Personality } from "../types/personality";
 import { useAppSelector } from "../hooks";
 import { getUser } from "../slices/usersSlice";
 import { getCurrentUser } from "../slices/appSlice";
+import { getRoomUsers } from "../slices/personalityRoomSlice";
 
 interface PersonalityChatItemProps {
   message: PersonalityChatMessage;
   personality: Personality;
+  roomId?: string;
   onEditMessage?: (message: { id: string; content: string }) => void;
 }
 
@@ -43,10 +45,16 @@ const generateInitials = (nickname: string | null | undefined): string => {
 const PersonalityChatItem: React.FC<PersonalityChatItemProps> = ({
   message,
   personality,
+  roomId,
   onEditMessage,
 }) => {
   const currentUser = useAppSelector(getCurrentUser);
   const isCurrentUser = message.user_id === currentUser?.sub;
+
+  // Get room users for color assignment
+  const roomUsers = useAppSelector((state) =>
+    roomId ? getRoomUsers(state, roomId) : []
+  );
 
   const isPersonality = message.user_id === null;
   const isOptimistic = 'isOptimistic' in message && message.isOptimistic;
@@ -60,6 +68,51 @@ const PersonalityChatItem: React.FC<PersonalityChatItemProps> = ({
   const user = useAppSelector((state) =>
     message.user_id ? getUser(state, message.user_id) : null
   );
+
+  // Color palette for user avatars
+  const userColors = [
+    "bg-blue-500 text-white",
+    "bg-green-500 text-white",
+    "bg-purple-500 text-white",
+    "bg-orange-500 text-white",
+    "bg-pink-500 text-white",
+    "bg-indigo-500 text-white",
+    "bg-teal-500 text-white",
+    "bg-amber-500 text-white"
+  ];
+
+  // Get user's color based on position in room users list
+  const getUserColor = () => {
+    if (isCurrentUser) return "bg-primary text-primary-foreground";
+    if (!message.user_id || !roomUsers.length) return "bg-muted text-foreground";
+
+    const userIndex = roomUsers.findIndex(roomUser => roomUser.user_id === message.user_id);
+    if (userIndex === -1) return "bg-muted text-foreground";
+
+    return userColors[userIndex % userColors.length];
+  };
+
+  // Get username text color to match avatar background
+  const getUsernameColor = () => {
+    if (isCurrentUser) return "text-primary";
+    if (!message.user_id || !roomUsers.length) return "text-muted-foreground";
+
+    const userIndex = roomUsers.findIndex(roomUser => roomUser.user_id === message.user_id);
+    if (userIndex === -1) return "text-muted-foreground";
+
+    const textColors = [
+      "text-blue-500",
+      "text-green-500",
+      "text-purple-500",
+      "text-orange-500",
+      "text-pink-500",
+      "text-indigo-500",
+      "text-teal-500",
+      "text-amber-500"
+    ];
+
+    return textColors[userIndex % textColors.length];
+  };
 
   // Create display name and avatar letter
   const displayName = user?.nickname || "Unknown User";
@@ -75,7 +128,7 @@ const PersonalityChatItem: React.FC<PersonalityChatItemProps> = ({
   if (isPersonality) {
     return (
       <div className="mb-4 group">
-        <div className="flex items-end gap-2 max-w-4xl justify-start">
+        <div className="flex gap-2 max-w-4xl justify-start">
           {/* Avatar (bot icon) */}
           <Tooltip delayDuration={0}>
             <TooltipTrigger asChild>
@@ -93,12 +146,17 @@ const PersonalityChatItem: React.FC<PersonalityChatItemProps> = ({
           </Tooltip>
 
           {/* Chat Bubble */}
-          <div className="relative max-w-md px-4 pb-2 pt-2 rounded-sm break-words bg-muted text-foreground">
+          <div className="relative px-4 py-2 mr-4 rounded-sm break-words bg-muted text-foreground">
+            {/* Personality Name */}
+            <div className="text-xs font-semibold mb-1 text-blue-600">
+              {personality.name}
+            </div>
+
             {/* Media Items */}
             {'media_items' in message && message.media_items && message.media_items.length > 0 && (
               <MediaItems
                 mediaItems={message.media_items}
-                className="mb-2"
+                className="my-2"
               />
             )}
 
@@ -121,7 +179,7 @@ const PersonalityChatItem: React.FC<PersonalityChatItemProps> = ({
   // Render user messages with chat bubble layout (all left-aligned)
   return (
     <div className="mb-4 group">
-      <div className="flex items-end gap-2 max-w-4xl justify-start">
+      <div className="flex gap-2 max-w-4xl justify-start">
         {/* Avatar (always on left side) */}
         <Tooltip delayDuration={0}>
           <TooltipTrigger asChild>
@@ -131,8 +189,8 @@ const PersonalityChatItem: React.FC<PersonalityChatItemProps> = ({
             )}>
               <Avatar className="w-8 h-8">
                 <AvatarFallback className={cn(
-                  "bg-primary text-primary-foreground text-xs font-medium",
-                  isCurrentUser ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
+                  "text-xs font-medium",
+                  getUserColor()
                 )}>
                   {avatarLetter}
                 </AvatarFallback>
@@ -151,6 +209,16 @@ const PersonalityChatItem: React.FC<PersonalityChatItemProps> = ({
             ? "bg-primary text-primary-foreground"
             : "bg-muted text-foreground"
         )}>
+          {/* Username */}
+          {!isCurrentUser && (
+            <div className={cn(
+              "text-xs font-semibold mb-1",
+              getUsernameColor()
+            )}>
+              {displayName}
+            </div>
+          )}
+
           {/* Message Content */}
           <div className={cn(
             "prose prose-sm max-w-none break-words",
@@ -163,7 +231,7 @@ const PersonalityChatItem: React.FC<PersonalityChatItemProps> = ({
 
           {/* Timestamp and edit button */}
           <div className={cn(
-            "flex items-center justify-end mt-2 text-xs gap-2",
+            "flex items-center justify-end mt-1 text-xs gap-2",
             isCurrentUser ? "text-primary-foreground/70" : "text-muted-foreground"
           )}>
             {/* Status indicators */}

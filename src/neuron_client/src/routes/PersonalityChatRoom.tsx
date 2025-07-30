@@ -175,6 +175,7 @@ export default function PersonalityChatRoom() {
                   <PersonalityChatItem
                     message={message}
                     personality={personality}
+                    roomId={roomId}
                     onEditMessage={handleEditMessage}
                   />
                 </div>
