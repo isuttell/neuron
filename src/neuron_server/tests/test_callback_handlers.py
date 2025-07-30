@@ -1,5 +1,6 @@
 """Tests for callback handlers."""
 
+from datetime import datetime
 from uuid import uuid4
 
 import pytest
@@ -10,7 +11,7 @@ from neuron_server.controllers.events.message_events import (
 )
 from neuron_server.llms.callback_handlers import CallbackHandlers
 from neuron_server.models.thread_model import ThreadModel
-from neuron_server.tools.artifact_types import ToolMediaArtifact
+from neuron_server.tools.artifact_types import ToolMediaArtifact, ToolMediaItem
 
 
 class TestCallbackHandlers:
@@ -118,8 +119,6 @@ class TestCallbackHandlers:
             status="streaming",
             node="agent",
         )
-        from datetime import datetime
-
         mock_thread = ThreadModel(
             id=thread_id,
             name="Test Thread",
@@ -129,8 +128,6 @@ class TestCallbackHandlers:
             created_at=datetime.now(),
             updated_at=datetime.now(),
         )
-        from neuron_server.tools.artifact_types import ToolMediaItem
-
         mock_artifacts = [
             ToolMediaArtifact(
                 media_type="image",

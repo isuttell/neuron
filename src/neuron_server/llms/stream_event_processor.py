@@ -16,6 +16,7 @@ from neuron_server.llms.callback_handlers import CallbackHandlers
 from neuron_server.llms.message_processor import get_message_content
 from neuron_server.logger import logger
 from neuron_server.models.thread_model import ThreadModel
+from neuron_server.tools.artifact_types import ToolMediaArtifact
 
 
 class ChainEventData(TypedDict):
@@ -189,10 +190,6 @@ class StreamEventProcessor:
                         and artifact_dict.get("type") == "media"
                     ):
                         try:
-                            from neuron_server.tools.artifact_types import (
-                                ToolMediaArtifact,
-                            )
-
                             artifact = ToolMediaArtifact.model_validate(artifact_dict)
                             media_artifacts.append(artifact)
                         except Exception as e:
