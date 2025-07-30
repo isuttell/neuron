@@ -66,14 +66,24 @@ class TaskScheduler(AbstractAsyncRedisEventScheduler):
             body = StreamEvent(**metadata)
 
             # Create or get thread
-            thread = (
-                await ThreadModel.create(
-                    personality_id=body.personality_id,
-                    user_id=body.user_id,
+            if body.thread_id is None:
+                thread = await ThreadModel.create(
+                    ThreadModel.CreateParams(
+                        personality_id=body.personality_id,
+                        user_id=body.user_id,
+                    )
                 )
-                if body.thread_id is None
-                else await ThreadModel.get(body.thread_id)
-            )
+                # Add thread creator as admin in thread_users
+                from neuron_server.models.thread_user_model import ThreadUserModel
+
+                thread_user_params = ThreadUserModel.CreateParams(
+                    thread_id=thread.id,
+                    user_id=body.user_id,
+                    role="admin",
+                )
+                await ThreadUserModel.create(params=thread_user_params)
+            else:
+                thread = await ThreadModel.get(body.thread_id)
 
             if not thread:
                 logger.error(f"Thread not found: {body.thread_id}")

@@ -57,10 +57,6 @@ async def check_thread_access(thread_id: UUID, user_id: str) -> ThreadModel:
     if not thread:
         raise NotFound("Thread not found")
 
-    # Thread owner always has access
-    if thread.user_id == user_id:
-        return thread
-
     # Check if user is in thread_users
     thread_user = await ThreadUserModel.get(thread_id=thread_id, user_id=user_id)
     if not thread_user:
@@ -79,25 +75,12 @@ async def get_thread(thread_id: UUID) -> dict[str, list[dict]]:
     # Get thread users
     thread_users = await ThreadUserModel.get_thread_users(thread_id=thread_id)
 
-    # Check if thread owner is included in thread_users
-    owner_in_thread_users = any(tu.user_id == thread.user_id for tu in thread_users)
-    if not owner_in_thread_users:
-        # Create a special entry for the thread owner with admin role
-        owner_thread_user = {
-            "user_id": thread.user_id,
-            "thread_id": str(thread.id),
-            "role": "admin",  # Thread owner is always admin
-        }
-    else:
-        owner_thread_user = None
-
     return {
         "threads": [thread.model_dump()],
         "thread_users": [
             {"user_id": tu.user_id, "thread_id": str(tu.thread_id), "role": tu.role}
             for tu in thread_users
-        ]
-        + ([owner_thread_user] if owner_thread_user else []),
+        ],
     }
 
 
@@ -111,38 +94,19 @@ async def get_threads(personality_id: UUID) -> dict[str, list[dict]]:
     if limit < 1 or limit > MAX_THREAD_LIMIT:
         raise BadRequest(f"Limit must be between 1 and {MAX_THREAD_LIMIT}")
 
-    # Get threads owned by the user (with limit and sorting)
-    owned_threads = await ThreadModel.list(
-        personality_id=personality_id, user_id=request.token.user_id, limit=limit
-    )
-
     # Get threads the user has access to via thread_users
     thread_users = await ThreadUserModel.get_user_threads(user_id=request.token.user_id)
     thread_ids = [tu.thread_id for tu in thread_users]
 
-    # Get shared threads efficiently using bulk query with WHERE IN
-    shared_threads = []
+    # Get threads efficiently using bulk query with WHERE IN
+    threads = []
     if thread_ids:
-        shared_threads = await ThreadModel.get_by_ids(
+        threads = await ThreadModel.get_by_ids(
             thread_ids=thread_ids, personality_id=personality_id, limit=limit
         )
-        # Filter out threads owned by the current user
-        shared_threads = [
-            thread
-            for thread in shared_threads
-            if thread.user_id != request.token.user_id
-        ]
 
-    # Combine and deduplicate threads
-    all_threads = {thread.id: thread for thread in owned_threads}
-    for thread in shared_threads:
-        if thread.id not in all_threads:
-            all_threads[thread.id] = thread
-
-    # Sort all threads by updated_at DESC and apply final limit
-    sorted_threads = sorted(
-        all_threads.values(), key=lambda t: t.updated_at, reverse=True
-    )[:limit]
+    # Sort all threads by updated_at DESC (already sorted by get_by_ids)
+    sorted_threads = threads
 
     # Get thread_users for all final threads efficiently with bulk query
     final_thread_ids = [t.id for t in sorted_threads]
@@ -161,22 +125,9 @@ async def get_threads(personality_id: UUID) -> dict[str, list[dict]]:
                 thread_users_by_thread[tu.thread_id] = []
             thread_users_by_thread[tu.thread_id].append(tu)
 
-        # Process each thread to add thread users and owners
+        # Process each thread to add thread users
         for thread in sorted_threads:
             thread_users_for_thread = thread_users_by_thread.get(thread.id, [])
-
-            # Check if thread owner is included in thread_users
-            owner_in_thread_users = any(
-                tu.user_id == thread.user_id for tu in thread_users_for_thread
-            )
-            if not owner_in_thread_users:
-                # Create a special entry for the thread owner with admin role
-                owner_thread_user = {
-                    "user_id": thread.user_id,
-                    "thread_id": str(thread.id),
-                    "role": "admin",  # Thread owner is always admin
-                }
-                all_thread_users.append(owner_thread_user)
 
             # Add all thread users
             for tu in thread_users_for_thread:
@@ -266,9 +217,12 @@ async def delete_thread(thread_id: UUID) -> Response:
     if not thread:
         raise NotFound("Thread not found")
 
-    # Only the thread owner can delete it
-    if thread.user_id != request.token.user_id:
-        raise Forbidden("Only the thread owner can delete it")
+    # Only thread admins can delete it
+    thread_user = await ThreadUserModel.get(
+        thread_id=thread_id, user_id=request.token.user_id
+    )
+    if not thread_user or thread_user.role != "admin":
+        raise Forbidden("Only thread admins can delete threads")
 
     await ThreadModel.delete(thread_id=thread_id)
     return Response(status=204)
@@ -286,9 +240,12 @@ async def update_thread(thread_id: UUID) -> dict[str, list[dict]]:
         thread_id=thread_id, user_id=request.token.user_id
     )
 
-    # Only the thread owner can update it
-    if thread.user_id != request.token.user_id:
-        raise Forbidden("Only the thread owner can update the thread")
+    # Only thread admins can update it
+    thread_user = await ThreadUserModel.get(
+        thread_id=thread_id, user_id=request.token.user_id
+    )
+    if not thread_user or thread_user.role != "admin":
+        raise Forbidden("Only thread admins can update threads")
 
     update_params = ThreadModel.UpdateParams(
         thread_id=thread_id,
@@ -320,19 +277,6 @@ async def get_thread_users(thread_id: UUID) -> dict[str, list[dict]]:
     user_ids = [tu.user_id for tu in thread_users]
     users = await UserModel.get_by_ids(user_ids=user_ids)
 
-    # Add thread owner
-    thread = await ThreadModel.get(thread_id=thread_id)
-    if thread:
-        owner_users = await UserModel.get_by_ids(user_ids=[thread.user_id])
-        if owner_users:
-            owner = owner_users[0].model_dump()
-            owner["role"] = "admin"  # Thread owner is always admin
-
-            # Check if owner is already in the list
-            existing_user_ids = [user["id"] for user in [u.model_dump() for u in users]]
-            if thread.user_id not in existing_user_ids:
-                users.append(owner_users[0])
-
     # Add role to each user
     result = []
     for user in users:
@@ -342,10 +286,6 @@ async def get_thread_users(thread_id: UUID) -> dict[str, list[dict]]:
             if tu.user_id == user.id:
                 user_dict["role"] = tu.role
                 break
-        else:
-            # If not found in thread_users, must be the owner
-            if thread and user.id == thread.user_id:
-                user_dict["role"] = "admin"
 
         result.append(user_dict)
 
@@ -369,14 +309,12 @@ async def add_thread_user(thread_id: UUID) -> dict[str, dict]:
     if not thread:
         raise NotFound("Thread not found")
 
-    # Only the thread owner or admins can add users
-    if thread.user_id != request.token.user_id:
-        # Check if the current user is an admin
-        thread_user = await ThreadUserModel.get(
-            thread_id=thread_id, user_id=request.token.user_id
-        )
-        if not thread_user or thread_user.role != "admin":
-            raise Forbidden("Only thread owner or admins can add users")
+    # Only thread admins can add users
+    thread_user = await ThreadUserModel.get(
+        thread_id=thread_id, user_id=request.token.user_id
+    )
+    if not thread_user or thread_user.role != "admin":
+        raise Forbidden("Only thread admins can add users")
 
     # Check if user exists
     users = await UserModel.get_by_ids(user_ids=[payload.user_id])
@@ -418,14 +356,12 @@ async def add_thread_user_by_email(thread_id: UUID) -> dict[str, dict]:
     if not thread:
         raise NotFound("Thread not found")
 
-    # Only the thread owner or admins can add users
-    if thread.user_id != request.token.user_id:
-        # Check if the current user is an admin
-        thread_user = await ThreadUserModel.get(
-            thread_id=thread_id, user_id=request.token.user_id
-        )
-        if not thread_user or thread_user.role != "admin":
-            raise Forbidden("Only thread owner or admins can add users")
+    # Only thread admins can add users
+    thread_user = await ThreadUserModel.get(
+        thread_id=thread_id, user_id=request.token.user_id
+    )
+    if not thread_user or thread_user.role != "admin":
+        raise Forbidden("Only thread admins can add users")
 
     # Find user by email
     user = await UserModel.get_by_email(email=email)
@@ -470,14 +406,12 @@ async def remove_thread_user(thread_id: UUID, user_id: str) -> Response:
         await ThreadUserModel.delete(thread_id=thread_id, user_id=user_id)
         return Response(status=204)
 
-    # Only the thread owner or admins can remove other users
-    if thread.user_id != request.token.user_id:
-        # Check if the current user is an admin
-        thread_user = await ThreadUserModel.get(
-            thread_id=thread_id, user_id=request.token.user_id
-        )
-        if not thread_user or thread_user.role != "admin":
-            raise Forbidden("Only thread owner or admins can remove users")
+    # Only thread admins can remove other users
+    thread_user = await ThreadUserModel.get(
+        thread_id=thread_id, user_id=request.token.user_id
+    )
+    if not thread_user or thread_user.role != "admin":
+        raise Forbidden("Only thread admins can remove users")
 
     # Remove user from thread
     await ThreadUserModel.delete(thread_id=thread_id, user_id=user_id)
@@ -502,14 +436,12 @@ async def update_thread_user(thread_id: UUID, user_id: str) -> dict[str, dict]:
     if not thread:
         raise NotFound("Thread not found")
 
-    # Only the thread owner or admins can update roles
-    if thread.user_id != request.token.user_id:
-        # Check if the current user is an admin
-        thread_user = await ThreadUserModel.get(
-            thread_id=thread_id, user_id=request.token.user_id
-        )
-        if not thread_user or thread_user.role != "admin":
-            raise Forbidden("Only thread owner or admins can update roles")
+    # Only thread admins can update roles
+    thread_user = await ThreadUserModel.get(
+        thread_id=thread_id, user_id=request.token.user_id
+    )
+    if not thread_user or thread_user.role != "admin":
+        raise Forbidden("Only thread admins can update roles")
 
     # Update user role
     try:
