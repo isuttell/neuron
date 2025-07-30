@@ -203,6 +203,48 @@ class AgentStatusManager:
             )
             self._status_events[thread_id].append(event)
 
+    async def _handle_idle_status(
+        self,
+        thread: ThreadModel,
+        human_message: str | None,
+        callbacks: CallbackHandlers | None,
+    ) -> None:
+        """Handle setting thread status to idle.
+
+        Args:
+            thread: Thread model instance to update
+            human_message: The user's message that triggered this status update
+            callbacks: Optional callback handlers for events
+        """
+        try:
+            # Update both database and object
+            thread.status = "idle"
+            await ThreadModel.set(thread.id, "status", thread.status)
+
+            # Call registered status callbacks immediately
+            if thread.id in self._status_callbacks:
+                for callback in self._status_callbacks[thread.id]:
+                    try:
+                        await callback(thread.id, "idle", "idle", human_message)
+                    except Exception as e:
+                        logger.error(
+                            f"Error in status callback for thread {thread.id}: {e}",
+                            exc_info=True,
+                        )
+
+            # Call thread update callback if provided
+            if callbacks and callbacks.on_thread_update:
+                await callbacks.on_thread_update(thread)
+
+            # Clean up the status agent and related data
+            await self.cleanup_thread(thread.id)
+        except Exception as e:
+            logger.error(
+                f"Exception in idle status handling for thread {thread.id}: {e}",
+                exc_info=True,
+            )
+            raise
+
     async def update_thread_status(
         self,
         thread: ThreadModel,
@@ -226,96 +268,130 @@ class AgentStatusManager:
             return
 
         if thread.status != status or force_update:
-            # Initialize event tracking for this thread if needed
-            if thread.id not in self._status_events:
-                self._status_events[thread.id] = []
-
-            # Get or create status agent for this thread
-            if thread.id not in self._status_agents:
-                # Get personality info if available
-                personality_name = ""
-                personality_context = ""
-                if thread.id in self._thread_personalities:
-                    personality_name, personality_context = self._thread_personalities[
-                        thread.id
-                    ]
-
-                self._status_agents[thread.id] = StatusAgent(
-                    thread.id,
-                    personality_name=personality_name,
-                    personality_context=personality_context,
-                )
-
-            status_agent = self._status_agents[thread.id]
-
-            # Track the status change event
-            # Handle comma-separated tools
-            if "," in status:
-                # Parse individual tools and create a combined description
-                tools = [t.strip() for t in status.split(",")]
-                descriptions = []
-                for tool in tools:
-                    desc = self.TOOL_DESCRIPTIONS.get(tool, tool)
-                    descriptions.append(desc)
-                description = f"Multiple operations: {', '.join(descriptions)}"
-            else:
-                description = self.TOOL_DESCRIPTIONS.get(status, status)
-
-            event = StatusEvent(
-                timestamp=datetime.now(),
-                event_type="start",
-                operation=status,
-                description=description,
-            )
-            self._status_events[thread.id].append(event)
-
-            # Get events since last update
-            last_update_time = status_agent.last_execution_time or datetime.min
-            recent_events = [
-                e
-                for e in self._status_events[thread.id]
-                if e.timestamp > last_update_time
-            ]
-
-            # Define callback for status agent to use
-            async def status_callback(
-                thread_id: UUID,
-                raw_status: str,
-                generated_message: str,
-                human_msg: str | None,
-            ) -> None:
-                """Invoke all registered callbacks for this thread."""
-                if thread_id in self._status_callbacks:
-                    logger.debug(
-                        f"Found {len(self._status_callbacks[thread_id])} "
-                        f"callbacks for thread {thread_id}"
-                    )
-                    for callback in self._status_callbacks[thread_id]:
-                        try:
-                            await callback(
-                                thread_id, raw_status, generated_message, human_msg
-                            )
-                        except Exception as e:
-                            logger.error(
-                                f"Error in status callback for thread {thread_id}: {e}",
-                                exc_info=True,
-                            )
-
-            # Use status agent to generate intelligent status message
-            generated_status, was_generated = await status_agent.update_status(
-                status, recent_events, human_message, status_callback
-            )
-
-            # If status is idle, update thread and clean up everything
+            # Special handling for idle - set directly and call callbacks immediately
             if status == "idle":
-                # Update the thread status to idle
-                thread.status = "idle"
-                await ThreadModel.set(thread.id, "status", thread.status)
-                if callbacks and callbacks.on_thread_update:
-                    await callbacks.on_thread_update(thread)
+                await self._handle_idle_status(thread, human_message, callbacks)
+                return
 
-                # Clean up the status agent and related data
-                await self.cleanup_thread(thread.id)
+            await self._handle_dynamic_status(thread, status, human_message, callbacks)
+
+    async def _handle_dynamic_status(
+        self,
+        thread: ThreadModel,
+        status: str,
+        human_message: str | None,
+        callbacks: CallbackHandlers | None,
+    ) -> None:
+        """Handle dynamic status updates using status agent.
+
+        Args:
+            thread: Thread model instance to update
+            status: New status to set
+            human_message: The user's message that triggered this status update
+            callbacks: Optional callback handlers for events
+        """
+        # Initialize event tracking for this thread if needed
+        if thread.id not in self._status_events:
+            self._status_events[thread.id] = []
+
+        # Get or create status agent for this thread
+        status_agent = await self._ensure_status_agent(thread.id)
+
+        # Track the status change event
+        event = self._create_status_event(status)
+        self._status_events[thread.id].append(event)
+
+        # Get events since last update
+        last_update_time = status_agent.last_execution_time or datetime.min
+        recent_events = [
+            e for e in self._status_events[thread.id] if e.timestamp > last_update_time
+        ]
+
+        # Define callback for status agent to use
+        async def status_callback(
+            thread_id: UUID,
+            raw_status: str,
+            generated_message: str,
+            human_msg: str | None,
+        ) -> None:
+            """Invoke all registered callbacks for this thread."""
+            # Update the thread object to keep it in sync
+            thread.status = generated_message
+
+            if thread_id in self._status_callbacks:
+                logger.debug(
+                    f"Found {len(self._status_callbacks[thread_id])} "
+                    f"callbacks for thread {thread_id}"
+                )
+                for callback in self._status_callbacks[thread_id]:
+                    try:
+                        await callback(
+                            thread_id, raw_status, generated_message, human_msg
+                        )
+                    except Exception as e:
+                        logger.error(
+                            f"Error in status callback for thread {thread_id}: {e}",
+                            exc_info=True,
+                        )
+
+        # Use status agent to generate intelligent status message
+        generated_status, was_generated = await status_agent.update_status(
+            status, recent_events, human_message, status_callback
+        )
+
+    async def _ensure_status_agent(self, thread_id: UUID) -> StatusAgent:
+        """Get or create status agent for a thread.
+
+        Args:
+            thread_id: The thread ID
+
+        Returns:
+            StatusAgent instance for the thread
+        """
+        if thread_id not in self._status_agents:
+            # Get personality info if available
+            personality_name = ""
+            personality_context = ""
+            if thread_id in self._thread_personalities:
+                personality_name, personality_context = self._thread_personalities[
+                    thread_id
+                ]
+
+            self._status_agents[thread_id] = StatusAgent(
+                thread_id,
+                personality_name=personality_name,
+                personality_context=personality_context,
+            )
+
+        return self._status_agents[thread_id]
+
+    def _create_status_event(self, status: str) -> StatusEvent:
+        """Create a status event from the given status.
+
+        Args:
+            status: The status string (may contain comma-separated tools)
+
+        Returns:
+            StatusEvent instance
+        """
+        # Handle comma-separated tools
+        if "," in status:
+            # Parse individual tools and create a combined description
+            tools = [t.strip() for t in status.split(",")]
+            descriptions = []
+            for tool in tools:
+                desc = self.TOOL_DESCRIPTIONS.get(tool, tool)
+                descriptions.append(desc)
+            description = f"Multiple operations: {', '.join(descriptions)}"
+        else:
+            description = self.TOOL_DESCRIPTIONS.get(status, status)
+
+        return StatusEvent(
+            timestamp=datetime.now(),
+            event_type="start",
+            operation=status,
+            description=description,
+        )
 
     async def cleanup_thread(self, thread_id: UUID) -> None:
         """Clean up all data for a thread."""
