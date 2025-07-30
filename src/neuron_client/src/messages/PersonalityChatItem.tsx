@@ -1,6 +1,6 @@
 import React from "react";
 import { Bot, AlertCircle, Loader2, Edit, Pen } from "lucide-react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import FuzzyTimeAgo from "@/components/FuzzyTimeAgo";
@@ -132,10 +132,10 @@ const PersonalityChatItem: React.FC<PersonalityChatItemProps> = ({
           {/* Avatar (bot icon) */}
           <Tooltip delayDuration={0}>
             <TooltipTrigger asChild>
-              <div className="w-8 h-8 rounded-full flex items-center justify-center min-w-[32px] mb-1 bg-muted">
-                <Avatar className="w-8 h-8">
-                  <AvatarFallback>
-                    <Bot className="text-foreground" size={20} />
+              <div className="w-8 h-8 rounded-full flex items-center justify-center min-w-[32px] mb-1">
+                <Avatar className="w-8 h-8 rounded-md">
+                  <AvatarFallback className="bg-lime-300 rounded-md">
+                    <Bot className="text-black" size={20} />
                   </AvatarFallback>
                 </Avatar>
               </div>
@@ -148,7 +148,7 @@ const PersonalityChatItem: React.FC<PersonalityChatItemProps> = ({
           {/* Chat Bubble */}
           <div className="relative px-4 py-2 mr-4 rounded-sm break-words bg-zinc-900 text-foreground">
             {/* Personality Name */}
-            <div className="text-xs font-semibold mb-1 text-blue-600">
+            <div className="text-xs font-semibold mb-1 text-lime-300">
               {personality.name}
             </div>
 
@@ -185,9 +185,11 @@ const PersonalityChatItem: React.FC<PersonalityChatItemProps> = ({
           <TooltipTrigger asChild>
             <div className={cn(
               "w-8 h-8 rounded-full flex items-center justify-center min-w-[32px] mb-1",
-
             )}>
-              <Avatar className="w-8 h-8">
+              <Avatar className="w-8 h-8 rounded-md">
+                 {user?.picture && (
+                  <AvatarImage src={user.picture} alt={displayName} />
+                )}
                 <AvatarFallback className={cn(
                   "text-xs font-medium",
                   getUserColor()
@@ -207,7 +209,7 @@ const PersonalityChatItem: React.FC<PersonalityChatItemProps> = ({
           "relative max-w-md px-4 pb-2 pt-2 rounded-sm break-words",
           isCurrentUser
             ? "bg-primary text-primary-foreground"
-            : "bg-muted text-foreground"
+            : "bg-zinc-900 text-foreground"
         )}>
           {/* Username */}
           {!isCurrentUser && (
