@@ -903,7 +903,9 @@ class TestPersonalityChatOrchestrator:
 
             # Mock response generation
             mock_generate.return_value = (
-                "I'll help you debug your Python code.", [], uuid4()
+                "I'll help you debug your Python code.",
+                [],
+                uuid4(),
             )
 
             await orchestrator.process_user_message(

@@ -2,9 +2,9 @@ from uuid import UUID
 
 from pydantic import BaseModel
 from quart import Blueprint, Response
-from werkzeug.exceptions import NotFound
+from werkzeug.exceptions import Forbidden, NotFound
 
-from neuron_server.controllers.auth import requires_auth
+from neuron_server.controllers.auth import TokenPayload, requires_auth
 from neuron_server.controllers.csrf import requires_csrf
 from neuron_server.event_router import EventRouter
 from neuron_server.models.personality_model import PersonalityModel
@@ -37,12 +37,47 @@ async def get_prompt(prompt_id: UUID) -> dict[str, list[dict]]:
 @blueprint.get("/")
 @requires_auth
 async def list_prompts() -> dict[str, list[dict]]:
-    prompts = await PromptModel.list()
-    personality_ids = {prompt.personality_id for prompt in prompts}
-    personalities = await PersonalityModel.get_many(personality_ids)
+    # Get user from token
+    assert isinstance(request.token, TokenPayload)
+    user_id = request.token.user_id
+
+    # Check for personality_id query parameter
+    personality_id_param = request.args.get("personality_id")
+    requested_personality_id = None
+    if personality_id_param:
+        try:
+            requested_personality_id = UUID(personality_id_param)
+        except ValueError as err:
+            raise NotFound("Invalid personality ID format") from err
+
+    # First get personalities the user has access to
+    accessible_personalities = await PersonalityModel.list_for_user(user_id=user_id)
+    accessible_personality_ids = {p.id for p in accessible_personalities}
+
+    # If a specific personality was requested, verify access
+    if requested_personality_id:
+        if requested_personality_id not in accessible_personality_ids:
+            raise Forbidden("You don't have access to this personality")
+        # Filter to only the requested personality
+        accessible_personalities = [
+            p for p in accessible_personalities if p.id == requested_personality_id
+        ]
+        accessible_personality_ids = {requested_personality_id}
+
+    # Get prompts filtered by accessible personalities
+    all_prompts = await PromptModel.list(personality_id=requested_personality_id)
+    filtered_prompts = [
+        prompt
+        for prompt in all_prompts
+        if prompt.personality_id is None
+        or prompt.personality_id in accessible_personality_ids
+    ]
+
     return {
-        "prompts": [prompt.model_dump() for prompt in prompts],
-        "personalities": [personality.model_dump() for personality in personalities],
+        "prompts": [prompt.model_dump() for prompt in filtered_prompts],
+        "personalities": [
+            personality.model_dump() for personality in accessible_personalities
+        ],
     }
 
 
