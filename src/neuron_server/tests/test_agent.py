@@ -141,9 +141,11 @@ async def test_wait_for_idle(monkeypatch: pytest.MonkeyPatch) -> None:
                 await asyncio.sleep(0.01)
                 thread = await fake_get(thread_id)
 
-    # Patch the global orchestrator
+    # Patch the get_orchestrator function to return our mock
     mock_orchestrator = MockOrchestrator()
-    monkeypatch.setattr("neuron_server.llms.agent._orchestrator", mock_orchestrator)
+    monkeypatch.setattr(
+        "neuron_server.llms.agent.get_orchestrator", lambda: mock_orchestrator
+    )
 
     # Use longer timeout since we have small delays between status changes
     await wait_for_idle(thread_id, timeout=5)
