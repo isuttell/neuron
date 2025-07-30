@@ -5,7 +5,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import UUID, uuid4
 
 import pytest
-from langchain_core.messages import AIMessage
 from langchain_core.runnables import Runnable
 
 from neuron_server.models.personality_message_model import PersonalityMessageModel
@@ -467,14 +466,17 @@ class TestPersonalityChatOrchestrator:
     ) -> None:
         """Test generating personality response."""
         with patch(
-            "neuron_server.services.personality_chat_orchestrator.execute_agent_with_messages"
+            "neuron_server.services.personality_chat_orchestrator.execute_agent_with_messages_streaming"
         ) as mock_execute:
-            # Mock agent response
-            ai_message = AIMessage(content="I'd be happy to help you!")
-            mock_execute.return_value = [ai_message]
+            # Mock agent response - streaming version returns a tuple
+            mock_execute.return_value = ("I'd be happy to help you!", [])
+
+            # Add room_id to the call
+            room_id = UUID("e9b0a1c2-3d4e-5f6a-7a8b-9c0d1e2f3a4b")
 
             result = await orchestrator.generate_personality_response(
                 personality_id=sample_personality_id,
+                room_id=room_id,
                 personality=mock_personality,
                 chat_history="<chat_history>Test history</chat_history>",
                 latest_message="Can you help me?",
@@ -493,10 +495,16 @@ class TestPersonalityChatOrchestrator:
             # Verify agent was called with correct parameters
             mock_execute.assert_called_once()
             call_args = mock_execute.call_args
-            assert call_args[1]["personality_id"] == sample_personality_id
-            assert call_args[1]["user_id"] == sample_user_id
-            assert call_args[1]["username"] == "TestUser"
-            assert call_args[1]["create_media_items"] is False
+            # The streaming version uses keyword arguments
+            kwargs = call_args[1]
+            assert "messages" in kwargs
+            assert len(kwargs["messages"]) > 0  # Has messages
+            assert kwargs["personality_id"] == sample_personality_id
+            assert kwargs["user_id"] == sample_user_id
+            assert kwargs["username"] == "TestUser"
+            # Check that status_callback was provided
+            assert "status_callback" in kwargs
+            assert kwargs["status_callback"] is not None
 
     @pytest.mark.asyncio
     async def test_create_and_broadcast_personality_response(

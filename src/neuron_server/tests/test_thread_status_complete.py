@@ -5,10 +5,9 @@ from uuid import uuid4
 
 import pytest
 
-from neuron_server.llms.thread_status_manager import (
+from neuron_server.llms.agent_status_manager import (
+    AgentStatusManager,
     StatusEvent,
-    ThreadStatusManager,
-    get_status_manager,
 )
 
 
@@ -31,16 +30,16 @@ class TestStatusEvent:
         assert event.description == "Processing your request"
 
 
-class TestThreadStatusManager:
-    """Test ThreadStatusManager functionality."""
+class TestAgentStatusManager:
+    """Test AgentStatusManager functionality."""
 
     def setup_method(self) -> None:
         """Set up test fixtures."""
-        self.manager = ThreadStatusManager()
+        self.manager = AgentStatusManager()
         self.test_thread_id = uuid4()
 
     def test_init(self) -> None:
-        """Test ThreadStatusManager initialization."""
+        """Test AgentStatusManager initialization."""
         assert isinstance(self.manager._status_events, dict)
         assert isinstance(self.manager._status_agents, dict)
         assert isinstance(self.manager._thread_personalities, dict)
@@ -125,7 +124,7 @@ class TestThreadStatusManager:
 
     def test_tool_descriptions_coverage(self) -> None:
         """Test that key tool descriptions are present."""
-        descriptions = ThreadStatusManager.TOOL_DESCRIPTIONS
+        descriptions = AgentStatusManager.TOOL_DESCRIPTIONS
 
         # Test key descriptions
         assert "web_search" in descriptions
@@ -139,13 +138,15 @@ class TestThreadStatusManager:
 class TestGlobalFunctions:
     """Test global convenience functions."""
 
-    def test_get_status_manager_singleton(self) -> None:
-        """Test that get_status_manager returns singleton."""
-        manager1 = get_status_manager()
-        manager2 = get_status_manager()
+    def test_agent_status_manager_creation(self) -> None:
+        """Test that AgentStatusManager creates independent instances."""
+        manager1 = AgentStatusManager()
+        manager2 = AgentStatusManager()
 
-        assert isinstance(manager1, ThreadStatusManager)
-        assert manager1 is manager2
+        assert isinstance(manager1, AgentStatusManager)
+        assert isinstance(manager2, AgentStatusManager)
+        # No longer a singleton - each instance is independent
+        assert manager1 is not manager2
 
 
 class TestToolDescriptions:
@@ -153,7 +154,7 @@ class TestToolDescriptions:
 
     def test_memory_tools(self) -> None:
         """Test memory tool descriptions."""
-        descriptions = ThreadStatusManager.TOOL_DESCRIPTIONS
+        descriptions = AgentStatusManager.TOOL_DESCRIPTIONS
 
         assert "recall_memory" in descriptions
         assert "store_memory" in descriptions
@@ -162,7 +163,7 @@ class TestToolDescriptions:
 
     def test_image_tools(self) -> None:
         """Test image tool descriptions."""
-        descriptions = ThreadStatusManager.TOOL_DESCRIPTIONS
+        descriptions = AgentStatusManager.TOOL_DESCRIPTIONS
 
         assert "replicate_image_generation" in descriptions
         assert "openai_image_generation" in descriptions
@@ -173,12 +174,281 @@ class TestToolDescriptions:
 
     def test_search_tools(self) -> None:
         """Test search tool descriptions."""
-        descriptions = ThreadStatusManager.TOOL_DESCRIPTIONS
+        descriptions = AgentStatusManager.TOOL_DESCRIPTIONS
 
         assert "web_search" in descriptions
         assert "arxiv_search" in descriptions
         assert descriptions["web_search"] == "Searching the web"
         assert descriptions["arxiv_search"] == "Searching academic papers"
+
+
+class TestStatusCallbacks:
+    """Test status callback functionality."""
+
+    def setup_method(self) -> None:
+        """Set up test fixtures."""
+        self.manager = AgentStatusManager()
+        self.test_thread_id = uuid4()
+
+    @pytest.mark.asyncio
+    async def test_register_status_callback(self) -> None:
+        """Test registering a status callback."""
+        callback_calls = []
+
+        async def test_callback(
+            thread_id, raw_status, generated_message, human_message
+        ):
+            callback_calls.append(
+                (thread_id, raw_status, generated_message, human_message)
+            )
+
+        self.manager.register_status_callback(self.test_thread_id, test_callback)
+
+        # Verify callback is registered
+        assert self.test_thread_id in self.manager._status_callbacks
+        assert len(self.manager._status_callbacks[self.test_thread_id]) == 1
+        assert self.manager._status_callbacks[self.test_thread_id][0] is test_callback
+
+    @pytest.mark.asyncio
+    async def test_register_multiple_callbacks(self) -> None:
+        """Test registering multiple callbacks for same thread."""
+        callback1_calls = []
+        callback2_calls = []
+
+        async def callback1(thread_id, raw_status, generated_message, human_message):
+            callback1_calls.append("callback1")
+
+        async def callback2(thread_id, raw_status, generated_message, human_message):
+            callback2_calls.append("callback2")
+
+        self.manager.register_status_callback(self.test_thread_id, callback1)
+        self.manager.register_status_callback(self.test_thread_id, callback2)
+
+        # Verify both callbacks are registered
+        assert len(self.manager._status_callbacks[self.test_thread_id]) == 2
+
+    @pytest.mark.asyncio
+    async def test_unregister_specific_callback(self) -> None:
+        """Test unregistering a specific callback."""
+
+        async def callback1(thread_id, raw_status, generated_message, human_message):
+            pass
+
+        async def callback2(thread_id, raw_status, generated_message, human_message):
+            pass
+
+        # Register both callbacks
+        self.manager.register_status_callback(self.test_thread_id, callback1)
+        self.manager.register_status_callback(self.test_thread_id, callback2)
+
+        # Unregister specific callback
+        self.manager.unregister_status_callback(self.test_thread_id, callback1)
+
+        # Only callback2 should remain
+        assert len(self.manager._status_callbacks[self.test_thread_id]) == 1
+        assert self.manager._status_callbacks[self.test_thread_id][0] is callback2
+
+    @pytest.mark.asyncio
+    async def test_unregister_all_callbacks(self) -> None:
+        """Test unregistering all callbacks for a thread."""
+
+        async def callback1(thread_id, raw_status, generated_message, human_message):
+            pass
+
+        async def callback2(thread_id, raw_status, generated_message, human_message):
+            pass
+
+        # Register both callbacks
+        self.manager.register_status_callback(self.test_thread_id, callback1)
+        self.manager.register_status_callback(self.test_thread_id, callback2)
+
+        # Unregister all callbacks
+        self.manager.unregister_status_callback(self.test_thread_id)
+
+        # Thread should not be in callbacks dict anymore
+        assert self.test_thread_id not in self.manager._status_callbacks
+
+    @pytest.mark.asyncio
+    async def test_unregister_nonexistent_callback(self) -> None:
+        """Test unregistering a callback that doesn't exist."""
+
+        async def callback1(thread_id, raw_status, generated_message, human_message):
+            pass
+
+        async def callback2(thread_id, raw_status, generated_message, human_message):
+            pass
+
+        # Register only callback1
+        self.manager.register_status_callback(self.test_thread_id, callback1)
+
+        # Try to unregister callback2 (not registered) - should not raise error
+        self.manager.unregister_status_callback(self.test_thread_id, callback2)
+
+        # callback1 should still be there
+        assert len(self.manager._status_callbacks[self.test_thread_id]) == 1
+        assert self.manager._status_callbacks[self.test_thread_id][0] is callback1
+
+    @pytest.mark.asyncio
+    async def test_callback_invocation_during_status_update(self) -> None:
+        """Test that callbacks are invoked during status updates."""
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        callback_calls = []
+
+        async def test_callback(
+            thread_id, raw_status, generated_message, human_message
+        ):
+            callback_calls.append(
+                (thread_id, raw_status, generated_message, human_message)
+            )
+
+        self.manager.register_status_callback(self.test_thread_id, test_callback)
+
+        # Mock dependencies for update_thread_status
+        mock_thread = MagicMock()
+        mock_thread.id = self.test_thread_id
+        mock_thread.status = "idle"
+
+        with patch(
+            "neuron_server.llms.agent_status_manager.ThreadModel"
+        ) as mock_thread_model:
+            mock_thread_model.set = AsyncMock()
+
+            with patch(
+                "neuron_server.llms.agent_status_manager.StatusAgent"
+            ) as mock_status_agent_class:
+                from datetime import datetime
+
+                mock_status_agent = AsyncMock()
+                mock_status_agent.update_status = AsyncMock(
+                    return_value=("Generated status", True)
+                )
+                mock_status_agent.last_execution_time = datetime.min
+                mock_status_agent_class.return_value = mock_status_agent
+
+                await self.manager.update_thread_status(
+                    mock_thread, "thinking", human_message="Hello", callbacks=None
+                )
+
+                # Verify callback was called during update_status
+                # The callback should be invoked by the nested status_callback function
+                # We need to verify the mock was called with a callback function
+                mock_status_agent.update_status.assert_called_once()
+                call_args = mock_status_agent.update_status.call_args[0]
+                assert (
+                    len(call_args) == 4
+                )  # status, recent_events, human_message, status_callback
+
+                # The last argument should be the callback function
+                status_callback_func = call_args[3]
+                assert callable(status_callback_func)
+
+                # Test the callback function
+                await status_callback_func(
+                    self.test_thread_id, "thinking", "Generated status", "Hello"
+                )
+
+                # Verify our test callback was invoked
+                assert len(callback_calls) == 1
+                assert callback_calls[0] == (
+                    self.test_thread_id,
+                    "thinking",
+                    "Generated status",
+                    "Hello",
+                )
+
+    @pytest.mark.asyncio
+    async def test_callback_error_handling(self) -> None:
+        """Test error handling when callbacks throw exceptions."""
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        successful_calls = []
+
+        async def failing_callback(
+            thread_id, raw_status, generated_message, human_message
+        ):
+            raise ValueError("Callback failed!")
+
+        async def successful_callback(
+            thread_id, raw_status, generated_message, human_message
+        ):
+            successful_calls.append("success")
+
+        # Register both callbacks
+        self.manager.register_status_callback(self.test_thread_id, failing_callback)
+        self.manager.register_status_callback(self.test_thread_id, successful_callback)
+
+        mock_thread = MagicMock()
+        mock_thread.id = self.test_thread_id
+        mock_thread.status = "idle"
+
+        with patch(
+            "neuron_server.llms.agent_status_manager.ThreadModel"
+        ) as mock_thread_model:
+            mock_thread_model.set = AsyncMock()
+
+            with patch(
+                "neuron_server.llms.agent_status_manager.StatusAgent"
+            ) as mock_status_agent_class:
+                from datetime import datetime
+
+                mock_status_agent = AsyncMock()
+                mock_status_agent.update_status = AsyncMock(
+                    return_value=("Generated status", True)
+                )
+                mock_status_agent.last_execution_time = datetime.min
+                mock_status_agent_class.return_value = mock_status_agent
+
+                with patch(
+                    "neuron_server.llms.agent_status_manager.logger"
+                ) as mock_logger:
+                    await self.manager.update_thread_status(
+                        mock_thread, "thinking", human_message="Hello", callbacks=None
+                    )
+
+                    # Get the callback function from the mock call
+                    call_args = mock_status_agent.update_status.call_args[0]
+                    status_callback_func = call_args[3]
+
+                    # Test the callback function
+                    await status_callback_func(
+                        self.test_thread_id, "thinking", "Generated status", "Hello"
+                    )
+
+                    # Verify error was logged
+                    mock_logger.error.assert_called_once()
+                    error_call = mock_logger.error.call_args[0][0]
+                    assert "Error in status callback" in error_call
+
+                    # Verify successful callback still ran
+                    assert len(successful_calls) == 1
+
+    @pytest.mark.asyncio
+    async def test_cleanup_removes_callbacks(self) -> None:
+        """Test that thread cleanup removes callbacks."""
+
+        async def test_callback(
+            thread_id, raw_status, generated_message, human_message
+        ):
+            pass
+
+        # Register callback and set up other thread data
+        self.manager.register_status_callback(self.test_thread_id, test_callback)
+        self.manager._status_events[self.test_thread_id] = []
+        self.manager.set_personality_info(self.test_thread_id, "Test", "Context")
+
+        # Mock agent for cleanup
+        class MockAgent:
+            def reset(self):
+                pass
+
+        self.manager._status_agents[self.test_thread_id] = MockAgent()
+
+        # Perform cleanup
+        await self.manager.cleanup_thread(self.test_thread_id)
+
+        # Verify callbacks were removed
+        assert self.test_thread_id not in self.manager._status_callbacks
 
 
 if __name__ == "__main__":

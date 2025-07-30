@@ -8,16 +8,15 @@ from typing import Any, TypedDict
 from langchain_core.messages import AIMessage, ToolMessage
 
 from neuron_server.controllers.events.message_events import (
-    MessageEvent,
     PartialMessage,
-    PartialMessageEvent,
     ThreadMessage,
 )
+from neuron_server.llms.agent_status_manager import AgentStatusManager
+from neuron_server.llms.callback_handlers import CallbackHandlers
 from neuron_server.llms.message_processor import get_message_content
-from neuron_server.llms.thread_status_manager import ThreadStatusManager
 from neuron_server.logger import logger
 from neuron_server.models.thread_model import ThreadModel
-from neuron_server.secure_pubsub import secure_pubsub
+from neuron_server.tools.artifact_types import ToolMediaArtifact
 
 
 class ChainEventData(TypedDict):
@@ -80,13 +79,17 @@ class ToolEventContext(TypedDict):
 class StreamEventProcessor:
     """Processes stream events from the LLM workflow."""
 
-    def __init__(self, status_manager: ThreadStatusManager) -> None:
+    def __init__(
+        self,
+        status_manager: AgentStatusManager,
+    ) -> None:
         """Initialize the stream event processor.
 
         Args:
             status_manager: Thread status manager instance
         """
         self.status_manager = status_manager
+        self.collected_media_artifacts: list = []
 
     @staticmethod
     def _clean_run_id(run_id: str) -> str:
@@ -131,7 +134,9 @@ class StreamEventProcessor:
             human_message=human_message,
         )
 
-    async def _handle_tool_event(self, ctx: ToolEventContext) -> None:
+    async def _handle_tool_event(
+        self, ctx: ToolEventContext, callbacks: CallbackHandlers | None = None
+    ) -> None:
         """Handle tool start/end events.
 
         Processes tool lifecycle events, updates thread status, and publishes
@@ -139,6 +144,7 @@ class StreamEventProcessor:
 
         Args:
             ctx: Tool event context containing all event data
+            callbacks: Optional callback handlers for events
         """
         thread = ctx["thread"]
         tool_name = ctx["name"]
@@ -168,23 +174,34 @@ class StreamEventProcessor:
             message_data = output.model_dump()
             message_data["id"] = self._clean_run_id(ctx["run_id"])
 
-            # Process artifacts and create media items if present
+            # Process artifacts and notify callback if present
             if hasattr(output, "artifact") and output.artifact:
-                from neuron_server.util.artifact_to_media_converter import (
-                    create_media_items_from_artifacts,
-                )
-
-                # Create media items from artifacts (using predefined UUIDs)
                 artifacts = (
                     output.artifact
                     if isinstance(output.artifact, list)
                     else [output.artifact]
                 )
-                await create_media_items_from_artifacts(
-                    artifacts=artifacts,
-                    thread_id=ctx["thread"].id,
-                    user_id=ctx["data"].get("input", {}).get("user_id"),
-                )
+
+                # Extract media artifacts
+                media_artifacts = []
+                for artifact_dict in artifacts:
+                    if (
+                        isinstance(artifact_dict, dict)
+                        and artifact_dict.get("type") == "media"
+                    ):
+                        try:
+                            artifact = ToolMediaArtifact.model_validate(artifact_dict)
+                            media_artifacts.append(artifact)
+                        except Exception as e:
+                            logger.error(
+                                f"Failed to parse media artifact: {e}", exc_info=True
+                            )
+
+                # Collect and invoke callback if we have media artifacts
+                if media_artifacts:
+                    self.collected_media_artifacts.extend(media_artifacts)
+                    if callbacks and callbacks.on_media_artifacts:
+                        await callbacks.on_media_artifacts(media_artifacts)
 
             # The tool message artifact (if present) will be preserved automatically
             # due to ThreadMessage's extra="allow" configuration
@@ -194,11 +211,13 @@ class StreamEventProcessor:
                 thread_id=ctx["thread"].id,
                 node=ctx["node"],
             )
-            # Filter out hidden messages
-            if not output.additional_kwargs.get("hidden", False):
-                await secure_pubsub.publish_thread_message(
-                    MessageEvent(message=message)
-                )
+            # Filter out hidden messages and invoke callback
+            if (
+                not output.additional_kwargs.get("hidden", False)
+                and callbacks
+                and callbacks.on_tool_message
+            ):
+                await callbacks.on_tool_message(message)
 
         values = list(set(ctx["active_runs"].values()))
         await self.status_manager.update_thread_status(
@@ -210,6 +229,7 @@ class StreamEventProcessor:
     async def _handle_chat_model_stream(
         self,
         context: ChatModelStreamContext,
+        callbacks: CallbackHandlers | None = None,
     ) -> int:
         """Handle chat model streaming events.
 
@@ -233,9 +253,9 @@ class StreamEventProcessor:
             if isinstance(content, str):
                 content = [{"type": "text", "text": content, "index": 0}]
 
-            await secure_pubsub.publish_partial_message(
-                PartialMessageEvent(
-                    message=PartialMessage(
+            if callbacks and callbacks.on_stream_token:
+                await callbacks.on_stream_token(
+                    PartialMessage(
                         id=self._clean_run_id(context.run_id),
                         type="ai",
                         content=content,
@@ -246,17 +266,18 @@ class StreamEventProcessor:
                         created_at=context.start_time.isoformat(),
                     )
                 )
-            )
         return context.index
 
     async def _handle_chat_model_end(
         self,
         context: ChatModelEndContext,
+        callbacks: CallbackHandlers | None = None,
     ) -> None:
         """Handle chat model end events.
 
         Args:
             context: Context for chat model end events
+            callbacks: Optional callback handlers for events
         """
         if (
             "update_title" not in context.active_runs.values()
@@ -273,10 +294,16 @@ class StreamEventProcessor:
             )
             if not message.created_at:
                 message.created_at = context.start_time.isoformat()
-            await secure_pubsub.publish_thread_message(MessageEvent(message=message))
+
+            if callbacks and callbacks.on_ai_message:
+                await callbacks.on_ai_message(message)
         await self.status_manager.update_thread_status(
             context.thread, "thinking", human_message=context.human_message_content
         )
+
+    def reset_collected_artifacts(self) -> None:
+        """Reset the collected media artifacts list."""
+        self.collected_media_artifacts = []
 
     async def process_stream_events(
         self,
@@ -284,7 +311,8 @@ class StreamEventProcessor:
         event_stream: AsyncIterator[dict[str, Any]],
         human_message_content: str | None,
         start_time: datetime,
-    ) -> None:
+        callbacks: CallbackHandlers | None = None,
+    ) -> list:
         """Process stream events from the LLM workflow.
 
         Args:
@@ -292,7 +320,13 @@ class StreamEventProcessor:
             event_stream: Stream of events from the LLM
             human_message_content: Human message content for status updates
             start_time: Start time for the processing
+            callbacks: Optional callback handlers for events
+
+        Returns:
+            List of collected media artifacts
         """
+        # Reset artifacts for this stream
+        self.reset_collected_artifacts()
         index = -1
         active_runs: dict[str, str] = {}
 
@@ -332,7 +366,8 @@ class StreamEventProcessor:
                         data=data,
                         node=node,
                         human_message=human_message_content,
-                    )
+                    ),
+                    callbacks,
                 )
 
             elif kind == "on_chat_model_stream" and isinstance(
@@ -348,7 +383,7 @@ class StreamEventProcessor:
                     index=index,
                     human_message_content=human_message_content,
                 )
-                index = await self._handle_chat_model_stream(context)
+                index = await self._handle_chat_model_stream(context, callbacks)
 
             elif kind == "on_chat_model_end":
                 output: AIMessage = data["output"]
@@ -361,19 +396,22 @@ class StreamEventProcessor:
                     active_runs=active_runs,
                     human_message_content=human_message_content,
                 )
-                await self._handle_chat_model_end(context)
+                await self._handle_chat_model_end(context, callbacks)
 
             elif kind == "error":
                 logger.error(data)
 
+        # Return collected media artifacts
+        return self.collected_media_artifacts
+
 
 def create_stream_event_processor(
-    status_manager: ThreadStatusManager,
+    status_manager: AgentStatusManager,
 ) -> StreamEventProcessor:
     """Create a stream event processor with the given status manager.
 
     Args:
-        status_manager: Thread status manager instance
+        status_manager: Agent status manager instance
 
     Returns:
         StreamEventProcessor instance

@@ -1,15 +1,19 @@
-"""Thread status management functionality."""
+"""Agent status management functionality."""
 
+from collections.abc import Callable, Coroutine
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 from uuid import UUID
 
-from neuron_server.controllers.events.thread_events import GetThreadResponse
+from neuron_server.llms.callback_handlers import CallbackHandlers
 from neuron_server.llms.status_agent import StatusAgent
 from neuron_server.logger import logger
 from neuron_server.models.thread_model import ThreadModel
-from neuron_server.secure_pubsub import secure_pubsub
+
+# Type alias for status callbacks
+# Parameters: thread_id, raw_status, generated_message, human_message
+StatusCallback = Callable[[UUID, str, str, str | None], Coroutine[Any, Any, None]]
 
 
 @dataclass
@@ -22,8 +26,8 @@ class StatusEvent:
     description: str
 
 
-class ThreadStatusManager:
-    """Manages thread status updates and status agent coordination."""
+class AgentStatusManager:
+    """Manages agent status generation and coordination."""
 
     # Tool descriptions for user-friendly status messages
     TOOL_DESCRIPTIONS = {
@@ -130,6 +134,8 @@ class ThreadStatusManager:
         self._thread_personalities: dict[UUID, tuple[str, str]] = {}
         # Track cancelled threads to prevent status updates after cancellation
         self._cancelled_threads: set[UUID] = set()
+        # Track status callbacks per thread
+        self._status_callbacks: dict[UUID, list[StatusCallback]] = {}
 
     def set_personality_info(self, thread_id: UUID, name: str, context: str) -> None:
         """Set personality info for a thread."""
@@ -146,6 +152,44 @@ class ThreadStatusManager:
     def is_cancelled(self, thread_id: UUID) -> bool:
         """Check if a thread is marked as cancelled."""
         return thread_id in self._cancelled_threads
+
+    def register_status_callback(
+        self, thread_id: UUID, callback: StatusCallback
+    ) -> None:
+        """Register a status callback for a thread.
+
+        Args:
+            thread_id: The thread ID to register the callback for
+            callback: Async function that receives (thread_id, status, description,
+                human_message)
+        """
+        if thread_id not in self._status_callbacks:
+            self._status_callbacks[thread_id] = []
+        self._status_callbacks[thread_id].append(callback)
+        logger.debug(f"Registered status callback for thread {thread_id}")
+
+    def unregister_status_callback(
+        self, thread_id: UUID, callback: StatusCallback | None = None
+    ) -> None:
+        """Unregister a status callback for a thread.
+
+        Args:
+            thread_id: The thread ID to unregister callbacks for
+            callback: Specific callback to remove, or None to remove all
+        """
+        if thread_id in self._status_callbacks:
+            if callback is None:
+                # Remove all callbacks for this thread
+                del self._status_callbacks[thread_id]
+            else:
+                # Remove specific callback
+                try:
+                    self._status_callbacks[thread_id].remove(callback)
+                    # Clean up if no callbacks left
+                    if not self._status_callbacks[thread_id]:
+                        del self._status_callbacks[thread_id]
+                except ValueError:
+                    pass  # Callback not found, ignore
 
     async def add_tool_end_event(self, thread_id: UUID, tool_name: str) -> None:
         """Add a tool end event to the status tracking."""
@@ -165,6 +209,7 @@ class ThreadStatusManager:
         status: str,
         force_update: bool = False,
         human_message: str | None = None,
+        callbacks: CallbackHandlers | None = None,
     ) -> None:
         """Update thread status and publish the change.
 
@@ -173,6 +218,7 @@ class ThreadStatusManager:
             status: New status to set
             force_update: Whether to update even if status hasn't changed
             human_message: The user's message that triggered this status update
+            callbacks: Optional callback handlers for events
         """
         # Skip status updates for cancelled threads unless forcing to idle
         if thread.id in self._cancelled_threads and status != "idle":
@@ -231,9 +277,33 @@ class ThreadStatusManager:
                 if e.timestamp > last_update_time
             ]
 
+            # Define callback for status agent to use
+            async def status_callback(
+                thread_id: UUID,
+                raw_status: str,
+                generated_message: str,
+                human_msg: str | None,
+            ) -> None:
+                """Invoke all registered callbacks for this thread."""
+                if thread_id in self._status_callbacks:
+                    logger.debug(
+                        f"Found {len(self._status_callbacks[thread_id])} "
+                        f"callbacks for thread {thread_id}"
+                    )
+                    for callback in self._status_callbacks[thread_id]:
+                        try:
+                            await callback(
+                                thread_id, raw_status, generated_message, human_msg
+                            )
+                        except Exception as e:
+                            logger.error(
+                                f"Error in status callback for thread {thread_id}: {e}",
+                                exc_info=True,
+                            )
+
             # Use status agent to generate intelligent status message
-            await status_agent.update_status(
-                thread, status, recent_events, human_message
+            generated_status, was_generated = await status_agent.update_status(
+                status, recent_events, human_message, status_callback
             )
 
             # If status is idle, update thread and clean up everything
@@ -241,9 +311,8 @@ class ThreadStatusManager:
                 # Update the thread status to idle
                 thread.status = "idle"
                 await ThreadModel.set(thread.id, "status", thread.status)
-                await secure_pubsub.publish_thread_update(
-                    GetThreadResponse(thread=thread)
-                )
+                if callbacks and callbacks.on_thread_update:
+                    await callbacks.on_thread_update(thread)
 
                 # Clean up the status agent and related data
                 await self.cleanup_thread(thread.id)
@@ -257,9 +326,18 @@ class ThreadStatusManager:
             del self._status_events[thread_id]
         if thread_id in self._thread_personalities:
             del self._thread_personalities[thread_id]
+        if thread_id in self._status_callbacks:
+            del self._status_callbacks[thread_id]
 
-    async def reset_cancelled_thread(self, thread: ThreadModel) -> None:
-        """Reset a cancelled thread and clean up its status."""
+    async def reset_cancelled_thread(
+        self, thread: ThreadModel, callbacks: CallbackHandlers | None = None
+    ) -> None:
+        """Reset a cancelled thread and clean up its status.
+
+        Args:
+            thread: Thread model instance to reset
+            callbacks: Optional callback handlers for events
+        """
         # Mark thread as cancelled to prevent future status updates
         self.mark_cancelled(thread.id)
 
@@ -269,24 +347,21 @@ class ThreadStatusManager:
         # Set thread status to idle after cleaning up status agents
         thread.status = "idle"
         await ThreadModel.set(thread.id, "status", thread.status)
-        await secure_pubsub.publish_thread_update(GetThreadResponse(thread=thread))
+        if callbacks and callbacks.on_thread_update:
+            await callbacks.on_thread_update(thread)
 
 
-# Global instance for backward compatibility
-_manager = ThreadStatusManager()
-
-
-# Backward compatibility functions
+# Backward compatibility function
 async def update_thread_status(
     thread: ThreadModel,
     status: str,
     force_update: bool = False,
     human_message: str | None = None,
 ) -> None:
-    """Update thread status and publish the change."""
-    await _manager.update_thread_status(thread, status, force_update, human_message)
+    """Update thread status and publish the change.
 
-
-def get_status_manager() -> ThreadStatusManager:
-    """Get the global status manager instance."""
-    return _manager
+    This is deprecated. Use ThreadStatusManager directly instead.
+    """
+    # For backward compatibility, create a temporary manager
+    manager = AgentStatusManager()
+    await manager.update_thread_status(thread, status, force_update, human_message)
