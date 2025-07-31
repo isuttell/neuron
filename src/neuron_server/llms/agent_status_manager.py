@@ -166,7 +166,6 @@ class AgentStatusManager:
         if thread_id not in self._status_callbacks:
             self._status_callbacks[thread_id] = []
         self._status_callbacks[thread_id].append(callback)
-        logger.debug(f"Registered status callback for thread {thread_id}")
 
     def unregister_status_callback(
         self, thread_id: UUID, callback: StatusCallback | None = None

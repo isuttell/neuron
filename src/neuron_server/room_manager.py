@@ -84,9 +84,6 @@ class RoomManager:
             await self._client.sadd(user_rooms_key, room_identifier)
             await self._client.expire(user_rooms_key, self._room_ttl)
 
-            logger.info(
-                f"User {user_id} ({nickname}) joined room {room_type}:{room_id}"
-            )
             return True
 
     async def leave_room(self, room_type: str, room_id: str, user_id: str) -> bool:
@@ -127,7 +124,6 @@ class RoomManager:
             if user_room_count == 0:
                 await self._client.delete(user_rooms_key)
 
-            logger.info(f"User {user_id} left room {room_type}:{room_id}")
             return True
 
     async def get_room_members(self, room_type: str, room_id: str) -> list[str]:

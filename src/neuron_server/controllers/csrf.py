@@ -151,9 +151,6 @@ def create_session_cookie(
 
     signed_cookie = sign_cookie_data(cookie_data)
 
-    if config.debug and include_csrf:
-        logger.debug(f"Created session cookie for user {user_id} with CSRF token")
-
     return signed_cookie, csrf_token
 
 
