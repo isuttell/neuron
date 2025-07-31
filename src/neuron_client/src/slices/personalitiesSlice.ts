@@ -11,6 +11,7 @@ import type {
   IncomingPersonalitiesEvent,
   PersonalityState,
   UserWithRole,
+  PersonalityDocument,
 } from "./personalitiesSlice.d";
 import type { PersonalityUser } from "../types/personality";
 
@@ -19,6 +20,7 @@ const initialState: PersonalityState = {
   activePersonalityId: localStorage.getItem("activePersonalityId") || undefined,
   personalities: [],
   personalityUsers: {},
+  personalityDocuments: {},
   loading: false,
   error: null,
   hasInitiallyFetched: false,
@@ -101,6 +103,20 @@ export const personalitiesSlice = createSlice({
       if (personality) {
         personality.status = action.payload.status;
       }
+    },
+    addPersonalityDocuments: (
+      state,
+      action: PayloadAction<{ personalityId: string; documents: PersonalityDocument[] }>
+    ) => {
+      const { personalityId, documents } = action.payload;
+      if (!state.personalityDocuments[personalityId]) {
+        state.personalityDocuments[personalityId] = [];
+      }
+      // Add the new documents to the beginning of the array
+      state.personalityDocuments[personalityId] = [
+        ...documents,
+        ...state.personalityDocuments[personalityId]
+      ];
     },
   },
   extraReducers: (builder) => {
@@ -280,6 +296,19 @@ export const personalitiesSlice = createSlice({
         );
         state.personalityUsers[action.payload.personalityId] = convertedUsers;
       })
+      // Fetch personality documents
+      .addCase(actions.fetchPersonalityDocuments.fulfilled, (state, action) => {
+        state.personalityDocuments[action.payload.personalityId] = action.payload.personality_documents;
+      })
+      // Delete personality document
+      .addCase(actions.deletePersonalityDocument.fulfilled, (state, action) => {
+        const { personalityId, documentId } = action.payload;
+        if (state.personalityDocuments[personalityId]) {
+          state.personalityDocuments[personalityId] = state.personalityDocuments[personalityId].filter(
+            doc => doc.id !== documentId
+          );
+        }
+      })
   },
 });
 
@@ -289,6 +318,7 @@ export const {
   deletePersonality,
   setActivePersonality,
   updatePersonalityStatus,
+  addPersonalityDocuments,
 } = personalitiesSlice.actions;
 
 export const getPersonality = createSelector(
@@ -318,10 +348,16 @@ export const getPersonalitiesError = (state: RootState) =>
 
 // Stable empty array to prevent new references
 const EMPTY_USER_ARRAY: PersonalityUser[] = [];
+const EMPTY_DOCUMENT_ARRAY: PersonalityDocument[] = [];
 
 export const getPersonalityUsers = createSelector(
   [(state: RootState, personalityId: string) => state.personalities.personalityUsers[personalityId], (_, personalityId: string) => personalityId],
   (users) => users || EMPTY_USER_ARRAY
+);
+
+export const getPersonalityDocuments = createSelector(
+  [(state: RootState, personalityId: string) => state.personalities.personalityDocuments[personalityId], (_, personalityId: string) => personalityId],
+  (documents) => documents || EMPTY_DOCUMENT_ARRAY
 );
 
 export default personalitiesSlice.reducer;

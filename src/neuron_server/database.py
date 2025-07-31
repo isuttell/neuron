@@ -84,6 +84,9 @@ class Personality(Base):
     personality_rooms: Mapped[list["PersonalityRoom"]] = relationship(
         back_populates="personality", cascade="all, delete-orphan"
     )
+    personality_documents: Mapped[list["PersonalityDocument"]] = relationship(
+        back_populates="personality", cascade="all, delete-orphan"
+    )
 
 
 class Thread(Base):
@@ -520,6 +523,30 @@ class PersonalityMessageMediaItem(Base):
     )
     media_item: Mapped["MediaItem"] = relationship(
         "MediaItem", back_populates="personality_messages"
+    )
+
+
+class PersonalityDocument(Base):
+    __tablename__ = "personality_documents"
+
+    id = Column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    personality_id = Column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("personalities.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    user_id = Column(String, nullable=False)  # User who uploaded the document
+    name = Column(Text, nullable=False)
+    content = Column(Text, nullable=False)
+    doc_metadata = Column(
+        JSONB, nullable=True, default={}
+    )  # Store chunk IDs and other info
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    personality: Mapped["Personality"] = relationship(
+        "Personality", back_populates="personality_documents"
     )
 
 

@@ -11,6 +11,8 @@ import {
   deletePersonality,
   fetchPersonalityEmbeddings,
   updatePersonalityLogo,
+  fetchPersonalityDocuments,
+  deletePersonalityDocument,
 } from "../personalityActions";
 import type { Personality, PersonalityState } from "@/slices/personalitiesSlice.d";
 
@@ -236,6 +238,92 @@ describe("personalityActions", () => {
       const state = store.getState();
       expect(state.personalities.personalities).toHaveLength(1);
       expect(state.personalities.personalities[0]).toEqual(mockPersonality);
+    });
+  });
+
+  describe("fetchPersonalityDocuments", () => {
+    it("should handle successful documents fetch", async () => {
+      const mockDocuments = [
+        {
+          id: "doc-1",
+          personality_id: mockPersonality.id,
+          user_id: "user-1",
+          name: "document1.txt",
+          content: "Content 1",
+          doc_metadata: { chunk_ids: ["chunk1", "chunk2"] },
+          created_at: "2024-01-01T00:00:00Z",
+        },
+        {
+          id: "doc-2",
+          personality_id: mockPersonality.id,
+          user_id: "user-1",
+          name: "document2.md",
+          content: "Content 2",
+          doc_metadata: { chunk_ids: ["chunk3", "chunk4"] },
+          created_at: "2024-01-01T00:00:00Z",
+        },
+      ];
+
+      (api.get as vi.Mock).mockResolvedValueOnce({
+        personality_documents: mockDocuments,
+      });
+
+      await store.dispatch(fetchPersonalityDocuments(mockPersonality.id));
+
+      expect(api.get).toHaveBeenCalledWith(
+        `/personalities/${mockPersonality.id}/documents`
+      );
+
+      const state = store.getState();
+      expect(state.personalities.personalityDocuments[mockPersonality.id]).toEqual(
+        mockDocuments
+      );
+    });
+
+    it("should handle error when fetching documents", async () => {
+      const errorMessage = "Failed to fetch documents";
+      (api.get as vi.Mock).mockRejectedValueOnce(new Error(errorMessage));
+
+      const result = await store.dispatch(
+        fetchPersonalityDocuments(mockPersonality.id)
+      );
+
+      expect(result.type).toBe("personalities/fetchDocuments/rejected");
+      expect(result.payload).toBe(errorMessage);
+    });
+  });
+
+  describe("deletePersonalityDocument", () => {
+    it("should handle successful document deletion", async () => {
+      const documentId = "doc-1";
+      (api.delete as vi.Mock).mockResolvedValueOnce(undefined);
+
+      await store.dispatch(
+        deletePersonalityDocument({
+          personalityId: mockPersonality.id,
+          documentId,
+        })
+      );
+
+      expect(api.delete).toHaveBeenCalledWith(
+        `/personalities/${mockPersonality.id}/documents/${documentId}`
+      );
+    });
+
+    it("should handle error when deleting document", async () => {
+      const documentId = "doc-1";
+      const errorMessage = "Failed to delete document";
+      (api.delete as vi.Mock).mockRejectedValueOnce(new Error(errorMessage));
+
+      const result = await store.dispatch(
+        deletePersonalityDocument({
+          personalityId: mockPersonality.id,
+          documentId,
+        })
+      );
+
+      expect(result.type).toBe("personalities/deleteDocument/rejected");
+      expect(result.payload).toBe(errorMessage);
     });
   });
 });
