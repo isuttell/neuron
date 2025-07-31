@@ -36,9 +36,23 @@ def get_media_type_from_extension(extension: str) -> str:  # noqa: PLR0911
 
     # Code files
     if ext in [
-        ".py", ".js", ".ts", ".jsx", ".tsx", ".java", ".cpp",
-        ".c", ".cs", ".go", ".rb", ".php", ".swift", ".kotlin",
-        ".scala", ".rust", ".rs"
+        ".py",
+        ".js",
+        ".ts",
+        ".jsx",
+        ".tsx",
+        ".java",
+        ".cpp",
+        ".c",
+        ".cs",
+        ".go",
+        ".rb",
+        ".php",
+        ".swift",
+        ".kotlin",
+        ".scala",
+        ".rust",
+        ".rs",
     ]:
         return "code"
 
@@ -48,8 +62,16 @@ def get_media_type_from_extension(extension: str) -> str:  # noqa: PLR0911
 
     # Text and data files
     if ext in [
-        ".txt", ".json", ".csv", ".xml", ".yaml", ".yml",
-        ".toml", ".ini", ".log", ".pdf"
+        ".txt",
+        ".json",
+        ".csv",
+        ".xml",
+        ".yaml",
+        ".yml",
+        ".toml",
+        ".ini",
+        ".log",
+        ".pdf",
     ]:
         return "data"
 

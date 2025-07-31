@@ -136,7 +136,7 @@ def _extract_token_based_excerpt(
             for boundary in ["\n", ". ", "! ", "? "]:
                 last_boundary = excerpt.rfind(boundary)
                 if last_boundary > chunk_size * 0.8:  # Within 20% of the end
-                    excerpt = excerpt[:last_boundary + len(boundary)].strip()
+                    excerpt = excerpt[: last_boundary + len(boundary)].strip()
                     break
             else:
                 excerpt = excerpt.strip()

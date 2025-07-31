@@ -33,6 +33,12 @@ class MediaItemModel(BaseModel):
         thread_id: UUID | None = None
         media_id: UUID | None = None
 
+    @dataclass
+    class UpdateParams:
+        media_id: UUID
+        name: str | None = None
+        description: str | None = None
+
     @classmethod
     async def create(cls, params: CreateParams) -> Self:
         async with get_session() as session:
@@ -45,6 +51,23 @@ class MediaItemModel(BaseModel):
                 thread_id=params.thread_id,
                 user_id=params.user_id,
             )
+            session.add(media_item)
+            await session.commit()
+            result = cls(**media_item.__dict__)
+            await secure_pubsub.publish_media_event(MediaEvent(media=[result]))
+            return result
+
+    @classmethod
+    async def update(cls, params: UpdateParams) -> Self | None:
+        """Update a media item's name and/or description."""
+        async with get_session() as session:
+            media_item = await session.get(MediaItem, params.media_id)
+            if not media_item:
+                return None
+            if params.name is not None:
+                media_item.name = params.name
+            if params.description is not None:
+                media_item.description = params.description
             session.add(media_item)
             await session.commit()
             result = cls(**media_item.__dict__)
