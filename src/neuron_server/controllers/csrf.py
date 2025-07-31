@@ -6,7 +6,6 @@ import hashlib
 import hmac
 import json
 import logging
-import os
 import secrets
 import sys
 from datetime import datetime, timedelta
@@ -46,10 +45,17 @@ T = TypeVar("T")
 
 
 class CSRFError(Forbidden):
-    """Custom CSRF error exception"""
+    """Custom CSRF error exception with structured error codes"""
 
-    def __init__(self, description: str = "CSRF validation failed") -> None:
+    def __init__(
+        self,
+        description: str = "CSRF validation failed",
+        error_code: str = "CSRF_VALIDATION_FAILED",
+    ) -> None:
         super().__init__(description=description)
+        self.error_code = error_code
+        self.error_type = "csrf"
+        self.retry_possible = True
 
 
 def generate_csrf_token() -> str:
@@ -231,7 +237,7 @@ async def _validate_csrf_cookie(request: Request) -> dict[str, Any]:
                 f"CSRF check failed: Session cookie missing for "
                 f"{request.method} {request.path}"
             )
-        raise CSRFError("Session cookie missing")
+        raise CSRFError("Session cookie missing", "CSRF_SESSION_MISSING")
 
     cookie_data = verify_cookie_data(cookie)
     if not cookie_data:
@@ -240,7 +246,7 @@ async def _validate_csrf_cookie(request: Request) -> dict[str, Any]:
                 f"CSRF check failed: Invalid session cookie for "
                 f"{request.method} {request.path}"
             )
-        raise CSRFError("Invalid session cookie")
+        raise CSRFError("Invalid session cookie", "CSRF_SESSION_INVALID")
 
     return cookie_data
 
@@ -254,7 +260,7 @@ async def _validate_csrf_tokens(request: Request, cookie_data: dict[str, Any]) -
                 f"CSRF check failed: Token not in session for "
                 f"{request.method} {request.path}"
             )
-        raise CSRFError("CSRF token not found in session")
+        raise CSRFError("CSRF token not found in session", "CSRF_TOKEN_NOT_IN_SESSION")
 
     provided_csrf = await extract_csrf_token(request)
     if not provided_csrf:
@@ -263,7 +269,7 @@ async def _validate_csrf_tokens(request: Request, cookie_data: dict[str, Any]) -
                 f"CSRF check failed: Token missing from request for "
                 f"{request.method} {request.path}"
             )
-        raise CSRFError("CSRF token missing from request")
+        raise CSRFError("CSRF token missing from request", "CSRF_TOKEN_MISSING")
 
     if not hmac.compare_digest(stored_csrf, provided_csrf):
         user_id = cookie_data.get("user_id", "unknown")
@@ -273,7 +279,7 @@ async def _validate_csrf_tokens(request: Request, cookie_data: dict[str, Any]) -
         )
         if config.debug:
             logger.debug(f"Expected: {stored_csrf[:8]}..., Got: {provided_csrf[:8]}...")
-        raise CSRFError("Invalid CSRF token")
+        raise CSRFError("Invalid CSRF token", "CSRF_TOKEN_INVALID")
 
 
 async def _handle_token_rotation(result: object, user_id: str) -> None:
@@ -296,15 +302,6 @@ def requires_csrf(func: Callable[..., T]) -> Callable[..., T]:
 
     @wraps(func)
     async def decorated(*args: object, **kwargs: object) -> T:
-        # Skip CSRF check in debug mode if DISABLE_CSRF is set
-        if config.debug and os.environ.get("DISABLE_CSRF", "").lower() == "true":
-            if request.method not in ["GET", "HEAD", "OPTIONS"]:
-                logger.warning(
-                    f"CSRF check bypassed in debug mode for "
-                    f"{request.method} {request.path}"
-                )
-            return await func(*args, **kwargs)
-
         # Skip CSRF check for safe methods
         if request.method in ["GET", "HEAD", "OPTIONS"]:
             return await func(*args, **kwargs)

@@ -16,6 +16,9 @@ interface ApiError {
   error?: string;
   message?: string;
   new_csrf_token?: string;
+  error_code?: string;
+  error_type?: string;
+  retry_possible?: boolean;
 }
 
 class ApiClient {
@@ -123,10 +126,10 @@ class ApiClient {
       return await this.handleResponse<T>(response);
     } catch (error: unknown) {
       // Check if it's a CSRF error and we haven't exceeded retry limit
-      const apiError = error as { status?: number; data?: { error?: string } };
+      const apiError = error as { status?: number; data?: ApiError };
       if (
         apiError.status === 403 &&
-        apiError.data?.error?.includes("CSRF") &&
+        apiError.data?.error_code?.startsWith("CSRF_") &&
         retryCount < this.maxRetries
       ) {
         console.warn("CSRF token error, attempting to refresh...");

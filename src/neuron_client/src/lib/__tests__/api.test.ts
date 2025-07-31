@@ -374,7 +374,11 @@ describe("ApiClient", () => {
           ok: false,
           status: 403,
           headers: new Map([["content-type", "application/json"]]),
-          json: () => Promise.resolve({ error: "CSRF validation failed" }),
+          json: () => Promise.resolve({
+            error: "Forbidden",
+            message: "CSRF validation failed",
+            error_code: "CSRF_TOKEN_INVALID"
+          }),
         })
         // Refresh CSRF call succeeds
         .mockResolvedValueOnce({
