@@ -39,7 +39,7 @@ const ImageContent: React.FC<ImageContentProps> = ({
   const trigger = (
     <div
       className={cn(
-        "relative max-h-[400px] max-w-[500px] w-fit overflow-hidden",
+        "relative max-w-3xl w-fit overflow-hidden",
         className
       )}
     >
