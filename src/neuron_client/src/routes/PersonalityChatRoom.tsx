@@ -2,6 +2,7 @@ import PersonalityRoomHeaderActions from "@/components/PersonalityRoomHeaderActi
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import DeletePersonalityRoomDialog from "@/components/DeletePersonalityRoomDialog";
 import { Spinner } from "@/components/ui/spinner";
+import { Skeleton } from "@/components/ui/skeleton";
 import Loading from "@/lib/loading";
 import PersonalityRoomUsersDialog from "@/rooms/PersonalityRoomUsersDialog";
 import { debounce } from "@/lib/utils";
@@ -30,6 +31,7 @@ export default function PersonalityChatRoom() {
   const dispatch = useAppDispatch();
   const currentUser = useAppSelector(getCurrentUser);
   const lastMessageRef = useRef<HTMLDivElement | null>(null);
+  const skeletonRef = useRef<HTMLDivElement | null>(null);
   const { personalityId, roomId } = useParams();
 
   // Use the specialized personality room hook with roomId
@@ -51,6 +53,9 @@ export default function PersonalityChatRoom() {
     shallowEqual
   );
 
+  // Check if AI is working (status is not empty and not idle)
+  const isAiWorking = room?.status !== "" && room?.status !== null;
+
   // Edit state management
   const [editingMessage, setEditingMessage] = useState<{ id: string; content: string } | null>(null);
 
@@ -68,17 +73,22 @@ export default function PersonalityChatRoom() {
     }
   }, [dispatch, personalityId, roomId]);
 
-  // Auto-scroll to latest message
+  // Auto-scroll to latest message or skeleton bars
   useEffect(() => {
     setTimeout(() => {
-      if (lastMessageRef.current) {
+      if (isAiWorking && skeletonRef.current) {
+        skeletonRef.current.scrollIntoView({
+          behavior: "instant",
+          block: "end",
+        });
+      } else if (lastMessageRef.current) {
         lastMessageRef.current.scrollIntoView({
           behavior: "instant",
           block: "end",
         });
       }
     }, 100);
-  }, [messages.length]);
+  }, [messages.length, isAiWorking]);
 
   if (!personality || !room || (loading && messages.length === 0)) {
     return <Loading />;
@@ -185,6 +195,17 @@ export default function PersonalityChatRoom() {
               {loading && (
                 <div className="flex my-4 pl-5">
                   <Spinner size={48} strokeWidth={2} className="text-muted-foreground" />
+                </div>
+              )}
+
+              {isAiWorking && (
+                <div
+                  ref={skeletonRef}
+                  className="flex flex-col space-y-2 pl-10"
+                >
+                  <Skeleton className="h-4 w-[250px]" />
+                  <Skeleton className="h-4 w-[200px]" />
+                  <Skeleton className="h-4 w-[180px]" />
                 </div>
               )}
 
