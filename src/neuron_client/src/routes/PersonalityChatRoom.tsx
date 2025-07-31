@@ -84,11 +84,11 @@ export default function PersonalityChatRoom() {
     return <Loading />;
   }
 
-  const handleSendMessage = debounce<[string], void>((content) => {
+  const handleSendMessage = debounce<[string, File | Blob | undefined], void>((content, file) => {
     if (!personalityId || !roomId || !currentUser?.sub) return;
 
     if (editingMessage) {
-      // Update existing message
+      // Update existing message (files not supported in edit mode)
       dispatch(
         updatePersonalityMessage({
           personalityId,
@@ -105,6 +105,7 @@ export default function PersonalityChatRoom() {
           roomId,
           content,
           userId: currentUser.sub,
+          file,
         })
       );
     }

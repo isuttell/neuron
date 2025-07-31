@@ -113,11 +113,13 @@ export const sendPersonalityMessage = createAsyncThunk(
       roomId,
       content,
       userId,
+      file,
     }: {
       personalityId: string;
       roomId: string;
       content: string;
       userId: string;
+      file?: File | Blob;
     },
     thunkAPI
   ) => {
@@ -136,15 +138,41 @@ export const sendPersonalityMessage = createAsyncThunk(
     );
 
     try {
-      const requestBody: CreatePersonalityMessageRequest = {
-        content,
-        personality_room_id: roomId,
-      };
+      let response: CreatePersonalityMessageResponse;
 
-      const response = await api.post<CreatePersonalityMessageResponse>(
-        `/personality-messages/${personalityId}`,
-        requestBody
-      );
+      if (file) {
+        // Use FormData for file uploads
+        const formData = new FormData();
+        formData.append('content', content);
+        formData.append('personality_room_id', roomId);
+
+        // Handle both File and Blob (audio recordings)
+        if (file instanceof File) {
+          formData.append('file', file);
+        } else {
+          // Convert Blob to File with a timestamp-based name (for audio recordings)
+          const audioFile = new File([file], `recording-${Date.now()}.webm`, {
+            type: "audio/webm",
+          });
+          formData.append('file', audioFile);
+        }
+
+        response = await api.post<CreatePersonalityMessageResponse>(
+          `/personality-messages/${personalityId}`,
+          formData
+        );
+      } else {
+        // Regular JSON request without file
+        const requestBody: CreatePersonalityMessageRequest = {
+          content,
+          personality_room_id: roomId,
+        };
+
+        response = await api.post<CreatePersonalityMessageResponse>(
+          `/personality-messages/${personalityId}`,
+          requestBody
+        );
+      }
 
       // Add temp_id to the response so we can replace the optimistic message
       return {

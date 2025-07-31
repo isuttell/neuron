@@ -6,6 +6,57 @@ from typing import Optional
 from neuron_server.util.subprocess_runner import run_subprocess
 
 
+def get_media_type_from_extension(extension: str) -> str:  # noqa: PLR0911
+    """
+    Determine media type from file extension.
+
+    Args:
+        extension: File extension including the dot (e.g., ".jpg", ".mp3")
+
+    Returns:
+        Media type string: "image", "audio", "video", "html", "code", "text", or "data"
+    """
+    ext = extension.lower()
+
+    # Image extensions
+    if ext in [".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp", ".svg"]:
+        return "image"
+
+    # Audio extensions (including .webm for browser audio recordings)
+    if ext in [".mp3", ".wav", ".ogg", ".flac", ".m4a", ".aac", ".webm"]:
+        return "audio"
+
+    # Video extensions
+    if ext in [".mp4", ".mov", ".avi", ".mkv", ".flv"]:
+        return "video"
+
+    # HTML files
+    if ext in [".html", ".htm"]:
+        return "html"
+
+    # Code files
+    if ext in [
+        ".py", ".js", ".ts", ".jsx", ".tsx", ".java", ".cpp",
+        ".c", ".cs", ".go", ".rb", ".php", ".swift", ".kotlin",
+        ".scala", ".rust", ".rs"
+    ]:
+        return "code"
+
+    # Markdown files (use "text" for markdown preview)
+    if ext in [".md", ".markdown"]:
+        return "text"
+
+    # Text and data files
+    if ext in [
+        ".txt", ".json", ".csv", ".xml", ".yaml", ".yml",
+        ".toml", ".ini", ".log", ".pdf"
+    ]:
+        return "data"
+
+    # Default to data for other types (ensures files are at least downloadable)
+    return "data"
+
+
 async def get_media_duration(file_path: str | Path) -> Optional[float]:
     """
     Get the duration of a media file using ffprobe.

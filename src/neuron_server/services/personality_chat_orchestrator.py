@@ -1,12 +1,15 @@
 import asyncio
+import os
 from uuid import UUID
 
+import aiofiles
 import tiktoken
 from langchain_core.messages import HumanMessage
 from langchain_core.runnables import Runnable
 from lxml import etree
 from pydantic import BaseModel, Field
 
+from neuron_server.config import config as neuron_config
 from neuron_server.controllers.events.message_events import (
     PersonalityMessageEvent,
 )
@@ -576,8 +579,7 @@ AGENT ACTION: {action}"""
         room_id: UUID,
         personality: PersonalityModel,
         chat_history: str,
-        latest_message: str,
-        user_id: str,
+        message: PersonalityMessageModel,
         username: str,
     ) -> tuple[str, list[ToolMediaArtifact], UUID | None]:
         """Generate a personality response using the agent system.
@@ -587,8 +589,7 @@ AGENT ACTION: {action}"""
             room_id: The ID of the personality room
             personality: The PersonalityModel instance
             chat_history: Formatted chat history string
-            latest_message: The latest message content
-            user_id: The user who sent the message
+            message: The PersonalityMessageModel containing the user's message
             username: The username of the user who sent the message
 
         Returns:
@@ -601,7 +602,7 @@ AGENT ACTION: {action}"""
             # Create a thread for this agent execution
             thread_params = ThreadModel.CreateParams(
                 personality_id=personality_id,
-                user_id=user_id,
+                user_id=message.user_id,
                 name=f"Personality Chat - {personality.name[:30]}",  # Limit name length
                 context="",
                 memory="",
@@ -609,12 +610,71 @@ AGENT ACTION: {action}"""
             )
             thread = await ThreadModel.create(params=thread_params)
 
-            # Construct contextual prompt for terse chat response
+            # Fetch media items for this message
+            media_items = await PersonalityMessageMediaItemModel.get_media_for_message(
+                message.id
+            )
+
+            # Construct prompt with media content using XML structure
+            prompt_root = etree.Element("message")
+
+            # Add user message
+            user_msg_elem = etree.SubElement(prompt_root, "user_message")
+            user_msg_elem.text = message.content
+
+            # Add attachments if any
+            if media_items:
+                attachments_elem = etree.SubElement(prompt_root, "attachments")
+
+                # Define text file extensions
+                text_extensions = [
+                    ".md", ".markdown", ".txt", ".csv", ".json",
+                    ".xml", ".yaml", ".yml", ".toml", ".ini", ".log"
+                ]
+
+                for media_item in media_items:
+                    # Extract extension from URL or name
+                    filename = media_item.name or media_item.url.split('/')[-1]
+                    ext = os.path.splitext(filename)[1].lower()
+
+                    if ext in text_extensions:
+                        # For text files, read full content
+                        file_elem = etree.SubElement(attachments_elem, "file")
+                        file_elem.set("name", filename)
+                        file_elem.set("type", "text")
+
+                        # Extract file path from URL
+                        # URL format: {static_content_url}/user/{hash_filename}
+                        hash_filename = media_item.url.split('/')[-1]
+                        file_path = os.path.join(
+                            neuron_config.static_folder, "user", hash_filename
+                        )
+
+                        try:
+                            async with aiofiles.open(file_path, encoding="utf-8") as f:
+                                content = await f.read()
+                                file_elem.text = content
+                        except Exception as e:
+                            logger.error(f"Failed to read file {file_path}: {e}")
+                            file_elem.text = f"[Error reading file: {e}]"
+                    else:
+                        # For non-text files, just include the link
+                        file_elem = etree.SubElement(attachments_elem, "file")
+                        file_elem.set("name", filename)
+                        file_elem.set("type", media_item.media_type)
+                        file_elem.set("url", media_item.url)
+
+            # Convert XML to string for the prompt
+            message_xml = etree.tostring(
+                prompt_root, encoding="unicode", pretty_print=True
+            )
+
+            # Construct the full prompt
             prompt = (
                 f"Based on this chat history, provide a brief, appropriate response "
                 f"to the latest message.\n\n"
                 f"Chat History:\n{chat_history}\n\n"
-                f'Latest message: "{latest_message}"\n\n'
+                f"Latest message with attachments:\n{message_xml}\n\n"
                 f"Respond in plain text with a terse, conversational reply appropriate "
                 f"for this chat format. Do not ask questions or provide lengthy "
                 f"explanations. Keep it natural and brief."
@@ -658,7 +718,7 @@ AGENT ACTION: {action}"""
             response_result = await execute_agent_with_messages_streaming(
                 messages=messages,
                 personality_id=personality_id,
-                user_id=user_id,
+                user_id=message.user_id,
                 username=username,  # Use actual username of message sender
                 thread_id=thread.id,  # Use real thread_id
                 status_callback=status_callback,
@@ -894,8 +954,7 @@ AGENT ACTION: {action}"""
                     room_id=message.personality_room_id,
                     personality=personality,
                     chat_history=chat_history,
-                    latest_message=message.content,
-                    user_id=message.user_id,
+                    message=message,
                     username=username,
                 )
 

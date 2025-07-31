@@ -484,15 +484,27 @@ class TestPersonalityChatOrchestrator:
             # Add room_id to the call
             room_id = UUID("e9b0a1c2-3d4e-5f6a-7a8b-9c0d1e2f3a4b")
 
-            result = await orchestrator.generate_personality_response(
-                personality_id=sample_personality_id,
-                room_id=room_id,
-                personality=mock_personality,
-                chat_history="<chat_history>Test history</chat_history>",
-                latest_message="Can you help me?",
-                user_id=sample_user_id,
-                username="TestUser",
-            )
+            # Create a mock message
+            mock_message = MagicMock()
+            mock_message.id = uuid4()
+            mock_message.content = "Can you help me?"
+            mock_message.user_id = sample_user_id
+            mock_message.personality_room_id = room_id
+
+            # Mock the method that fetches media items
+            with patch(
+                "neuron_server.models.personality_message_media_item_model.PersonalityMessageMediaItemModel.get_media_for_message"
+            ) as mock_get_media:
+                mock_get_media.return_value = []
+
+                result = await orchestrator.generate_personality_response(
+                    personality_id=sample_personality_id,
+                    room_id=room_id,
+                    personality=mock_personality,
+                    chat_history="<chat_history>Test history</chat_history>",
+                    message=mock_message,
+                    username="TestUser",
+                )
 
             assert isinstance(result, tuple)
             assert len(result) == 3

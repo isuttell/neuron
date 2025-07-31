@@ -221,6 +221,14 @@ const PersonalityChatItem: React.FC<PersonalityChatItemProps> = ({
             </div>
           )}
 
+          {/* Media Items */}
+          {'media_items' in message && message.media_items && message.media_items.length > 0 && (
+            <MediaItems
+              mediaItems={message.media_items}
+              className="my-2"
+            />
+          )}
+
           {/* Message Content */}
           <div className={cn(
             "prose prose-sm max-w-none break-words",
@@ -284,7 +292,6 @@ const PersonalityChatItem: React.FC<PersonalityChatItemProps> = ({
                 <TooltipContent>Message edited</TooltipContent>
               </Tooltip>
             )}
-
             <FuzzyTimeAgo timestamp={timestamp.getTime()} />
           </div>
 
@@ -293,14 +300,6 @@ const PersonalityChatItem: React.FC<PersonalityChatItemProps> = ({
             <div className="text-sm text-destructive mt-2">
               Failed to send message. Please try again.
             </div>
-          )}
-
-          {/* Media Items */}
-          {'media_items' in message && message.media_items && message.media_items.length > 0 && (
-            <MediaItems
-              mediaItems={message.media_items}
-              className="mt-2"
-            />
           )}
         </div>
       </div>

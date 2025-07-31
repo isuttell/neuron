@@ -1,10 +1,12 @@
 import asyncio
 from uuid import UUID
 
+from openai import AsyncOpenAI
 from pydantic import BaseModel, Field
 from quart import Blueprint, Response
-from werkzeug.exceptions import Forbidden, NotFound
+from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
+from neuron_server.config import config as neuron_config
 from neuron_server.controllers.auth import requires_auth
 from neuron_server.controllers.csrf import requires_csrf
 from neuron_server.controllers.events.message_events import (
@@ -21,6 +23,7 @@ from neuron_server.controllers.events.room_events import (
 )
 from neuron_server.event_router import EventRouter
 from neuron_server.logger import logger
+from neuron_server.models.media_item_model import MediaItemModel
 from neuron_server.models.personality_message_media_item_model import (
     PersonalityMessageMediaItemModel,
 )
@@ -34,6 +37,11 @@ from neuron_server.services.personality_chat_orchestrator import (
     PersonalityChatOrchestrator,
 )
 from neuron_server.type_defs.request_proxy import request
+from neuron_server.util.file_utilities import (
+    extract_text_file_excerpt,
+    process_uploaded_file,
+)
+from neuron_server.util.media_utilities import get_media_type_from_extension
 from neuron_server.websocket_session_manager import WebSocketSession
 
 blueprint = Blueprint("personality_message", __name__)
@@ -41,6 +49,9 @@ router = EventRouter()
 
 # Initialize the chat orchestrator
 chat_orchestrator = PersonalityChatOrchestrator()
+
+# Initialize OpenAI client for audio transcription
+client = AsyncOpenAI(api_key=neuron_config.openai_api_key)
 
 
 class CreatePersonalityMessage(BaseModel):
@@ -127,7 +138,7 @@ async def get_personality_messages(
 @blueprint.post("/<uuid:personality_id>")
 @requires_auth
 @requires_csrf
-async def create_personality_message(personality_id: UUID) -> dict[str, dict]:
+async def create_personality_message(personality_id: UUID) -> dict[str, dict]:  # noqa: PLR0915
     """Create a new message for a personality.
 
     Args:
@@ -154,9 +165,26 @@ async def create_personality_message(personality_id: UUID) -> dict[str, dict]:
     # Note: Allow messages even when personality is busy
     # Quick responses will be handled during analysis
 
-    # Parse request body
-    body = await request.get_json()
-    payload = CreatePersonalityMessage(**body)
+    # Check if this is a multipart/form-data request with files
+    content_type = request.headers.get('Content-Type', '')
+    if 'multipart/form-data' in content_type:
+        # Handle file upload
+        files = await request.files
+        form = await request.form
+        content = form.get('content', '')
+        personality_room_id = form.get('personality_room_id')
+        if not personality_room_id:
+            raise BadRequest("personality_room_id is required")
+
+        payload = CreatePersonalityMessage(
+            content=content,
+            personality_room_id=UUID(personality_room_id)
+        )
+    else:
+        # Handle regular JSON request
+        body = await request.get_json()
+        payload = CreatePersonalityMessage(**body)
+        files = None
 
     # Verify user has access to the room
     room = await PersonalityRoomModel.get_for_user(
@@ -168,14 +196,71 @@ async def create_personality_message(personality_id: UUID) -> dict[str, dict]:
             f"or you don't have access"
         )
 
-    # Create the message
+    # Process any uploaded file first (to handle transcription)
+    media_items = []
+    message_content = payload.content
+
+    if files and 'file' in files:
+        file = files['file']
+        original_filename = file.filename  # Capture original filename before processing
+        filename, ext, url = await process_uploaded_file(file)
+
+        # Handle audio transcription for .webm files
+        if ext == ".webm":
+            # Transcribe audio file
+            with open(filename, "rb") as audio:
+                transcription = await client.audio.transcriptions.create(
+                    model="whisper-1",
+                    file=audio,
+                    prompt="Umm, hello, welcome to my lecture.",
+                    response_format="text",
+                )
+            # Use transcription as message content, or append to existing content
+            if message_content:
+                message_content = (
+                    f"{message_content}\n\n[Audio transcription]: {transcription}"
+                )
+            else:
+                message_content = transcription
+
+        # Determine media type from extension
+        media_type = get_media_type_from_extension(ext)
+
+        # Extract excerpt for text-based files
+        description = ""
+        text_extensions = [
+            ".md", ".markdown", ".txt", ".csv", ".json",
+            ".xml", ".yaml", ".yml", ".toml", ".ini", ".log"
+        ]
+        if ext in text_extensions:
+            description = await extract_text_file_excerpt(filename)
+
+        # Create MediaItem record with original filename and description
+        media_params = MediaItemModel.CreateParams(
+            url=url,
+            media_type=media_type,
+            user_id=user_id,
+            name=original_filename,  # Use original filename, not the hash
+            description=description,
+            thread_id=None,  # personality messages don't have threads
+        )
+        media_item = await MediaItemModel.create(params=media_params)
+        media_items.append(media_item)
+
+    # Create the message with the content (possibly including transcription)
     create_params = PersonalityMessageModel.CreateParams(
         personality_id=personality_id,
         personality_room_id=payload.personality_room_id,
-        content=payload.content,
+        content=message_content,
         user_id=user_id,  # Message is from the user
     )
     message = await PersonalityMessageModel.create(params=create_params)
+
+    # Associate media items with the message if any
+    if media_items:
+        await PersonalityMessageModel.associate_media_items(
+            message.id, [item.id for item in media_items]
+        )
 
     # Update room message count
     await PersonalityRoomModel.update_message_count(
@@ -183,6 +268,8 @@ async def create_personality_message(personality_id: UUID) -> dict[str, dict]:
     )
 
     # Broadcast the new message to users in the specific personality room
+    # Include media items in the event
+    media_items_data = [item.model_dump() for item in media_items]
     message_event = PersonalityMessageEvent(
         personality_id=personality_id,
         message_id=message.id,
@@ -191,6 +278,7 @@ async def create_personality_message(personality_id: UUID) -> dict[str, dict]:
         user_id=message.user_id,
         created_at=message.created_at.isoformat(),
         updated_at=message.updated_at.isoformat(),
+        media_items=media_items_data,
     )
     await secure_pubsub.publish_personality_room_message(
         personality_id, message.personality_room_id, message_event
@@ -201,7 +289,9 @@ async def create_personality_message(personality_id: UUID) -> dict[str, dict]:
         chat_orchestrator.process_user_message(personality_id, message.id)
     )
 
-    return {"personality_message": message.model_dump()}
+    message_data = message.model_dump()
+    message_data["media_items"] = [item.model_dump() for item in media_items]
+    return {"personality_message": message_data}
 
 
 @blueprint.put("/<uuid:personality_id>/messages/<uuid:message_id>")
