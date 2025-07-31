@@ -1,3 +1,4 @@
+import os
 import re
 from uuid import UUID
 
@@ -30,6 +31,7 @@ from neuron_server.llms.tools import (
 )
 from neuron_server.models import PersonalityModel
 from neuron_server.models.embedding_model import EmbeddingModel
+from neuron_server.models.personality_document_model import PersonalityDocumentModel
 from neuron_server.models.personality_user_model import PersonalityUserModel
 from neuron_server.models.provider_model import ProviderModelModel
 from neuron_server.models.user_model import UserModel
@@ -83,6 +85,11 @@ class PersonalityGenerationResponse(BaseModel):
 class PersonalityUserPayload(BaseModel):
     user_id: str
     role: str = "user"
+
+
+class CreatePersonalityDocument(BaseModel):
+    name: str = Field(description="Name of the document")
+    content: str = Field(description="Text content of the document")
 
 
 class MissingContextError(Exception):
@@ -840,3 +847,201 @@ async def set_default_personality(personality_id: UUID) -> dict[str, dict]:
     )
 
     return {"personality": updated_personality.model_dump()}
+
+
+@blueprint.post("/<uuid:personality_id>/documents")
+@requires_auth
+@requires_csrf
+async def create_personality_document(personality_id: UUID) -> dict[str, list]:
+    """Upload documents to a personality's memory.
+
+    Args:
+        personality_id: The ID of the personality
+
+    Returns:
+        A dictionary with the created documents
+
+    Raises:
+        Forbidden: If the user doesn't have admin access to the personality
+        NotFound: If the personality doesn't exist
+        BadRequest: If the payload is invalid
+    """
+    assert isinstance(request.token, TokenPayload)
+
+    # Check if personality exists
+    personality = await PersonalityModel.get(personality_id=personality_id)
+    if not personality:
+        raise NotFound(f"Personality with id {personality_id} not found")
+
+    # Check if user has admin access to this personality
+    personality_user = await PersonalityUserModel.get(
+        personality_id=personality_id, user_id=request.token.user_id
+    )
+    is_admin = personality_user and personality_user.role == "admin"
+    is_system_admin = "admin" in request.token.roles
+
+    if not is_admin and not is_system_admin:
+        raise Forbidden("Admin access required to upload documents to this personality")
+
+    # Check if this is a multipart/form-data request with files
+    content_type = request.headers.get("Content-Type", "")
+    if "multipart/form-data" in content_type:
+        # Handle file upload
+        files = await request.files
+        documents = []
+
+        # Validate file types
+        valid_extensions = {".txt", ".md", ".markdown"}
+        for _file_key, file in files.items():
+            if not file.filename:
+                continue
+
+            ext = os.path.splitext(file.filename)[1].lower()
+            if ext not in valid_extensions:
+                raise BadRequest(
+                    f"Invalid file type for {file.filename}. "
+                    "Only .txt, .md, and .markdown files are allowed."
+                )
+
+        # Process each uploaded file
+        for _file_key, file in files.items():
+            if not file.filename:
+                continue
+
+            # Read file content
+            file_content = file.read()
+            try:
+                # Try UTF-8 first
+                content = file_content.decode("utf-8")
+            except UnicodeDecodeError:
+                # Fallback to latin-1
+                try:
+                    content = file_content.decode("latin-1")
+                except Exception as e:
+                    raise BadRequest(
+                        f"Unable to read file {file.filename}: {str(e)}"
+                    ) from e
+
+            # Create the document
+            document = await PersonalityDocumentModel.create(
+                PersonalityDocumentModel.CreateParams(
+                    personality_id=personality_id,
+                    user_id=request.token.user_id,
+                    name=file.filename,
+                    content=content,
+                )
+            )
+            documents.append(document.model_dump())
+
+        if not documents:
+            raise BadRequest("No valid files were uploaded")
+
+        return {"personality_documents": documents}
+    # Handle JSON payload (backward compatibility for single document)
+    try:
+        body = await request.get_json()
+        payload = CreatePersonalityDocument(**body)
+    except Exception as e:
+        raise BadRequest(f"Invalid request body: {str(e)}") from e
+
+    # Create the document
+    document = await PersonalityDocumentModel.create(
+        PersonalityDocumentModel.CreateParams(
+            personality_id=personality_id,
+            user_id=request.token.user_id,
+            name=payload.name,
+            content=payload.content,
+        )
+    )
+
+    return {"personality_documents": [document.model_dump()]}
+
+
+@blueprint.get("/<uuid:personality_id>/documents")
+@requires_auth
+async def list_personality_documents(personality_id: UUID) -> dict[str, list]:
+    """List all documents for a personality.
+
+    Args:
+        personality_id: The ID of the personality
+
+    Returns:
+        A dictionary with the list of documents
+
+    Raises:
+        Forbidden: If the user doesn't have access to the personality
+        NotFound: If the personality doesn't exist
+    """
+    assert isinstance(request.token, TokenPayload)
+
+    # Check if personality exists
+    personality = await PersonalityModel.get(personality_id=personality_id)
+    if not personality:
+        raise NotFound(f"Personality with id {personality_id} not found")
+
+    # Check if user has access to this personality
+    personality_user = await PersonalityUserModel.get(
+        personality_id=personality_id, user_id=request.token.user_id
+    )
+    is_system_admin = "admin" in request.token.roles
+
+    if not personality_user and not is_system_admin:
+        raise Forbidden("Access denied to this personality")
+
+    # Get all documents for the personality
+    documents = await PersonalityDocumentModel.list(personality_id=personality_id)
+
+    return {"personality_documents": [doc.model_dump() for doc in documents]}
+
+
+@blueprint.delete("/<uuid:personality_id>/documents/<uuid:document_id>")
+@requires_auth
+@requires_csrf
+async def delete_personality_document(
+    personality_id: UUID, document_id: UUID
+) -> dict[str, str]:
+    """Delete a document from a personality's memory.
+
+    Args:
+        personality_id: The ID of the personality
+        document_id: The ID of the document to delete
+
+    Returns:
+        A success message
+
+    Raises:
+        Forbidden: If the user doesn't have admin access to the personality
+        NotFound: If the personality or document doesn't exist
+    """
+    assert isinstance(request.token, TokenPayload)
+
+    # Check if personality exists
+    personality = await PersonalityModel.get(personality_id=personality_id)
+    if not personality:
+        raise NotFound(f"Personality with id {personality_id} not found")
+
+    # Check if user has admin access to this personality
+    personality_user = await PersonalityUserModel.get(
+        personality_id=personality_id, user_id=request.token.user_id
+    )
+    is_admin = personality_user and personality_user.role == "admin"
+    is_system_admin = "admin" in request.token.roles
+
+    if not is_admin and not is_system_admin:
+        raise Forbidden(
+            "Admin access required to delete documents from this personality"
+        )
+
+    # Check if document exists and belongs to this personality
+    document = await PersonalityDocumentModel.get_by_personality_and_id(
+        personality_id=personality_id, document_id=document_id
+    )
+    if not document:
+        raise NotFound(
+            f"Document with id {document_id} not found for personality {personality_id}"
+        )
+
+    # Delete the document (this will also remove all memory chunks)
+    await PersonalityDocumentModel.delete(document_id=document_id)
+
+    return {"message": "Document deleted successfully"}

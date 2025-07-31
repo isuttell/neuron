@@ -1,6 +1,6 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import { Embedding } from "@/slices/embeddingsSlice";
-import type { Personality, UserWithRole } from "../slices/personalitiesSlice.d";
+import type { Personality, UserWithRole, IncomingPersonalityDocumentsEvent } from "../slices/personalitiesSlice.d";
 import type { PersonalityUser } from "../types/personality";
 import { api } from "@/lib/api";
 import { User } from "@/types/user";
@@ -278,6 +278,39 @@ export const removePersonalityUser = createAsyncThunk(
       // Fetch updated users list
       const response = await api.get<{ users: UserWithRole[] }>(`/personalities/${personalityId}/users`);
       return { personalityId, users: response.users };
+    } catch (error) {
+      if (error instanceof Error) {
+        return thunkAPI.rejectWithValue(error.message);
+      }
+      return thunkAPI.rejectWithValue("An unknown error occurred");
+    }
+  }
+);
+
+export const fetchPersonalityDocuments = createAsyncThunk(
+  "personalities/fetchDocuments",
+  async (personalityId: string, thunkAPI) => {
+    try {
+      const response = await api.get<IncomingPersonalityDocumentsEvent>(`/personalities/${personalityId}/documents`);
+      return { personalityId, ...response };
+    } catch (error) {
+      if (error instanceof Error) {
+        return thunkAPI.rejectWithValue(error.message);
+      }
+      return thunkAPI.rejectWithValue("An unknown error occurred");
+    }
+  }
+);
+
+// Removed in favor of direct API call to avoid Redux serialization warnings
+// The component now calls the API directly and dispatches addPersonalityDocuments
+
+export const deletePersonalityDocument = createAsyncThunk(
+  "personalities/deleteDocument",
+  async ({ personalityId, documentId }: { personalityId: string; documentId: string }, thunkAPI) => {
+    try {
+      await api.delete(`/personalities/${personalityId}/documents/${documentId}`);
+      return { personalityId, documentId };
     } catch (error) {
       if (error instanceof Error) {
         return thunkAPI.rejectWithValue(error.message);
