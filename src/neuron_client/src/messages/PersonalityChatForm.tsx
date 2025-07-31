@@ -18,7 +18,7 @@ interface PersonalityChatFormProps {
   /** The room being chatted in (optional, for room-specific status) */
   room?: PersonalityRoom;
   /** Callback fired when a message should be sent */
-  onSendMessage: (content: string) => void;
+  onSendMessage: (content: string, file?: File | Blob) => void;
   /** Additional CSS classes to apply to the underlying MessageForm */
   className?: string;
   /** Message being edited (null if not editing) */
@@ -70,19 +70,13 @@ export default function PersonalityChatForm({
    * Handles message submission
    *
    * @param value - The message text content
-   * @param file - Optional file attachment (not supported in personality chat yet)
+   * @param file - Optional file attachment
    */
   const handleSubmit = (value: string, file?: File | Blob) => {
-    if (!value.trim()) return;
-
-    // File attachments not supported in personality chat yet
-    if (file) {
-      toast.error("File attachments are not supported in personality chat yet");
-      return;
-    }
+    if (!value.trim() && !file) return;
 
     try {
-      onSendMessage(value.trim());
+      onSendMessage(value.trim(), file);
     } catch (error) {
       toast.error("Failed to send message", {
         description:
@@ -125,8 +119,8 @@ export default function PersonalityChatForm({
         placeholder={isEditMode ? "Edit your message..." : "Type your message..."}
         initialValue={editingMessage?.content || ""}
         editMode={isEditMode}
-        showUpload={false}
-        showRecord={false}
+        showUpload={true}
+        showRecord={true}
         showPrompts={false}
       >
               {/* Subscription status indicator */}

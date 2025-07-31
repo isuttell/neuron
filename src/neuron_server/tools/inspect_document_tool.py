@@ -55,6 +55,14 @@ class InspectDocumentToolArgs(BaseModel):
             "Use this when you want to remember the document for future conversations."
         ),
     )
+    display_name: str | None = Field(
+        None,
+        description=(
+            "Optional display name for the document. If provided, this will be used "
+            "instead of the file hash for the artifact name. Use this to "
+            "provide a more user-friendly name for the document."
+        ),
+    )
 
 
 class InspectDocumentTool(BaseTool):
@@ -86,8 +94,9 @@ youtube
         config: RunnableConfig,
         mode: str | None = None,
         memorize: bool = False,
+        display_name: str | None = None,
     ) -> tuple[str, list[dict]]:
-        return asyncio.run(self._arun(url, config, mode, memorize))
+        return asyncio.run(self._arun(url, config, mode, memorize, display_name))
 
     async def _arun(
         self,
@@ -95,6 +104,7 @@ youtube
         config: RunnableConfig,
         mode: str | None = None,
         memorize: bool = False,
+        display_name: str | None = None,
     ) -> tuple[str, list[dict]]:
         try:
             # Record the start time for performance measurement
@@ -120,6 +130,9 @@ youtube
 
             results = []
             for index, doc in enumerate(loaded_docs):
+                # Add display_name to metadata if provided
+                if display_name:
+                    doc.metadata["display_name"] = display_name
                 metadata_str = json.dumps(doc.metadata or {}, indent=2)
                 results.append(
                     f"""\
@@ -146,7 +159,9 @@ youtube
                         ToolMediaItem(
                             id=str(uuid4()),
                             url=doc.metadata.get("source", url),
-                            caption=doc.metadata.get("title", "Document"),
+                            caption=(
+                                display_name or doc.metadata.get("title", "Document")
+                            ),
                             description=doc.page_content.strip(),
                             metadata=ToolArtifactMetadata(
                                 type=doc.metadata.get("type", None)

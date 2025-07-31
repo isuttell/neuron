@@ -86,6 +86,7 @@ export default function Index() {
                 roomId: personality_room.id,
                 content: prompt,
                 userId: currentUser.sub,
+                file,
               })
             );
           }
