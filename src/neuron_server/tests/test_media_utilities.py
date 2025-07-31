@@ -1,6 +1,5 @@
 """Tests for media utility functions."""
 
-
 from neuron_server.util.media_utilities import get_media_type_from_extension
 
 
@@ -36,9 +35,23 @@ class TestGetMediaTypeFromExtension:
     def test_code_extensions(self):
         """Test code file extensions return 'code' type."""
         code_extensions = [
-            ".py", ".js", ".ts", ".jsx", ".tsx", ".java", ".cpp", ".c",
-            ".cs", ".go", ".rb", ".php", ".swift", ".kotlin", ".scala",
-            ".rust", ".rs"
+            ".py",
+            ".js",
+            ".ts",
+            ".jsx",
+            ".tsx",
+            ".java",
+            ".cpp",
+            ".c",
+            ".cs",
+            ".go",
+            ".rb",
+            ".php",
+            ".swift",
+            ".kotlin",
+            ".scala",
+            ".rust",
+            ".rs",
         ]
         for ext in code_extensions:
             assert get_media_type_from_extension(ext) == "code"
@@ -52,8 +65,16 @@ class TestGetMediaTypeFromExtension:
     def test_data_extensions(self):
         """Test data file extensions return 'data' type."""
         data_extensions = [
-            ".txt", ".json", ".csv", ".xml", ".yaml", ".yml",
-            ".toml", ".ini", ".log", ".pdf"
+            ".txt",
+            ".json",
+            ".csv",
+            ".xml",
+            ".yaml",
+            ".yml",
+            ".toml",
+            ".ini",
+            ".log",
+            ".pdf",
         ]
         for ext in data_extensions:
             assert get_media_type_from_extension(ext) == "data"

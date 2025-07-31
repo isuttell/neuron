@@ -53,6 +53,9 @@ chat_orchestrator = PersonalityChatOrchestrator()
 # Initialize OpenAI client for audio transcription
 client = AsyncOpenAI(api_key=neuron_config.openai_api_key)
 
+# Constants
+TRANSCRIPTION_TITLE_LENGTH = 50
+
 
 class CreatePersonalityMessage(BaseModel):
     content: str = Field(description="The message content")
@@ -166,19 +169,18 @@ async def create_personality_message(personality_id: UUID) -> dict[str, dict]:  
     # Quick responses will be handled during analysis
 
     # Check if this is a multipart/form-data request with files
-    content_type = request.headers.get('Content-Type', '')
-    if 'multipart/form-data' in content_type:
+    content_type = request.headers.get("Content-Type", "")
+    if "multipart/form-data" in content_type:
         # Handle file upload
         files = await request.files
         form = await request.form
-        content = form.get('content', '')
-        personality_room_id = form.get('personality_room_id')
+        content = form.get("content", "")
+        personality_room_id = form.get("personality_room_id")
         if not personality_room_id:
             raise BadRequest("personality_room_id is required")
 
         payload = CreatePersonalityMessage(
-            content=content,
-            personality_room_id=UUID(personality_room_id)
+            content=content, personality_room_id=UUID(personality_room_id)
         )
     else:
         # Handle regular JSON request
@@ -200,12 +202,14 @@ async def create_personality_message(personality_id: UUID) -> dict[str, dict]:  
     media_items = []
     message_content = payload.content
 
-    if files and 'file' in files:
-        file = files['file']
+    if files and "file" in files:
+        file = files["file"]
         original_filename = file.filename  # Capture original filename before processing
         filename, ext, url = await process_uploaded_file(file)
 
         # Handle audio transcription for .webm files
+        transcription = None
+        title = None
         if ext == ".webm":
             # Transcribe audio file
             with open(filename, "rb") as audio:
@@ -215,13 +219,12 @@ async def create_personality_message(personality_id: UUID) -> dict[str, dict]:  
                     prompt="Umm, hello, welcome to my lecture.",
                     response_format="text",
                 )
-            # Use transcription as message content, or append to existing content
-            if message_content:
-                message_content = (
-                    f"{message_content}\n\n[Audio transcription]: {transcription}"
-                )
-            else:
-                message_content = transcription
+
+            # Extract title from first N chars of transcription
+            title = transcription[:TRANSCRIPTION_TITLE_LENGTH].strip()
+            if len(transcription) > TRANSCRIPTION_TITLE_LENGTH:
+                # Add ellipsis if truncated
+                title = title.rstrip() + "..."
 
         # Determine media type from extension
         media_type = get_media_type_from_extension(ext)
@@ -229,8 +232,17 @@ async def create_personality_message(personality_id: UUID) -> dict[str, dict]:  
         # Extract excerpt for text-based files
         description = ""
         text_extensions = [
-            ".md", ".markdown", ".txt", ".csv", ".json",
-            ".xml", ".yaml", ".yml", ".toml", ".ini", ".log"
+            ".md",
+            ".markdown",
+            ".txt",
+            ".csv",
+            ".json",
+            ".xml",
+            ".yaml",
+            ".yml",
+            ".toml",
+            ".ini",
+            ".log",
         ]
         if ext in text_extensions:
             description = await extract_text_file_excerpt(filename)
@@ -245,9 +257,21 @@ async def create_personality_message(personality_id: UUID) -> dict[str, dict]:  
             thread_id=None,  # personality messages don't have threads
         )
         media_item = await MediaItemModel.create(params=media_params)
+
+        # For audio files, update with transcription data
+        if transcription is not None:
+            update_params = MediaItemModel.UpdateParams(
+                media_id=media_item.id,
+                name=title,  # First 50 chars of transcription
+                description=transcription,  # Full transcription text
+            )
+            updated_media_item = await MediaItemModel.update(params=update_params)
+            if updated_media_item:
+                media_item = updated_media_item
+
         media_items.append(media_item)
 
-    # Create the message with the content (possibly including transcription)
+    # Create the message with the content
     create_params = PersonalityMessageModel.CreateParams(
         personality_id=personality_id,
         personality_room_id=payload.personality_room_id,

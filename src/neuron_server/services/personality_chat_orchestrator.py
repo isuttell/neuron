@@ -628,13 +628,22 @@ AGENT ACTION: {action}"""
 
                 # Define text file extensions
                 text_extensions = [
-                    ".md", ".markdown", ".txt", ".csv", ".json",
-                    ".xml", ".yaml", ".yml", ".toml", ".ini", ".log"
+                    ".md",
+                    ".markdown",
+                    ".txt",
+                    ".csv",
+                    ".json",
+                    ".xml",
+                    ".yaml",
+                    ".yml",
+                    ".toml",
+                    ".ini",
+                    ".log",
                 ]
 
                 for media_item in media_items:
                     # Extract extension from URL or name
-                    filename = media_item.name or media_item.url.split('/')[-1]
+                    filename = media_item.name or media_item.url.split("/")[-1]
                     ext = os.path.splitext(filename)[1].lower()
 
                     if ext in text_extensions:
@@ -645,7 +654,7 @@ AGENT ACTION: {action}"""
 
                         # Extract file path from URL
                         # URL format: {static_content_url}/user/{hash_filename}
-                        hash_filename = media_item.url.split('/')[-1]
+                        hash_filename = media_item.url.split("/")[-1]
                         file_path = os.path.join(
                             neuron_config.static_folder, "user", hash_filename
                         )
