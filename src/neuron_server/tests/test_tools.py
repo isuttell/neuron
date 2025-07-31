@@ -24,6 +24,7 @@ class TestTools:
             "nasa",
             "charts",
             "reasoning",
+            "finance",
             "kepler",
             "graph",
             "inspect",

@@ -82,6 +82,34 @@ def count_tokens(text: str) -> int:
     return len(encoder.encode(text))
 
 
+def truncate_response(text: str, max_tokens: int = 20000) -> str:
+    """Truncate response if it exceeds token limit.
+
+    Args:
+        text: The text to potentially truncate
+        max_tokens: Maximum token limit (default: 20000)
+
+    Returns:
+        Original text if under limit, or truncated text with truncation message
+    """
+    token_count = count_tokens(text)
+
+    if token_count <= max_tokens:
+        return text
+
+    # Estimate characters per token (rough approximation)
+    chars_per_token = len(text) / token_count
+    max_chars = int(max_tokens * chars_per_token * 0.9)  # 90% safety margin
+
+    truncated = text[:max_chars]
+    truncation_msg = (
+        f"\n\n[RESPONSE TRUNCATED: Original response was {token_count} tokens, "
+        f"truncated to stay under {max_tokens} token limit]"
+    )
+
+    return truncated + truncation_msg
+
+
 async def load_youtube_transcript(
     url: str,
     metadata: dict[str, Any] | None = None,

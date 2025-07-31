@@ -3,6 +3,7 @@ export const ToolSetLabels: Record<string, string> = {
   audio: "Audio Generation",
   code_interpreter: "Code Interpreter",
   dice: "Dice",
+  finance: "Finance",
   glados: "GLaDOS",
   graph: "Knowledge Graph",
   hd2: "Hell Divers 2",

@@ -3,7 +3,6 @@ import ReactMarkdown, { Components } from "react-markdown";
 import type { Element } from "hast";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
-import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
@@ -44,7 +43,7 @@ const Content: React.FC<ContentProps> = ({
       className={cn("flex-1 content", className)}
       key={content}
       children={content}
-      remarkPlugins={[remarkGfm, remarkMath]}
+      remarkPlugins={[remarkGfm]}
       rehypePlugins={[rehypeRaw, rehypeKatex]}
       components={
         {
