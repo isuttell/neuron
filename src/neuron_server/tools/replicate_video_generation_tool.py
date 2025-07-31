@@ -14,6 +14,7 @@ from langchain_core.runnables import RunnableConfig
 from pydantic import BaseModel, Field
 
 from neuron_server.config import config as neuron_config
+from neuron_server.controllers.csrf import create_session_cookie
 from neuron_server.logger import logger
 from neuron_server.util.slug import safe_filename
 
@@ -115,14 +116,9 @@ complete.
         try:
             if image_url:
                 # Generate proper signed session cookie for internal tool access
-                cookies = None
-                if neuron_config.static_require_auth:
-                    from neuron_server.controllers.csrf import create_session_cookie
 
-                    session_cookie, _ = create_session_cookie(
-                        "system", include_csrf=False
-                    )
-                    cookies = {"neuron_session": session_cookie}
+                session_cookie, _ = create_session_cookie("system", include_csrf=True)
+                cookies = {"neuron_session": session_cookie}
 
                 async with (
                     aiohttp.ClientSession(cookies=cookies) as session,

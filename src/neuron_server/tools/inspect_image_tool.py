@@ -13,7 +13,7 @@ from langchain_core.runnables import RunnableConfig
 from PIL import Image
 from pydantic import BaseModel, Field
 
-from neuron_server.config import config
+from neuron_server.controllers.csrf import create_session_cookie
 from neuron_server.logger import logger
 from neuron_server.util.image_utilities import create_image_url
 
@@ -32,12 +32,8 @@ class InspectImageToolArgs(BaseModel):
 
 async def get_image_bytes(image_url: str) -> bytes:
     # Generate proper signed session cookie for internal tool access
-    cookies = None
-    if config.static_require_auth:
-        from neuron_server.controllers.csrf import create_session_cookie
-
-        session_cookie, _ = create_session_cookie("system", include_csrf=False)
-        cookies = {"neuron_session": session_cookie}
+    session_cookie, _ = create_session_cookie("system", include_csrf=True)
+    cookies = {"neuron_session": session_cookie}
 
     async with (
         aiohttp.ClientSession(cookies=cookies) as session,

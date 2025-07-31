@@ -405,8 +405,22 @@ async def internal_error(error: Exception) -> tuple[dict[str, str], int]:
 
 
 @app.errorhandler(HTTPException)
-async def http_error(error: HTTPException) -> tuple[dict[str, str], int]:
+async def http_error(error: HTTPException) -> tuple[dict[str, str | bool], int]:
+    from neuron_server.controllers.csrf import CSRFError
+
     logger.error(error, exc_info=True)
+
+    # Handle CSRF errors with structured error codes
+    if isinstance(error, CSRFError):
+        return {
+            "error": error.name,
+            "message": error.description,
+            "error_code": error.error_code,
+            "error_type": error.error_type,
+            "retry_possible": error.retry_possible,
+        }, error.code
+
+    # Handle other HTTP exceptions
     return {"error": error.name, "message": error.description}, error.code
 
 

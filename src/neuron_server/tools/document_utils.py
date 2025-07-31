@@ -11,6 +11,7 @@ from youtube_transcript_api import YouTubeTranscriptApi
 from youtube_transcript_api.formatters import WebVTTFormatter
 
 from neuron_server.config import config as neuron_config
+from neuron_server.controllers.csrf import create_session_cookie
 from neuron_server.logger import logger
 
 
@@ -152,12 +153,9 @@ async def load_pdf_from_url(
             temp_file = tf.name
 
             # Generate proper signed session cookie for internal tool access
-            cookies = None
-            if neuron_config.static_require_auth:
-                from neuron_server.controllers.csrf import create_session_cookie
 
-                session_cookie, _ = create_session_cookie("system", include_csrf=False)
-                cookies = {"neuron_session": session_cookie}
+            session_cookie, _ = create_session_cookie("system", include_csrf=True)
+            cookies = {"neuron_session": session_cookie}
 
             async with aiohttp.ClientSession(cookies=cookies) as session:
                 try:
@@ -210,12 +208,9 @@ async def load_text_from_url(
     """
     try:
         # Generate proper signed session cookie for internal tool access
-        cookies = None
-        if neuron_config.static_require_auth:
-            from neuron_server.controllers.csrf import create_session_cookie
 
-            session_cookie, _ = create_session_cookie("system", include_csrf=False)
-            cookies = {"neuron_session": session_cookie}
+        session_cookie, _ = create_session_cookie("system", include_csrf=True)
+        cookies = {"neuron_session": session_cookie}
 
         async with aiohttp.ClientSession(cookies=cookies) as session:
             async with session.get(url) as response:

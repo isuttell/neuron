@@ -11,6 +11,7 @@ from langchain_core.runnables import RunnableConfig
 from pydantic import BaseModel, Field
 
 from neuron_server.config import config as neuron_config
+from neuron_server.controllers.csrf import create_session_cookie
 from neuron_server.logger import logger
 from neuron_server.util.slug import safe_filename
 from neuron_server.util.subprocess_runner import run_subprocess
@@ -67,18 +68,14 @@ output filename to the user as they can't directly access it.
     response_format: str = "content_and_artifact"
 
     @staticmethod
-    def get_auth_cookies() -> dict[str, str] | None:
+    def get_auth_cookies() -> dict[str, str]:
         """Get authentication cookies for requests.
 
         Returns:
-            Optional dictionary of cookies for authentication
+            Dictionary of cookies for authentication
         """
-        if neuron_config.static_require_auth:
-            from neuron_server.controllers.csrf import create_session_cookie
-
-            session_cookie, _ = create_session_cookie("system", include_csrf=False)
-            return {"neuron_session": session_cookie}
-        return None
+        session_cookie, _ = create_session_cookie("system", include_csrf=True)
+        return {"neuron_session": session_cookie}
 
     @staticmethod
     async def download_file_with_auth(
