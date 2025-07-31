@@ -164,7 +164,6 @@ class AgentOrchestrator:
             Tuple of (LLM instance, graph workflow)
         """
         llm: LLM = await ProviderModelModel.get_active_llm()
-        logger.debug(f"provider_model_id={llm.provider_model_id}")
         tools = await get_tools(personality.tool_set) if personality.tool_set else None
         graph = llm.create_workflow(tools)
         graph.checkpointer = AsyncPostgresSaver(pool)
@@ -414,14 +413,7 @@ class AgentOrchestrator:
             thread = await self._validate_and_prepare_thread(config)
 
             # Register callbacks if provided
-            logger.debug(
-                f"Callbacks provided: {callbacks is not None}, "
-                f"on_status_change: {callbacks.on_status_change if callbacks else None}"
-            )
             if callbacks and callbacks.on_status_change:
-                logger.debug(
-                    f"Registering status callback for thread {config['thread_id']}"
-                )
                 self.status_manager.register_status_callback(
                     config["thread_id"], callbacks.on_status_change
                 )

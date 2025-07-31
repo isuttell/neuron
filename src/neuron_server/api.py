@@ -182,7 +182,7 @@ async def get_static(path: str) -> Response:
                 create_thumbnails(original_file)
                 break
     if not os.path.exists(os.path.join(config.static_folder, path)):
-        logger.warning(f"File not found: {path}")
+        logger.debug(f"File not found: {path}")
         return Response("File not found", 404)
     return await send_from_directory(config.static_folder, path)
 

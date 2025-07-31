@@ -60,6 +60,11 @@ class SetThreadMemoryTool(BaseTool):
 
             # Update the memory
             await ThreadModel.set(thread_id, "memory", memory)
+            logger.debug(
+                "Updated thread memory for thread_id=%s (length: %d characters)",
+                thread_id,
+                len(memory),
+            )
 
             # Return success message with previous content
             if previous_memory:

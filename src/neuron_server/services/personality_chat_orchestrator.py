@@ -150,7 +150,6 @@ class PersonalityChatOrchestrator:
             await secure_pubsub.publish_personality_room_message(
                 personality_id, room_id, status_event
             )
-            logger.debug(f"Broadcast room {room_id} status: {status}")
         except Exception as e:
             logger.error(f"Error broadcasting room status update: {e}", exc_info=True)
 
@@ -542,10 +541,6 @@ AGENT ACTION: {action}"""
             await self.broadcast_personality_room_status_update(
                 personality_id, room_id, custom_status
             )
-            logger.debug(
-                f"Updated room {room_id} status to: {custom_status} "
-                f"(triggered by user {user_id})"
-            )
 
         except Exception as e:
             logger.error(f"Error in update_status_with_generation: {e}", exc_info=True)
@@ -854,9 +849,7 @@ AGENT ACTION: {action}"""
                 and analysis.confidence >= RESPONSE_CONFIDENCE_THRESHOLD
                 and not analysis.should_use_quick_response
             ):
-                logger.debug(
-                    f"Generating full response for message to {personality.name}"
-                )
+                pass  # Generating full response
 
                 # Get all users who have access to this personality
                 users = await self.get_personality_users_dict(personality_id)

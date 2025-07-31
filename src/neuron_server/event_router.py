@@ -5,7 +5,6 @@ from typing import Any, Literal, Self
 
 from pydantic import BaseModel, Field
 
-from neuron_server.logger import logger
 from neuron_server.websocket_session_manager import session_manager
 
 
@@ -60,8 +59,6 @@ class EventRouter:
             session = await session_manager.get_session(session_id)
 
         model, func = self.routes[event_type]
-        user_id = session.user_id if session else "unknown"
-        logger.debug(f"incoming={event_type} from user={user_id}")
 
         # Pass session context to the handler
         if session:

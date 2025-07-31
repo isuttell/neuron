@@ -195,10 +195,6 @@ class SecurePubSub:
 
         # Send to authorized room members only
         await self.publish_to_users(room_authorized_users, event)
-        logger.debug(
-            f"Published personality room message to {len(room_authorized_users)} "
-            f"users in room {room_id}"
-        )
 
     async def publish_error_to_user(self, user_id: str, error_event: BaseModel) -> None:
         """Publish an error event to a specific user."""

@@ -404,12 +404,6 @@ async def ajoin_personality_room(
         return
 
     # Join the specific room
-    # Debug: Check room state before join
-    current_members = await room_manager.get_room_members(
-        "personality_room", str(room_id)
-    )
-    logger.debug(f"Current members in room {room_id} before join: {current_members}")
-
     joined = await room_manager.join_room(
         "personality_room", str(room_id), user_id, nickname
     )
