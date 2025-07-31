@@ -126,6 +126,10 @@ class Config(BaseModel):
         default=os.environ.get("ASTROSPHERIC_API_KEY", ""),
         description="Astrospheric API key",
     )
+    alphavantage_api_key: str = Field(
+        default=os.environ.get("ALPHAVANTAGE_API_KEY", ""),
+        description="Alpha Vantage API key",
+    )
     log_level: str = Field(
         default=os.environ.get("LOG_LEVEL", "DEBUG").strip(), description="Log level"
     )

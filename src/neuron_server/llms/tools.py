@@ -1,6 +1,7 @@
 from langchain.tools import BaseTool
 
 from neuron_server.config import config
+from neuron_server.tools.alphavantage_tool import AlphaVantageTool
 from neuron_server.tools.app_image_tool import AppImageTool
 from neuron_server.tools.arxiv_recall_tool import ArxivRecallTool
 from neuron_server.tools.arxiv_search_tool import ArxivSearchTool
@@ -104,6 +105,9 @@ tool_sets: dict[str, list[BaseTool]] = {
     "charts": [],
     "reasoning": [
         DeepSeekReasoningTool(),
+    ],
+    "finance": [
+        AlphaVantageTool(),
     ],
     "kepler": [
         Automatic1111Tool(
