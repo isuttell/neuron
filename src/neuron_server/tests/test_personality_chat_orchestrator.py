@@ -212,6 +212,7 @@ class TestPersonalityChatOrchestrator:
         user_message.id = uuid4()
         user_message.user_id = mock_user.id
         user_message.content = "Hello bot"
+        user_message.thread_id = None
         user_message.created_at = MagicMock()
         user_message.created_at.isoformat.return_value = "2023-01-01T12:00:00"
 
@@ -220,6 +221,7 @@ class TestPersonalityChatOrchestrator:
         ai_message.id = uuid4()
         ai_message.user_id = None
         ai_message.content = "Hello user"
+        ai_message.thread_id = None
         ai_message.created_at = MagicMock()
         ai_message.created_at.isoformat.return_value = "2023-01-01T12:01:00"
 
@@ -246,6 +248,52 @@ class TestPersonalityChatOrchestrator:
         assert "</content>" in result
 
     @pytest.mark.asyncio
+    async def test_convert_to_chat_history_with_thread_id(
+        self,
+        orchestrator: PersonalityChatOrchestrator,
+        mock_personality: PersonalityModel,
+        mock_user: UserModel,
+        mock_users_dict: dict[str, UserModel],
+    ) -> None:
+        """Test converting messages with thread_id to chat history XML."""
+        test_thread_id = uuid4()
+
+        # Create user message with thread_id
+        user_message = MagicMock(spec=PersonalityMessageModel)
+        user_message.id = uuid4()
+        user_message.user_id = mock_user.id
+        user_message.content = "Continue from where we left off"
+        user_message.thread_id = test_thread_id
+        user_message.created_at = MagicMock()
+        user_message.created_at.isoformat.return_value = "2023-01-01T12:00:00"
+
+        # Create AI message with same thread_id
+        ai_message = MagicMock(spec=PersonalityMessageModel)
+        ai_message.id = uuid4()
+        ai_message.user_id = None
+        ai_message.content = "Sure, let's continue"
+        ai_message.thread_id = test_thread_id
+        ai_message.created_at = MagicMock()
+        ai_message.created_at.isoformat.return_value = "2023-01-01T12:01:00"
+
+        messages = [user_message, ai_message]
+
+        # Mock the media item fetch to return empty lists
+        with patch(
+            "neuron_server.models.personality_message_media_item_model.PersonalityMessageMediaItemModel.get_media_for_message",
+            return_value=[],
+        ):
+            result = await orchestrator.convert_to_chat_history(
+                messages, mock_personality, mock_users_dict
+            )
+
+        assert "<chat_history>" in result
+        assert "Continue from where we left off" in result
+        assert "Sure, let's continue" in result
+        # Check that thread_id is included as attribute
+        assert f'thread_id="{test_thread_id}"' in result
+
+    @pytest.mark.asyncio
     async def test_convert_to_chat_history_with_media_items(
         self,
         orchestrator: PersonalityChatOrchestrator,
@@ -259,6 +307,7 @@ class TestPersonalityChatOrchestrator:
         message_with_media.id = uuid4()
         message_with_media.user_id = mock_user.id
         message_with_media.content = "Check out this image!"
+        message_with_media.thread_id = None
         message_with_media.created_at = MagicMock()
         message_with_media.created_at.isoformat.return_value = "2023-01-01T12:00:00"
 
@@ -314,6 +363,7 @@ class TestPersonalityChatOrchestrator:
         message_with_media.id = uuid4()
         message_with_media.user_id = mock_user.id
         message_with_media.content = "Check out this document!"
+        message_with_media.thread_id = None
         message_with_media.created_at = MagicMock()
         message_with_media.created_at.isoformat.return_value = "2023-01-01T12:00:00"
 

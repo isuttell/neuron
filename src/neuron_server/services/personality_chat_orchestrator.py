@@ -78,6 +78,14 @@ class PersonalityDirectedAnalysis(BaseModel):
         ),
         default=False,
     )
+    extracted_thread_id: UUID | None = Field(
+        description=(
+            "Thread ID extracted from conversation history if this message continues "
+            "an existing thread conversation (None if new conversation or no thread "
+            "found)"
+        ),
+        default=None,
+    )
 
 
 class PersonalityStatusMessage(BaseModel):
@@ -310,6 +318,8 @@ class PersonalityChatOrchestrator:
             message_elem.set("username", username)
             message_elem.set("timestamp", timestamp)
             message_elem.set("type", msg_type)
+            if message.thread_id:
+                message_elem.set("thread_id", str(message.thread_id))
 
             # Add content as a sub-element to accommodate media items
             content_elem = etree.SubElement(message_elem, "content")
@@ -417,6 +427,21 @@ ANALYSIS REQUIREMENTS:
 2. Provide confidence score (0.0-1.0)
 3. Explain your reasoning
 4. Analyze if the room name should be updated based on conversation context
+5. Analyze if this message continues an existing thread conversation
+
+THREAD ANALYSIS:
+- Look for thread_id attributes in the chat history messages
+- If you find messages with the same thread_id that seem to be part of an ongoing \
+conversation:
+  * The current message appears to continue that same topic/context
+  * There's clear conversational continuity or reference to previous thread content
+  * Set extracted_thread_id to that thread UUID
+- Only extract thread_id if there's clear evidence of conversation continuation
+- Leave extracted_thread_id as null for:
+  * New conversation topics
+  * Unrelated messages
+  * Greetings or casual chat
+  * When no clear thread pattern is found
 
 {status_section}
 
@@ -581,6 +606,7 @@ AGENT ACTION: {action}"""
         chat_history: str,
         message: PersonalityMessageModel,
         username: str,
+        existing_thread_id: UUID | None = None,
     ) -> tuple[str, list[ToolMediaArtifact], UUID | None]:
         """Generate a personality response using the agent system.
 
@@ -591,24 +617,44 @@ AGENT ACTION: {action}"""
             chat_history: Formatted chat history string
             message: The PersonalityMessageModel containing the user's message
             username: The username of the user who sent the message
+            existing_thread_id: Optional existing thread ID to reuse instead of \
+creating new
 
         Returns:
             Tuple of (response text, list of media artifacts, thread_id).
             Response text is empty string if failed.
             Media artifacts list contains ToolMediaArtifact objects from agent.
-            Thread ID is the UUID of the thread created for this agent execution.
+            Thread ID is the UUID of the thread used for this agent execution.
         """
         try:
-            # Create a thread for this agent execution
-            thread_params = ThreadModel.CreateParams(
-                personality_id=personality_id,
-                user_id=message.user_id,
-                name=f"Personality Chat - {personality.name[:30]}",  # Limit name length
-                context="",
-                memory="",
-                status="idle",
-            )
-            thread = await ThreadModel.create(params=thread_params)
+            # Use existing thread if provided, otherwise create a new one
+            if existing_thread_id:
+                thread = await ThreadModel.get(existing_thread_id)
+                if not thread:
+                    # Fallback to creating new thread if existing one not found
+                    logger.warning(
+                        f"Thread {existing_thread_id} not found, creating new thread"
+                    )
+                    thread_params = ThreadModel.CreateParams(
+                        personality_id=personality_id,
+                        user_id=message.user_id,
+                        name=f"Personality Chat - {personality.name[:30]}",
+                        context="",
+                        memory="",
+                        status="idle",
+                    )
+                    thread = await ThreadModel.create(params=thread_params)
+            else:
+                # Create a new thread for this agent execution
+                thread_params = ThreadModel.CreateParams(
+                    personality_id=personality_id,
+                    user_id=message.user_id,
+                    name=f"Personality Chat - {personality.name[:30]}",
+                    context="",
+                    memory="",
+                    status="idle",
+                )
+                thread = await ThreadModel.create(params=thread_params)
 
             # Fetch media items for this message
             media_items = await PersonalityMessageMediaItemModel.get_media_for_message(
@@ -965,6 +1011,7 @@ AGENT ACTION: {action}"""
                     chat_history=chat_history,
                     message=message,
                     username=username,
+                    existing_thread_id=analysis.extracted_thread_id,
                 )
 
                 # Create and broadcast the response
