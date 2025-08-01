@@ -120,7 +120,9 @@ const Content: React.FC<ContentProps> = ({
                     <span
                       onClick={() => onPromptClick(String(children))}
                       className={cn(
-                        `cursor-pointer border-b ${promptColor} ${promptHoverColor} transition-colors duration-300 ease-in-out`,
+                        "cursor-pointer border-b transition-colors duration-300 ease-in-out",
+                        promptColor,
+                        promptHoverColor,
                         className
                       )}
                     >
