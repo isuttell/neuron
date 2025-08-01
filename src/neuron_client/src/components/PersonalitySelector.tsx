@@ -34,11 +34,14 @@ export default function PersonalitySelector() {
         <SelectValue placeholder="Select personality" />
       </SelectTrigger>
       <SelectContent>
-        {personalities.map((personality) => (
-          <SelectItem key={personality.id} value={personality.id}>
-            {personality.name}
-          </SelectItem>
-        ))}
+        {personalities
+          .slice()
+          .sort((a, b) => a.name.localeCompare(b.name))
+          .map((personality) => (
+            <SelectItem key={personality.id} value={personality.id}>
+              {personality.name}
+            </SelectItem>
+          ))}
       </SelectContent>
     </Select>
   );
