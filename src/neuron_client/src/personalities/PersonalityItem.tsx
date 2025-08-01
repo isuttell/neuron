@@ -230,9 +230,9 @@ const PersonalityItem: React.FC<PersonalityItemProps> = ({
   const handleUpdateLogo = async () => {
     setIsUpdatingLogo(true);
     try {
-      await dispatch(updatePersonalityLogo(personality.id)).unwrap();
+      const result = await dispatch(updatePersonalityLogo(personality.id)).unwrap();
       toast("Logo updated", {
-        description: "Logo updated successfully",
+        description: result.response || "Logo updated successfully",
       });
     } catch (error) {
       toast.error("Failed to update logo", {
