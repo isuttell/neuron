@@ -19,10 +19,10 @@ class TestReplicateImageGenerationTool:
         args = ReplicateImageGenerationToolArgs(
             name="Test Image",
             prompt="A beautiful sunset",
-            model="google/imagen-4",
+            model="google/imagen-4-ultra",
             aspect_ratio="16:9",
         )
-        assert args.model == "google/imagen-4"
+        assert args.model == "google/imagen-4-ultra"
         assert args.aspect_ratio == "16:9"
 
     def test_prepare_input_args_google_imagen(self) -> None:

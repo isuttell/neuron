@@ -127,11 +127,10 @@ Prompt Tips:
         Literal[
             "isuttell/flux-lora-isaac:c2c37f42d4f435bd70a75479e241890f07459b0b1828ede06a6030b21768ad2f",
             "black-forest-labs/flux-1.1-pro-ultra",
-            "black-forest-labs/flux-1.1-pro",
-            "recraft-ai/recraft-20b",
+            "recraft-ai/recraft-v3-svg",
             "recraft-ai/recraft-v3",
-            "ideogram-ai/ideogram-v2",
-            "google/imagen-4",
+            "ideogram-ai/ideogram-v3-quality",
+            "google/imagen-4-ultra",
         ]
         | None
     ) = Field(
@@ -140,12 +139,12 @@ Prompt Tips:
             "model by default for the highest quality and resolution image, "
             "flux-1.1-pro produces the same quality but at a lower resolution and "
             "faster, and flux-lora-isaac when you need to generate images of Isaac. "
-            "Use recraft-20b when trying to replicate a specific style. ideogram-v2 "
+            "Use recraft-v3 when trying to replicate a specific style. ideogram-v3 "
             "excels at creating captivating designs, innovative logos and posters "
-            "with unique text rendering capabilities. Use ideogram-v2 when you need "
-            "to create a logo or poster or need to generate clean looking text. "
-            "google/imagen-4 excels at fine detail rendering, typography, and both "
-            "photorealistic and abstract styles with up to 2K resolution."
+            "with unique text rendering capabilities. Use ideogram-v3 or its svg "
+            "variant when you need to create a logo or poster or need to generate "
+            "clean looking text. google/imagen-4 excels at fine detail rendering, "
+            "typography, and both photorealistic and abstract styles."
         ),
         default="black-forest-labs/flux-1.1-pro-ultra",
     )
