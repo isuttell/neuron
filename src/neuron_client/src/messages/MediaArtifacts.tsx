@@ -37,7 +37,7 @@ const MediaArtifacts: React.FC<MediaArtifactsProps> = ({
 
     if (mediaArtifacts.length > 0) {
       return (
-        <div className={`flex flex-wrap gap-2 items-start ${className}`}>
+        <div className={`flex flex-wrap gap-2 items-start min-w-0 w-full ${className}`}>
           {mediaArtifacts.flatMap((artifactGroup) =>
             (artifactGroup.items || []).map((item) => {
               switch (artifactGroup.media_type) {

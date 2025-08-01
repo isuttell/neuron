@@ -110,7 +110,7 @@ export default function PersonalityChatForm({
       {/* Personality status indicator */}
 
       <MessageForm
-        className={cn("bg-background rounded-md drop-shadow-md p-2", className)}
+        className={cn("bg-background rounded-md drop-shadow-md py-2 pl-10 pr-4", className)}
         onSubmit={handleSubmit}
         onFileRemove={handleFileRemove}
         onCancelEdit={onCancelEdit}
@@ -129,7 +129,7 @@ export default function PersonalityChatForm({
           <Spinner size={16} className="text-muted-foreground" />
         </div>
       )}
-        {isPersonalityBusy && (
+        {isSubscribed && isPersonalityBusy && (
           <PersonalityStatusMessage personality={personality} room={room} />
         )}
       </MessageForm>
