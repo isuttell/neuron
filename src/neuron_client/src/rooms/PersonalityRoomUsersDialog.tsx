@@ -9,7 +9,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -23,21 +22,23 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import UserSelect from "@/components/UserSelect";
 import { PersonalityRoomUser } from "@/types/personalityRoom";
 import { User } from "@/types/user";
 import { Trash2, Users } from "lucide-react";
-import { FormEvent, useEffect, useState } from "react";
-import * as personalityRoomActions from "../actions/personalityRoomActions";
+import { useCallback, useEffect, useState, useMemo } from "react";
 import {
+  addPersonalityRoomUser,
   removePersonalityRoomUser,
   updatePersonalityRoom,
   updatePersonalityRoomUser,
 } from "../actions/personalityRoomActions";
-import { api } from "@/lib/api";
 import { useAppDispatch, useAppSelector } from "../hooks";
 import { toast } from "sonner";
 import { getPersonalityRoom, getRoomUsers } from "../slices/personalityRoomSlice";
 import { getUsers } from "../slices/usersSlice";
+import { fetchPersonalityUsers } from "../actions/personalityActions";
+import { getPersonalityUsers } from "../slices/personalitiesSlice";
 
 interface PersonalityRoomUsersDialogProps {
   personalityId: string;
@@ -70,39 +71,50 @@ export default function PersonalityRoomUsersDialog({
 
   const [loading, setLoading] = useState(false);
   const [addingUser, setAddingUser] = useState(false);
-  const [email, setEmail] = useState("");
   const [updatingRoomType, setUpdatingRoomType] = useState(false);
 
   const room = useAppSelector((state) => getPersonalityRoom(state, roomId));
   const roomUsers = useAppSelector((state) => getRoomUsers(state, roomId));
   const users = useAppSelector(getUsers);
+  const personalityUsers = useAppSelector((state) => getPersonalityUsers(state, personalityId));
+
+  // Filter users to only show those with personality access
+  const availableUsers = useMemo(() => {
+    const personalityUserIds = new Set(personalityUsers.map(pu => pu.user_id));
+    return Object.values(users).filter(user => personalityUserIds.has(user.id));
+  }, [users, personalityUsers]);
 
   useEffect(() => {
     if (open && personalityId && roomId) {
-      // Room data should already be loaded from the parent component
-      setLoading(false);
+      setLoading(true);
+      // Load personality users to filter available users
+      dispatch(fetchPersonalityUsers(personalityId))
+        .unwrap()
+        .then(() => {
+          setLoading(false);
+        })
+        .catch((error) => {
+          setLoading(false);
+          toast.error("Failed to load users", {
+            description: error instanceof Error ? error.message : "An unexpected error occurred",
+          });
+        });
     }
-  }, [open, personalityId, roomId]);
+  }, [open, personalityId, roomId, dispatch]);
 
-  const handleAddUserByEmail = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!email.trim()) return;
-
+  const handleAddUser = useCallback(async (user: User) => {
     setAddingUser(true);
     try {
-      // Use the email endpoint instead of the regular user endpoint
-      await api.post<{ user: User; personality_room_user: PersonalityRoomUser }>(
-        `/personality-rooms/${personalityId}/rooms/${roomId}/users/email`,
-        { email }
-      );
-
-      // Dispatch action to update the store with the new user
-      await dispatch(personalityRoomActions.getPersonalityRoom({ personalityId, roomId }));
+      // Use the existing addPersonalityRoomUser action with user ID
+      await dispatch(addPersonalityRoomUser({
+        personalityId,
+        roomId,
+        data: { user_id: user.id }
+      })).unwrap();
 
       toast("User added", {
         description: "User has been added to the room",
       });
-      setEmail("");
     } catch (error) {
       toast.error("Failed to add user", {
         description:
@@ -113,7 +125,7 @@ export default function PersonalityRoomUsersDialog({
     } finally {
       setAddingUser(false);
     }
-  };
+  }, [dispatch, personalityId, roomId]);
 
   const handleRemoveUser = async (userId: string) => {
     try {
@@ -232,21 +244,20 @@ export default function PersonalityRoomUsersDialog({
 
           {/* Add User Section */}
           <div className="space-y-2">
-            <Label htmlFor="add-user">Add User</Label>
-            <form onSubmit={handleAddUserByEmail} className="flex gap-2">
-              <Input
-                id="add-user"
-                type="email"
-                placeholder="Add user by email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                disabled={addingUser}
-                className="flex-1"
-              />
-              <Button type="submit" disabled={addingUser || !email.trim()}>
-                {addingUser ? "Adding..." : "Add"}
-              </Button>
-            </form>
+            <Label>Add User</Label>
+            <UserSelect
+              availableUsers={availableUsers}
+              excludeUsers={roomUsers.map(ru => users[ru.user_id]).filter(Boolean)}
+              onUserSelect={handleAddUser}
+              placeholder="Select a personality user to add..."
+              disabled={addingUser}
+            />
+            {addingUser && (
+              <div className="text-sm text-muted-foreground">Adding user...</div>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Only users with personality access can be added to rooms
+            </p>
           </div>
 
           {/* Users List Section */}

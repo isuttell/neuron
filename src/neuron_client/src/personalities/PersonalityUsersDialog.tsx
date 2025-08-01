@@ -9,7 +9,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -22,9 +21,10 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import UserSelect from "@/components/UserSelect";
 import { User } from "@/types/user";
 import { Trash2, Users } from "lucide-react";
-import { FormEvent, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   addPersonalityUser,
   fetchPersonalityUsers,
@@ -64,7 +64,6 @@ export default function PersonalityUsersDialog({
   };
   const [loading, setLoading] = useState(false);
   const [addingUser, setAddingUser] = useState(false);
-  const [email, setEmail] = useState("");
   const personalityUsers = useAppSelector((state) =>
     getPersonalityUsers(state, personalityId)
   );
@@ -92,17 +91,13 @@ export default function PersonalityUsersDialog({
     }
   }, [open, personalityId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleAddUserByEmail = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!email.trim()) return;
-
+  const handleAddUser = useCallback(async (user: User) => {
     setAddingUser(true);
     try {
-      await dispatch(addPersonalityUser({ personalityId, email })).unwrap();
+      await dispatch(addPersonalityUser({ personalityId, email: user.email })).unwrap();
       toast("User added", {
         description: "User has been added to the personality",
       });
-      setEmail("");
     } catch (error) {
       toast.error("Failed to add user", {
         description:
@@ -113,7 +108,7 @@ export default function PersonalityUsersDialog({
     } finally {
       setAddingUser(false);
     }
-  };
+  }, [dispatch, personalityId]);
 
   const handleRemoveUser = async (userId: string) => {
     try {
@@ -173,19 +168,19 @@ export default function PersonalityUsersDialog({
           <DialogTitle>Manage Personality Users</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
-          <form onSubmit={handleAddUserByEmail} className="flex gap-2 mb-4">
-            <Input
-              type="email"
-              placeholder="Add user by email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+          <div className="space-y-2">
+            <div className="text-sm font-medium">Add User</div>
+            <UserSelect
+              availableUsers={Object.values(users)}
+              excludeUsers={personalityUsers.map(pu => users[pu.user_id]).filter(Boolean)}
+              onUserSelect={handleAddUser}
+              placeholder="Select a user to add..."
               disabled={addingUser}
-              className="flex-1"
             />
-            <Button type="submit" disabled={addingUser || !email.trim()}>
-              {addingUser ? "Adding..." : "Add"}
-            </Button>
-          </form>
+            {addingUser && (
+              <div className="text-sm text-muted-foreground">Adding user...</div>
+            )}
+          </div>
 
           <div className="text-sm text-muted-foreground mb-2">
             Users with access to this personality:
