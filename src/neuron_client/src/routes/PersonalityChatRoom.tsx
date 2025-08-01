@@ -137,6 +137,20 @@ export default function PersonalityChatRoom() {
     setIsRoomUsersOpen(true);
   };
 
+  const handlePromptClick = (prompt: string) => {
+    if (!personalityId || !roomId || !currentUser?.sub) return;
+
+    // Send the prompt as a new message
+    dispatch(
+      sendPersonalityMessage({
+        personalityId,
+        roomId,
+        content: prompt,
+        userId: currentUser.sub,
+      })
+    );
+  };
+
   return (
     <div className="flex flex-1 p-4 ipad-top-spacing flex-col flex-nowrap max-h-screen">
       <div className="flex items-center justify-between mb-2 border-b pb-2 mobile-safe-top">
@@ -188,6 +202,9 @@ export default function PersonalityChatRoom() {
                     personality={personality}
                     roomId={roomId}
                     onEditMessage={handleEditMessage}
+                    onPromptClick={handlePromptClick}
+                    promptColor="text-lime-300"
+                    promptHoverColor="hover:text-lime-100"
                   />
                 </div>
               ))}

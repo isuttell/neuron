@@ -18,6 +18,9 @@ interface PersonalityChatItemProps {
   personality: Personality;
   roomId?: string;
   onEditMessage?: (message: { id: string; content: string }) => void;
+  onPromptClick?: (prompt: string) => void;
+  promptColor?: string;
+  promptHoverColor?: string;
 }
 
 const generateInitials = (nickname: string | null | undefined): string => {
@@ -47,6 +50,9 @@ const PersonalityChatItem: React.FC<PersonalityChatItemProps> = ({
   personality,
   roomId,
   onEditMessage,
+  onPromptClick,
+  promptColor,
+  promptHoverColor,
 }) => {
   const currentUser = useAppSelector(getCurrentUser);
   const isCurrentUser = message.user_id === currentUser?.sub;
@@ -162,7 +168,12 @@ const PersonalityChatItem: React.FC<PersonalityChatItemProps> = ({
 
             {/* Message Content */}
             <div className="prose prose-sm max-w-none break-words">
-              <Content content={message.content} />
+              <Content
+                content={message.content}
+                onPromptClick={onPromptClick}
+                promptColor={promptColor}
+                promptHoverColor={promptHoverColor}
+              />
             </div>
 
             {/* Timestamp */}
@@ -236,7 +247,12 @@ const PersonalityChatItem: React.FC<PersonalityChatItemProps> = ({
             isOptimistic && "opacity-70",
             hasError && "text-destructive opacity-70"
           )}>
-            <Content content={message.content} />
+            <Content
+              content={message.content}
+              onPromptClick={onPromptClick}
+              promptColor={promptColor}
+              promptHoverColor={promptHoverColor}
+            />
           </div>
 
           {/* Timestamp and edit button */}
