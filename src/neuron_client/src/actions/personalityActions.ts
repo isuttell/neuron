@@ -194,7 +194,7 @@ export const updatePersonalityLogo = createAsyncThunk(
   async (personalityId: string, thunkAPI) => {
     try {
       const response = await api.post<{ personalities: Personality[]; logo: string; response: string }>(`/personalities/${personalityId}/logo`, {});
-      return { personalities: response.personalities };
+      return { personalities: response.personalities, response: response.response };
     } catch (error) {
       if (error instanceof Error) {
         return thunkAPI.rejectWithValue(error.message);
