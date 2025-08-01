@@ -7,6 +7,7 @@ import rehypeKatex from "rehype-katex";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import "./Content.css";
 import "katex/dist/katex.min.css";
 import AudioContent from "./AudioContent";
@@ -18,6 +19,8 @@ interface ContentProps {
   content: string;
   preload?: "" | "none" | "metadata" | "auto";
   onPromptClick?: (prompt: string) => void;
+  promptColor?: string;
+  promptHoverColor?: string;
 }
 
 interface CustomComponentProps {
@@ -37,6 +40,8 @@ const Content: React.FC<ContentProps> = ({
   content,
   preload = "auto",
   onPromptClick,
+  promptColor = "text-accent",
+  promptHoverColor = "hover:text-primary",
 }): JSX.Element => {
   return (
     <ReactMarkdown
@@ -108,18 +113,29 @@ const Content: React.FC<ContentProps> = ({
             className?: string;
             children: string;
           }) {
-            return (
-              <span
-                onClick={() => onPromptClick?.(String(children))}
-                className={cn(
-                  onPromptClick &&
-                    "cursor-pointer border-b text-accent hover:text-primary transition-colors duration-300 ease-in-out",
-                  className
-                )}
-              >
-                {children}
-              </span>
-            );
+            if (onPromptClick) {
+              return (
+                <Tooltip delayDuration={0}>
+                  <TooltipTrigger asChild>
+                    <span
+                      onClick={() => onPromptClick(String(children))}
+                      className={cn(
+                        "cursor-pointer border-b transition-colors duration-300 ease-in-out",
+                        promptColor,
+                        promptHoverColor,
+                        className
+                      )}
+                    >
+                      {children}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Send
+                  </TooltipContent>
+                </Tooltip>
+              );
+            }
+            return <span className={className}>{children}</span>;
           },
           code({
             className,
