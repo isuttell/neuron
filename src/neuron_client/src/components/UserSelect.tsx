@@ -38,10 +38,9 @@ export default function UserSelect({
   const handleValueChange = (userId: string) => {
     const user = filteredUsers.find(u => u.id === userId);
     if (user) {
-      setValue(userId);
       onUserSelect(user);
-      // Clear after selection
-      setTimeout(() => setValue(""), 100);
+      // Clear immediately after selection
+      setValue("");
     }
   };
 

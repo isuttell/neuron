@@ -51,7 +51,7 @@ export default function UserSearchCombobox({
       onUserSelect(selectedUser);
       setValue(""); // Clear after selection
     }
-  }, [value, selectedUser]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [value, selectedUser, onUserSelect]);
 
   const handleOpenChange = (newOpen: boolean) => {
     setOpen(newOpen);
@@ -98,7 +98,7 @@ export default function UserSearchCombobox({
                 <CommandItem
                   key={user.id}
                   value={user.id}
-                  onSelect={(currentValue) => {
+                  onSelect={(currentValue: string) => {
                     setValue(currentValue === value ? "" : currentValue);
                     setOpen(false);
                   }}

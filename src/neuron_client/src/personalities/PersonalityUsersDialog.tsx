@@ -24,7 +24,7 @@ import {
 import UserSelect from "@/components/UserSelect";
 import { User } from "@/types/user";
 import { Trash2, Users } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   addPersonalityUser,
   fetchPersonalityUsers,
@@ -91,7 +91,7 @@ export default function PersonalityUsersDialog({
     }
   }, [open, personalityId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleAddUser = async (user: User) => {
+  const handleAddUser = useCallback(async (user: User) => {
     setAddingUser(true);
     try {
       await dispatch(addPersonalityUser({ personalityId, email: user.email })).unwrap();
@@ -108,7 +108,7 @@ export default function PersonalityUsersDialog({
     } finally {
       setAddingUser(false);
     }
-  };
+  }, [dispatch, personalityId]);
 
   const handleRemoveUser = async (userId: string) => {
     try {

@@ -26,7 +26,7 @@ import UserSelect from "@/components/UserSelect";
 import { PersonalityRoomUser } from "@/types/personalityRoom";
 import { User } from "@/types/user";
 import { Trash2, Users } from "lucide-react";
-import { useEffect, useState, useMemo } from "react";
+import { useCallback, useEffect, useState, useMemo } from "react";
 import {
   addPersonalityRoomUser,
   removePersonalityRoomUser,
@@ -86,13 +86,23 @@ export default function PersonalityRoomUsersDialog({
 
   useEffect(() => {
     if (open && personalityId && roomId) {
+      setLoading(true);
       // Load personality users to filter available users
-      dispatch(fetchPersonalityUsers(personalityId));
-      setLoading(false);
+      dispatch(fetchPersonalityUsers(personalityId))
+        .unwrap()
+        .then(() => {
+          setLoading(false);
+        })
+        .catch((error) => {
+          setLoading(false);
+          toast.error("Failed to load users", {
+            description: error instanceof Error ? error.message : "An unexpected error occurred",
+          });
+        });
     }
   }, [open, personalityId, roomId, dispatch]);
 
-  const handleAddUser = async (user: User) => {
+  const handleAddUser = useCallback(async (user: User) => {
     setAddingUser(true);
     try {
       // Use the existing addPersonalityRoomUser action with user ID
@@ -115,7 +125,7 @@ export default function PersonalityRoomUsersDialog({
     } finally {
       setAddingUser(false);
     }
-  };
+  }, [dispatch, personalityId, roomId]);
 
   const handleRemoveUser = async (userId: string) => {
     try {
