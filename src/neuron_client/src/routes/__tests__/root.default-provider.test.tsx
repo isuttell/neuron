@@ -23,7 +23,9 @@ import usersReducer from "@/slices/usersSlice";
 vi.mock("@auth0/auth0-react");
 
 // Mock SVG imports
-vi.mock("@/assets/logo.svg", () => "logo.svg");
+vi.mock("@/assets/logo.svg", () => ({
+  default: "logo.svg"
+}));
 
 // Mock components that might have complex dependencies
 vi.mock("@/components/layout/MainSidebar", () => ({

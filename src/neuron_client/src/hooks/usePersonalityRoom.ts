@@ -28,15 +28,17 @@ export interface UsePersonalityRoomReturn extends UseRoomReturn {
  * - Auto-fetches messages when joining room (optional)
  * - Type-safe personality ID and room ID handling
  * - Personality-specific error handling
+ * - Can be disabled to prevent auto-joining when in error states
  *
  * @param personalityId - The ID of the personality to join room for
  * @param roomId - The ID of the specific room to join
- * @param options - Configuration options extending base room options
+ * @param disabled - When true, prevents auto-joining the room (default: false)
  * @returns Personality room subscription state and control functions
  */
 export const usePersonalityRoom = (
   personalityId: string | undefined,
   roomId: string | undefined,
+  disabled: boolean = false,
 ): UsePersonalityRoomReturn => {
   // Import needed hooks and actions
   const dispatch = useAppDispatch();
@@ -91,14 +93,14 @@ export const usePersonalityRoom = (
 
   // Auto-join effect
   useEffect(() => {
-    if (!personalityId || !roomId || !isConnected || isSubscribed || isJoining) {
+    if (!personalityId || !roomId || !isConnected || isSubscribed || isJoining || disabled) {
       return;
     }
 
     joinRoom().catch((err) => {
       console.error(`Failed to auto-join personality room:`, err);
     });
-  }, [personalityId, roomId, isConnected, isSubscribed, isJoining, joinRoom]);
+  }, [personalityId, roomId, isConnected, isSubscribed, isJoining, disabled, joinRoom]);
 
   // Cleanup effect
   useEffect(() => {

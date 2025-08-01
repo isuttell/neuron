@@ -1,5 +1,6 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import { api } from "@/lib/api";
+import { toSerializableError, isClassifiedError } from "../types/error";
 import type {
   PersonalityRoomUser,
   PersonalityRoomsResponse,
@@ -19,10 +20,15 @@ export const fetchPersonalityRooms = createAsyncThunk(
       );
       return response;
     } catch (error) {
-      if (error instanceof Error) {
-        return thunkAPI.rejectWithValue(error.message);
+      // Convert ClassifiedError to SerializableError for Redux state
+      if (isClassifiedError(error)) {
+        return thunkAPI.rejectWithValue(toSerializableError(error));
       }
-      return thunkAPI.rejectWithValue("Failed to fetch personality rooms");
+      // Fallback for other error types
+      return thunkAPI.rejectWithValue({
+        message: error instanceof Error ? error.message : "Failed to fetch personality rooms",
+        type: "unknown" as const,
+      });
     }
   }
 );
@@ -54,10 +60,15 @@ export const getPersonalityRoom = createAsyncThunk(
       );
       return response;
     } catch (error) {
-      if (error instanceof Error) {
-        return thunkAPI.rejectWithValue(error.message);
+      // Convert ClassifiedError to SerializableError for Redux state
+      if (isClassifiedError(error)) {
+        return thunkAPI.rejectWithValue(toSerializableError(error));
       }
-      return thunkAPI.rejectWithValue("Failed to fetch personality room");
+      // Fallback for other error types
+      return thunkAPI.rejectWithValue({
+        message: error instanceof Error ? error.message : "Unknown error",
+        type: "unknown" as const,
+      });
     }
   }
 );

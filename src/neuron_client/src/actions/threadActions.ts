@@ -2,6 +2,7 @@ import { api } from "@/lib/api";
 import { ThreadResponse, ThreadsResponse, ThreadUser } from "@/types/thread";
 import { User } from "@/types/user";
 import { createAsyncThunk } from "@reduxjs/toolkit";
+import { toSerializableError, isClassifiedError } from "../types/error";
 
 interface ThreadUserEmailResponse {
   thread_user: ThreadUser;
@@ -14,10 +15,15 @@ export const fetchThread = createAsyncThunk(
     try {
       return await api.get<ThreadResponse>(`/threads/${threadId}`);
     } catch (error) {
-      if (error instanceof Error) {
-        return thunkAPI.rejectWithValue(error.message);
+      // Convert ClassifiedError to SerializableError for Redux state
+      if (isClassifiedError(error)) {
+        return thunkAPI.rejectWithValue(toSerializableError(error));
       }
-      return thunkAPI.rejectWithValue("An unknown error occurred");
+      // Fallback for other error types
+      return thunkAPI.rejectWithValue({
+        message: error instanceof Error ? error.message : "An unknown error occurred",
+        type: "unknown" as const,
+      });
     }
   }
 );
@@ -46,10 +52,15 @@ export const fetchRecentThreads = createAsyncThunk(
     try {
       return await api.get<ThreadsResponse>(`/threads/recent`);
     } catch (error) {
-      if (error instanceof Error) {
-        return thunkAPI.rejectWithValue(error.message);
+      // Convert ClassifiedError to SerializableError for Redux state
+      if (isClassifiedError(error)) {
+        return thunkAPI.rejectWithValue(toSerializableError(error));
       }
-      return thunkAPI.rejectWithValue("An unknown error occurred");
+      // Fallback for other error types
+      return thunkAPI.rejectWithValue({
+        message: error instanceof Error ? error.message : "An unknown error occurred",
+        type: "unknown" as const,
+      });
     }
   }
 );

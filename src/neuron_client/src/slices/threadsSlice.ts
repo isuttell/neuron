@@ -4,6 +4,7 @@ import { createSlice, createSelector } from "@reduxjs/toolkit";
 import * as messageActions from "../actions/messageActions";
 import * as actions from "../actions/threadActions";
 import type { RootState } from "../store";
+import type { SerializableError } from "../types/error";
 
 interface ThreadUserResponse {
   thread_user: ThreadUser;
@@ -11,7 +12,7 @@ interface ThreadUserResponse {
 
 interface ThreadState {
   loading: boolean;
-  error: string | null;
+  error: SerializableError | null;
   threads: Thread[];
 }
 
@@ -94,7 +95,7 @@ export const threadsSlice = createSlice({
       )
       .addCase(actions.fetchThread.rejected, (state, action) => {
         state.loading = false;
-        state.error = (action.payload as string) || "Failed to fetch thread";
+        state.error = action.payload as SerializableError || null;
       })
       .addCase(actions.fetchThreadsByPersonality.pending, (state) => {
         state.loading = true;
@@ -128,7 +129,7 @@ export const threadsSlice = createSlice({
       )
       .addCase(actions.fetchThreadsByPersonality.rejected, (state, action) => {
         state.loading = false;
-        state.error = (action.payload as string) || "Failed to fetch threads";
+        state.error = action.payload as SerializableError || null;
       })
       .addCase(
         actions.createThread.fulfilled,
