@@ -214,21 +214,23 @@ describe("messageSlice", () => {
       });
 
       it("should set error when rejected with message", () => {
+        const serializableError = { message: "Failed", type: "unknown" as const };
         store.dispatch(
-          fetchMessagesByThread.rejected(new Error("Failed"), "", "thread-1")
+          fetchMessagesByThread.rejected(null, "", "thread-1", serializableError)
         );
         const state = store.getState().messages;
         expect(state.loading).toBe(false);
-        expect(state.error).toBe("Failed");
+        expect(state.error).toEqual(serializableError);
       });
 
       it("should set default error when rejected without message", () => {
+        const serializableError = { message: "An unknown error occurred", type: "unknown" as const };
         store.dispatch(
-          fetchMessagesByThread.rejected(new Error(), "", "thread-1")
+          fetchMessagesByThread.rejected(null, "", "thread-1", serializableError)
         );
         const state = store.getState().messages;
         expect(state.loading).toBe(false);
-        expect(state.error).toBe("Failed to fetch messages");
+        expect(state.error).toEqual(serializableError);
       });
 
       it("should update messages when fulfilled", () => {

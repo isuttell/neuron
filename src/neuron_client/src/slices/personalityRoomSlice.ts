@@ -9,6 +9,7 @@ import type {
   PersonalityRoomResponse,
 } from "../types/personalityRoom";
 import type { User } from "../types/user";
+import type { SerializableError } from "../types/error";
 
 // WebSocket event types
 export interface PersonalityRoomCreatedEvent {
@@ -62,7 +63,7 @@ interface PersonalityRoomState {
   roomIds: string[];
   roomUsers: Record<string, PersonalityRoomUser[]>; // roomId -> users
   loading: boolean;
-  error: string | null;
+  error: SerializableError | null;
 }
 
 const initialState: PersonalityRoomState = {
@@ -209,7 +210,7 @@ export const personalityRoomSlice = createSlice({
       })
       .addCase(personalityRoomActions.fetchPersonalityRooms.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message || "Failed to fetch personality rooms";
+        state.error = action.payload as SerializableError || null;
       })
 
       // Create personality room
@@ -219,13 +220,22 @@ export const personalityRoomSlice = createSlice({
       })
 
       // Get personality room
+      .addCase(personalityRoomActions.getPersonalityRoom.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
       .addCase(personalityRoomActions.getPersonalityRoom.fulfilled, (state, action: PayloadAction<PersonalityRoomResponse>) => {
+        state.loading = false;
         const { personality_room, personality_room_users } = action.payload;
         upsertRoom(state, personality_room);
 
         if (personality_room_users) {
           upsertRoomUsers(state, personality_room.id, personality_room_users);
         }
+      })
+      .addCase(personalityRoomActions.getPersonalityRoom.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as SerializableError; // Store the serializable error object
       })
 
       // Update personality room

@@ -5,10 +5,11 @@ import { Spinner } from "@/components/ui/spinner";
 import { Skeleton } from "@/components/ui/skeleton";
 import Loading from "@/lib/loading";
 import PersonalityRoomUsersDialog from "@/rooms/PersonalityRoomUsersDialog";
+import { ErrorPage } from "@/components/ErrorPage";
 import { debounce } from "@/lib/utils";
 import { useEffect, useRef, useState } from "react";
 import { shallowEqual } from "react-redux";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import {
   sendPersonalityMessage,
   updatePersonalityMessage,
@@ -23,19 +24,27 @@ import {
   getPersonalityChatLoading,
   getPersonalityChatMessagesByRoom,
 } from "../slices/personalityChatSlice";
-import { getPersonality } from "../slices/personalitiesSlice";
-import { getPersonalityRoom } from "../slices/personalityRoomSlice";
+import { getPersonality, getPersonalitiesError } from "../slices/personalitiesSlice";
+import { getPersonalityRoom, getPersonalityRoomError } from "../slices/personalityRoomSlice";
 import { getCurrentUser } from "../slices/appSlice";
+import { toast } from "sonner";
+import { classifyErrors, hasError } from "../lib/errorClassification";
 
 export default function PersonalityChatRoom() {
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   const currentUser = useAppSelector(getCurrentUser);
   const lastMessageRef = useRef<HTMLDivElement | null>(null);
   const skeletonRef = useRef<HTMLDivElement | null>(null);
   const { personalityId, roomId } = useParams();
 
+  // Get error states for classification and room joining control
+  const personalitiesError = useAppSelector(getPersonalitiesError);
+  const roomError = useAppSelector(getPersonalityRoomError);
+  const hasErrors = hasError(personalitiesError, roomError);
+
   // Use the specialized personality room hook with roomId
-  const { isSubscribed } = usePersonalityRoom(personalityId, roomId);
+  const { isSubscribed } = usePersonalityRoom(personalityId, roomId, hasErrors);
 
   const personality = useAppSelector(
     (state) => personalityId ? getPersonality(state, personalityId) : undefined,
@@ -48,6 +57,7 @@ export default function PersonalityChatRoom() {
   );
 
   const loading = useAppSelector(getPersonalityChatLoading);
+
   const messages = useAppSelector(
     (state) => getPersonalityChatMessagesByRoom(state, personalityId, roomId),
     shallowEqual
@@ -61,14 +71,25 @@ export default function PersonalityChatRoom() {
 
   // Dialog states
   const [isRoomUsersOpen, setIsRoomUsersOpen] = useState(false);
-
   const [isDeleteRoomOpen, setIsDeleteRoomOpen] = useState(false);
+
+  // Classify errors for UI handling - roomError takes priority as it's more specific
+  const errorType = classifyErrors(roomError, personalitiesError);
+
+  // Show toast for network errors
+  useEffect(() => {
+    if (errorType === 'network_error') {
+      toast.error('Network connection failed. Please check your internet connection.', {
+        duration: 5000,
+      });
+    }
+  }, [errorType]);
+
   // Fetch room details and messages when IDs are available
   useEffect(() => {
     if (personalityId && roomId) {
-      // Fetch room details
+      // Let Redux handle all errors through slice reducers
       dispatch(personalityRoomActions.getPersonalityRoom({ personalityId, roomId }));
-      // Fetch messages for the room
       dispatch(fetchPersonalityMessages({ personalityId, roomId }));
     }
   }, [dispatch, personalityId, roomId]);
@@ -90,6 +111,41 @@ export default function PersonalityChatRoom() {
     }, 100);
   }, [messages.length, isAiWorking]);
 
+  // Handle errors first
+  if (errorType) {
+    // Show loading for network errors (toast shown via useEffect above)
+    if (errorType === 'network_error') {
+      return <Loading />;
+    }
+
+    // Show error component for server/auth/not_found errors
+    const getErrorMessage = () => {
+      if (personalitiesError) return personalitiesError;
+      if (roomError?.message) return roomError.message;
+
+      // Fallback messages based on error type
+      switch (errorType) {
+        case 'not_found':
+          return 'This room may have been deleted or you may not have permission to access it.';
+        case 'auth_error':
+          return 'There was a problem with your authentication. Please log in again.';
+        case 'client_error':
+          return 'There was a problem with your request. The room may not be accessible.';
+        default:
+          return 'The server is currently unavailable. Please try again later.';
+      }
+    };
+
+    return (
+      <ErrorPage
+        errorType={errorType}
+        message={getErrorMessage()}
+        onBack={() => navigate('/personalities')}
+      />
+    );
+  }
+
+  // Show loading for normal loading states
   if (!personality || !room || (loading && messages.length === 0)) {
     return <Loading />;
   }

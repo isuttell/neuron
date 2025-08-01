@@ -3,6 +3,7 @@ import { createSlice, createSelector } from "@reduxjs/toolkit";
 import { fetchMessagesByThread } from "../actions/messageActions";
 import type { RootState } from "../store";
 import { MessageResponse } from "../types/message";
+import type { SerializableError } from "../types/error";
 
 // Base content interface with common properties
 interface BaseContent {
@@ -165,7 +166,7 @@ interface MessageState {
   messageMap: Record<string, Message>;
   messageIds: string[]; // To maintain order
   loading: boolean;
-  error: string | null;
+  error: SerializableError | null;
 }
 
 // Update initial state
@@ -393,7 +394,7 @@ export const messagesSlice = createSlice({
       })
       .addCase(fetchMessagesByThread.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message || "Failed to fetch messages";
+        state.error = action.payload as SerializableError || null;
       })
       .addCase(
         fetchMessagesByThread.fulfilled,

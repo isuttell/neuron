@@ -45,6 +45,7 @@ describe("ApiClient", () => {
           "Content-Type": "application/json",
         },
         credentials: "include",
+        signal: expect.any(AbortSignal),
       });
       expect(result).toEqual(mockResponse);
     });
@@ -81,6 +82,7 @@ describe("ApiClient", () => {
         },
         body: JSON.stringify(postData),
         credentials: "include",
+        signal: expect.any(AbortSignal),
       });
       expect(result).toEqual(mockResponse);
     });
@@ -119,6 +121,7 @@ describe("ApiClient", () => {
         },
         body: JSON.stringify(putData),
         credentials: "include",
+        signal: expect.any(AbortSignal),
       });
       expect(result).toEqual(mockResponse);
     });
@@ -153,7 +156,9 @@ describe("ApiClient", () => {
           Authorization: `Bearer ${mockToken}`,
           "Content-Type": "application/json",
         },
+        body: undefined,
         credentials: "include",
+        signal: expect.any(AbortSignal),
       });
       expect(result).toEqual(mockResponse);
     });
@@ -289,6 +294,7 @@ describe("ApiClient", () => {
         },
         body: JSON.stringify({ data: "test" }),
         credentials: "include",
+        signal: expect.any(AbortSignal),
       });
     });
 

@@ -1,10 +1,11 @@
 import { MainSidebar } from "@/components/layout/MainSidebar";
 import { ThreadTitleUpdater } from "@/components/ThreadTitleUpdater";
 import { AppUpdateNotification } from "@/components/AppUpdateNotification";
+import { ConnectionError } from "@/components/ConnectionError";
 import { Button } from "@/components/ui/button";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { Spinner } from "@/components/ui/spinner";
-import { fetchConfig } from "@/slices/appSlice";
+import { fetchConfig, getConnectionStatus, handleApiError, setConnectionStatus } from "@/slices/appSlice";
 import { fetchMediaLists } from "@/slices/mediaListsSlice";
 import { fetchProviders, setupProvider, selectProviders, selectActiveProviderId } from "@/slices/providerSlice";
 import { fetchPersonalities } from "@/actions/personalityActions";
@@ -14,8 +15,10 @@ import { useEffect, useState } from "react"; // Import useState
 import { Outlet } from "react-router-dom";
 import { setAuth0Functions } from "../actions/getToken";
 import { useAppDispatch, useAppSelector } from "../hooks";
-import { api } from "../lib/api"; // Re-add api client import
+import { api } from "../lib/api";
+import { toSerializableError, isClassifiedError } from "../types/error";
 import { isAdmin } from "../lib/auth";
+import { toast } from "sonner";
 
 export function RootComponent() {
   const {
@@ -32,6 +35,7 @@ export function RootComponent() {
   const [userSynced, setUserSynced] = useState(false); // Add state variable
   const providers = useAppSelector(selectProviders);
   const activeProviderId = useAppSelector(selectActiveProviderId);
+  const connectionStatus = useAppSelector(getConnectionStatus);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated && !error) {
@@ -62,11 +66,27 @@ export function RootComponent() {
           try {
             await api.post("/users/login", {}); // Call the endpoint
             setUserSynced(true); // Mark as synced
+            dispatch(setConnectionStatus('connected'));
           } catch (error) {
             console.error(
               "Error calling backend /users/login endpoint:",
               error
             );
+
+            // Handle different error types
+            if (isClassifiedError(error)) {
+              dispatch(handleApiError(toSerializableError(error)));
+
+              // Show toast for network errors
+              if (error.type === 'network') {
+                toast.error('Network connection failed. Please check your internet connection.', {
+                  duration: 5000,
+                });
+              }
+            } else {
+              // Fallback for unknown errors
+              dispatch(setConnectionStatus('server_error'));
+            }
           }
         };
         syncUser();
@@ -128,7 +148,10 @@ export function RootComponent() {
   }
 
   // Check if all authentication conditions are met (removed isConnected check)
-  const isFullyAuthenticated = !isLoading && isAuthenticated && userSynced;
+  const isFullyAuthenticated = !isLoading && isAuthenticated && userSynced && connectionStatus === 'connected';
+
+  // Show spinner for connecting states and network errors (but not server/auth errors which show modal)
+  const shouldShowSpinner = (!isFullyAuthenticated && connectionStatus !== 'server_error' && connectionStatus !== 'auth_error');
 
   return (
     <SidebarProvider>
@@ -140,10 +163,12 @@ export function RootComponent() {
             <MainSidebar />
             <Outlet />
           </>
-        ) : (
+        ) : shouldShowSpinner ? (
           <div className="flex flex-1 items-center justify-center h-screen w-screen">
             <Spinner />
           </div>
+        ) : (
+          <ConnectionError />
         )}
       </main>
     </SidebarProvider>

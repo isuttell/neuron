@@ -11,6 +11,7 @@ import { getConnectionStatus } from "../slices/socketSlice";
 import { socketManager } from "../WebSocketManager";
 import { RootState } from "../store";
 import { WebSocketPayload } from "../types/websocket";
+import { toSerializableError, isClassifiedError } from "../types/error";
 
 export const fetchMessagesByThread = createAsyncThunk(
   "messages/fetchMessagesByThread",
@@ -18,10 +19,15 @@ export const fetchMessagesByThread = createAsyncThunk(
     try {
       return await api.get<MessageResponse>(`/messages/thread/${threadId}`);
     } catch (error) {
-      if (error instanceof Error) {
-        return thunkAPI.rejectWithValue(error.message);
+      // Convert ClassifiedError to SerializableError for Redux state
+      if (isClassifiedError(error)) {
+        return thunkAPI.rejectWithValue(toSerializableError(error));
       }
-      return thunkAPI.rejectWithValue("An unknown error occurred");
+      // Fallback for other error types
+      return thunkAPI.rejectWithValue({
+        message: error instanceof Error ? error.message : "An unknown error occurred",
+        type: "unknown" as const,
+      });
     }
   }
 );
@@ -83,10 +89,15 @@ export const postMessageByThread = createAsyncThunk(
         })
       );
 
-      if (error instanceof Error) {
-        return thunkAPI.rejectWithValue(error.message);
+      // Convert ClassifiedError to SerializableError for Redux state
+      if (isClassifiedError(error)) {
+        return thunkAPI.rejectWithValue(toSerializableError(error));
       }
-      return thunkAPI.rejectWithValue("An unknown error occurred");
+      // Fallback for other error types
+      return thunkAPI.rejectWithValue({
+        message: error instanceof Error ? error.message : "An unknown error occurred",
+        type: "unknown" as const,
+      });
     }
   }
 );
@@ -124,10 +135,15 @@ export const sendMessage = createAsyncThunk(
       } as WebSocketPayload);
       return null;
     } catch (error) {
-      if (error instanceof Error) {
-        return rejectWithValue(error.message);
+      // Convert ClassifiedError to SerializableError for Redux state
+      if (isClassifiedError(error)) {
+        return rejectWithValue(toSerializableError(error));
       }
-      return rejectWithValue("An unknown error occurred");
+      // Fallback for other error types
+      return rejectWithValue({
+        message: error instanceof Error ? error.message : "An unknown error occurred",
+        type: "unknown" as const,
+      });
     }
   }
 );
@@ -159,10 +175,15 @@ export const cancelThreadMessages = createAsyncThunk(
 
       return threadId;
     } catch (error) {
-      if (error instanceof Error) {
-        return thunkAPI.rejectWithValue(error.message);
+      // Convert ClassifiedError to SerializableError for Redux state
+      if (isClassifiedError(error)) {
+        return thunkAPI.rejectWithValue(toSerializableError(error));
       }
-      return thunkAPI.rejectWithValue("An unknown error occurred");
+      // Fallback for other error types
+      return thunkAPI.rejectWithValue({
+        message: error instanceof Error ? error.message : "An unknown error occurred",
+        type: "unknown" as const,
+      });
     }
   }
 );

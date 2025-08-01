@@ -85,7 +85,7 @@ describe("appSlice protectedToolSets functionality", () => {
         },
       };
 
-      (api.get as jest.MockedFunction<typeof api.get>).mockResolvedValue(mockConfig);
+      (api.get as any).mockResolvedValue(mockConfig);
 
       await store.dispatch(fetchConfig());
 
@@ -105,7 +105,7 @@ describe("appSlice protectedToolSets functionality", () => {
         // No protectedToolSets field
       };
 
-      (api.get as jest.MockedFunction<typeof api.get>).mockResolvedValue(mockConfig);
+      (api.get as any).mockResolvedValue(mockConfig);
 
       await store.dispatch(fetchConfig());
 
@@ -116,7 +116,7 @@ describe("appSlice protectedToolSets functionality", () => {
 
     it("should handle fetchConfig failure", async () => {
       const errorMessage = "Network error";
-      (api.get as jest.MockedFunction<typeof api.get>).mockRejectedValue(new Error(errorMessage));
+      (api.get as any).mockRejectedValue(new Error(errorMessage));
 
       await store.dispatch(fetchConfig());
 
@@ -128,7 +128,7 @@ describe("appSlice protectedToolSets functionality", () => {
 
     it("should set loading state during fetchConfig", () => {
       const mockPromise = new Promise(() => {});
-      (api.get as jest.MockedFunction<typeof api.get>).mockReturnValue(mockPromise);
+      (api.get as any).mockReturnValue(mockPromise);
 
       store.dispatch(fetchConfig());
 
@@ -194,7 +194,7 @@ describe("appSlice protectedToolSets functionality", () => {
         },
       };
 
-      (api.get as jest.MockedFunction<typeof api.get>).mockResolvedValue(mockConfig);
+      (api.get as any).mockResolvedValue(mockConfig);
 
       await store.dispatch(fetchConfig());
 
@@ -211,7 +211,7 @@ describe("appSlice protectedToolSets functionality", () => {
     });
 
     it("should save state to localStorage on fetchConfig error", async () => {
-      (api.get as jest.MockedFunction<typeof api.get>).mockRejectedValue(new Error("Network error"));
+      (api.get as any).mockRejectedValue(new Error("Network error"));
 
       await store.dispatch(fetchConfig());
 
@@ -228,7 +228,7 @@ describe("appSlice protectedToolSets functionality", () => {
         protectedToolSets: { homeassistant: "tool-homeassistant" },
       };
 
-      (api.get as jest.MockedFunction<typeof api.get>).mockResolvedValue(firstConfig);
+      (api.get as any).mockResolvedValue(firstConfig);
       await store.dispatch(fetchConfig());
 
       let state = store.getState();
@@ -241,7 +241,7 @@ describe("appSlice protectedToolSets functionality", () => {
         protectedToolSets: { homeassistant: "tool-homeassistant", kepler: "tool-kepler" },
       };
 
-      (api.get as jest.MockedFunction<typeof api.get>).mockResolvedValue(secondConfig);
+      (api.get as any).mockResolvedValue(secondConfig);
       await store.dispatch(fetchConfig());
 
       state = store.getState();
@@ -263,7 +263,7 @@ describe("appSlice protectedToolSets functionality", () => {
         },
       };
 
-      (api.get as jest.MockedFunction<typeof api.get>).mockResolvedValue(mockConfig);
+      (api.get as any).mockResolvedValue(mockConfig);
       await store.dispatch(fetchConfig());
 
       const state = store.getState();

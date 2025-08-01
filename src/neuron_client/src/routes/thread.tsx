@@ -4,6 +4,7 @@ import MediaTimeline from "@/components/MediaTimeline";
 import ThreadHeaderActions from "@/components/ThreadHeaderActions";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Spinner } from "@/components/ui/spinner";
+import { ErrorPage } from "@/components/ErrorPage";
 import {
   Dialog,
   DialogContent,
@@ -16,6 +17,8 @@ import ThreadUsersDialog from "@/threads/ThreadUsersDialog";
 import { useEffect, useRef, useState } from "react";
 import { shallowEqual } from "react-redux";
 import { useParams, useNavigate } from "react-router-dom";
+import { classifyErrors } from "../lib/errorClassification";
+import { toast } from "sonner";
 import {
   fetchMessagesByThread,
   postMessageByThread,
@@ -26,9 +29,10 @@ import MessageItem from "../messages/MessageItem";
 import {
   getMessagesLoading,
   selectThreadMessages,
+  getMessagesError,
 } from "../slices/messagesSlice";
 import { getActivePersonality } from "../slices/personalitiesSlice";
-import { selectThread } from "../slices/threadsSlice";
+import { selectThread, getThreadsError } from "../slices/threadsSlice";
 export default function Thread() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
@@ -40,6 +44,8 @@ export default function Thread() {
     shallowEqual
   );
   const loading = useAppSelector(getMessagesLoading);
+  const threadsError = useAppSelector(getThreadsError);
+  const messagesError = useAppSelector(getMessagesError);
   const messages = useAppSelector(
     (state) => selectThreadMessages(state, threadId),
     shallowEqual
@@ -56,6 +62,18 @@ export default function Thread() {
   // Dialog states
   const [isThreadUsersOpen, setIsThreadUsersOpen] = useState(false);
   const [isDeleteThreadOpen, setIsDeleteThreadOpen] = useState(false);
+
+  // Classify errors for UI handling - threadsError takes priority as it's more specific
+  const errorType = classifyErrors(threadsError, messagesError);
+
+  // Show toast for network errors
+  useEffect(() => {
+    if (errorType === 'network_error') {
+      toast.error('Network connection failed. Please check your internet connection.', {
+        duration: 5000,
+      });
+    }
+  }, [errorType]);
 
   // Handler for dialog open/close with pointer events fix
   const createDialogHandler = (setter: (open: boolean) => void) => {
@@ -120,6 +138,40 @@ export default function Thread() {
       }
     }, 0);
   }, [lastUserMessageIndex, filteredMessages.length]);
+
+  // Handle errors first
+  if (errorType) {
+    // Show loading for network errors (toast shown via useEffect above)
+    if (errorType === 'network_error') {
+      return <Loading />;
+    }
+
+    // Show error component for server/auth/not_found errors
+    const getErrorMessage = () => {
+      if (threadsError) return typeof threadsError === 'string' ? threadsError : threadsError.message;
+      if (messagesError) return typeof messagesError === 'string' ? messagesError : messagesError.message;
+
+      // Fallback messages based on error type
+      switch (errorType) {
+        case 'not_found':
+          return 'This thread may have been deleted or you may not have permission to access it.';
+        case 'auth_error':
+          return 'There was a problem with your authentication. Please log in again.';
+        case 'client_error':
+          return 'There was a problem with your request. The thread may not be accessible.';
+        default:
+          return 'The server is currently unavailable. Please try again later.';
+      }
+    };
+
+    return (
+      <ErrorPage
+        errorType={errorType}
+        message={getErrorMessage()}
+        onBack={() => navigate('/')}
+      />
+    );
+  }
 
   if (!thread || (loading && messages.length === 0)) {
     return <Loading />;

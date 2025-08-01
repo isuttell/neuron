@@ -21,9 +21,113 @@ interface ApiError {
   retry_possible?: boolean;
 }
 
+export type ErrorType = 'network' | 'server' | 'auth' | 'not_found' | 'client_error' | 'unknown';
+
+export class ClassifiedError extends Error {
+  public readonly type: ErrorType;
+  public readonly status?: number;
+  public readonly data?: ApiError;
+
+  constructor(message: string, type: ErrorType, status?: number, data?: ApiError) {
+    super(message);
+    this.name = 'ClassifiedError';
+    this.type = type;
+    this.status = status;
+    this.data = data;
+  }
+}
+
 class ApiClient {
   private baseUrl: string = "/api";
   private maxRetries: number = 1; // One retry for CSRF errors
+  private defaultTimeout: number = 10000; // 10 seconds default timeout
+
+  private classifyError(error: unknown, status?: number): ClassifiedError {
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      return new ClassifiedError('Network connection failed', 'network');
+    }
+
+    if (error instanceof Error && error.name === 'AbortError') {
+      return new ClassifiedError('Request timed out', 'network');
+    }
+
+    if (typeof status === 'number') {
+      if (status === 401 || status === 403) {
+        const apiError = error as { data?: ApiError };
+        const errorMessage = error instanceof Error ? error.message :
+          (apiError.data?.message || apiError.data?.error || 'Authentication failed');
+        return new ClassifiedError(
+          errorMessage,
+          'auth',
+          status,
+          apiError.data
+        );
+      }
+
+      if (status === 404) {
+        const apiError = error as { data?: ApiError };
+        const errorMessage = error instanceof Error ? error.message :
+          (apiError.data?.message || apiError.data?.error || 'Resource not found');
+        return new ClassifiedError(
+          errorMessage,
+          'not_found',
+          status,
+          apiError.data
+        );
+      }
+
+      if (status >= 400 && status < 500) {
+        const apiError = error as { data?: ApiError };
+        const errorMessage = error instanceof Error ? error.message :
+          (apiError.data?.message || apiError.data?.error || 'Client error');
+        return new ClassifiedError(
+          errorMessage,
+          'client_error',
+          status,
+          apiError.data
+        );
+      }
+
+      if (status >= 500) {
+        const apiError = error as { data?: ApiError };
+        const errorMessage = error instanceof Error ? error.message :
+          (apiError.data?.message || apiError.data?.error || 'Server error');
+        return new ClassifiedError(
+          errorMessage,
+          'server',
+          status,
+          apiError.data
+        );
+      }
+    }
+
+    return new ClassifiedError(
+      error instanceof Error ? error.message : 'Unknown error',
+      'unknown',
+      status
+    );
+  }
+
+  private async fetchWithTimeout(
+    url: string,
+    options: RequestInit,
+    timeout: number = this.defaultTimeout
+  ): Promise<Response> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+    try {
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      return response;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      throw error;
+    }
+  }
 
   private async getHeaders(isFormData = false, includeCSRF = false): Promise<HeadersInit> {
     const accessToken = await getAccessToken();
@@ -53,7 +157,7 @@ class ApiClient {
           setCSRFToken(errorData.new_csrf_token);
         }
 
-        // Create error with details
+        // Create classified error with details
         const error = new Error(errorData.message || errorData.error || `API Error: ${response.statusText}`);
         (error as unknown as { status: number; data: ApiError }).status = response.status;
         (error as unknown as { status: number; data: ApiError }).data = errorData;
@@ -61,7 +165,7 @@ class ApiClient {
         // Handle API authentication errors by reloading the page
         handleApiAuthError(error);
 
-        throw error;
+        throw this.classifyError(error, response.status);
       }
 
       // Handle non-JSON error responses (e.g., 401 from server)
@@ -71,7 +175,7 @@ class ApiClient {
       // Handle API authentication errors by reloading the page
       handleApiAuthError(error);
 
-      throw error;
+      throw this.classifyError(error, response.status);
     }
 
     // Handle 204 No Content responses (empty body)
@@ -122,7 +226,7 @@ class ApiClient {
     retryCount = 0
   ): Promise<T> {
     try {
-      const response = await fetch(url, options);
+      const response = await this.fetchWithTimeout(url, options);
       return await this.handleResponse<T>(response);
     } catch (error: unknown) {
       // Check if it's a CSRF error and we haven't exceeded retry limit
@@ -158,17 +262,22 @@ class ApiClient {
         return this.fetchWithCSRF<T>(url, options, retryCount + 1);
       }
 
-      throw error;
+      // If it's not a CSRF error or we've exceeded retries, classify and throw
+      throw this.classifyError(error, apiError.status);
     }
   }
 
   async get<T>(endpoint: string): Promise<T> {
-    const headers = await this.getHeaders();
-    const response = await fetch(`${this.baseUrl}${endpoint}`, {
-      headers,
-      credentials: "include",
-    });
-    return this.handleResponse<T>(response);
+    try {
+      const headers = await this.getHeaders();
+      const response = await this.fetchWithTimeout(`${this.baseUrl}${endpoint}`, {
+        headers,
+        credentials: "include",
+      });
+      return this.handleResponse<T>(response);
+    } catch (error: unknown) {
+      throw this.classifyError(error);
+    }
   }
 
   async post<T>(endpoint: string, data: RequestData): Promise<T> {
