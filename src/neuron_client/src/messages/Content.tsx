@@ -156,6 +156,15 @@ const Content: React.FC<ContentProps> = ({
               </code>
             );
           },
+          table({ children }: { children: React.ReactNode }) {
+            return (
+              <div className="table-wrapper">
+                <table>
+                  {children}
+                </table>
+              </div>
+            );
+          },
         } as CustomComponents
       }
     />

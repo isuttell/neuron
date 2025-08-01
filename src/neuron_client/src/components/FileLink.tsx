@@ -17,7 +17,6 @@ export const FileLink: React.FC<FileLinkProps> = ({
   url,
   name,
   mediaType,
-  description,
   className
 }) => {
   // Determine the appropriate URL based on media type
@@ -28,19 +27,17 @@ export const FileLink: React.FC<FileLinkProps> = ({
   return (
     <a
       className={cn(
-        "inline-flex items-center gap-2 px-3 py-2 text-sm font-medium",
+        "items-center gap-2 px-3 py-2 text-sm font-medium",
         "text-primary hover:text-primary/80",
         "bg-muted/50 hover:bg-muted rounded-md transition-colors",
+        "min-w-0 max-w-full",
         className
       )}
       href={linkUrl}
       target="_blank"
       rel="noopener noreferrer"
     >
-      <span className="truncate max-w-sm">{name}</span>
-      {description && (
-        <span className="text-xs text-muted-foreground">({description})</span>
-      )}
+      <div className="truncate">{name}</div>
     </a>
   );
 };

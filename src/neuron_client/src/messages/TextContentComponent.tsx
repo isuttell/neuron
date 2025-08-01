@@ -1,6 +1,5 @@
 import React from "react";
 import { FileText, ExternalLink, LucideIcon } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import TextDialog from "@/components/TextDialog";
 import Content from "./Content";
@@ -30,15 +29,18 @@ const TextContentComponent: React.FC<TextContentProps> = ({
   icon: IconComponent = FileText
 }) => {
   const trigger = (
-    <div className={cn("inline-block", className)}>
-      <Badge
-        variant="outline"
-        className="group hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-colors cursor-pointer max-w-48"
-      >
-        <IconComponent className="h-3 w-3 mr-1 flex-shrink-0" />
-        <span className="truncate">{caption}</span>
-        <ExternalLink className="h-3 w-3 ml-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
-      </Badge>
+    <div
+      className={cn(
+        "group inline-flex items-center gap-2 px-3 py-2 text-sm font-medium",
+        "text-primary hover:text-primary/80",
+        "bg-muted/50 hover:bg-muted rounded-md transition-colors cursor-pointer",
+        "min-w-0 max-w-[32%]",
+        className
+      )}
+    >
+      <IconComponent className="h-4 w-4 flex-shrink-0" />
+      <span className="truncate">{caption}</span>
+      <ExternalLink className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
     </div>
   );
 
