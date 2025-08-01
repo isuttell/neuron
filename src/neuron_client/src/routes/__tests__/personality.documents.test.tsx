@@ -315,7 +315,9 @@ describe('Personality Component - Document Functionality', () => {
       await user.upload(fileInput, file);
 
       // Button should be disabled during upload
-      expect(uploadButton).toBeDisabled();
+      await waitFor(() => {
+        expect(uploadButton).toBeDisabled();
+      });
 
       // Wait for upload to complete
       await waitFor(() => {
