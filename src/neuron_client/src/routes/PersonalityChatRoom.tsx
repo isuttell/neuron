@@ -54,7 +54,7 @@ export default function PersonalityChatRoom() {
   );
 
   // Check if AI is working (status is not empty and not idle)
-  const isAiWorking = room?.status !== "" && room?.status !== null;
+  const isAiWorking = room?.status !== "" && room?.status !== null && room?.status !== "contemplating";
 
   // Edit state management
   const [editingMessage, setEditingMessage] = useState<{ id: string; content: string } | null>(null);
