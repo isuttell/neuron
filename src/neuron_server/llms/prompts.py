@@ -214,8 +214,8 @@ Document Page {page_number} of {total_pages}:
 
 
 personality_update_logo_prompt = """
-You are an expert logo designer. Generate a logo for the personality as provider by the
-user.The custom instructions are for when we're using the personalty. Right now we're
+You are an expert logo designer. Generate a logo for the personality as provided by the
+user. The custom instructions are for when we're using the personality. Right now we're
 just using them as context so that you know what the personality does and
 can generate a more accurate logo. The logo should be a square and look good
 on a dark background. Be creative. After you've generated logo update the personality

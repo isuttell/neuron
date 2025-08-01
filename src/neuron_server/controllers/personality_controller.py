@@ -788,7 +788,7 @@ async def update_personality_logo(personality_id: UUID) -> dict[str, dict]:
                     been updated. Use the personality as custom instructions on how to
                     write the message. Response from their perspective. Keep it short
                     and concise.
-                    <personalty name="{name}">
+                    <personality name="{name}">
                         <description>
                         {description}
                         </description>
