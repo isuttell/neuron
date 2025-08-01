@@ -214,26 +214,12 @@ Document Page {page_number} of {total_pages}:
 
 
 personality_update_logo_prompt = """
-You are an expert logo designer. Generate a logo for the personality. The custom
-instructions are for when we're using the personalty. Right now we're
+You are an expert logo designer. Generate a logo for the personality as provided by the
+user. The custom instructions are for when we're using the personality. Right now we're
 just using them as context so that you know what the personality does and
 can generate a more accurate logo. The logo should be a square and look good
-on a dark background. Be creative. Use the image description to verify the logo
-is correct.
-
-After you've generated logo update the personality with the new logo.
-
-Do not ask any questions or explain anything. Just do the best you can.
-
-<personalty name="{name}">
-    <description>
-    {description}
-    </description>
-    <custom_instructions>
-    {context}
-    </custom_instructions>
-</personality>
-""".strip()
+on a dark background. Be creative. After you've generated logo update the personality
+with the new logo.""".strip()
 
 document_summarize_prompt = PromptTemplate(
     template="""

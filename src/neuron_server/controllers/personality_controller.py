@@ -783,16 +783,26 @@ async def update_personality_logo(personality_id: UUID) -> dict[str, dict]:
         input={
             "messages": [
                 HumanMessage(
-                    content="""Update the logo. Your text response will be shown as
-                    a description in a toast letting the user know the logo has been
-                    updated. Use the personality as custom instructions on how to
-                    write the message. Response from their perspective. Keep it
-                    short and concise.
-                    """.strip(),
+                    content="""Update the personality's logo. Your text response will be
+                    shown as a description in a toast letting the user know the logo has
+                    been updated. Use the personality as custom instructions on how to
+                    write the message. Response from their perspective. Keep it short
+                    and concise.
+                    <personality name="{name}">
+                        <description>
+                        {description}
+                        </description>
+                        <custom_instructions>
+                        {context}
+                        </custom_instructions>
+                    </personality>
+                    """.strip().format(
+                        name=personality.name,
+                        description=personality.description,
+                        context=personality.context,
+                    ),
                 ),
             ],
-            "name": personality.name,
-            "personality": personality.description,
         },
         config={
             "configurable": {
