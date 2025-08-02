@@ -30,7 +30,6 @@ import {
   handleRoomStatusUpdate,
   handleRoomData,
 } from "../slices/personalityRoomSlice";
-import { MediaItem } from "../types/media";
 import type {
   ErrorEvent,
   ImageEvent,
@@ -206,22 +205,23 @@ const websocketMiddleware =
 
         // New personality message events from room system
         socketManager.on("personality_message", (event: PersonalityMessageEvent) => {
-          // Convert backend PersonalityMessageEvent to frontend PersonalityChatMessageEvent format
-          const personalityChatEvent = {
-            type: "personality_chat_message" as const,
-            message: {
-              id: event.message_id,
-              personality_id: event.personality_id,
-              personality_room_id: event.room_id || "", // Default to empty string if not provided
-              content: event.content,
-              user_id: event.user_id,
-              created_at: event.created_at,
-              updated_at: event.updated_at,
-              media_items: (event.media_items || []) as MediaItem[],
-              thread_id: null, // Personality messages don't have threads
-            }
-          };
-          dispatch(upsertPersonalityChatMessage(personalityChatEvent));
+          // First, upsert media items to the media slice if any exist
+          if (event.media_items && event.media_items.length > 0) {
+            dispatch(upsertMedia({ media: event.media_items }));
+          }
+
+          // Process each message in the array (usually just one)
+          event.personality_messages.forEach(message => {
+            // Convert backend PersonalityMessageEvent to frontend PersonalityChatMessageEvent format
+            const personalityChatEvent = {
+              type: "personality_chat_message" as const,
+              message: message,
+              // Include normalized media data for the personalityChatSlice to handle relationships
+              media_items: event.media_items || [],
+              personality_message_media_items: event.personality_message_media_items || []
+            };
+            dispatch(upsertPersonalityChatMessage(personalityChatEvent));
+          });
         });
 
         socketManager.on("personality_message_deleted", (event: PersonalityMessageDeletedEvent) => {

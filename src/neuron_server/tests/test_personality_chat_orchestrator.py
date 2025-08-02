@@ -602,6 +602,13 @@ class TestPersonalityChatOrchestrator:
             mock_message.user_id = None
             mock_message.created_at.isoformat.return_value = "2023-01-01T12:00:00"
             mock_message.updated_at.isoformat.return_value = "2023-01-01T12:00:00"
+            mock_message.model_dump.return_value = {
+                "id": str(mock_message.id),
+                "content": "Test response",
+                "user_id": None,
+                "created_at": "2023-01-01T12:00:00",
+                "updated_at": "2023-01-01T12:00:00",
+            }
             mock_create.return_value = mock_message
 
             mock_pubsub.publish_personality_room_message = AsyncMock()

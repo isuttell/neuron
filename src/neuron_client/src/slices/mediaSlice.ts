@@ -3,6 +3,11 @@ import type { RootState } from "../store";
 import { api } from "@/lib/api";
 import { fetchMessagesByThread } from "@/actions/messageActions";
 import { fetchMediaLists } from "./mediaListsSlice";
+import {
+  fetchPersonalityMessages,
+  loadMorePersonalityMessages,
+  sendPersonalityMessage
+} from "@/actions/personalityChatActions";
 import { MediaItem, IncomingMediaEvent } from "@/types/media";
 
 interface MediaState {
@@ -95,6 +100,27 @@ const mediaSlice = createSlice({
       .addCase(fetchMediaLists.fulfilled, (state, action) => {
         for (const media of action.payload.media_items) {
           upsert(state, media);
+        }
+      })
+      .addCase(fetchPersonalityMessages.fulfilled, (state, action) => {
+        if (action.payload?.media_items) {
+          for (const media of action.payload.media_items) {
+            upsert(state, media);
+          }
+        }
+      })
+      .addCase(loadMorePersonalityMessages.fulfilled, (state, action) => {
+        if (action.payload?.media_items) {
+          for (const media of action.payload.media_items) {
+            upsert(state, media);
+          }
+        }
+      })
+      .addCase(sendPersonalityMessage.fulfilled, (state, action) => {
+        if (action.payload?.media_items) {
+          for (const media of action.payload.media_items) {
+            upsert(state, media);
+          }
         }
       });
   },

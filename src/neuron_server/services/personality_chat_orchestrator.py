@@ -845,16 +845,16 @@ creating new
                     )
 
             # Broadcast to personality chat room
-            media_items_data = [item.model_dump() for item in created_media_items]
             message_event = PersonalityMessageEvent(
-                personality_id=personality_id,
-                message_id=ai_message.id,
-                room_id=room_id,
-                content=ai_message.content,
-                user_id=ai_message.user_id,  # None for AI
-                created_at=ai_message.created_at.isoformat(),
-                updated_at=ai_message.updated_at.isoformat(),
-                media_items=media_items_data,
+                personality_messages=[ai_message.model_dump()],
+                media_items=[item.model_dump() for item in created_media_items],
+                personality_message_media_items=[
+                    {
+                        "personality_message_id": str(ai_message.id),
+                        "media_item_id": str(item.id),
+                    }
+                    for item in created_media_items
+                ],
             )
             await secure_pubsub.publish_personality_room_message(
                 personality_id, room_id, message_event

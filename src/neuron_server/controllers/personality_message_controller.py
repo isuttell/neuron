@@ -120,21 +120,44 @@ async def get_personality_messages(
     users_dict = await chat_orchestrator.get_personality_users_dict(personality_id)
     users = list(users_dict.values())
 
-    # Get media items for each message and include them in the response
-    messages_with_media = []
+    # Collect all media items and associations
+    all_media_items = []
+    all_associations = []
+    messages_data = []
+
     for message in messages:
         message_data = message.model_dump()
+        messages_data.append(message_data)
+
         # Get associated media items
         media_items = await PersonalityMessageMediaItemModel.get_media_for_message(
             message.id
         )
-        message_data["media_items"] = [item.model_dump() for item in media_items]
-        messages_with_media.append(message_data)
+        all_media_items.extend(media_items)
+
+        # Get associations for this message
+        associations = (
+            await PersonalityMessageMediaItemModel.get_associations_for_message(
+                message.id
+            )
+        )
+        all_associations.extend(associations)
+
+    # Deduplicate media items
+    unique_media_items = {item.id: item for item in all_media_items}
 
     return {
-        "personality_messages": messages_with_media,
+        "personality_messages": messages_data,
         "personality": personality.model_dump(),
         "users": [user.model_dump() for user in users],
+        "media_items": [item.model_dump() for item in unique_media_items.values()],
+        "personality_message_media_items": [
+            {
+                "personality_message_id": str(assoc.personality_message_id),
+                "media_item_id": str(assoc.media_item_id),
+            }
+            for assoc in all_associations
+        ],
     }
 
 
@@ -292,17 +315,17 @@ async def create_personality_message(personality_id: UUID) -> dict[str, dict]:  
     )
 
     # Broadcast the new message to users in the specific personality room
-    # Include media items in the event
-    media_items_data = [item.model_dump() for item in media_items]
+    # Include normalized arrays like API response
     message_event = PersonalityMessageEvent(
-        personality_id=personality_id,
-        message_id=message.id,
-        room_id=message.personality_room_id,
-        content=message.content,
-        user_id=message.user_id,
-        created_at=message.created_at.isoformat(),
-        updated_at=message.updated_at.isoformat(),
-        media_items=media_items_data,
+        personality_messages=[message.model_dump()],
+        media_items=[item.model_dump() for item in media_items],
+        personality_message_media_items=[
+            {
+                "personality_message_id": str(message.id),
+                "media_item_id": str(item.id),
+            }
+            for item in media_items
+        ],
     )
     await secure_pubsub.publish_personality_room_message(
         personality_id, message.personality_room_id, message_event
@@ -313,9 +336,18 @@ async def create_personality_message(personality_id: UUID) -> dict[str, dict]:  
         chat_orchestrator.process_user_message(personality_id, message.id)
     )
 
-    message_data = message.model_dump()
-    message_data["media_items"] = [item.model_dump() for item in media_items]
-    return {"personality_message": message_data}
+    # Return normalized response
+    return {
+        "personality_message": message.model_dump(),
+        "media_items": [item.model_dump() for item in media_items],
+        "personality_message_media_items": [
+            {
+                "personality_message_id": str(message.id),
+                "media_item_id": str(item.id),
+            }
+            for item in media_items
+        ],
+    }
 
 
 @blueprint.put("/<uuid:personality_id>/messages/<uuid:message_id>")
@@ -382,15 +414,22 @@ async def update_personality_message(
     if not updated_message:
         raise NotFound(f"Message with id {message_id} not found")
 
+    # Get media items for the updated message
+    updated_media_items = await PersonalityMessageMediaItemModel.get_media_for_message(
+        updated_message.id
+    )
+
     # Broadcast the updated message to users in the specific personality room
     message_event = PersonalityMessageEvent(
-        personality_id=personality_id,
-        message_id=updated_message.id,
-        room_id=updated_message.personality_room_id,
-        content=updated_message.content,
-        user_id=updated_message.user_id,
-        created_at=updated_message.created_at.isoformat(),
-        updated_at=updated_message.updated_at.isoformat(),
+        personality_messages=[updated_message.model_dump()],
+        media_items=[item.model_dump() for item in updated_media_items],
+        personality_message_media_items=[
+            {
+                "personality_message_id": str(updated_message.id),
+                "media_item_id": str(item.id),
+            }
+            for item in updated_media_items
+        ],
     )
     await secure_pubsub.publish_personality_room_message(
         personality_id, updated_message.personality_room_id, message_event

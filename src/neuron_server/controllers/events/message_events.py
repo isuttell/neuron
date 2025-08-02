@@ -52,14 +52,9 @@ class CancelMessage(IncomingEvent):
 
 class PersonalityMessageEvent(OutgoingEvent):
     type: Literal["personality_message"] = "personality_message"
-    personality_id: UUID
-    message_id: UUID
-    room_id: UUID
-    content: str
-    user_id: str | None
-    created_at: str
-    updated_at: str
+    personality_messages: list[dict] = []
     media_items: list[dict] = []
+    personality_message_media_items: list[dict] = []
 
 
 class PersonalityMessageDeletedEvent(OutgoingEvent):

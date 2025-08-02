@@ -202,7 +202,12 @@ class TestPersonalityMessageController:
             patch.object(
                 PersonalityMessageMediaItemModel,
                 "get_media_for_message",
-                AsyncMock(return_value={}),
+                AsyncMock(return_value=[]),
+            ),
+            patch.object(
+                PersonalityMessageMediaItemModel,
+                "get_associations_for_message",
+                AsyncMock(return_value=[]),
             ),
         ):
             # Mock the chat orchestrator method
@@ -325,6 +330,11 @@ class TestPersonalityMessageController:
                 PersonalityRoomModel,
                 "get_for_user",
                 AsyncMock(return_value=mock_room),
+            ),
+            patch.object(
+                PersonalityMessageMediaItemModel,
+                "get_media_for_message",
+                AsyncMock(return_value=[]),
             ),
             patch(
                 "neuron_server.controllers.personality_message_controller.secure_pubsub"

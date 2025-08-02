@@ -21,6 +21,7 @@ import type {
   CreatePersonalityMessageResponse,
   UpdatePersonalityMessageResponse,
 } from "../types/personalityChat";
+import type { MediaItem } from "../types/media";
 
 // Action payload types for extraReducers
 interface FetchPersonalityMessagesPayload extends PersonalityMessagesResponse {
@@ -46,6 +47,7 @@ interface DeletePersonalityMessagePayload {
 const initialState: PersonalityChatState = {
   messageMap: {},
   messageIds: [],
+  messageMediaItemIds: {},
   activePersonalityId: null,
   loading: false,
   error: null,
@@ -99,7 +101,6 @@ export const personalityChatSlice = createSlice({
         updated_at: Date.now(),
         thread_id: null,
         isOptimistic: true,
-        media_items: [],
       };
 
       state.messageIds.push(tempId);
@@ -129,6 +130,7 @@ export const personalityChatSlice = createSlice({
       action: PayloadAction<PersonalityChatMessageEvent>
     ) => {
       const incomingMessage = action.payload.message;
+      const { personality_message_media_items } = action.payload;
 
       // Check if we have an optimistic message to replace
       const tempId = (incomingMessage as PersonalityMessage & { temp_id?: string }).temp_id;
@@ -138,10 +140,23 @@ export const personalityChatSlice = createSlice({
         if (optimisticIndex !== -1) {
           state.messageIds.splice(optimisticIndex, 1);
           delete state.messageMap[tempId];
+          delete state.messageMediaItemIds[tempId];
         }
       }
 
       upsert(state, incomingMessage);
+
+      // Process media item relationships from WebSocket event
+      if (personality_message_media_items) {
+        for (const relation of personality_message_media_items) {
+          if (!state.messageMediaItemIds[relation.personality_message_id]) {
+            state.messageMediaItemIds[relation.personality_message_id] = [];
+          }
+          if (!state.messageMediaItemIds[relation.personality_message_id].includes(relation.media_item_id)) {
+            state.messageMediaItemIds[relation.personality_message_id].push(relation.media_item_id);
+          }
+        }
+      }
     },
 
     upsertMessages: (
@@ -219,7 +234,7 @@ export const personalityChatSlice = createSlice({
         fetchPersonalityMessages.fulfilled,
         (state, action: PayloadAction<FetchPersonalityMessagesPayload>) => {
           state.loading = false;
-          const { personality_messages, personalityId, hasMore } = action.payload;
+          const { personality_messages, personalityId, hasMore, personality_message_media_items } = action.payload;
 
           // Clear existing messages for this personality before adding new ones
           const messagesToRemove = state.messageIds.filter(
@@ -228,6 +243,7 @@ export const personalityChatSlice = createSlice({
 
           messagesToRemove.forEach((id) => {
             delete state.messageMap[id];
+            delete state.messageMediaItemIds[id];
           });
 
           state.messageIds = state.messageIds.filter(
@@ -237,6 +253,18 @@ export const personalityChatSlice = createSlice({
           // Add new messages
           for (const message of personality_messages) {
             upsert(state, message);
+          }
+
+          // Process media item relationships
+          if (personality_message_media_items) {
+            for (const relation of personality_message_media_items) {
+              if (!state.messageMediaItemIds[relation.personality_message_id]) {
+                state.messageMediaItemIds[relation.personality_message_id] = [];
+              }
+              if (!state.messageMediaItemIds[relation.personality_message_id].includes(relation.media_item_id)) {
+                state.messageMediaItemIds[relation.personality_message_id].push(relation.media_item_id);
+              }
+            }
           }
 
           // Update pagination state
@@ -253,11 +281,23 @@ export const personalityChatSlice = createSlice({
       .addCase(
         loadMorePersonalityMessages.fulfilled,
         (state, action: PayloadAction<LoadMorePersonalityMessagesPayload>) => {
-          const { personality_messages, personalityId, hasMore } = action.payload;
+          const { personality_messages, personalityId, hasMore, personality_message_media_items } = action.payload;
 
           // Add new messages (append to existing)
           for (const message of personality_messages) {
             upsert(state, message);
+          }
+
+          // Process media item relationships
+          if (personality_message_media_items) {
+            for (const relation of personality_message_media_items) {
+              if (!state.messageMediaItemIds[relation.personality_message_id]) {
+                state.messageMediaItemIds[relation.personality_message_id] = [];
+              }
+              if (!state.messageMediaItemIds[relation.personality_message_id].includes(relation.media_item_id)) {
+                state.messageMediaItemIds[relation.personality_message_id].push(relation.media_item_id);
+              }
+            }
           }
 
           // Update pagination state
@@ -434,5 +474,19 @@ export const getPersonalityChatMessagesByRoom = createSelector(
       })
 );
 
+// Selector to get media items for a specific message
+export const selectMessageMediaItems = createSelector(
+  [
+    (state: RootState) => state.personalityChat.messageMediaItemIds,
+    (state: RootState) => state.media.items,
+    (_state: RootState, messageId: string) => messageId
+  ],
+  (messageMediaItemIds, mediaItems, messageId) => {
+    const mediaItemIds = messageMediaItemIds[messageId] || [];
+    return mediaItemIds
+      .map(id => mediaItems.find(item => item.id === id))
+      .filter((item): item is MediaItem => Boolean(item));
+  }
+);
 
 export default personalityChatSlice.reducer;
