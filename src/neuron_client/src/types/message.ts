@@ -97,7 +97,7 @@ export interface RawMessage {
 
 export interface MessageResponse {
   messages: RawMessage[];
-  media: MediaItem[];
+  media_items: MediaItem[];
   threads?: Thread[];
   users?: User[];
   thread_users?: Array<{

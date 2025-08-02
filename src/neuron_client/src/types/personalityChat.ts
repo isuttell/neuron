@@ -10,12 +10,17 @@ export interface PersonalityMessage {
   content: string;
   created_at: string;
   updated_at: string;
-  media_items: MediaItem[];
+}
+
+export interface PersonalityMessageMediaItem {
+  personality_message_id: string;
+  media_item_id: string;
 }
 
 export interface PersonalityChatState {
   messageMap: Record<string, PersonalityChatMessage>;
   messageIds: string[];
+  messageMediaItemIds: Record<string, string[]>; // messageId -> [mediaItemId, ...]
   activePersonalityId: string | null;
   loading: boolean;
   error: string | null;
@@ -41,6 +46,8 @@ export interface PersonalityMessagesResponse {
     created_at: string;
     updated_at: string;
   }>;
+  media_items?: MediaItem[];
+  personality_message_media_items?: PersonalityMessageMediaItem[];
 }
 
 type JsonValue =
@@ -63,6 +70,8 @@ export interface UpdatePersonalityMessageRequest extends Record<string, JsonValu
 
 export interface CreatePersonalityMessageResponse {
   personality_message: PersonalityMessage;
+  media_items?: MediaItem[];
+  personality_message_media_items?: PersonalityMessageMediaItem[];
 }
 
 export interface UpdatePersonalityMessageResponse {
@@ -86,6 +95,8 @@ export type PersonalityChatMessage = PersonalityMessage | OptimisticPersonalityM
 export interface PersonalityChatMessageEvent {
   type: "personality_chat_message";
   message: PersonalityMessage;
+  media_items?: MediaItem[];
+  personality_message_media_items?: PersonalityMessageMediaItem[];
 }
 
 export interface PersonalityChatUpdateEvent {

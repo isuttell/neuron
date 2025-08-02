@@ -246,7 +246,7 @@ describe("threadsSlice", () => {
         messageActions.fetchMessagesByThread.fulfilled(
           {
             messages: [],
-            media: [],
+            media_items: [],
             threads: [mockIncomingThread],
           },
           "",

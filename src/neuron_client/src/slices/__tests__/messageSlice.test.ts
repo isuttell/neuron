@@ -254,7 +254,7 @@ describe("messageSlice", () => {
 
         store.dispatch(
           fetchMessagesByThread.fulfilled(
-            { messages, media: [] },
+            { messages, media_items: [] },
             "",
             "thread-1"
           )

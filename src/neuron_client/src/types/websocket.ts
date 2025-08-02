@@ -1,7 +1,7 @@
 import { IncomingMessage } from "../slices/messagesSlice";
 import { MediaItem } from "./media";
 import { Personality } from "./personality";
-import { PersonalityMessage } from "./personalityChat";
+import { PersonalityMessage, PersonalityMessageMediaItem } from "./personalityChat";
 import { Thread } from "./thread";
 import { PersonalityRoom, PersonalityRoomUser } from "./personalityRoom";
 import { User } from "./user";
@@ -106,14 +106,9 @@ export interface PersonalityChatDeleteEvent extends WebSocketMessage {
 // Backend personality message events
 export interface PersonalityMessageEvent extends WebSocketMessage {
   type: "personality_message";
-  personality_id: string;
-  message_id: string;
-  room_id?: string;
-  content: string;
-  user_id: string | null;
-  created_at: string;
-  updated_at: string;
-  media_items?: MediaItem[];
+  personality_messages: PersonalityMessage[];
+  media_items: MediaItem[];
+  personality_message_media_items: PersonalityMessageMediaItem[];
 }
 
 export interface PersonalityMessageDeletedEvent extends WebSocketMessage {

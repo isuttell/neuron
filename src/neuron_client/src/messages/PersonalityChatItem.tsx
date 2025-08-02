@@ -12,6 +12,7 @@ import { useAppSelector } from "../hooks";
 import { getUser } from "../slices/usersSlice";
 import { getCurrentUser } from "../slices/appSlice";
 import { getRoomUsers } from "../slices/personalityRoomSlice";
+import { selectMessageMediaItems } from "../slices/personalityChatSlice";
 
 interface PersonalityChatItemProps {
   message: PersonalityChatMessage;
@@ -56,6 +57,11 @@ const PersonalityChatItem: React.FC<PersonalityChatItemProps> = ({
 }) => {
   const currentUser = useAppSelector(getCurrentUser);
   const isCurrentUser = message.user_id === currentUser?.sub;
+
+  // Get media items for this message
+  const mediaItems = useAppSelector(state =>
+    selectMessageMediaItems(state, message.id)
+  );
 
   // Get room users for color assignment
   const roomUsers = useAppSelector((state) =>
@@ -129,7 +135,6 @@ const PersonalityChatItem: React.FC<PersonalityChatItemProps> = ({
   const timestamp = typeof message.created_at === 'string'
     ? new Date(message.created_at)
     : new Date(message.created_at);
-
   // Render personality messages with chat bubble layout (matching user format)
   if (isPersonality) {
     return (
@@ -159,9 +164,9 @@ const PersonalityChatItem: React.FC<PersonalityChatItemProps> = ({
             </div>
 
             {/* Media Items */}
-            {'media_items' in message && message.media_items && message.media_items.length > 0 && (
+            {mediaItems && mediaItems.length > 0 && (
               <MediaItems
-                mediaItems={message.media_items}
+                mediaItems={mediaItems}
                 className="my-2"
               />
             )}
@@ -233,9 +238,9 @@ const PersonalityChatItem: React.FC<PersonalityChatItemProps> = ({
           )}
 
           {/* Media Items */}
-          {'media_items' in message && message.media_items && message.media_items.length > 0 && (
+          {mediaItems && mediaItems.length > 0 && (
             <MediaItems
-              mediaItems={message.media_items}
+              mediaItems={mediaItems}
               className="my-2"
             />
           )}

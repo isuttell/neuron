@@ -71,7 +71,7 @@ async def get_thread_messages(thread_id: UUID) -> dict[str, list[dict]]:
     return {
         "threads": [thread.model_dump()],
         "messages": [message.model_dump() for message in messages],
-        "media": [item.model_dump() for item in media_items],
+        "media_items": [item.model_dump() for item in media_items],
         "users": [user.model_dump() for user in users],
         "thread_users": [
             {"user_id": tu.user_id, "thread_id": str(tu.thread_id), "role": tu.role}
