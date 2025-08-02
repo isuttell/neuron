@@ -86,8 +86,8 @@ const mediaSlice = createSlice({
         state.error = action.error.message ?? "Failed to fetch media items";
       })
       .addCase(fetchMessagesByThread.fulfilled, (state, action) => {
-        if (action.payload?.media) {
-          for (const media of action.payload.media) {
+        if (action.payload?.media_items) {
+          for (const media of action.payload.media_items) {
             upsert(state, media);
           }
         }

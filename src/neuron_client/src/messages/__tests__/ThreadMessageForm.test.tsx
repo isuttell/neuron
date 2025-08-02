@@ -110,7 +110,7 @@ describe("ThreadMessageForm", () => {
 
     mockDispatch.mockResolvedValue({
       messages: [],
-      media: [],
+      media_items: [],
     });
   });
 

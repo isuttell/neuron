@@ -163,7 +163,7 @@ async def test_get_thread_messages_success(
 
                         assert "threads" in result
                         assert "messages" in result
-                        assert "media" in result
+                        assert "media_items" in result
                         assert len(result["messages"]) == 1
                         assert result["messages"][0]["content"] == "Hello"
 
