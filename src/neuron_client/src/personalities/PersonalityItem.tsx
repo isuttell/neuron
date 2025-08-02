@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Loader2, MoreHorizontal, Image, Brain, Play, Square, UserPen, Users, Heart } from "lucide-react";
+import { Loader2, MoreHorizontal, Image, Brain, Play, Square, UserPen, Users, Heart, Trash } from "lucide-react";
 import {
   Card,
   CardTitle,
@@ -29,6 +29,7 @@ import { usePersonalityPermissions } from "@/hooks/usePersonalityPermissions";
 import { isAdmin } from "@/lib/auth";
 import { useAuth0 } from "@auth0/auth0-react";
 import PersonalityUsersDialog from "@/personalities/PersonalityUsersDialog";
+import DeletePersonalityDialog from "@/components/DeletePersonalityDialog";
 
 interface PersonalityItemProps {
   personality: Personality;
@@ -43,6 +44,7 @@ const PersonalityDropdownMenu: React.FC<{
   handleActivate: () => void;
   isActive: boolean;
   setIsUsersDialogOpen: (open: boolean) => void;
+  setIsDeletePersonalityOpen: (open: boolean) => void;
   handleUpdateLogo: () => void;
   isUpdatingLogo: boolean;
   handleToggleFavorite: () => void;
@@ -55,6 +57,7 @@ const PersonalityDropdownMenu: React.FC<{
   handleActivate,
   isActive,
   setIsUsersDialogOpen,
+  setIsDeletePersonalityOpen,
   handleUpdateLogo,
   isUpdatingLogo,
   handleToggleFavorite,
@@ -165,6 +168,25 @@ const PersonalityDropdownMenu: React.FC<{
           </DropdownMenuItem>
         )}
 
+        {/* Delete Personality - personality admins only */}
+        {canManage && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onSelect={(e) => {
+                e.preventDefault();
+                setOpen(false);
+                // Small delay to ensure dropdown closes before dialog opens
+                setTimeout(() => setIsDeletePersonalityOpen(true), 0);
+              }}
+              className="text-destructive focus:text-destructive"
+            >
+              <Trash className="size-4" />
+              Delete Personality
+            </DropdownMenuItem>
+          </>
+        )}
+
         {/* View Embeddings - system admins only */}
         {isSystemAdmin && (
           <>
@@ -200,6 +222,7 @@ const PersonalityItem: React.FC<PersonalityItemProps> = ({
   const [isUpdatingLogo, setIsUpdatingLogo] = useState(false);
   const [isUsersDialogOpen, setIsUsersDialogOpen] = useState(false);
   const [isTogglingFavorite, setIsTogglingFavorite] = useState(false);
+  const [isDeletePersonalityOpen, setIsDeletePersonalityOpen] = useState(false);
   const [open, setOpen] = useState(false);
 
   // Handler for dialog open/close with pointer events fix
@@ -325,6 +348,7 @@ const PersonalityItem: React.FC<PersonalityItemProps> = ({
           handleActivate={handleActivate}
           isActive={isActive}
           setIsUsersDialogOpen={setIsUsersDialogOpen}
+          setIsDeletePersonalityOpen={setIsDeletePersonalityOpen}
           handleUpdateLogo={handleUpdateLogo}
           isUpdatingLogo={isUpdatingLogo}
           handleToggleFavorite={handleToggleFavorite}
@@ -348,6 +372,15 @@ const PersonalityItem: React.FC<PersonalityItemProps> = ({
         personalityId={personality.id}
         open={isUsersDialogOpen}
         onOpenChange={createDialogHandler(setIsUsersDialogOpen)}
+        trigger={<></>}
+      />
+
+      {/* Delete Personality Dialog */}
+      <DeletePersonalityDialog
+        personalityId={personality.id}
+        personalityName={personality.name}
+        open={isDeletePersonalityOpen}
+        onOpenChange={createDialogHandler(setIsDeletePersonalityOpen)}
         trigger={<></>}
       />
     </>
