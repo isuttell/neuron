@@ -1,5 +1,5 @@
 import { vi } from 'vitest';
-import { screen, fireEvent, waitFor } from '@testing-library/react';
+import { screen, fireEvent, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '@/test-utils';
 import Personality from '../personality';
@@ -300,9 +300,9 @@ describe('Personality Component - Document Functionality', () => {
     it('should disable upload button while uploading', async () => {
       const user = userEvent.setup();
 
-      // Mock a slow upload
+      // Mock a slow upload with longer timeout to ensure stable test
       (api.post as vi.Mock).mockImplementationOnce(
-        () => new Promise(resolve => setTimeout(resolve, 100))
+        () => new Promise(resolve => setTimeout(resolve, 500))
       );
 
       renderWithProviders(<Personality />, { preloadedState: initialState });
@@ -311,18 +311,23 @@ describe('Personality Component - Document Functionality', () => {
       const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
       const file = new File(['test'], 'test.txt', { type: 'text/plain' });
 
-      // Start upload
-      await user.upload(fileInput, file);
+      // Ensure button is initially enabled
+      expect(uploadButton).not.toBeDisabled();
 
-      // Button should be disabled during upload
+      // Start upload with act() to ensure state updates are processed
+      await act(async () => {
+        await user.upload(fileInput, file);
+      });
+
+      // Wait for React state update to complete and button to be disabled
       await waitFor(() => {
         expect(uploadButton).toBeDisabled();
-      });
+      }, { timeout: 1000 });
 
-      // Wait for upload to complete
+      // Wait for upload to complete and button to be re-enabled
       await waitFor(() => {
         expect(uploadButton).not.toBeDisabled();
-      });
+      }, { timeout: 1000 });
     });
 
     it('should reset file input after successful upload', async () => {
