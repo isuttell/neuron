@@ -1,4 +1,5 @@
 import builtins
+import logging
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Self
@@ -10,6 +11,7 @@ from sqlalchemy import select
 from neuron_server.database import Personality, PersonalityUser, get_session
 from neuron_server.models.personality_user_model import PersonalityUserModel
 
+logger = logging.getLogger(__name__)
 
 class PersonalityModel(BaseModel):
     id: UUID = Field(default_factory=lambda: uuid4())
@@ -89,8 +91,12 @@ class PersonalityModel(BaseModel):
             The created PersonalityModel instance
         """
         async with get_session() as session:
+            # Generate UUID if not provided to ensure we have an ID for
+            # the PersonalityUser record
+            personality_id = params.personality_id or uuid4()
+
             personality = Personality(
-                id=params.personality_id,
+                id=personality_id,
                 name=params.name,
                 description=params.description,
                 context=params.context,
