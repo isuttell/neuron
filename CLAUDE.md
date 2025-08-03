@@ -22,7 +22,7 @@ Neuron is a realtime chat application built with LangChain and LangGraph that pr
 - Accessible via `mcp__postgres-neuron__*` MCP tools
 
 ### Local Development Environment
-- Docker-based setup on local machine using docker compose
+- Docker-based setup running in WSL using docker compose
 - Has separate database instance for local development
 - Accessible via `mcp__postgres-localhost__*` MCP tools (connects to localhost:5432)
 
@@ -239,9 +239,15 @@ For complete PR requirements and process, refer to @PR_REQUIREMENTS.md
 
 ## Monitoring and Logs
 
-### Querying Preprod Logs with Loki
+### Querying Production Logs with Loki
 
-The preprod environment uses Loki for log aggregation. To query Neuron logs:
+The production environment hosted at https://neuron.zaks.io on Lapetus homelab server uses Loki for log aggregation. To query Neuron logs:
 
 1. Use `mcp__loki__get_loki_label_values(label="container")` to find Neuron containers (they start with "neuron-")
 2. Query logs with `mcp__loki__query_loki(query='{container="neuron-neuron_server-1"}', limit=50)`
+
+### Service Restarts
+
+When restarting services, only restart the services required for your changes:
+- Application services: Restart only the affected services (e.g., backend, frontend, redis, neo4j)
+- Avoid unnecessary database restarts to preserve data

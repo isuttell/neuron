@@ -1,8 +1,8 @@
-Create a task list and verify each item passes before creating a PR using the Gitea MCP:
+Create a task list and verify each item passes before creating a PR using the Gitea MCP. All tests, linters and formatters must succeed for the PR to be approved. Do not bypass any checks.
 
 ## Branch Preparation
 
-- [ ] Pull latest changes from main branch to avoid merge conflicts
+- [ ] Fetch and rebase the latest changes from the master branch to avoid merge conflicts
 - [ ] Ensure we're on a appropriately named branch off of master
 
 ## Quality Checks
