@@ -351,7 +351,7 @@ output filename to the user as they can't directly access it.
             artifact_item = ToolMediaItem(
                 id=media_id,
                 url=url,
-                caption=name,
+                name=name,
                 description=f"FFmpeg processed {extension} file",
                 metadata=metadata,
             )

@@ -39,7 +39,7 @@ export interface ImageContent extends BaseContent {
   type: "image";
   id: string;
   url: string;
-  caption: string;
+  name: string;
   description?: string;
   metadata: Record<string, unknown>;
 }
@@ -49,7 +49,7 @@ export interface AudioContent extends BaseContent {
   type: "audio";
   id: string;
   url: string;
-  caption: string;
+  name: string;
   description?: string;
   duration?: number;
   metadata: Record<string, unknown>;
@@ -60,7 +60,7 @@ export interface VideoContent extends BaseContent {
   type: "video";
   id: string;
   url: string;
-  caption: string;
+  name: string;
   description?: string;
   duration?: number;
   metadata: Record<string, unknown>;
@@ -124,7 +124,7 @@ export interface IncomingMessage {
     items?: Array<{
       id: string;
       url: string;
-      caption: string;
+      name: string;
       description?: string;
       duration?: number;
       metadata?: Record<string, unknown>;

@@ -149,7 +149,7 @@ For complex workflows requiring file generation, use the regular code_interprete
             ToolMediaItem(
                 id=code_media_id,
                 url=code_url,
-                caption="Source Code",
+                name="Source Code",
                 description=python_code,
                 metadata=ToolArtifactMetadata(
                     output_format="python",
@@ -166,7 +166,7 @@ For complex workflows requiring file generation, use the regular code_interprete
                 ToolMediaItem(
                     id=output_media_id,
                     url=output_url,
-                    caption="Output",
+                    name="Output",
                     description=f"{stdout}\n{stderr}".strip(),
                     metadata=ToolArtifactMetadata(
                         output_format="text",

@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 interface TextContentProps {
   id: string;
   url: string;
-  caption: string;
+  name: string;
   description?: string;
   metadata?: {
     type?: string;
@@ -22,7 +22,7 @@ interface TextContentProps {
 
 const TextContentComponent: React.FC<TextContentProps> = ({
   url,
-  caption,
+  name,
   description,
   metadata,
   className,
@@ -39,7 +39,7 @@ const TextContentComponent: React.FC<TextContentProps> = ({
       )}
     >
       <IconComponent className="h-4 w-4 flex-shrink-0" />
-      <span className="truncate">{caption}</span>
+      <span className="truncate">{name}</span>
       <ExternalLink className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
     </div>
   );
@@ -66,7 +66,7 @@ const TextContentComponent: React.FC<TextContentProps> = ({
   return (
     <TextDialog
       trigger={trigger}
-      title={caption}
+      title={name}
       actions={actions}
       metadata={{
         ...metadata,

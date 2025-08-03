@@ -135,7 +135,7 @@ class TestCallbackHandlers:
                     ToolMediaItem(
                         id=uuid4(),
                         url="test.jpg",
-                        caption="test image",
+                        name="test image",
                         description="test image description",
                     )
                 ],

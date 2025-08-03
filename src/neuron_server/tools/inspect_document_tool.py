@@ -159,7 +159,7 @@ youtube
                         ToolMediaItem(
                             id=str(uuid4()),
                             url=doc.metadata.get("source", url),
-                            caption=(
+                            name=(
                                 display_name or doc.metadata.get("title", "Document")
                             ),
                             description=doc.page_content.strip(),

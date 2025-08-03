@@ -42,7 +42,7 @@ const MediaItems: React.FC<MediaItemsProps> = ({
               <VideoContentComponent
                 key={item.id}
                 url={item.url}
-                caption={item.name}
+                name={item.name}
                 description={item.description}
                 preload={preload}
               />
@@ -54,7 +54,7 @@ const MediaItems: React.FC<MediaItemsProps> = ({
                 key={item.id}
                 url={item.url}
                 alt={item.name}
-                caption={item.name}
+                name={item.name}
                 description={item.description}
                 thumbnail_size="xl"
               />
@@ -66,7 +66,7 @@ const MediaItems: React.FC<MediaItemsProps> = ({
                 key={item.id}
                 id={item.id}
                 url={item.url}
-                caption={item.name}
+                name={item.name}
                 description={item.description}
                 icon={Search}
               />
@@ -78,7 +78,7 @@ const MediaItems: React.FC<MediaItemsProps> = ({
                 key={item.id}
                 id={item.id}
                 url={item.url}
-                caption={item.name}
+                name={item.name}
                 description={item.description}
               />
             );

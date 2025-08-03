@@ -195,7 +195,7 @@ class TestWebsocketCallbackFunctions:
                     ToolMediaItem(
                         id=uuid4(),
                         url="test1.jpg",
-                        caption="test image 1",
+                        name="test image 1",
                         description="test image 1 description",
                     )
                 ],
@@ -206,7 +206,7 @@ class TestWebsocketCallbackFunctions:
                     ToolMediaItem(
                         id=uuid4(),
                         url="test.mp3",
-                        caption="test audio",
+                        name="test audio",
                         description="test audio description",
                     )
                 ],

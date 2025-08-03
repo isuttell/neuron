@@ -51,7 +51,7 @@ async def create_media_items_from_artifacts(
                     user_id=user_id,
                     url=item.url,
                     media_type=artifact.media_type,
-                    name=item.caption,
+                    name=item.name,
                     description=item.description,
                 )
 

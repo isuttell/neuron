@@ -231,7 +231,7 @@ text prompts with the stackadoc/stable-audio-open-1.0 model. Ideal for:
             artifact_item = ToolMediaItem(
                 id=media_id,
                 url=url,
-                caption=slug,
+                name=slug,
                 description=prompt,
                 metadata=metadata,
             )

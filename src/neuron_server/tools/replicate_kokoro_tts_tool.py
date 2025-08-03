@@ -144,7 +144,7 @@ class ReplicateKokoroTTSTool(BaseTool):
             artifact_item = ToolMediaItem(
                 id=media_id,
                 url=url,
-                caption=name,
+                name=name,
                 description=text,
                 metadata=metadata,
             )

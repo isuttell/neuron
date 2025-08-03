@@ -218,7 +218,7 @@ async def save_images(config: SaveImagesConfig) -> tuple[list[str], list[dict]]:
         artifact_item = ToolMediaItem(
             id=media_id,
             url=url,
-            caption=f"{device_descriptions[config.camera]} #{i + 1}",
+            name=f"{device_descriptions[config.camera]} #{i + 1}",
             description=(
                 f"Security camera capture from {config.camera} at "
                 f"{capture_time.astimezone().isoformat(timespec='seconds')}"

@@ -306,7 +306,7 @@ technical indicators, and economic indicators with multiple symbol support.
                     ToolMediaItem(
                         id=uuid.uuid4(),
                         url=api_url_without_key,
-                        caption="Alpha Vantage",
+                        name="Alpha Vantage",
                         description="",
                         metadata=ToolArtifactMetadata(
                             query=clean_query_params,

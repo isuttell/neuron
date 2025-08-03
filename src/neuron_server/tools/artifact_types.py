@@ -50,7 +50,7 @@ class ToolMediaItem(BaseModel):
 
     id: UUID = Field(description="Media item ID from database")
     url: str = Field(description="URL to access the media")
-    caption: str = Field(description="Short caption/name for display")
+    name: str = Field(description="Short name for display")
     description: str = Field(default="", description="Detailed description")
     prompt_comparison: str | None = Field(
         default=None, description="How the generated result differs from the prompt"
@@ -90,7 +90,7 @@ class ToolMediaArtifact(BaseModel):
             # Add basic fields
             ET.SubElement(root, "id").text = str(item.id)
             ET.SubElement(root, "url").text = item.url
-            ET.SubElement(root, "caption").text = item.caption
+            ET.SubElement(root, "caption").text = item.name
 
             # Add optional fields
             if item.description:
@@ -111,7 +111,7 @@ class ToolMediaArtifact(BaseModel):
                 # Add basic fields
                 ET.SubElement(item_elem, "id").text = str(item.id)
                 ET.SubElement(item_elem, "url").text = item.url
-                ET.SubElement(item_elem, "caption").text = item.caption
+                ET.SubElement(item_elem, "caption").text = item.name
 
                 # Add optional fields
                 if item.description:
