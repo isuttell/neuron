@@ -160,6 +160,17 @@ export const threadsSlice = createSlice({
         }
       )
       .addCase(
+        actions.fetchRecentCombinedItems.fulfilled,
+        (state, action) => {
+          // Handle threads from the combined response
+          if (action.payload?.threads) {
+            for (const thread of action.payload.threads) {
+              upsert(state, thread);
+            }
+          }
+        }
+      )
+      .addCase(
         messageActions.fetchMessagesByThread.fulfilled,
         (state, action) => {
           if (action.payload?.threads) {

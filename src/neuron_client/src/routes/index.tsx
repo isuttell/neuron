@@ -1,11 +1,9 @@
 import { useState, useEffect } from "react";
 import { useAppSelector, useAppDispatch } from "../hooks";
 import { createThread } from "../actions/threadActions";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import {
-  getActivePersonalityId,
-  getActivePersonality,
-  setActivePersonality,
+  getPersonality,
   getPersonalities,
 } from "../slices/personalitiesSlice";
 import logo from "@/assets/logo.svg";
@@ -24,14 +22,16 @@ import PersonalitySelector from "../components/PersonalitySelector";
 export default function Index() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const { personalityId } = useParams();
   const [isLoading, setLoading] = useState(false);
   const [isChatMode, setIsChatMode] = useState(() => {
     // Load preference from localStorage, default to true (Chat mode)
     const saved = localStorage.getItem("neuron_mode_preference");
     return saved !== null ? saved === "chat" : true;
   });
-  const activePersonalityId = useAppSelector(getActivePersonalityId);
-  const activePersonality = useAppSelector(getActivePersonality);
+  const selectedPersonality = useAppSelector(
+    (state) => personalityId ? getPersonality(state, personalityId) : undefined
+  );
   const personalities = useAppSelector(getPersonalities);
   const isConnected = useAppSelector(getConnectionStatus);
   const currentUser = useAppSelector(getCurrentUser);
@@ -44,15 +44,15 @@ export default function Index() {
     dispatch(fetchPersonalities());
   }, [dispatch]);
 
-  // Clear activePersonalityId if it doesn't exist in the loaded personalities
+  // Redirect to personalities page if personalityId in URL doesn't exist
   useEffect(() => {
-    if (!personalitiesLoading && personalities.length > 0 && activePersonalityId) {
-      const personalityExists = personalities.some(p => p.id === activePersonalityId);
+    if (!personalitiesLoading && personalities.length > 0 && personalityId) {
+      const personalityExists = personalities.some(p => p.id === personalityId);
       if (!personalityExists) {
-        dispatch(setActivePersonality(undefined));
+        navigate('/personalities');
       }
     }
-  }, [personalities, personalitiesLoading, activePersonalityId, dispatch]);
+  }, [personalities, personalitiesLoading, personalityId, navigate]);
 
   // Save mode preference to localStorage when it changes
   useEffect(() => {
@@ -60,7 +60,7 @@ export default function Index() {
   }, [isChatMode]);
 
   const handleSubmit = (prompt: string, file?: File | Blob) => {
-    if (!activePersonalityId || isLoading) {
+    if (!personalityId || isLoading) {
       return;
     }
 
@@ -70,7 +70,7 @@ export default function Index() {
       // Chat mode: Create personality room and redirect
       dispatch(
         createPersonalityRoom({
-          personalityId: activePersonalityId,
+          personalityId: personalityId,
           data: {
             type: 'private'
           }
@@ -82,7 +82,7 @@ export default function Index() {
           if (currentUser?.sub) {
             dispatch(
               sendPersonalityMessage({
-                personalityId: activePersonalityId,
+                personalityId: personalityId,
                 roomId: personality_room.id,
                 content: prompt,
                 userId: currentUser.sub,
@@ -90,7 +90,7 @@ export default function Index() {
               })
             );
           }
-          navigate(`/personality/${activePersonalityId}/room/${personality_room.id}`);
+          navigate(`/personality/${personalityId}/room/${personality_room.id}`);
         })
         .catch((error) => {
           toast.error("Failed to create chat room", {
@@ -104,7 +104,7 @@ export default function Index() {
       // Agent mode: Create thread (existing behavior)
       dispatch(
         createThread({
-          personalityId: activePersonalityId,
+          personalityId: personalityId,
           prompt,
           greeting: false,
           file,
@@ -135,15 +135,16 @@ export default function Index() {
         <div className="flex flex-col gap-2 max-w-[768px] mx-auto w-full">
           <MessageForm
             onSubmit={handleSubmit}
-            disabled={!activePersonalityId || !isConnected}
+            disabled={!personalityId || !isConnected}
             isLoading={isLoading}
             placeholder={
               !isConnected
                 ? "WebSocket disconnected - please wait for reconnection"
-                : activePersonality
+                : selectedPersonality
                 ? "Type your prompt here..."
                 : "Select a personality first"
             }
+            personalityId={personalityId}
           >
             <div className="flex items-center gap-4">
               <PersonalitySelector />
@@ -155,7 +156,7 @@ export default function Index() {
                   id="mode-switch"
                   checked={!isChatMode}
                   onCheckedChange={(checked) => setIsChatMode(!checked)}
-                  disabled={!activePersonalityId || !isConnected}
+                  disabled={!personalityId || !isConnected}
                 />
                 <Label htmlFor="mode-switch" className="text-sm text-muted-foreground">
                   Agent

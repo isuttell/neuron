@@ -5,13 +5,7 @@ import { useAppSelector, useAppDispatch } from "../hooks";
 import NewThreadButton from "../threads/NewThreadButton";
 import { shallowEqual } from "react-redux";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  getActivePersonalityId,
-  getActivePersonality,
-} from "../slices/personalitiesSlice";
-import { fetchThreadsByPersonality } from "../actions/threadActions";
-import { fetchPersonality } from "@/actions/personalityActions";
-import { fetchPersonalityRooms } from "@/actions/personalityRoomActions";
+import { fetchRecentCombinedItems } from "../actions/threadActions";
 import {
   SidebarMenuItem,
   SidebarMenuButton,
@@ -19,7 +13,7 @@ import {
   SidebarGroupLabel,
   SidebarGroupContent,
 } from "@/components/ui/sidebar";
-import { selectRecentSidebarItems } from "@/utils/sidebarSelectors";
+import { selectAllRecentSidebarItemsWithPersonality } from "@/utils/sidebarSelectors";
 
 interface NavThreadsProps {
   activePathname?: string;
@@ -27,44 +21,24 @@ interface NavThreadsProps {
 
 export default function NavThreads({ activePathname }: NavThreadsProps) {
   const dispatch = useAppDispatch();
-  const activePersonalityId = useAppSelector(getActivePersonalityId);
-  const activePersonality = useAppSelector(getActivePersonality);
   const sidebarItems = useAppSelector(
-    (state) => selectRecentSidebarItems(state, activePersonalityId),
+    selectAllRecentSidebarItemsWithPersonality,
     shallowEqual
   );
   const [loading, setLoading] = useState(false);
-  useEffect(() => {
-    if (!activePersonalityId) {
-      return;
-    }
-    setLoading(true);
-    Promise.all([
-      dispatch(fetchPersonality(activePersonalityId)),
-      dispatch(fetchThreadsByPersonality({ personalityId: activePersonalityId })),
-      dispatch(fetchPersonalityRooms(activePersonalityId)),
-    ]).finally(() => {
-      setLoading(false);
-    });
-  }, [activePersonalityId, dispatch]);
 
-  if (!activePersonality) {
-    return (
-      <SidebarGroup>
-        <SidebarGroupLabel>No personality active</SidebarGroupLabel>
-      </SidebarGroup>
-    );
-  }
+  useEffect(() => {
+    setLoading(true);
+    dispatch(fetchRecentCombinedItems({}))
+      .finally(() => {
+        setLoading(false);
+      });
+  }, [dispatch]);
 
   return (
     <SidebarGroup>
       <SidebarGroupLabel>
-        {activePersonality.name}
-        {sidebarItems.length >= 50 && (
-          <span className="text-xs text-muted-foreground/60 ml-2 italic">
-            recent
-          </span>
-        )}
+        Recent Activity
       </SidebarGroupLabel>
       <NewThreadButton />
       <SidebarGroupContent className="space-y-2">
@@ -94,9 +68,9 @@ export default function NavThreads({ activePathname }: NavThreadsProps) {
                   isActive={activePathname === `/thread/${item.id}`}
                   asChild
                 >
-                  <NavLink to={`/thread/${item.id}`} className="text-gray-300">
-                    <Bot className="size-4 min-w-[20px]" />
-                    <span>{item.name || "Start conversation"}</span>
+                  <NavLink to={`/thread/${item.id}`} className="text-gray-300 flex items-center gap-2 min-w-0 w-full">
+                    <Bot className="size-4 min-w-[20px] flex-shrink-0" />
+                    <span className="truncate min-w-0 flex-1">{item.name || "Start conversation"}</span>
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -109,13 +83,13 @@ export default function NavThreads({ activePathname }: NavThreadsProps) {
                   isActive={activePathname === `/personality/${item.personality_id}/room/${item.id}`}
                   asChild
                 >
-                  <NavLink to={`/personality/${item.personality_id}/room/${item.id}`} className="text-gray-300">
+                  <NavLink to={`/personality/${item.personality_id}/room/${item.id}`} className="text-gray-300 flex items-center gap-2 min-w-0 w-full">
                     {!item.status || item.status === "" || item.status === "contemplating" ? (
-                      <MessageCircle className="size-4 min-w-[20px]" />
+                      <MessageCircle className="size-4 min-w-[20px] flex-shrink-0" />
                     ) : (
-                      <MessageCircleDashed className="size-4 min-w-[20px] text-accent" />
+                      <MessageCircleDashed className="size-4 min-w-[20px] text-accent flex-shrink-0" />
                     )}
-                    <span>{item.name || "Unnamed room"}</span>
+                    <span className="truncate min-w-0 flex-1">{item.name || "Unnamed room"}</span>
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>

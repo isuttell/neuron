@@ -13,6 +13,8 @@ from neuron_server.decorators import rate_limit
 from neuron_server.event_router import EventRouter
 from neuron_server.llms import agent
 from neuron_server.models.personality_model import PersonalityModel
+from neuron_server.models.personality_room_model import PersonalityRoomModel
+from neuron_server.models.personality_room_user_model import PersonalityRoomUserModel
 from neuron_server.models.thread_model import ThreadModel
 from neuron_server.models.thread_user_model import ThreadUserModel
 from neuron_server.models.user_model import UserModel
@@ -472,3 +474,166 @@ async def cancel_thread(thread_id: UUID) -> Response:
     )
 
     return Response(status=204)
+
+
+async def _get_user_threads_and_rooms(
+    user_id: str, limit: int
+) -> tuple[list, list, list]:
+    """Get threads and rooms for a user."""
+    # Get all threads the user has access to via thread_users
+    thread_users = await ThreadUserModel.get_user_threads(user_id=user_id)
+    thread_ids = [tu.thread_id for tu in thread_users]
+
+    # Get threads efficiently using bulk query
+    threads = []
+    if thread_ids:
+        # Get more items to allow for combined sorting
+        threads = await ThreadModel.get_by_ids(thread_ids=thread_ids, limit=limit * 2)
+
+    # Get all personalities the user has access to and get their rooms
+    personalities = await PersonalityModel.list_for_user(user_id=user_id)
+    personality_ids = [p.id for p in personalities]
+
+    all_rooms = []
+    all_room_users = []
+
+    # Get rooms for each personality that the user has access to
+    for personality_id in personality_ids:
+        rooms = await PersonalityRoomModel.list_for_personality(personality_id, user_id)
+        all_rooms.extend(rooms)
+
+        # Get room users for these rooms
+        room_ids = [room.id for room in rooms]
+        if room_ids:
+            room_users = await PersonalityRoomUserModel.get_bulk_room_users(room_ids)
+            all_room_users.extend(room_users)
+
+    return threads, all_rooms, all_room_users
+
+
+async def _combine_and_sort_items(threads: list, rooms: list, limit: int) -> list[dict]:
+    """Combine threads and rooms, sort by updated_at, and return top items."""
+    combined_items = []
+
+    # Add threads with type identifier
+    for thread in threads:
+        combined_items.append(
+            {"type": "thread", "item": thread, "updated_at": thread.updated_at}
+        )
+
+    # Add rooms with type identifier
+    for room in rooms:
+        combined_items.append(
+            {"type": "room", "item": room, "updated_at": room.updated_at}
+        )
+
+    # Sort by updated_at descending and take top items
+    combined_items.sort(key=lambda x: x["updated_at"], reverse=True)
+    return combined_items[:limit]
+
+
+async def _get_users_for_items(
+    final_threads: list, final_rooms: list, bulk_room_users: list
+) -> tuple[list[dict], list[dict], list]:
+    """Get user data for threads and rooms."""
+    final_thread_ids = [t.id for t in final_threads]
+    final_thread_users = []
+
+    if final_thread_ids:
+        bulk_thread_users = await ThreadUserModel.get_bulk_thread_users(
+            final_thread_ids
+        )
+        for tu in bulk_thread_users:
+            final_thread_users.append(
+                {
+                    "user_id": tu.user_id,
+                    "thread_id": str(tu.thread_id),
+                    "role": tu.role,
+                }
+            )
+
+    final_room_ids = [r.id for r in final_rooms]
+    final_room_users = []
+
+    if final_room_ids:
+        for ru in bulk_room_users:
+            final_room_users.append(
+                {
+                    "user_id": ru.user_id,
+                    "personality_room_id": str(ru.personality_room_id),
+                    "role": ru.role,
+                }
+            )
+
+        # Add room creators as admins if not already in room users
+        for room in final_rooms:
+            if room.created_by:
+                creator_exists = any(
+                    ru.personality_room_id == room.id and ru.user_id == room.created_by
+                    for ru in bulk_room_users
+                )
+                if not creator_exists:
+                    final_room_users.append(
+                        {
+                            "user_id": room.created_by,
+                            "personality_room_id": str(room.id),
+                            "role": "admin",
+                        }
+                    )
+
+    # Get all unique user IDs for user data
+    user_ids = set()
+    if final_thread_ids:
+        user_ids.update(tu.user_id for tu in bulk_thread_users)
+    if final_room_ids:
+        user_ids.update(ru.user_id for ru in bulk_room_users)
+        user_ids.update(room.created_by for room in final_rooms if room.created_by)
+
+    # Get user details
+    users = await UserModel.get_by_ids(list(user_ids)) if user_ids else []
+
+    return final_thread_users, final_room_users, users
+
+
+@blueprint.get("/recent-combined")
+@requires_auth
+async def get_recent_combined() -> dict[str, list[dict]]:
+    """Get recent threads and personality rooms across all personalities.
+
+    Returns:
+        A dictionary with threads, thread_users, personality_rooms,
+        personality_room_users, and users
+    """
+    user_id = request.token.user_id
+    limit = request.args.get("limit", default=DEFAULT_THREAD_LIMIT, type=int)
+
+    # Validate limit parameter
+    if limit < 1 or limit > MAX_THREAD_LIMIT:
+        raise BadRequest(f"Limit must be between 1 and {MAX_THREAD_LIMIT}")
+
+    # Get threads and rooms for the user
+    threads, all_rooms, all_room_users = await _get_user_threads_and_rooms(
+        user_id, limit
+    )
+
+    # Combine and sort items
+    combined_items = await _combine_and_sort_items(threads, all_rooms, limit)
+
+    # Extract the final threads and rooms
+    final_threads = [
+        item["item"] for item in combined_items if item["type"] == "thread"
+    ]
+    final_rooms = [item["item"] for item in combined_items if item["type"] == "room"]
+
+    # Get users for the final items
+    final_thread_users, final_room_users, users = await _get_users_for_items(
+        final_threads, final_rooms, all_room_users
+    )
+
+    return {
+        "threads": [thread.model_dump() for thread in final_threads],
+        "thread_users": final_thread_users,
+        "personality_rooms": [room.model_dump() for room in final_rooms],
+        "personality_room_users": final_room_users,
+        "users": [user.model_dump() for user in users],
+    }

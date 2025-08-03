@@ -8,7 +8,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAppDispatch, useAppSelector } from "@/hooks";
-import { getActivePersonalityId } from "@/slices/personalitiesSlice";
 import {
   fetchPrompts,
   selectPromptsByPersonality,
@@ -19,25 +18,26 @@ import { useEffect } from "react";
 interface PromptDropdownProps {
   onSelectPrompt: (promptText: string) => void;
   disabled?: boolean;
+  personalityId?: string;
 }
 
 export function PromptDropdown({
   onSelectPrompt,
   disabled = false,
+  personalityId,
 }: PromptDropdownProps) {
-  const activePersonalityId = useAppSelector(getActivePersonalityId);
   const dispatch = useAppDispatch();
   const prompts = useAppSelector((state) =>
-    activePersonalityId
-      ? selectPromptsByPersonality(state, activePersonalityId)
+    personalityId
+      ? selectPromptsByPersonality(state, personalityId)
       : []
   );
 
   useEffect(() => {
-    if (activePersonalityId) {
-      dispatch(fetchPrompts(activePersonalityId));
+    if (personalityId) {
+      dispatch(fetchPrompts(personalityId));
     }
-  }, [activePersonalityId, dispatch]);
+  }, [personalityId, dispatch]);
 
   return (
     <DropdownMenu>
