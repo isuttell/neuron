@@ -158,5 +158,37 @@ export const filterByIds = createSelector(
   (items, ids) => items.filter((item) => ids.includes(item.id))
 );
 
+export const selectMediaByThreadId = createSelector(
+  [selectMediaItems, (_, threadId: string) => threadId],
+  (items, threadId) => items
+    .filter((item) => item.thread_id === threadId)
+    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+);
+
+export const selectMediaByRoomId = createSelector(
+  [
+    selectMediaItems,
+    (state: RootState) => state.personalityChat.messageMap,
+    (state: RootState) => state.personalityChat.messageMediaItemIds,
+    (_, roomId: string) => roomId
+  ],
+  (mediaItems, messageMap, messageMediaItemIds, roomId) => {
+    // Find messages for this room
+    const roomMessageIds = Object.keys(messageMap).filter(
+      messageId => messageMap[messageId]?.personality_room_id === roomId
+    );
+
+    // Find media item IDs linked to those messages
+    const mediaItemIds = roomMessageIds.flatMap(
+      messageId => messageMediaItemIds[messageId] || []
+    );
+
+    // Return media items for those IDs
+    return mediaItems
+      .filter(item => mediaItemIds.includes(item.id))
+      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+  }
+);
+
 export const { clearMedia, upsertMedia } = mediaSlice.actions;
 export default mediaSlice.reducer;

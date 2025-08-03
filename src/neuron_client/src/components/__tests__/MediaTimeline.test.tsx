@@ -1,13 +1,7 @@
 import { vi } from 'vitest';
 import { render, screen } from "@testing-library/react";
 import MediaTimeline from "../MediaTimeline";
-import { useAppSelector } from "@/hooks";
 import { MediaItem } from "@/types/media";
-
-// Mock the hooks
-vi.mock("@/hooks", () => ({
-  useAppSelector: vi.fn(),
-}));
 
 // Mock child components to focus on the MediaTimeline logic
 vi.mock("@/messages/ImageContent", () => ({
@@ -35,10 +29,7 @@ vi.mock("@/components/TimelineControls", () => ({
   TimelineControls: () => <div data-testid="timeline-controls" />,
 }));
 
-const mockedUseAppSelector = useAppSelector as vi.MockedFunction<typeof useAppSelector>;
-
 describe("MediaTimeline", () => {
-  const mockThreadId = "thread-123";
 
   // Sample media items
   const mockMediaItems: MediaItem[] = [
@@ -49,9 +40,8 @@ describe("MediaTimeline", () => {
       url: "https://example.com/image1.jpg",
       media_type: "image",
       user_id: "user-1",
-      thread_id: mockThreadId,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      created_at: "2024-01-01T10:00:00Z",
+      updated_at: "2024-01-01T10:00:00Z",
     },
     {
       id: "media-2",
@@ -60,9 +50,8 @@ describe("MediaTimeline", () => {
       url: "https://example.com/audio1.mp3",
       media_type: "audio",
       user_id: "user-1",
-      thread_id: mockThreadId,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      created_at: "2024-01-01T10:00:00Z",
+      updated_at: "2024-01-01T10:00:00Z",
     },
     {
       id: "media-3",
@@ -71,9 +60,8 @@ describe("MediaTimeline", () => {
       url: "https://example.com/image2.png",
       media_type: "image",
       user_id: "user-1",
-      thread_id: mockThreadId,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      created_at: "2024-01-01T10:00:00Z",
+      updated_at: "2024-01-01T10:00:00Z",
     },
   ];
 
@@ -90,17 +78,13 @@ describe("MediaTimeline", () => {
   });
 
   it("renders with no media message when no items", () => {
-    mockedUseAppSelector.mockReturnValue([]);
-
-    render(<MediaTimeline threadId={mockThreadId} />);
+    render(<MediaTimeline mediaItems={[]} contextId="test-context" />);
 
     expect(screen.getByText("No media")).toBeInTheDocument();
   });
 
   it("renders image content with consistent thumbnail size", () => {
-    mockedUseAppSelector.mockReturnValue(mockMediaItems);
-
-    render(<MediaTimeline threadId={mockThreadId} />);
+    render(<MediaTimeline mediaItems={mockMediaItems} contextId="test-context" />);
 
     const imageElements = screen.getAllByTestId("image-content");
     expect(imageElements).toHaveLength(2); // Two image items
@@ -111,53 +95,45 @@ describe("MediaTimeline", () => {
     });
   });
 
-  it("filters media items by thread ID", () => {
+  it("renders all passed media items", () => {
     const mixedMediaItems = [
       ...mockMediaItems,
       {
         id: "media-other",
-        name: "Other Thread Image",
-        description: "Image from another thread",
+        name: "Additional Image",
+        description: "Another image item",
         url: "https://example.com/other.jpg",
         media_type: "image",
         user_id: "user-1",
-        thread_id: "other-thread",
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+        created_at: "2024-01-01T13:00:00Z",
+        updated_at: "2024-01-01T13:00:00Z",
       },
     ];
 
-    mockedUseAppSelector.mockReturnValue(mixedMediaItems);
+    render(<MediaTimeline mediaItems={mixedMediaItems} contextId="test-context" />);
 
-    render(<MediaTimeline threadId={mockThreadId} />);
-
-    // Should only render images from the specified thread
+    // Should render all passed image items
     const imageElements = screen.getAllByTestId("image-content");
-    expect(imageElements).toHaveLength(2); // Only the two from mockThreadId
+    expect(imageElements).toHaveLength(3); // All three image items
   });
 
   it("renders audio and other media types", () => {
-    mockedUseAppSelector.mockReturnValue(mockMediaItems);
-
-    render(<MediaTimeline threadId={mockThreadId} />);
+    render(<MediaTimeline mediaItems={mockMediaItems} contextId="test-context" />);
 
     expect(screen.getByTestId("speech-audio-content")).toBeInTheDocument();
     expect(screen.getAllByTestId("image-content")).toHaveLength(2);
   });
 
   it("renders timeline controls when audio items are present", () => {
-    mockedUseAppSelector.mockReturnValue(mockMediaItems);
-
-    render(<MediaTimeline threadId={mockThreadId} />);
+    render(<MediaTimeline mediaItems={mockMediaItems} contextId="test-context" />);
 
     expect(screen.getByTestId("timeline-controls")).toBeInTheDocument();
   });
 
   it("does not render timeline controls when no audio items", () => {
     const imageOnlyItems = mockMediaItems.filter(item => item.media_type === "image");
-    mockedUseAppSelector.mockReturnValue(imageOnlyItems);
 
-    render(<MediaTimeline threadId={mockThreadId} />);
+    render(<MediaTimeline mediaItems={imageOnlyItems} contextId="test-context" />);
 
     expect(screen.queryByTestId("timeline-controls")).not.toBeInTheDocument();
   });

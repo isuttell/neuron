@@ -1,4 +1,6 @@
 import PersonalityRoomHeaderActions from "@/components/PersonalityRoomHeaderActions";
+import MediaPanelToggle from "@/components/MediaPanelToggle";
+import MediaTimeline from "@/components/MediaTimeline";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import DeletePersonalityRoomDialog from "@/components/DeletePersonalityRoomDialog";
 import { Spinner } from "@/components/ui/spinner";
@@ -6,7 +8,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import Loading from "@/lib/loading";
 import PersonalityRoomUsersDialog from "@/rooms/PersonalityRoomUsersDialog";
 import { ErrorPage } from "@/components/ErrorPage";
-import { debounce } from "@/lib/utils";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { cn, debounce } from "@/lib/utils";
 import { useEffect, useRef, useState } from "react";
 import { shallowEqual } from "react-redux";
 import { useParams, useNavigate } from "react-router-dom";
@@ -26,6 +34,7 @@ import {
 } from "../slices/personalityChatSlice";
 import { getPersonality, getPersonalitiesError } from "../slices/personalitiesSlice";
 import { getPersonalityRoom, getPersonalityRoomError } from "../slices/personalityRoomSlice";
+import { selectMediaByRoomId } from "../slices/mediaSlice";
 import { getCurrentUser } from "../slices/appSlice";
 import { toast } from "sonner";
 import { classifyErrors, hasError } from "../lib/errorClassification";
@@ -63,11 +72,25 @@ export default function PersonalityChatRoom() {
     shallowEqual
   );
 
+  const roomMedia = useAppSelector(
+    (state) => roomId ? selectMediaByRoomId(state, roomId) : [],
+    shallowEqual
+  );
+
   // Check if AI is working (status is not empty and not idle)
   const isAiWorking = room?.status !== "" && room?.status !== null && room?.status !== "contemplating";
 
   // Edit state management
   const [editingMessage, setEditingMessage] = useState<{ id: string; content: string } | null>(null);
+
+  // Media panel state
+  const [isMediaPanelVisible, setIsMediaPanelVisible] = useState(() => {
+    // Desktop: sticky behavior (restore from localStorage)
+    // Mobile: always start hidden (dialog covers content)
+    const isMobileView = window.innerWidth < 1024;
+    return isMobileView ? false : localStorage.getItem("mediaPanelVisible") === "true";
+  });
+  const [isMobile, setIsMobile] = useState(false);
 
   // Dialog states
   const [isRoomUsersOpen, setIsRoomUsersOpen] = useState(false);
@@ -110,6 +133,17 @@ export default function PersonalityChatRoom() {
       }
     }, 100);
   }, [messages.length, isAiWorking]);
+
+  // Track screen size to determine if we should show dialog or sidebar
+  useEffect(() => {
+    const checkScreenSize = () => {
+      setIsMobile(window.innerWidth < 1024); // lg breakpoint
+    };
+
+    checkScreenSize();
+    window.addEventListener('resize', checkScreenSize);
+    return () => window.removeEventListener('resize', checkScreenSize);
+  }, []);
 
   // Handle errors first
   if (errorType) {
@@ -215,6 +249,10 @@ export default function PersonalityChatRoom() {
           {room.name}
         </h1>
         <div className="flex-1" />
+        <MediaPanelToggle
+          isVisible={isMediaPanelVisible}
+          onChange={setIsMediaPanelVisible}
+        />
         <PersonalityRoomHeaderActions
           personalityId={personality.id}
           roomId={room.id}
@@ -243,65 +281,104 @@ export default function PersonalityChatRoom() {
           trigger={<></>}
         />
 
-      <div className="flex flex-col flex-1 max-w-3xl self-center w-full">
-        <div className="flex-1 overflow-y-auto relative">
-          <div className="absolute top-0 left-0 right-0 bottom-0 flex flex-1 flex-col flex-nowrap max-h-full mx-auto overflow-y-auto">
-            <div className="mt-4 w-full mx-auto relative z-10 flex flex-grow flex-col">
-              <div className="flex-grow" />
-              {messages.map((message, index) => (
-                <div
-                  key={message.id}
-                  ref={index === messages.length - 1 ? lastMessageRef : null}
-                >
-                  <PersonalityChatItem
-                    message={message}
-                    personality={personality}
-                    roomId={roomId}
-                    onEditMessage={handleEditMessage}
-                    onPromptClick={handlePromptClick}
-                    promptColor="text-lime-300"
-                    promptHoverColor="hover:text-lime-100"
-                  />
-                </div>
-              ))}
+      <div className="flex flex-row flex-1">
+        <div className="flex flex-col flex-1">
+          <div className="flex-1 overflow-y-auto relative">
+            <div className="absolute top-0 left-0 right-0 bottom-0 flex flex-1 flex-col flex-nowrap max-h-full mx-auto overflow-y-auto">
+              <div className="max-w-3xl w-full mx-auto relative z-10 flex flex-grow flex-col">
+                <div className="flex-grow" />
+                {messages.map((message, index) => (
+                  <div
+                    key={message.id}
+                    ref={index === messages.length - 1 ? lastMessageRef : null}
+                  >
+                    <PersonalityChatItem
+                      message={message}
+                      personality={personality}
+                      roomId={roomId}
+                      onEditMessage={handleEditMessage}
+                      onPromptClick={handlePromptClick}
+                      promptColor="text-lime-300"
+                      promptHoverColor="hover:text-lime-100"
+                    />
+                  </div>
+                ))}
 
-              {loading && (
-                <div className="flex my-4 pl-5">
-                  <Spinner size={48} strokeWidth={2} className="text-muted-foreground" />
-                </div>
-              )}
+                {loading && (
+                  <div className="flex my-4 pl-5">
+                    <Spinner size={48} strokeWidth={2} className="text-muted-foreground" />
+                  </div>
+                )}
 
-              {isAiWorking && (
-                <div
-                  ref={skeletonRef}
-                  className="flex flex-col space-y-2 pl-10"
-                >
-                  <Skeleton className="h-4 w-[250px]" />
-                  <Skeleton className="h-4 w-[200px]" />
-                  <Skeleton className="h-4 w-[180px]" />
-                </div>
-              )}
+                {isAiWorking && (
+                  <div
+                    ref={skeletonRef}
+                    className="flex flex-col space-y-2 pl-10"
+                  >
+                    <Skeleton className="h-4 w-[250px]" />
+                    <Skeleton className="h-4 w-[200px]" />
+                    <Skeleton className="h-4 w-[180px]" />
+                  </div>
+                )}
 
-              {messages.length === 0 && !loading && (
-                <div className="m-4 text-center text-muted-foreground">
-                  Be the first to say hi!
-                </div>
-              )}
+                {messages.length === 0 && !loading && (
+                  <div className="m-4 text-center text-muted-foreground">
+                    Be the first to say hi!
+                  </div>
+                )}
+              </div>
             </div>
+          </div>
+
+          <div className="bottom-0">
+            <PersonalityChatForm
+              personality={personality}
+              room={room}
+              onSendMessage={handleSendMessage}
+              editingMessage={editingMessage}
+              onCancelEdit={handleCancelEdit}
+              isSubscribed={isSubscribed}
+              className="max-w-3xl w-full mx-auto mt-2"
+            />
           </div>
         </div>
 
-        <div className="bottom-0">
-          <PersonalityChatForm
-            personality={personality}
-            room={room}
-            onSendMessage={handleSendMessage}
-            editingMessage={editingMessage}
-            onCancelEdit={handleCancelEdit}
-            isSubscribed={isSubscribed}
-            className="w-full mx-auto mt-2 "
-          />
+        {/* Desktop media panel */}
+        <div
+          role="complementary"
+          className={cn(
+            "hidden lg:flex ml-4 pl-4 flex-shrink-0 border-l flex-col max-w-[512px] w-1/3 max-h-[calc(100vh-5em)]",
+            !isMediaPanelVisible && "lg:hidden"
+          )}
+        >
+          {isMediaPanelVisible && roomId ? (
+            <MediaTimeline key={roomId} mediaItems={roomMedia} contextId={roomId} />
+          ) : null}
         </div>
+
+        {/* Mobile media dialog - only render on mobile */}
+        {isMobile && (
+          <Dialog
+            open={isMediaPanelVisible}
+            onOpenChange={setIsMediaPanelVisible}
+          >
+            <DialogContent className="max-w-[calc(100vw-2rem)] md:max-w-4xl lg:max-w-5xl xl:max-w-6xl w-full h-[90vh] p-0 overflow-hidden grid grid-rows-[auto_1fr] rounded-md">
+              <DialogHeader className="p-4 pb-2">
+                <DialogTitle className="text-left">Media Timeline</DialogTitle>
+              </DialogHeader>
+              <div className="overflow-y-auto min-h-0 px-4 pb-4">
+                {roomId ? (
+                  <MediaTimeline
+                    key={roomId}
+                    mediaItems={roomMedia}
+                    contextId={roomId}
+                    layout="grid"
+                  />
+                ) : null}
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
     </div>
   );
