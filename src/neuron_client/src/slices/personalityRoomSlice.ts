@@ -2,6 +2,7 @@ import type { PayloadAction } from "@reduxjs/toolkit";
 import { createSlice, createSelector } from "@reduxjs/toolkit";
 import type { RootState } from "../store";
 import * as personalityRoomActions from "../actions/personalityRoomActions";
+import * as threadActions from "../actions/threadActions";
 import type {
   PersonalityRoom,
   PersonalityRoomUser,
@@ -289,6 +290,44 @@ export const personalityRoomSlice = createSlice({
         const { roomId, userId } = action.payload;
         if (state.roomUsers[roomId]) {
           state.roomUsers[roomId] = state.roomUsers[roomId].filter(u => u.user_id !== userId);
+        }
+      })
+
+      // Handle combined fetch results
+      .addCase(threadActions.fetchRecentCombinedItems.fulfilled, (state, action) => {
+        // Handle personality rooms from the combined response
+        if (action.payload?.personality_rooms) {
+          for (const room of action.payload.personality_rooms) {
+            upsertRoom(state, room);
+          }
+
+          // Update room IDs
+          state.roomIds = Array.from(new Set([
+            ...state.roomIds,
+            ...action.payload.personality_rooms.map(room => room.id)
+          ]));
+        }
+
+        // Handle personality room users from the combined response
+        if (action.payload?.personality_room_users) {
+          // Group room users by room ID
+          const roomUsersByRoomId: Record<string, PersonalityRoomUser[]> = {};
+          for (const roomUser of action.payload.personality_room_users) {
+            const roomId = roomUser.personality_room_id;
+            if (!roomUsersByRoomId[roomId]) {
+              roomUsersByRoomId[roomId] = [];
+            }
+            roomUsersByRoomId[roomId].push({
+              user_id: roomUser.user_id,
+              personality_room_id: roomUser.personality_room_id,
+              role: roomUser.role,
+            });
+          }
+
+          // Update room users
+          for (const [roomId, users] of Object.entries(roomUsersByRoomId)) {
+            upsertRoomUsers(state, roomId, users);
+          }
         }
       });
   },

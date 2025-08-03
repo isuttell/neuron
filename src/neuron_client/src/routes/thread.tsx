@@ -31,17 +31,20 @@ import {
   selectThreadMessages,
   getMessagesError,
 } from "../slices/messagesSlice";
-import { getActivePersonality } from "../slices/personalitiesSlice";
+import { getPersonality } from "../slices/personalitiesSlice";
 import { selectThread, getThreadsError } from "../slices/threadsSlice";
 import { selectMediaByThreadId } from "../slices/mediaSlice";
 export default function Thread() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const activePersonality = useAppSelector(getActivePersonality);
   const lastMessageRef = useRef<HTMLDivElement | null>(null);
   const { threadId } = useParams();
   const thread = useAppSelector(
     (state) => selectThread(state, threadId),
+    shallowEqual
+  );
+  const threadPersonality = useAppSelector(
+    (state) => thread ? getPersonality(state, thread.personality_id) : undefined,
     shallowEqual
   );
   const loading = useAppSelector(getMessagesLoading);
@@ -199,6 +202,11 @@ export default function Thread() {
         <SidebarTrigger className="size-10 mr-2" />
         <h1 className="text-lg lg:text-2xl font-bold ">
           {thread.name || "Welcome..."}
+          {threadPersonality && (
+            <span className="text-sm text-muted-foreground font-normal ml-2">
+              {threadPersonality.name}
+            </span>
+          )}
         </h1>
         <div className="flex-1" />
         <MediaPanelToggle
@@ -209,7 +217,7 @@ export default function Thread() {
           threadId={thread.id}
           showTools={showTools}
           onToggleTools={() => setShowTools(!showTools)}
-          onEditPersonality={() => navigate(`/personality/${activePersonality?.id}/edit`)}
+          onEditPersonality={() => navigate(`/personality/${threadPersonality?.id}/edit`)}
           onManageUsers={() => setIsThreadUsersOpen(true)}
           onDeleteThread={() => setIsDeleteThreadOpen(true)}
         />

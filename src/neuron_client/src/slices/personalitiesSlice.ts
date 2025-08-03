@@ -17,7 +17,6 @@ import type { PersonalityUser } from "../types/personality";
 
 // Define the initial state using that type
 const initialState: PersonalityState = {
-  activePersonalityId: localStorage.getItem("activePersonalityId") || undefined,
   personalities: [],
   personalityUsers: {},
   personalityDocuments: {},
@@ -65,17 +64,6 @@ export const personalitiesSlice = createSlice({
   name: "personalities",
   initialState,
   reducers: {
-    setActivePersonality: (
-      state,
-      action: PayloadAction<string | undefined>
-    ) => {
-      state.activePersonalityId = action.payload;
-      if (action.payload) {
-        localStorage.setItem("activePersonalityId", action.payload);
-      } else {
-        localStorage.removeItem("activePersonalityId");
-      }
-    },
     upsertPersonality: (
       state,
       action: PayloadAction<IncomingPersonalityEvent>
@@ -161,31 +149,6 @@ export const personalitiesSlice = createSlice({
             state.personalityUsers = grouped;
           }
 
-          // Validate activePersonalityId after fetching personalities
-          if (state.activePersonalityId) {
-            const personalityExists = state.personalities.some(
-              p => p.id === state.activePersonalityId
-            );
-            if (!personalityExists) {
-              // Look for a default personality
-              const defaultPersonality = state.personalities.find(p => p.default);
-              if (defaultPersonality) {
-                state.activePersonalityId = defaultPersonality.id;
-                localStorage.setItem("activePersonalityId", defaultPersonality.id);
-              } else {
-                // Clear the invalid personality ID if no default exists
-                state.activePersonalityId = undefined;
-                localStorage.removeItem("activePersonalityId");
-              }
-            }
-          } else {
-            // No active personality, check for a default
-            const defaultPersonality = state.personalities?.find(p => p.default);
-            if (defaultPersonality) {
-              state.activePersonalityId = defaultPersonality.id;
-              localStorage.setItem("activePersonalityId", defaultPersonality.id);
-            }
-          }
         }
       )
       .addCase(actions.fetchPersonalities.rejected, (state, action) => {
@@ -316,7 +279,6 @@ export const {
   upsertPersonality,
   upsertPersonalities,
   deletePersonality,
-  setActivePersonality,
   updatePersonalityStatus,
   addPersonalityDocuments,
 } = personalitiesSlice.actions;
@@ -329,16 +291,6 @@ export const getPersonality = createSelector(
 export const getPersonalities = (state: RootState) =>
   state.personalities.personalities;
 
-export const getActivePersonalityId = (state: RootState): string | undefined =>
-  state.personalities.activePersonalityId;
-
-export const getActivePersonality = createSelector(
-  [(state: RootState) => state.personalities.personalities, (state: RootState) => state.personalities.activePersonalityId],
-  (personalities, activePersonalityId) =>
-    activePersonalityId
-      ? personalities.find((personality) => personality?.id === activePersonalityId)
-      : undefined
-);
 
 export const getPersonalitiesLoading = (state: RootState) =>
   state.personalities.loading;

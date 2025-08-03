@@ -2,7 +2,6 @@ name: Deploy
 
 on:
   push:
-    branches: [ master ]  # Only deploy from master
     tags: [ 'v*' ]
   workflow_dispatch:
 

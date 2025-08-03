@@ -49,6 +49,10 @@ const router = createBrowserRouter(
           element: <Index />,
         },
         {
+          path: "/:personalityId",
+          element: <Index />,
+        },
+        {
           path: "thread/:threadId",
           element: <Chat />,
         },

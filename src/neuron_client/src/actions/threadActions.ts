@@ -1,5 +1,5 @@
 import { api } from "@/lib/api";
-import { ThreadResponse, ThreadsResponse, ThreadUser } from "@/types/thread";
+import { ThreadResponse, ThreadsResponse, ThreadUser, CombinedResponse } from "@/types/thread";
 import { User } from "@/types/user";
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import { toSerializableError, isClassifiedError } from "../types/error";
@@ -51,6 +51,26 @@ export const fetchRecentThreads = createAsyncThunk(
   async (_, thunkAPI) => {
     try {
       return await api.get<ThreadsResponse>(`/threads/recent`);
+    } catch (error) {
+      // Convert ClassifiedError to SerializableError for Redux state
+      if (isClassifiedError(error)) {
+        return thunkAPI.rejectWithValue(toSerializableError(error));
+      }
+      // Fallback for other error types
+      return thunkAPI.rejectWithValue({
+        message: error instanceof Error ? error.message : "An unknown error occurred",
+        type: "unknown" as const,
+      });
+    }
+  }
+);
+
+export const fetchRecentCombinedItems = createAsyncThunk(
+  "threads/fetchRecentCombinedItems",
+  async ({ limit = 50 }: { limit?: number } = {}, thunkAPI) => {
+    try {
+      const url = `/threads/recent-combined?limit=${limit}`;
+      return await api.get<CombinedResponse>(url);
     } catch (error) {
       // Convert ClassifiedError to SerializableError for Redux state
       if (isClassifiedError(error)) {

@@ -2,7 +2,7 @@ import React from "react";
 import { cn } from "@/lib/utils";
 import { ChevronDown, ChevronRight, Heart, Bot } from "lucide-react";
 import { useAppSelector, useAppDispatch } from "@/hooks";
-import { getPersonalities, setActivePersonality } from "@/slices/personalitiesSlice";
+import { getPersonalities } from "@/slices/personalitiesSlice";
 import { getFavoritePersonalityIds } from "@/slices/favoritesSlice";
 import { getFavoritePersonalitiesCollapsed, setFavoritePersonalitiesCollapsed } from "@/slices/appSlice";
 import { useNavigate } from "react-router-dom";
@@ -24,9 +24,8 @@ const FavoritePersonalities: React.FC<{ className?: string }> = ({ className }) 
   const favoritePersonalities = personalities.filter(p => favoritePersonalityIds.has(p.id));
 
   const handleActivatePersonality = (personalityId: string, personalityName: string) => {
-    dispatch(setActivePersonality(personalityId));
-    toast(`${personalityName} activated`);
-    navigate("/");
+    toast(`${personalityName} selected`);
+    navigate(`/${personalityId}`);
   };
 
   const handleToggleCollapsed = () => {

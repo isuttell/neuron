@@ -58,7 +58,12 @@ interface MessageFormProps {
   /**
    * Optional children to render to the left of the buttons
    */
-  children?: ReactNode
+  children?: ReactNode;
+
+  /**
+   * Optional personality ID for prompt dropdown
+   */
+  personalityId?: string;
 }
 
 /**
@@ -103,6 +108,7 @@ export default function MessageForm({
   onCancel,
   onCancelEdit,
   children = undefined,
+  personalityId,
 }: MessageFormProps) {
   const [value, setValue] = useState(initialValue);
   const [file, setFile] = useState<File | Blob | undefined>(undefined);
@@ -254,6 +260,7 @@ export default function MessageForm({
             <PromptDropdown
               disabled={isDisabled}
               onSelectPrompt={(promptText) => setValue(promptText)}
+              personalityId={personalityId}
             />
           )}
           {showUpload && (
