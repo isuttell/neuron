@@ -20,6 +20,7 @@ from neuron_server.controllers.events.personality_events import (
 from neuron_server.controllers.events.personality_room_events import (
     PersonalityRoomUpdatedEvent,
 )
+from neuron_server.event_router import ErrorEvent
 from neuron_server.llms.agent import execute_agent_with_messages_streaming
 from neuron_server.logger import logger
 from neuron_server.models.media_item_model import MediaItemModel
@@ -598,7 +599,7 @@ AGENT ACTION: {action}"""
                 f"Error updating room status in background: {e}", exc_info=True
             )
 
-    async def generate_personality_response(  # noqa: PLR0913
+    async def generate_personality_response(  # noqa: PLR0913, PLR0915
         self,
         personality_id: UUID,
         room_id: UUID,
@@ -769,7 +770,31 @@ creating new
                     )
                 )
 
-            # Execute agent with personality context and status callback
+            # Create error callback for this personality room
+            async def error_callback(error_message: str, user_id: str | None) -> None:
+                """Callback to handle errors during agent execution.
+
+                Args:
+                    error_message: The error message to send
+                    user_id: The user ID who triggered the error (unused here)
+                """
+                try:
+                    # Publish error to the personality room
+                    error_event = ErrorEvent(message=error_message)
+                    await secure_pubsub.publish_personality_room_message(
+                        personality_id, room_id, error_event
+                    )
+                    logger.info(
+                        f"Published error to personality room {room_id}: "
+                        f"{error_message}"
+                    )
+                except Exception as e:
+                    logger.error(
+                        f"Failed to publish error to personality room: {e}",
+                        exc_info=True,
+                    )
+
+            # Execute agent with personality context and callbacks
             response_result = await execute_agent_with_messages_streaming(
                 messages=messages,
                 personality_id=personality_id,
@@ -777,6 +802,7 @@ creating new
                 username=username,  # Use actual username of message sender
                 thread_id=thread.id,  # Use real thread_id
                 status_callback=status_callback,
+                error_callback=error_callback,
                 create_media_items=True,  # Create media items from artifacts
             )
             response_text, media_artifacts = response_result
