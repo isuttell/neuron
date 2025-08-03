@@ -123,7 +123,6 @@ const renderPersonalityItem = (
     preloadedState: {
       personalities: {
         personalities: [personality],
-        activePersonalityId: null,
         loading: false,
         error: null,
         personalityUsers: {},
@@ -172,46 +171,13 @@ describe("PersonalityItem", () => {
       expect(logo).toHaveAttribute("src", "https://example.com/logo_t.webp");
     });
 
-    it("shows active indicator for active personality", () => {
-      const activePersonality = { ...mockPersonality };
-      const store = configureStore({
-        reducer: {
-          personalities: personalitiesReducer,
-        },
-        preloadedState: {
-          personalities: {
-            personalities: [activePersonality],
-            activePersonalityId: activePersonality.id,
-            loading: false,
-            error: null,
-            personalityUsers: {},
-            hasInitiallyFetched: true,
-          },
-        },
-      });
+    it("renders personality card without active indicator (removed feature)", () => {
+      const personality = { ...mockPersonality };
+      renderPersonalityItem(personality);
 
-      mockUsePersonalityPermissions.mockReturnValue({
-        canManage: false,
-        canManageUsers: false,
-        canDelete: false,
-        canUse: false,
-        hasAnyActions: false,
-        shouldShowComponent: false,
-        isAdmin: false,
-        hasAccess: false,
-        userRole: null,
-        personality: undefined,
-      });
-
-      render(
-        <Provider store={store}>
-          <BrowserRouter>
-            <PersonalityItem personality={activePersonality} />
-          </BrowserRouter>
-        </Provider>
-      );
-
-      expect(screen.getByText("Active")).toBeInTheDocument();
+      // Active indicator is no longer shown since we removed the activePersonality concept
+      expect(screen.queryByText("Active")).not.toBeInTheDocument();
+      expect(screen.getByText("Test Personality")).toBeInTheDocument();
     });
 
     it("handles navigation on click", () => {
@@ -221,8 +187,8 @@ describe("PersonalityItem", () => {
       const clickableArea = screen.getByText("Test description");
       fireEvent.click(clickableArea);
 
-      // Should navigate to home page
-      expect(mockNavigate).toHaveBeenCalledWith("/");
+      // Should navigate to personality-specific page
+      expect(mockNavigate).toHaveBeenCalledWith("/test-personality-id");
     });
   });
 
@@ -294,7 +260,6 @@ describe("PersonalityItem", () => {
         preloadedState: {
           personalities: {
             personalities: [mockPersonality],
-            activePersonalityId: null,
             loading: false,
             error: null,
             personalityUsers: {},
@@ -350,7 +315,6 @@ describe("PersonalityItem", () => {
           preloadedState: {
             personalities: {
               personalities: [mockPersonality],
-              activePersonalityId: null,
               loading: false,
               error: null,
               personalityUsers: {},
@@ -554,7 +518,6 @@ describe("PersonalityItem", () => {
                 },
               ],
             },
-            activePersonalityId: null,
             loading: false,
             error: null,
             hasInitiallyFetched: true,

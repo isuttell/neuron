@@ -17,10 +17,6 @@ import {
 } from "@/components/ui/dialog";
 import { PromptForm } from "@/components/PromptForm";
 import { CornerDownLeft, Pencil, FilePlus, Trash2 } from "lucide-react";
-import {
-  setActivePersonality,
-  getActivePersonalityId,
-} from "@/slices/personalitiesSlice";
 import { toast } from "sonner";
 import { Spinner } from "@/components/ui/spinner";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -38,7 +34,6 @@ export default function PromptsPage() {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const prompts = useAppSelector(selectPrompts);
-  const activePersonalityId = useAppSelector(getActivePersonalityId);
   const isLoading = useAppSelector(selectPromptsLoading);
   const [isUpdating, setIsUpdating] = useState(false);
   const [selectedPrompt, setSelectedPrompt] = useState<string | null>(null);
@@ -65,7 +60,7 @@ export default function PromptsPage() {
         createPrompt({
           name: values.name,
           text: values.text,
-          personality_id: values.personalityId || activePersonalityId,
+          personality_id: values.personalityId,
         })
       );
       setIsUpdating(false);
@@ -89,7 +84,7 @@ export default function PromptsPage() {
         await dispatch(
           updatePrompt({
             id: selectedPrompt,
-            personality_id: values.personalityId || activePersonalityId,
+            personality_id: values.personalityId,
             name: values.name,
             text: values.text,
           })
@@ -178,28 +173,6 @@ export default function PromptsPage() {
                     {personalitiiesMap.get(personalityId)?.name || "General"}
                   </h2>
                   <div className="flex-1" />
-                  {personalitiiesMap.get(personalityId) ? (
-                    <Button
-                      variant={
-                        activePersonalityId === personalityId
-                          ? "default"
-                          : "outline"
-                      }
-                      onClick={() => {
-                        dispatch(
-                          setActivePersonality(
-                            personalityId !== activePersonalityId
-                              ? personalityId
-                              : undefined
-                          )
-                        );
-                      }}
-                    >
-                      {activePersonalityId === personalityId
-                        ? "Deactivate"
-                        : "Activate"}
-                    </Button>
-                  ) : null}
                 </div>
                 <div className="space-y-4">
                   {personalityPrompts
@@ -217,10 +190,9 @@ export default function PromptsPage() {
                             size="icon"
                             className="bg-accent text-accent-foreground"
                             onClick={() => {
-                              const personalityId =
-                                prompt.personality_id || activePersonalityId;
+                              const personalityId = prompt.personality_id;
                               if (!personalityId) {
-                                toast.error("No personality selected");
+                                toast.error("No personality associated with this prompt");
                                 return;
                               }
                               dispatch(
@@ -231,11 +203,6 @@ export default function PromptsPage() {
                               )
                                 .unwrap()
                                 .then(({ thread }) => {
-                                  if (prompt.personality_id) {
-                                    dispatch(
-                                      setActivePersonality(personalityId)
-                                    );
-                                  }
                                   navigate(`/thread/${thread.id}`);
                                 })
                                 .catch((error) => {

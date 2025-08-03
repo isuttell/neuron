@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Loader2, MoreHorizontal, Image, Brain, Play, Square, UserPen, Users, Heart, Trash } from "lucide-react";
+import { Loader2, MoreHorizontal, Image, Brain, UserPen, Users, Heart, Trash } from "lucide-react";
 import {
   Card,
   CardTitle,
@@ -15,10 +15,6 @@ import {
 import { Personality } from "@/slices/personalitiesSlice.d";
 import { Button } from "@/components/ui/button";
 import { useAppDispatch, useAppSelector } from "@/hooks";
-import {
-  setActivePersonality,
-  getActivePersonality,
-} from "@/slices/personalitiesSlice";
 import { updatePersonalityLogo } from "@/actions/personalityActions";
 import { toggleFavorite } from "@/actions/favoritesActions";
 import { isFavorite } from "@/slices/favoritesSlice";
@@ -41,8 +37,6 @@ const PersonalityDropdownMenu: React.FC<{
   personality: Personality;
   open: boolean;
   setOpen: (open: boolean) => void;
-  handleActivate: () => void;
-  isActive: boolean;
   setIsUsersDialogOpen: (open: boolean) => void;
   setIsDeletePersonalityOpen: (open: boolean) => void;
   handleUpdateLogo: () => void;
@@ -54,8 +48,6 @@ const PersonalityDropdownMenu: React.FC<{
   personality,
   open,
   setOpen,
-  handleActivate,
-  isActive,
   setIsUsersDialogOpen,
   setIsDeletePersonalityOpen,
   handleUpdateLogo,
@@ -82,27 +74,6 @@ const PersonalityDropdownMenu: React.FC<{
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        {/* Activate/Deactivate - available to everyone */}
-        <DropdownMenuItem
-          onSelect={(e) => {
-            e.preventDefault();
-            setOpen(false);
-            handleActivate();
-          }}
-        >
-          {isActive ? (
-            <>
-              <Square className="size-4" />
-              Deactivate
-            </>
-          ) : (
-            <>
-              <Play className="size-4" />
-              Activate
-            </>
-          )}
-        </DropdownMenuItem>
-
         {/* Favorite/Unfavorite - available to everyone */}
         <DropdownMenuItem
           onSelect={(e) => {
@@ -216,8 +187,6 @@ const PersonalityItem: React.FC<PersonalityItemProps> = ({
 }) => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const activePersonality = useAppSelector(getActivePersonality);
-  const isActive = activePersonality?.id === personality.id;
   const isPersonalityFavorite = useAppSelector(state => isFavorite(state, personality.id));
   const [isUpdatingLogo, setIsUpdatingLogo] = useState(false);
   const [isUsersDialogOpen, setIsUsersDialogOpen] = useState(false);
@@ -238,16 +207,8 @@ const PersonalityItem: React.FC<PersonalityItemProps> = ({
     };
   };
 
-  const handleActivate = () => {
-    dispatch(setActivePersonality(isActive ? undefined : personality.id));
-    if (!isActive) {
-      toast(`${personality.name} activated`);
-    }
-  };
-
   const handlePersonalityClick = () => {
-    dispatch(setActivePersonality(personality.id));
-    navigate('/');
+    navigate(`/${personality.id}`);
   };
 
   const handleUpdateLogo = async () => {
@@ -295,8 +256,7 @@ const PersonalityItem: React.FC<PersonalityItemProps> = ({
       <Card
         className={cn(
           "mb-4 relative overflow-hidden aspect-square group",
-          className,
-          isActive && "border-2 border-primary"
+          className
         )}
       >
         {/* Logo/Background */}
@@ -345,8 +305,6 @@ const PersonalityItem: React.FC<PersonalityItemProps> = ({
           personality={personality}
           open={open}
           setOpen={setOpen}
-          handleActivate={handleActivate}
-          isActive={isActive}
           setIsUsersDialogOpen={setIsUsersDialogOpen}
           setIsDeletePersonalityOpen={setIsDeletePersonalityOpen}
           handleUpdateLogo={handleUpdateLogo}
@@ -356,14 +314,6 @@ const PersonalityItem: React.FC<PersonalityItemProps> = ({
           isPersonalityFavorite={isPersonalityFavorite}
         />
 
-        {/* Active indicator */}
-        {isActive && (
-          <div className="absolute top-2 left-2">
-            <div className="bg-primary text-primary-foreground px-2 py-1 rounded text-xs font-medium h-8 flex items-center">
-              Active
-            </div>
-          </div>
-        )}
       </Card>
 
 

@@ -54,7 +54,6 @@ export interface IncomingPersonalityDocumentEvent {
 
 // Define a type for the slice state
 export interface PersonalityState {
-  activePersonalityId?: string;
   personalities: Personality[];
   personalityUsers: Record<string, PersonalityUser[]>; // personalityId -> personality user relationships
   personalityDocuments: Record<string, PersonalityDocument[]>; // personalityId -> documents

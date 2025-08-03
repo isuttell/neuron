@@ -247,6 +247,11 @@ export default function PersonalityChatRoom() {
         <SidebarTrigger className="size-10 mr-2" />
         <h1 className="text-lg lg:text-2xl font-bold">
           {room.name}
+          {personality && (
+            <span className="text-sm text-muted-foreground font-normal ml-2">
+              {personality.name}
+            </span>
+          )}
         </h1>
         <div className="flex-1" />
         <MediaPanelToggle

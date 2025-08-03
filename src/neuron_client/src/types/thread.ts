@@ -27,3 +27,11 @@ export interface ThreadsResponse {
   threads: Thread[];
   thread_users?: ThreadUser[];
 }
+
+export interface CombinedResponse {
+  threads: Thread[];
+  thread_users?: ThreadUser[];
+  personality_rooms: import('./personalityRoom').PersonalityRoom[];
+  personality_room_users?: import('./personalityRoom').PersonalityRoomUser[];
+  users?: import('./user').User[];
+}

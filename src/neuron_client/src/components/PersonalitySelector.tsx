@@ -1,10 +1,7 @@
-import { useAppSelector, useAppDispatch } from "../hooks";
-import {
-  getActivePersonalityId,
-  getPersonalities,
-  setActivePersonality,
-} from "../slices/personalitiesSlice";
+import { useAppSelector } from "../hooks";
+import { getPersonalities } from "../slices/personalitiesSlice";
 import { getConnectionStatus } from "../slices/socketSlice";
+import { useNavigate, useParams } from "react-router-dom";
 import {
   Select,
   SelectContent,
@@ -14,19 +11,19 @@ import {
 } from "@/components/ui/select";
 
 export default function PersonalitySelector() {
-  const dispatch = useAppDispatch();
+  const navigate = useNavigate();
+  const { personalityId } = useParams();
   const personalities = useAppSelector(getPersonalities);
-  const activePersonalityId = useAppSelector(getActivePersonalityId);
   const personalitiesLoading = useAppSelector((state) => state.personalities.loading);
   const isConnected = useAppSelector(getConnectionStatus);
 
-  const handlePersonalityChange = (personalityId: string) => {
-    dispatch(setActivePersonality(personalityId));
+  const handlePersonalityChange = (newPersonalityId: string) => {
+    navigate(`/${newPersonalityId}`);
   };
 
   return (
     <Select
-      value={activePersonalityId || ""}
+      value={personalityId || ""}
       onValueChange={handlePersonalityChange}
       disabled={personalitiesLoading || !isConnected}
     >

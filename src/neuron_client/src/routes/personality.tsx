@@ -7,13 +7,13 @@ import { shallowEqual } from "react-redux";
 import { RootState } from "../store";
 import { Button } from "@/components/ui/button";
 import Loading from "@/lib/loading";
-import { getActivePersonalityId, getPersonalityDocuments } from "../slices/personalitiesSlice";
+import { getPersonalityDocuments } from "../slices/personalitiesSlice";
 import type { PersonalityDocument } from "../slices/personalitiesSlice.d";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
 import { Input } from "@/components/ui/input";
-import { setActivePersonality, addPersonalityDocuments } from "../slices/personalitiesSlice";
+import { addPersonalityDocuments } from "../slices/personalitiesSlice";
 import {
   fetchPersonality,
   updatePersonality,
@@ -40,7 +40,6 @@ export default function Personality() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const activePersonalityId = useAppSelector(getActivePersonalityId);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const { personalityId } = useParams();
@@ -199,7 +198,6 @@ export default function Personality() {
     return <Loading />;
   }
 
-  const isActive = activePersonalityId === personality.id;
 
   return (
     <div className="flex flex-1 p-4 flex-col flex-nowrap max-h-screen overflow-auto gap-2">
@@ -214,11 +212,6 @@ export default function Personality() {
             <ArrowLeft className="size-4" />
           </Button>
           Edit {personality.name}
-          {activePersonalityId === personality.id && (
-            <span className="ml-2 text-xs text-muted-foreground">
-              (active personality)
-            </span>
-          )}
         </h1>
         <div className="flex-1" />
         <input
@@ -355,20 +348,6 @@ export default function Personality() {
             </Button>
           </div>
           <div className="flex flex-row gap-2 pt-2">
-            <Button
-              className="gap-1.5"
-              variant={isActive ? "default" : "secondary"}
-              onClick={() => {
-                dispatch(
-                  setActivePersonality(isActive ? undefined : personality.id)
-                );
-                toast.success(
-                  isActive ? "Personality deactivated" : "Personality activated"
-                );
-              }}
-            >
-              {isActive ? "Deactivate" : "Activate"}
-            </Button>
             <div className="flex-1" />
             <Button
               onClick={() => {
