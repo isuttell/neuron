@@ -347,7 +347,7 @@ class TestAlphaVantageTool:
             assert "function=OVERVIEW" in item["url"]
             assert "symbol=AAPL" in item["url"]
             assert "apikey" not in item["url"]  # API key should not be in URL
-            assert item["caption"] == "Alpha Vantage"
+            assert item["name"] == "Alpha Vantage"
             assert item["description"] == ""  # Should be empty as requested
             assert item["metadata"]["query"] == query_params
 
@@ -493,7 +493,7 @@ class TestAlphaVantageTool:
 
             # Check item structure
             item = artifact["items"][0]
-            required_item_keys = ["id", "url", "caption", "description", "metadata"]
+            required_item_keys = ["id", "url", "name", "description", "metadata"]
             for key in required_item_keys:
                 assert key in item
 

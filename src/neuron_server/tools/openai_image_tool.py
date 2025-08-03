@@ -335,7 +335,7 @@ class OpenAIImageGenerationTool(BaseTool):
                 artifact_item = ToolMediaItem(
                     id=media_id,
                     url=url,
-                    caption=name,
+                    name=name,
                     description=description,
                     metadata=metadata,
                 )

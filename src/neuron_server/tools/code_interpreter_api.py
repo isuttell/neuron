@@ -193,7 +193,7 @@ async def process_artifacts(
         artifact_item = ToolMediaItem(
             id=media_id,
             url=url,
-            caption=file,
+            name=file,
             description="",  # Code interpreter doesn't provide descriptions
             metadata=ToolArtifactMetadata(),  # Minimal metadata for code interpreter
         )

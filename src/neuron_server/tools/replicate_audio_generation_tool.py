@@ -179,7 +179,7 @@ class ReplicateAudioGenerationTool(BaseTool):
             artifact_item = ToolMediaItem(
                 id=media_id,
                 url=url,
-                caption=name,
+                name=name,
                 description=prompt,
                 metadata=metadata,
             )

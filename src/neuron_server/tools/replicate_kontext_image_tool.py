@@ -291,7 +291,7 @@ class ReplicateKontextImageTool(BaseTool):
         artifact_item = ToolMediaItem(
             id=media_id,
             url=url,
-            caption=described_image.caption if described_image else params.name,
+            name=described_image.caption if described_image else params.name,
             description=described_image.description if described_image else "",
             prompt_comparison=(
                 described_image.edit_comparison if described_image else None

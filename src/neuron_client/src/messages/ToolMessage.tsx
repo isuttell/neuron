@@ -12,7 +12,7 @@ interface ToolMessageProps {
     items?: Array<{
       id: string;
       url: string;
-      caption: string;
+      name: string;
       description?: string;
       duration?: number;
       metadata?: Record<string, unknown>;

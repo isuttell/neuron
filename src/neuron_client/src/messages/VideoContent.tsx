@@ -12,7 +12,7 @@ interface VideoContentProps {
   loop?: boolean;
   showControls?: boolean;
   mediaItem?: MediaItem;
-  caption?: string;
+  name?: string;
   description?: string;
   duration?: number;
   metadata?: Record<string, unknown>;
@@ -27,7 +27,7 @@ const VideoContent: React.FC<VideoContentProps> = ({
   controls = false,
   loop = false,
   showControls = false,
-  caption,
+  name,
   description,
   duration,
   metadata,
@@ -82,7 +82,7 @@ const VideoContent: React.FC<VideoContentProps> = ({
           )}
         </div>
       }
-      title={caption || mediaItem?.name || "Video Details"}
+      title={name || mediaItem?.name || "Video Details"}
       actions={
         <MediaActions
           url={url}

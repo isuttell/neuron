@@ -210,18 +210,18 @@ describe("VideoContent", () => {
     expect(screen.getByTestId("dialog-description")).toHaveTextContent(description);
   });
 
-  it("uses caption as dialog title", () => {
+  it("uses name as dialog title", () => {
     renderWithProviders(
       <VideoContent
         {...defaultProps}
-        caption="Custom Video Title"
+        name="Custom Video Title"
       />
     );
 
     expect(screen.getByTestId("dialog-title")).toHaveTextContent("Custom Video Title");
   });
 
-  it("uses mediaItem.name as title when caption not provided", () => {
+  it("uses mediaItem.name as title when name not provided", () => {
     const mediaItem = { id: "123", name: "Media Item Title" };
 
     renderWithProviders(
@@ -234,7 +234,7 @@ describe("VideoContent", () => {
     expect(screen.getByTestId("dialog-title")).toHaveTextContent("Media Item Title");
   });
 
-  it("uses default title when caption and mediaItem.name not provided", () => {
+  it("uses default title when name and mediaItem.name not provided", () => {
     renderWithProviders(
       <VideoContent
         {...defaultProps}

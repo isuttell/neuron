@@ -126,7 +126,7 @@ class TestReplicateKokoroTTSTool:
         assert artifact_dict["media_type"] == "audio"
         assert len(artifact_dict["items"]) == 1
         assert artifact_dict["items"][0]["id"] is not None  # UUID generated dynamically
-        assert artifact_dict["items"][0]["caption"] == "test audio"
+        assert artifact_dict["items"][0]["name"] == "test audio"
         # Check that duration is from ffprobe
         assert artifact_dict["items"][0]["metadata"]["duration"] == 5.2
 

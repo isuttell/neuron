@@ -15,7 +15,7 @@ interface MediaArtifactsProps {
     items?: Array<{
       id: string;
       url: string;
-      caption: string;
+      name: string;
       description?: string;
       duration?: number;
       metadata?: Record<string, unknown>;
@@ -46,14 +46,14 @@ const MediaArtifacts: React.FC<MediaArtifactsProps> = ({
                     <AudioContentComponent
                       key={item.id}
                       url={item.url}
-                      title={item.caption}
+                      title={item.name}
                       description={item.description}
                       duration={item.duration}
                       metadata={item.metadata}
                       mediaItem={{
                         id: item.id,
                         url: item.url,
-                        name: item.caption,
+                        name: item.name,
                         description: item.description || "",
                         media_type: "audio",
                         created_at: new Date().toISOString(),
@@ -69,7 +69,7 @@ const MediaArtifacts: React.FC<MediaArtifactsProps> = ({
                     <VideoContentComponent
                       key={item.id}
                       url={item.url}
-                      caption={item.caption}
+                      name={item.name}
                       description={item.description}
                       duration={item.duration}
                       metadata={item.metadata}
@@ -82,8 +82,8 @@ const MediaArtifacts: React.FC<MediaArtifactsProps> = ({
                     <ImageContentComponent
                       key={item.id}
                       url={item.url}
-                      alt={item.caption}
-                      caption={item.caption}
+                      alt={item.name}
+                      name={item.name}
                       description={item.description}
                       metadata={item.metadata}
                       thumbnail_size="xl"
@@ -96,7 +96,7 @@ const MediaArtifacts: React.FC<MediaArtifactsProps> = ({
                       key={item.id}
                       id={item.id}
                       url={item.url}
-                      caption={item.caption}
+                      name={item.name}
                       description={item.description}
                       metadata={item.metadata}
                       icon={Search}
@@ -109,7 +109,7 @@ const MediaArtifacts: React.FC<MediaArtifactsProps> = ({
                       key={item.id}
                       id={item.id}
                       url={item.url}
-                      caption={item.caption}
+                      name={item.name}
                       description={item.description}
                       metadata={item.metadata}
                     />
@@ -121,7 +121,7 @@ const MediaArtifacts: React.FC<MediaArtifactsProps> = ({
                     <FileLink
                       key={item.id}
                       url={item.url}
-                      name={item.caption}
+                      name={item.name}
                       mediaType={artifactGroup.media_type}
                       description={item.description}
                     />
@@ -157,14 +157,14 @@ const MediaArtifacts: React.FC<MediaArtifactsProps> = ({
               <AudioContentComponent
                 key={item.id}
                 url={item.url}
-                title={item.caption}
+                title={item.name}
                 description={(item as AudioContent).description || ""}
                 duration={item.duration}
                 metadata={item.metadata}
                 mediaItem={{
                   id: item.id,
                   url: item.url,
-                  name: item.caption,
+                  name: item.name,
                   description: (item as AudioContent).description || "",
                   media_type: "audio",
                   created_at: new Date().toISOString(),
@@ -180,7 +180,7 @@ const MediaArtifacts: React.FC<MediaArtifactsProps> = ({
               <VideoContentComponent
                 key={item.id}
                 url={item.url}
-                caption={item.caption}
+                name={item.name}
                 description={(item as VideoContent).description || ""}
                 duration={item.duration}
                 metadata={item.metadata}
@@ -193,8 +193,8 @@ const MediaArtifacts: React.FC<MediaArtifactsProps> = ({
               <ImageContentComponent
                 key={item.id}
                 url={item.url}
-                alt={item.caption}
-                caption={item.caption}
+                alt={item.name}
+                name={item.name}
                 description={(item as ImageContent).description || ""}
                 metadata={item.metadata}
                 thumbnail_size="xl"

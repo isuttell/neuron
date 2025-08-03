@@ -229,7 +229,7 @@ Returns an audio tag to be shown to the user so they can play it.
                 artifact_item = ToolMediaItem(
                     id=media_id,
                     url=url,
-                    caption=name,
+                    name=name,
                     description=content,
                     metadata=metadata,
                 )

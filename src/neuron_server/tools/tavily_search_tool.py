@@ -140,7 +140,7 @@ Use the inspect_document tool to get more information about the search results.
                         ToolMediaItem(
                             id=str(uuid.uuid4()),
                             url=result["url"],
-                            caption=result["title"],
+                            name=result["title"],
                             description=result["content"],
                             metadata=ToolArtifactMetadata(
                                 query=query, score=result["score"]

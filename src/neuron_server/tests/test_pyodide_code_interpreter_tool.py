@@ -123,7 +123,7 @@ class TestPyodideCodeInterpreterTool:
             assert len(artifact["items"]) >= 1  # At least code artifact
 
             # Check that we have the expected items
-            captions = [item["caption"] for item in artifact["items"]]
+            captions = [item["name"] for item in artifact["items"]]
             assert "Source Code" in captions
 
             # Verify sandbox was called correctly
@@ -284,7 +284,7 @@ class TestPyodideCodeInterpreterTool:
             assert len(artifact["items"]) >= 1  # At least code artifact
 
             # Check we have expected items
-            captions = [item["caption"] for item in artifact["items"]]
+            captions = [item["name"] for item in artifact["items"]]
             assert "Source Code" in captions
 
     @pytest.mark.asyncio

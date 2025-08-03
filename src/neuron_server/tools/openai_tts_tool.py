@@ -152,7 +152,7 @@ class OpenAITTSTool(BaseTool):
             artifact_item = ToolMediaItem(
                 id=media_id,
                 url=url,
-                caption=name,
+                name=name,
                 description="\n".join(
                     [f"[{line.voice}]\n\n{line.text}" for line in script]
                 ),

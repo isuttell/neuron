@@ -216,6 +216,7 @@ async def execute_agent_with_messages_streaming(  # noqa: PLR0913
     thread_id: UUID,
     location: str = DEFAULT_LOCATION,
     status_callback: StatusCallback | None = None,
+    create_media_items: bool = False,
 ) -> tuple[str, list]:
     """Execute agent with custom messages list using streaming and status callbacks.
 
@@ -231,6 +232,7 @@ async def execute_agent_with_messages_streaming(  # noqa: PLR0913
         thread_id: ID of thread to use for execution
         location: Location string (default: San Diego)
         status_callback: Optional callback for status updates
+        create_media_items: Whether to create MediaItem records from artifacts
 
     Returns:
         Tuple of (response text, media artifacts)
@@ -257,6 +259,10 @@ async def execute_agent_with_messages_streaming(  # noqa: PLR0913
         prompt=prompt,
         location=location,
     )
+
+    # Add create_media_items to args if specified
+    if create_media_items:
+        args["create_media_items"] = True
 
     # Create callbacks with just the status callback
     callbacks = (

@@ -13,7 +13,7 @@ type BaseMediaProps = {
   className?: string;
   url: string;
   alt?: string;
-  caption?: string;
+  name?: string;
   description?: string;
   width?: number;
   height?: number;

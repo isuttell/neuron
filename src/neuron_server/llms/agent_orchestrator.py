@@ -249,6 +249,27 @@ class AgentOrchestrator:
             callbacks,
         )
 
+        # Always create media items from artifacts when present
+        if media_artifacts:
+            from neuron_server.util.artifact_to_media_converter import (
+                create_media_items_from_artifacts,
+            )
+
+            # Convert media artifacts to dict format for the converter
+            artifact_dicts = []
+            for artifact in media_artifacts:
+                if hasattr(artifact, "model_dump"):
+                    artifact_dicts.append(artifact.model_dump())
+                elif isinstance(artifact, dict):
+                    artifact_dicts.append(artifact)
+
+            if artifact_dicts:
+                await create_media_items_from_artifacts(
+                    artifacts=artifact_dicts,
+                    thread_id=stream_config.thread.id,
+                    user_id=stream_config.config.get("user_id"),
+                )
+
         # Get final state
         final_message = await self._get_final_state(stream_config.config["thread_id"])
         return final_message, media_artifacts
@@ -401,6 +422,20 @@ class AgentOrchestrator:
             "username": args.get("username") or "Unknown",
             "prompt": args["prompt"],
             "location": args.get("location", default_location),
+            # Pass through any additional args like create_media_items
+            **{
+                k: v
+                for k, v in args.items()
+                if k
+                not in [
+                    "thread_id",
+                    "personality_id",
+                    "user_id",
+                    "username",
+                    "prompt",
+                    "location",
+                ]
+            },
         }
 
         start_time = datetime.now().astimezone()

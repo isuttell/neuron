@@ -46,7 +46,7 @@ export interface Message {
     items?: Array<{
       id: string;
       url: string;
-      caption: string;
+      name: string;
       description?: string;
       duration?: number;
       metadata?: Record<string, unknown>;
@@ -86,7 +86,7 @@ export interface RawMessage {
     items?: Array<{
       id: string;
       url: string;
-      caption: string;
+      name: string;
       description?: string;
       duration?: number;
       metadata?: Record<string, unknown>;

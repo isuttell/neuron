@@ -777,6 +777,7 @@ creating new
                 username=username,  # Use actual username of message sender
                 thread_id=thread.id,  # Use real thread_id
                 status_callback=status_callback,
+                create_media_items=True,  # Create media items from artifacts
             )
             response_text, media_artifacts = response_result
 
@@ -819,27 +820,22 @@ creating new
             )
             ai_message = await PersonalityMessageModel.create(params=create_params)
 
-            # Create media items from artifacts and associate them with the message
-            created_media_items = []
+            # Associate existing media items with the personality message
+            # Since media items are already created by the agent with thread_id,
+            # we just need to create the relationships using the artifact IDs
+            media_items_to_broadcast = []
             if media_artifacts:
+                media_item_ids = []
                 for artifact in media_artifacts:
                     for item in artifact.items:
-                        # Create MediaItem record
-                        media_params = MediaItemModel.CreateParams(
-                            media_id=item.id,
-                            url=item.url,
-                            media_type=artifact.media_type,
-                            name=item.caption,
-                            description=item.description,
-                            user_id=user_id,  # User who triggered this response
-                            thread_id=None,  # No thread association
-                        )
-                        media_item = await MediaItemModel.create(params=media_params)
-                        created_media_items.append(media_item)
+                        media_item_ids.append(item.id)
+                        # Fetch the created media item for broadcasting
+                        media_item = await MediaItemModel.get(item.id)
+                        if media_item:
+                            media_items_to_broadcast.append(media_item)
 
                 # Associate media items with the personality message
-                if created_media_items:
-                    media_item_ids = [item.id for item in created_media_items]
+                if media_item_ids:
                     await PersonalityMessageModel.associate_media_items(
                         ai_message.id, media_item_ids
                     )
@@ -847,13 +843,13 @@ creating new
             # Broadcast to personality chat room
             message_event = PersonalityMessageEvent(
                 personality_messages=[ai_message.model_dump()],
-                media_items=[item.model_dump() for item in created_media_items],
+                media_items=[item.model_dump() for item in media_items_to_broadcast],
                 personality_message_media_items=[
                     {
                         "personality_message_id": str(ai_message.id),
                         "media_item_id": str(item.id),
                     }
-                    for item in created_media_items
+                    for item in media_items_to_broadcast
                 ],
             )
             await secure_pubsub.publish_personality_room_message(
