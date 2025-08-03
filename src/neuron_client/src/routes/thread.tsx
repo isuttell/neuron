@@ -33,6 +33,7 @@ import {
 } from "../slices/messagesSlice";
 import { getActivePersonality } from "../slices/personalitiesSlice";
 import { selectThread, getThreadsError } from "../slices/threadsSlice";
+import { selectMediaByThreadId } from "../slices/mediaSlice";
 export default function Thread() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
@@ -48,6 +49,10 @@ export default function Thread() {
   const messagesError = useAppSelector(getMessagesError);
   const messages = useAppSelector(
     (state) => selectThreadMessages(state, threadId),
+    shallowEqual
+  );
+  const threadMedia = useAppSelector(
+    (state) => threadId ? selectMediaByThreadId(state, threadId) : [],
     shallowEqual
   );
   const [showTools, setShowTools] = useState(false);
@@ -285,7 +290,7 @@ export default function Thread() {
           )}
         >
           {isMediaPanelVisible && threadId ? (
-            <MediaTimeline key={threadId} threadId={threadId} />
+            <MediaTimeline key={threadId} mediaItems={threadMedia} contextId={threadId} />
           ) : null}
         </div>
 
@@ -303,7 +308,8 @@ export default function Thread() {
                 {threadId ? (
                   <MediaTimeline
                     key={threadId}
-                    threadId={threadId}
+                    mediaItems={threadMedia}
+                    contextId={threadId}
                     layout="grid"
                   />
                 ) : null}

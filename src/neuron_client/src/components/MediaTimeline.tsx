@@ -1,22 +1,20 @@
-import { useAppSelector } from "@/hooks";
 import { cn } from "@/lib/utils";
 import ImageContent from "@/messages/ImageContent";
 import SpeechAudioContent from "@/messages/SpeechAudioContent";
 import { SubtitleContent } from "@/messages/SubtitleContent";
 import VideoContent from "@/messages/VideoContent";
-import { selectAllMedia } from "@/slices/mediaSlice";
 import { MediaItem } from "@/types/media";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { TimelineControls } from "./TimelineControls";
 import { FileLink } from "./FileLink";
 
 interface MediaTimelineProps {
-  threadId: string;
+  mediaItems: MediaItem[];
+  contextId?: string;
   layout?: 'column' | 'grid';
 }
 
-function MediaTimeline({ threadId, layout = 'column' }: MediaTimelineProps) {
-  const mediaItems = useAppSelector(selectAllMedia);
+function MediaTimeline({ mediaItems, contextId, layout = 'column' }: MediaTimelineProps) {
   const [currentIndex, setCurrentIndex] = useState<number>(-1);
   const [isPlaying, setIsPlaying] = useState(false);
   const [shouldPlay, setShouldPlay] = useState(false);
@@ -38,13 +36,11 @@ function MediaTimeline({ threadId, layout = 'column' }: MediaTimelineProps) {
 
   const allItems = useMemo(
     () =>
-      mediaItems
-        .filter((item: MediaItem) => item.thread_id === threadId)
-        .sort(
-          (a, b) =>
-            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-        ),
-    [mediaItems, threadId]
+      mediaItems.sort(
+        (a, b) =>
+          new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      ),
+    [mediaItems]
   );
 
   const audioItems = useMemo(
@@ -87,7 +83,7 @@ function MediaTimeline({ threadId, layout = 'column' }: MediaTimelineProps) {
     };
   }, []); // Only on mount/unmount
 
-  // Reset state when threadId changes
+  // Reset state when contextId changes (switching rooms/threads)
   useEffect(() => {
     const audio = audioRef.current;
     if (audio) {
@@ -103,7 +99,7 @@ function MediaTimeline({ threadId, layout = 'column' }: MediaTimelineProps) {
     previousItemsLengthRef.current = 0;
     isInitialLoadRef.current = true;
     itemRefs.current = [];
-  }, [threadId]);
+  }, [contextId]);
 
   // Set up audio event listeners
   useEffect(() => {

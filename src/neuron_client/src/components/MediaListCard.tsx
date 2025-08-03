@@ -39,7 +39,7 @@ function MediaListCard({ list, isSharedView = false }: MediaListCardProps) {
       </CardHeader>
       <CardContent>
         <ScrollArea className="max-h-full">
-          <MediaTimeline threadId={list.id} />
+          <MediaTimeline mediaItems={mediaItems} contextId={list.id} />
         </ScrollArea>
       </CardContent>
       <CardFooter className="flex flex-wrap gap-2">
