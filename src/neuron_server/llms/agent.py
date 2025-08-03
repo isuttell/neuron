@@ -12,7 +12,7 @@ from neuron_server.llms.agent_orchestrator import (
     create_agent_orchestrator,
 )
 from neuron_server.llms.agent_status_manager import AgentStatusManager, StatusCallback
-from neuron_server.llms.callback_handlers import CallbackHandlers
+from neuron_server.llms.callback_handlers import CallbackHandlers, ErrorCallback
 from neuron_server.llms.llm import LLM
 from neuron_server.llms.message_processor import get_message_content
 from neuron_server.llms.tools import get_tools
@@ -216,6 +216,7 @@ async def execute_agent_with_messages_streaming(  # noqa: PLR0913
     thread_id: UUID,
     location: str = DEFAULT_LOCATION,
     status_callback: StatusCallback | None = None,
+    error_callback: ErrorCallback | None = None,
     create_media_items: bool = False,
 ) -> tuple[str, list]:
     """Execute agent with custom messages list using streaming and status callbacks.
@@ -232,6 +233,7 @@ async def execute_agent_with_messages_streaming(  # noqa: PLR0913
         thread_id: ID of thread to use for execution
         location: Location string (default: San Diego)
         status_callback: Optional callback for status updates
+        error_callback: Optional callback for error handling
         create_media_items: Whether to create MediaItem records from artifacts
 
     Returns:
@@ -264,10 +266,12 @@ async def execute_agent_with_messages_streaming(  # noqa: PLR0913
     if create_media_items:
         args["create_media_items"] = True
 
-    # Create callbacks with just the status callback
-    callbacks = (
-        CallbackHandlers(on_status_change=status_callback) if status_callback else None
-    )
+    # Create callbacks with status and error callbacks
+    callbacks = None
+    if status_callback or error_callback:
+        callbacks = CallbackHandlers(
+            on_status_change=status_callback, on_error=error_callback
+        )
 
     # Use the global orchestrator
     orchestrator = get_orchestrator()
