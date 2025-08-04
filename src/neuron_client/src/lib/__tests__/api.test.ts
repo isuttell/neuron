@@ -190,6 +190,62 @@ describe("ApiClient", () => {
 
       await expect(api.get("/test")).rejects.toThrow("Token error");
     });
+
+    it("should handle timeout errors with specific timeout duration", async () => {
+      // Mock fetch to simulate a timeout by rejecting after a delay
+      (global.fetch as vi.Mock).mockImplementationOnce(() => {
+        return new Promise((_, reject) => {
+          setTimeout(() => {
+            const abortError = new Error("The operation was aborted");
+            abortError.name = "AbortError";
+            reject(abortError);
+          }, 100);
+        });
+      });
+
+      try {
+        await api.get("/test", { timeout: 50 }); // Short timeout to trigger abort
+        fail("Should have thrown an error");
+      } catch (error: unknown) {
+        expect(error).toHaveProperty("message", "Request timed out after 50ms");
+        expect(error).toHaveProperty("type", "network");
+      }
+    });
+
+    it("should handle manual abort errors differently from timeout errors", async () => {
+      const abortError = new Error("The operation was aborted");
+      abortError.name = "AbortError";
+      (global.fetch as vi.Mock).mockRejectedValueOnce(abortError);
+
+      try {
+        await api.get("/test");
+        fail("Should have thrown an error");
+      } catch (error: unknown) {
+        expect(error).toHaveProperty("message", "Request was aborted");
+        expect(error).toHaveProperty("type", "network");
+      }
+    });
+
+    it("should handle timeout errors in POST requests with correct timeout duration", async () => {
+      // Mock fetch to simulate a timeout
+      (global.fetch as vi.Mock).mockImplementationOnce(() => {
+        return new Promise((_, reject) => {
+          setTimeout(() => {
+            const abortError = new Error("The operation was aborted");
+            abortError.name = "AbortError";
+            reject(abortError);
+          }, 150);
+        });
+      });
+
+      try {
+        await api.post("/test", { data: "test" }, { timeout: 100 });
+        fail("Should have thrown an error");
+      } catch (error: unknown) {
+        expect(error).toHaveProperty("message", "Request timed out after 100ms");
+        expect(error).toHaveProperty("type", "network");
+      }
+    });
   });
 
   describe("CSRF token handling", () => {

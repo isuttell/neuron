@@ -44,15 +44,22 @@ export class ClassifiedError extends Error {
 class ApiClient {
   private baseUrl: string = "/api";
   private maxRetries: number = 1; // One retry for CSRF errors
-  private defaultTimeout: number = 10000; // 10 seconds default timeout
+  private defaultTimeout: number = 300000; // 5 minutes default timeout
 
-  private classifyError(error: unknown, status?: number): ClassifiedError {
+  private classifyError(error: unknown, status?: number, signal?: AbortSignal): ClassifiedError {
     if (error instanceof TypeError && error.message.includes('fetch')) {
       return new ClassifiedError('Network connection failed', 'network');
     }
 
     if (error instanceof Error && error.name === 'AbortError') {
-      return new ClassifiedError('Request timed out', 'network');
+      // Check if we have an abort signal with a timeout reason
+      if (signal?.reason && typeof signal.reason === 'string' && signal.reason.startsWith('TIMEOUT:')) {
+        const timeoutInfo = signal.reason.replace('TIMEOUT:', '');
+        return new ClassifiedError(`Request timed out after ${timeoutInfo}`, 'network');
+      }
+
+      // For manual aborts or other reasons
+      return new ClassifiedError('Request was aborted', 'network');
     }
 
     if (typeof status === 'number') {
@@ -204,7 +211,7 @@ class ApiClient {
     }
   }
 
-  private async fetchWithCSRF<T>(
+  private async fetch<T>(
     url: string,
     options: RequestInit,
     config: ApiConfig = {},
@@ -212,7 +219,9 @@ class ApiClient {
   ): Promise<T> {
     const controller = new AbortController();
     const timeout = config.timeout ?? this.defaultTimeout;
-    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    const timeoutId = setTimeout(() => {
+      controller.abort(`TIMEOUT:${timeout}ms`);
+    }, timeout);
 
     try {
       const response = await fetch(url, {
@@ -254,18 +263,20 @@ class ApiClient {
         }
 
         // Retry the request
-        return this.fetchWithCSRF<T>(url, options, config, retryCount + 1);
+        return this.fetch<T>(url, options, config, retryCount + 1);
       }
 
       // If it's not a CSRF error or we've exceeded retries, classify and throw
-      throw this.classifyError(error, apiError.status);
+      throw this.classifyError(error, apiError.status, controller.signal);
     }
   }
 
   async get<T>(endpoint: string, config: ApiConfig = {}): Promise<T> {
     const controller = new AbortController();
     const timeout = config.timeout ?? this.defaultTimeout;
-    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    const timeoutId = setTimeout(() => {
+      controller.abort(`TIMEOUT:${timeout}ms`);
+    }, timeout);
 
     try {
       const headers = await this.getHeaders();
@@ -278,7 +289,7 @@ class ApiClient {
       return this.handleResponse<T>(response);
     } catch (error: unknown) {
       clearTimeout(timeoutId);
-      throw this.classifyError(error);
+      throw this.classifyError(error, undefined, controller.signal);
     }
   }
 
@@ -294,7 +305,7 @@ class ApiClient {
       body = JSON.stringify(data);
     }
 
-    return this.fetchWithCSRF<T>(`${this.baseUrl}${endpoint}`, {
+    return this.fetch<T>(`${this.baseUrl}${endpoint}`, {
       method: "POST",
       headers,
       body,
@@ -314,7 +325,7 @@ class ApiClient {
       body = JSON.stringify(data);
     }
 
-    return this.fetchWithCSRF<T>(`${this.baseUrl}${endpoint}`, {
+    return this.fetch<T>(`${this.baseUrl}${endpoint}`, {
       method: "PUT",
       headers,
       body,
@@ -334,7 +345,7 @@ class ApiClient {
       body = JSON.stringify(data);
     }
 
-    return this.fetchWithCSRF<T>(`${this.baseUrl}${endpoint}`, {
+    return this.fetch<T>(`${this.baseUrl}${endpoint}`, {
       method: "PATCH",
       headers,
       body,
@@ -356,7 +367,7 @@ class ApiClient {
       }
     }
 
-    return this.fetchWithCSRF<T>(`${this.baseUrl}${endpoint}`, {
+    return this.fetch<T>(`${this.baseUrl}${endpoint}`, {
       method: "DELETE",
       headers,
       body,
