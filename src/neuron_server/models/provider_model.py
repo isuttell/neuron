@@ -7,13 +7,12 @@ from sqlalchemy import select
 
 from neuron_server.database import ProviderModel, get_session
 from neuron_server.llms.anthropic import AnthropicLLM
-from neuron_server.llms.cohere import CohereLLM
 from neuron_server.llms.google import GoogleLLM
 from neuron_server.llms.llm import LLM
 from neuron_server.llms.openai import OpenAILLM
 from neuron_server.llms.openrouter import OpenRouterLLM
 
-Provider = Literal["openai", "anthropic", "cohere", "openrouter", "google"]
+Provider = Literal["openai", "anthropic", "openrouter", "google"]
 
 
 class ProviderModelModel(BaseModel):
@@ -105,8 +104,6 @@ class ProviderModelModel(BaseModel):
             return OpenAILLM(model_id=self.model_id, provider_model_id=self.id)
         if self.provider == "openrouter":
             return OpenRouterLLM(model_id=self.model_id, provider_model_id=self.id)
-        if self.provider == "cohere":
-            return CohereLLM(model_id=self.model_id, provider_model_id=self.id)
         if self.provider == "google":
             return GoogleLLM(model_id=self.model_id, provider_model_id=self.id)
         raise ValueError(f"Unknown provider: {self.provider}")

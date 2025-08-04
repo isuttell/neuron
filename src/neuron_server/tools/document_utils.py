@@ -2,7 +2,7 @@ import os
 import re
 import tempfile
 import time
-from typing import Any, Literal
+from typing import Any
 
 import aiohttp
 import pymupdf4llm
@@ -129,7 +129,9 @@ async def load_youtube_transcript(
     """
     try:
         video_id = extract_video_id(url)
-        transcript = YouTubeTranscriptApi.get_transcript(video_id)
+        api = YouTubeTranscriptApi()
+        fetched_transcript = api.fetch(video_id)
+        transcript = fetched_transcript.to_raw_data()
 
         # Convert dictionary items to objects with attributes if needed
         class TranscriptItem:
@@ -258,17 +260,45 @@ async def load_text_from_url(
         raise DocumentLoadError(f"Failed to load text: {str(e)}") from e
 
 
+def _extract_firecrawl_metadata(
+    result: Any,  # noqa: ANN401
+    url: str,
+    custom_metadata: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Extract metadata from FireCrawl result safely."""
+    doc_metadata = {
+        "sourceURL": url,
+        "type": "webpage",
+        "updated_at": int(time.time()),
+    }
+
+    # Extract title and other metadata safely
+    if hasattr(result, "metadata") and result.metadata:
+        if isinstance(result.metadata, dict):
+            doc_metadata["title"] = result.metadata.get("title", "")
+            doc_metadata.update(result.metadata)
+        else:
+            # If metadata is an object, try to get title attribute
+            doc_metadata["title"] = getattr(result.metadata, "title", "")
+            if hasattr(result.metadata, "__dict__"):
+                doc_metadata.update(result.metadata.__dict__)
+
+    # Add any custom metadata passed in
+    if custom_metadata:
+        doc_metadata.update(custom_metadata)
+
+    return doc_metadata
+
+
 async def load_document_from_url(
     url: str,
     metadata: dict[str, Any] | None = None,
-    mode: Literal["scrape", "crawl"] | None = None,
 ) -> list[Document]:
     """Load documents from a URL.
 
     Args:
         url: The URL to load documents from
         metadata: Optional metadata to include
-        mode: The mode for loading websites ("scrape" or "crawl")
 
     Returns:
         list[Document]: The loaded documents
@@ -281,13 +311,9 @@ async def load_document_from_url(
             doc = await load_youtube_transcript(url, metadata=metadata)
             return [doc]
 
-        if (
-            url.endswith(".txt")
-            or url.endswith(".md")
-            or url.endswith(".csv")
-            or url.endswith(".srt")
-            or url.endswith(".vtt")
-        ):
+        # Handle text-based file extensions
+        text_extensions = (".txt", ".md", ".csv", ".srt", ".vtt")
+        if url.endswith(text_extensions):
             doc = await load_text_from_url(url, metadata=metadata)
             return [doc]
 
@@ -300,23 +326,20 @@ async def load_document_from_url(
                 "FireCrawl cannot access urls on the local network."
             )
 
-        from langchain_community.document_loaders import FireCrawlLoader
+        from firecrawl import AsyncFirecrawlApp
 
-        loader = FireCrawlLoader(
-            api_key=neuron_config.firecrawl_api_key,
-            url=url,
-            mode=mode,
-        )
-        docs = await loader.aload()
-        for doc in docs:
-            doc.metadata.update(
-                {
-                    "type": "webpage",
-                    "updated_at": int(time.time()),
-                    **(metadata or {}),
-                }
-            )
-        return docs
+        app = AsyncFirecrawlApp(api_key=neuron_config.firecrawl_api_key)
+        result = await app.scrape_url(url)
+
+        # Safe access to markdown content
+        page_content = ""
+        if hasattr(result, "markdown") and result.markdown:
+            page_content = result.markdown
+        elif hasattr(result, "data") and hasattr(result.data, "markdown"):
+            page_content = result.data.markdown
+
+        doc_metadata = _extract_firecrawl_metadata(result, url, metadata)
+        return [Document(page_content=page_content, metadata=doc_metadata)]
     except (NetworkError, FileFormatError, LocalNetworkError) as e:
         logger.error(f"Failed to load document from {url}: {e}")
         raise e

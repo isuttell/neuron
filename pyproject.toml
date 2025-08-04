@@ -13,16 +13,15 @@ pillow = "*"
 pydantic = "*"
 quart = "*"
 hypercorn = "*"
-langchain = "0.3.25"
-langgraph = "0.4.7"
-langchain_openai = "0.3.18"
-langchain_community = "0.3.24"
-langchain_anthropic = "0.3.13"
-langchain_postgres = "0.0.14"
-langchain-cohere = "0.4.4"
-langgraph-checkpoint-postgres = "2.0.21"
-langchain-text-splitters = "0.3.8"
-langsmith = "0.3.42"
+langchain = "0.3.27"
+langgraph = "0.6.3"
+langchain_openai = "0.3.28"
+langchain_community = "0.3.27"
+langchain_anthropic = "0.3.18"
+langchain_postgres = "0.0.15"
+langgraph-checkpoint-postgres = "2.0.23"
+langchain-text-splitters = "0.3.9"
+langsmith = "0.3.45"
 simsimd = "*"
 aiohttp = "*"
 arxiv = "*"
@@ -103,7 +102,7 @@ fix = true
 [tool.ruff.lint]
 # Enable pycodestyle, Pyflakes, isort, and more
 select = ["E", "F", "I", "N", "UP", "ANN", "B", "A", "C4", "RET", "SIM", "ERA", "PL"]
-ignore = []
+ignore = ["PLC0415"]
 extend-select = ["I"]
 
 [tool.ruff.lint.isort]
