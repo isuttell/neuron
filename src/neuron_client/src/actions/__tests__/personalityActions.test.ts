@@ -232,7 +232,8 @@ describe("personalityActions", () => {
 
       expect(api.post).toHaveBeenCalledWith(
         `/personalities/${mockPersonality.id}/logo`,
-        {}
+        {},
+        { timeout: 120000 }
       );
 
       const state = store.getState();
