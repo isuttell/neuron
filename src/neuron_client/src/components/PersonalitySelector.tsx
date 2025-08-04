@@ -1,6 +1,7 @@
-import { useAppSelector } from "../hooks";
+import { useAppSelector, useAppDispatch } from "../hooks";
 import { getPersonalities } from "../slices/personalitiesSlice";
 import { getConnectionStatus } from "../slices/socketSlice";
+import { setSelectedPersonalityId } from "../slices/appSlice";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   Select,
@@ -11,6 +12,7 @@ import {
 } from "@/components/ui/select";
 
 export default function PersonalitySelector() {
+  const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const { personalityId } = useParams();
   const personalities = useAppSelector(getPersonalities);
@@ -18,6 +20,7 @@ export default function PersonalitySelector() {
   const isConnected = useAppSelector(getConnectionStatus);
 
   const handlePersonalityChange = (newPersonalityId: string) => {
+    dispatch(setSelectedPersonalityId(newPersonalityId));
     navigate(`/${newPersonalityId}`);
   };
 
