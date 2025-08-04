@@ -1,5 +1,6 @@
 """Stream event processing functionality."""
 
+import logging
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from datetime import datetime
@@ -12,11 +13,12 @@ from neuron_server.controllers.events.message_events import (
     ThreadMessage,
 )
 from neuron_server.llms.agent_status_manager import AgentStatusManager
-from neuron_server.llms.callback_handlers import CallbackHandlers
+from neuron_server.llms.callback_handlers import CallbackHandlers, ErrorInfo
 from neuron_server.llms.message_processor import get_message_content
-from neuron_server.logger import logger
 from neuron_server.models.thread_model import ThreadModel
 from neuron_server.tools.artifact_types import ToolMediaArtifact
+
+logger = logging.getLogger(__name__)
 
 
 class ChainEventData(TypedDict):
@@ -399,10 +401,51 @@ class StreamEventProcessor:
                 await self._handle_chat_model_end(context, callbacks)
 
             elif kind == "error":
-                logger.error(data)
+                # Create exception from error data
+                exception = self._create_exception_from_data(data)
+                logger.error(f"Agent error: {exception}", exc_info=exception)
+
+                # Send error to user via callback if available
+                if callbacks and callbacks.on_error:
+                    error_info = ErrorInfo(
+                        exception=exception,
+                        thread_id=thread.id if thread else None,
+                        user_id=getattr(thread, "user_id", None),
+                        run_id=run_id,
+                        error_context="stream_event_processor",
+                    )
+                    await callbacks.on_error(error_info)
 
         # Return collected media artifacts
         return self.collected_media_artifacts
+
+    def _create_exception_from_data(
+        self, data: Exception | str | dict[str, Any]
+    ) -> Exception:
+        """Create an appropriate exception from LangGraph error data."""
+        if isinstance(data, Exception):
+            return data
+
+        if isinstance(data, str):
+            return RuntimeError(data)
+
+        if isinstance(data, dict):
+            # Extract error message from nested structures
+            error_msg = "Internal server error"
+            if "error" in data and isinstance(data["error"], dict):
+                error_msg = data["error"].get("message", error_msg)
+            elif "message" in data:
+                error_msg = data["message"]
+            elif "exception" in data:
+                # Sometimes the actual exception is nested
+                if isinstance(data["exception"], Exception):
+                    return data["exception"]
+                error_msg = str(data["exception"])
+
+            return RuntimeError(error_msg)
+
+        # Fallback for any other data type
+        return RuntimeError(f"Unexpected error: {data}")
 
 
 def create_stream_event_processor(

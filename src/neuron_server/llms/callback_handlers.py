@@ -16,13 +16,32 @@ from neuron_server.controllers.events.message_events import (
 from neuron_server.models.thread_model import ThreadModel
 from neuron_server.tools.artifact_types import ToolMediaArtifact
 
+
+@dataclass
+class ErrorInfo:
+    """Structured error information for callbacks."""
+
+    exception: Exception
+    thread_id: UUID | None = None
+    user_id: str | None = None
+    run_id: str | None = None
+    error_context: str | None = None
+
+    @property
+    def user_message(self) -> str:
+        """Get user-friendly error message."""
+        if hasattr(self.exception, "message") and self.exception.message:
+            return str(self.exception.message)
+        return str(self.exception) or "An unexpected error occurred"
+
+
 # Type aliases for callbacks
 # Parameters: thread_id, raw_status, generated_message, human_message
 StatusCallback = Callable[[UUID, str, str, str | None], Awaitable[None]]
 MessageCallback = Callable[[ThreadMessage], Awaitable[None]]
 PartialMessageCallback = Callable[[PartialMessage], Awaitable[None]]
 ThreadUpdateCallback = Callable[[ThreadModel], Awaitable[None]]
-ErrorCallback = Callable[[str, str | None], Awaitable[None]]
+ErrorCallback = Callable[[ErrorInfo], Awaitable[None]]
 MediaArtifactsCallback = Callable[[list[ToolMediaArtifact]], Awaitable[None]]
 
 
@@ -48,7 +67,7 @@ class CallbackHandlers:
     # Thread events
     on_thread_update: ThreadUpdateCallback | None = None
 
-    # Error events (error_message, user_id)
+    # Error events (ErrorInfo)
     on_error: ErrorCallback | None = None
 
     # Media artifacts

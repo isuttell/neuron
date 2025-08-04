@@ -505,9 +505,12 @@ class TestOrchestratorCallbacks:
 
             # Verify error callback was invoked
             error_callback.assert_called_once()
-            error_args = error_callback.call_args[0]
-            assert "Test error" in error_args[0]  # Error message
-            assert error_args[1] == "test_user"  # User ID
+            # First (and only) argument is ErrorInfo
+            error_info = error_callback.call_args[0][0]
+            assert "Test error" in str(error_info.exception)  # Error message
+            assert error_info.user_id == "test_user"  # User ID
+            assert error_info.thread_id is not None  # Thread ID should be present
+            assert error_info.error_context == "agent_orchestrator"  # Context
 
     @pytest.mark.asyncio
     async def test_callbacks_none_handling(self) -> None:

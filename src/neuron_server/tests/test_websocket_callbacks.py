@@ -10,6 +10,7 @@ from neuron_server.controllers.events.message_events import (
     PartialMessage,
     ThreadMessage,
 )
+from neuron_server.llms.callback_handlers import ErrorInfo
 from neuron_server.llms.websocket_callbacks import (
     create_websocket_callbacks,
     on_ai_message,
@@ -146,25 +147,41 @@ class TestWebsocketCallbackFunctions:
     @pytest.mark.asyncio
     async def test_on_error_with_user_id(self) -> None:
         """Test on_error callback with user_id."""
-        error_message = "Something went wrong"
+        thread_id = uuid4()
         user_id = "test_user"
+        exception = RuntimeError("Something went wrong")
+        error_info = ErrorInfo(
+            exception=exception,
+            thread_id=thread_id,
+            user_id=user_id,
+            run_id="test_run_id",
+            error_context="test_context",
+        )
 
         with patch(
             "neuron_server.llms.websocket_callbacks.secure_pubsub"
         ) as mock_pubsub:
             mock_pubsub.publish_error_to_user = AsyncMock()
 
-            await on_error(error_message, user_id)
+            await on_error(error_info)
 
             mock_pubsub.publish_error_to_user.assert_called_once()
             call_args = mock_pubsub.publish_error_to_user.call_args
             assert call_args[0][0] == user_id
-            assert call_args[0][1].message == error_message
+            assert call_args[0][1].message == error_info.user_message
 
     @pytest.mark.asyncio
     async def test_on_error_without_user_id(self) -> None:
         """Test on_error callback without user_id."""
-        error_message = "Something went wrong"
+        thread_id = uuid4()
+        exception = RuntimeError("Something went wrong")
+        error_info = ErrorInfo(
+            exception=exception,
+            thread_id=thread_id,
+            user_id=None,
+            run_id="test_run_id",
+            error_context="test_context",
+        )
 
         with patch(
             "neuron_server.llms.websocket_callbacks.secure_pubsub"
@@ -172,14 +189,15 @@ class TestWebsocketCallbackFunctions:
             mock_pubsub.publish_error_to_user = AsyncMock()
 
             with patch("neuron_server.llms.websocket_callbacks.logger") as mock_logger:
-                await on_error(error_message, None)
+                await on_error(error_info)
 
                 # Should not publish error
                 mock_pubsub.publish_error_to_user.assert_not_called()
 
                 # Should log warning
                 mock_logger.warning.assert_called_once_with(
-                    "Could not send error to user: user_id not available"
+                    f"Could not send error to user: user_id not available "
+                    f"(thread_id: {thread_id})"
                 )
 
     @pytest.mark.asyncio
@@ -368,12 +386,26 @@ class TestWebsocketCallbacksIntegration:
             mock_pubsub.publish_error_to_user = AsyncMock()
 
             # Test with user_id
-            await handlers.on_error("Test error", "test_user")
+            error_info_with_user = ErrorInfo(
+                exception=RuntimeError("Test error"),
+                thread_id=uuid4(),
+                user_id="test_user",
+                run_id="test_run",
+                error_context="test",
+            )
+            await handlers.on_error(error_info_with_user)
             mock_pubsub.publish_error_to_user.assert_called_once()
 
             # Test without user_id
             with patch("neuron_server.llms.websocket_callbacks.logger") as mock_logger:
-                await handlers.on_error("Test error", None)
+                error_info_no_user = ErrorInfo(
+                    exception=RuntimeError("Test error"),
+                    thread_id=uuid4(),
+                    user_id=None,
+                    run_id="test_run",
+                    error_context="test",
+                )
+                await handlers.on_error(error_info_no_user)
                 mock_logger.warning.assert_called_once()
 
 
