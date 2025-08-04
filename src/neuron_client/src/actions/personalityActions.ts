@@ -193,7 +193,7 @@ export const updatePersonalityLogo = createAsyncThunk(
   "personalities/updateLogo",
   async (personalityId: string, thunkAPI) => {
     try {
-      const response = await api.post<{ personalities: Personality[]; logo: string; response: string }>(`/personalities/${personalityId}/logo`, {});
+      const response = await api.post<{ personalities: Personality[]; logo: string; response: string }>(`/personalities/${personalityId}/logo`, {}, { timeout: 120000 });
       return { personalities: response.personalities, response: response.response };
     } catch (error) {
       if (error instanceof Error) {
