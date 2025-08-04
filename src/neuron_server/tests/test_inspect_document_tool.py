@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 from langchain_core.documents import Document
@@ -48,14 +48,27 @@ def test_extract_video_id() -> None:
 async def test_load_youtube_transcript() -> None:
     """Test loading transcripts with mocked API response."""
     mock_transcript = [
-        MockTranscriptLine(text="Hello world", start=0.0, duration=1.5),
-        MockTranscriptLine(text="This is a test", start=1.5, duration=2.0),
+        {"text": "Hello world", "start": 0.0, "duration": 1.5},
+        {"text": "This is a test", "start": 1.5, "duration": 2.0},
     ]
 
-    with patch(
-        "youtube_transcript_api.YouTubeTranscriptApi.get_transcript"
-    ) as mock_get:
-        mock_get.return_value = mock_transcript
+    with (
+        patch(
+            "neuron_server.tools.document_utils.YouTubeTranscriptApi"
+        ) as mock_api_class,
+        patch(
+            "neuron_server.tools.document_utils.WebVTTFormatter.format_transcript"
+        ) as mock_format,
+    ):
+        mock_api = mock_api_class.return_value
+        mock_fetched = AsyncMock()
+        mock_fetched.to_raw_data = Mock()
+        mock_fetched.to_raw_data.return_value = mock_transcript
+        mock_api.fetch.return_value = mock_fetched
+        mock_format.return_value = (
+            "WEBVTT\n\n00:00:00.000 --> 00:00:01.500\nHello world\n\n"
+            "00:00:01.500 --> 00:00:03.500\nThis is a test"
+        )
         # Re-import after patch
         from neuron_server.tools.document_utils import load_youtube_transcript
 
@@ -71,10 +84,13 @@ async def test_load_youtube_transcript() -> None:
 async def test_load_youtube_transcript_error() -> None:
     """Test error handling for transcript loading."""
     with (
-        patch("youtube_transcript_api.YouTubeTranscriptApi.get_transcript") as mock_get,
+        patch(
+            "neuron_server.tools.document_utils.YouTubeTranscriptApi"
+        ) as mock_api_class,
         pytest.raises(DocumentLoadError),
     ):
-        mock_get.side_effect = Exception("Transcript not available")
+        mock_api = mock_api_class.return_value
+        mock_api.fetch.side_effect = Exception("Transcript not available")
         await load_youtube_transcript("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
 
 
@@ -82,15 +98,28 @@ async def test_load_youtube_transcript_error() -> None:
 async def test_inspect_document_tool_youtube() -> None:
     """Test the InspectDocumentTool with a YouTube URL."""
     mock_transcript = [
-        MockTranscriptLine(text="Hello world", start=0.0, duration=1.5),
-        MockTranscriptLine(text="This is a test", start=1.5, duration=2.0),
+        {"text": "Hello world", "start": 0.0, "duration": 1.5},
+        {"text": "This is a test", "start": 1.5, "duration": 2.0},
     ]
 
     tool = InspectDocumentTool()
-    with patch(
-        "youtube_transcript_api.YouTubeTranscriptApi.get_transcript"
-    ) as mock_get:
-        mock_get.return_value = mock_transcript
+    with (
+        patch(
+            "neuron_server.tools.document_utils.YouTubeTranscriptApi"
+        ) as mock_api_class,
+        patch(
+            "neuron_server.tools.document_utils.WebVTTFormatter.format_transcript"
+        ) as mock_format,
+    ):
+        mock_api = mock_api_class.return_value
+        mock_fetched = AsyncMock()
+        mock_fetched.to_raw_data = Mock()
+        mock_fetched.to_raw_data.return_value = mock_transcript
+        mock_api.fetch.return_value = mock_fetched
+        mock_format.return_value = (
+            "WEBVTT\n\n00:00:00.000 --> 00:00:01.500\nHello world\n\n"
+            "00:00:01.500 --> 00:00:03.500\nThis is a test"
+        )
         result = await tool._arun(
             url="https://www.youtube.com/watch?v=dQw4w9WgXcQ",
             config={"configurable": {}},
@@ -160,7 +189,7 @@ async def test_inspect_document_tool_memorize_functionality() -> None:
 
         # Test with memorize=True
         result = await tool._arun(
-            url="https://example.com", config=config, mode="scrape", memorize=True
+            url="https://example.com", config=config, memorize=True
         )
 
         # Verify the result contains the document content
@@ -220,7 +249,7 @@ async def test_inspect_document_tool_no_memorize() -> None:
 
         # Test with memorize=False (default)
         result = await tool._arun(
-            url="https://example.com", config=config, mode="scrape", memorize=False
+            url="https://example.com", config=config, memorize=False
         )
 
         # Verify the result contains the document content
@@ -260,9 +289,7 @@ async def test_inspect_document_tool_memorize_chunking() -> None:
         mock_load.return_value = mock_docs
         mock_memory_store.aadd_documents = AsyncMock()
 
-        await tool._arun(
-            url="https://example.com", config=config, mode="scrape", memorize=True
-        )
+        await tool._arun(url="https://example.com", config=config, memorize=True)
 
         # Get the stored documents
         stored_docs = mock_memory_store.aadd_documents.call_args[0][0]
@@ -308,7 +335,7 @@ async def test_inspect_document_tool_memorize_error_handling() -> None:
 
         # This should not raise an exception
         result = await tool._arun(
-            url="https://example.com", config=config, mode="scrape", memorize=True
+            url="https://example.com", config=config, memorize=True
         )
 
         # Verify the result still contains the document content

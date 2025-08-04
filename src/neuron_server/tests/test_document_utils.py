@@ -4,14 +4,13 @@ import os
 from collections.abc import AsyncGenerator
 from dataclasses import dataclass
 from pathlib import Path
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import aiohttp
 import pytest
 import pytest_asyncio
 from aioresponses import aioresponses
 from langchain_core.documents import Document
-from youtube_transcript_api import YouTubeTranscriptApi
 
 from neuron_server.tools.document_utils import (
     DocumentLoadError,
@@ -36,12 +35,27 @@ class MockTranscriptLine:
     duration: float
 
 
+# Helper class for mocking FireCrawl metadata
+@dataclass
+class MockMetadata:
+    title: str = ""
+    source: str = ""
+
+
+# Helper class for mocking FireCrawl ScrapeResponse
+@dataclass
+class MockScrapeResponse:
+    markdown: str
+    metadata: MockMetadata = None
+    success: bool = True
+
+
 @pytest.fixture
-def mock_youtube_transcript() -> list[MockTranscriptLine]:
-    """Mock YouTube transcript data with objects."""
+def mock_youtube_transcript() -> list[dict]:
+    """Mock YouTube transcript data as dictionaries (API format)."""
     return [
-        MockTranscriptLine(text="First line", start=0.0, duration=2.0),
-        MockTranscriptLine(text="Second line", start=2.0, duration=2.0),
+        {"text": "First line", "start": 0.0, "duration": 2.0},
+        {"text": "Second line", "start": 2.0, "duration": 2.0},
     ]
 
 
@@ -142,16 +156,28 @@ class TestYouTubeTranscriptLoading:
 
     @pytest.mark.asyncio
     async def test_successful_transcript_loading(
-        self, mock_youtube_transcript: list[MockTranscriptLine]
+        self, mock_youtube_transcript: list[dict]
     ) -> None:
         """Test successful loading of YouTube transcript."""
         url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 
-        with patch.object(
-            YouTubeTranscriptApi,
-            "get_transcript",
-            return_value=mock_youtube_transcript,
+        with (
+            patch(
+                "neuron_server.tools.document_utils.YouTubeTranscriptApi"
+            ) as mock_api_class,
+            patch(
+                "neuron_server.tools.document_utils.WebVTTFormatter.format_transcript"
+            ) as mock_format,
         ):
+            mock_api = mock_api_class.return_value
+            mock_fetched = AsyncMock()
+            mock_fetched.to_raw_data = Mock()
+            mock_fetched.to_raw_data.return_value = mock_youtube_transcript
+            mock_api.fetch.return_value = mock_fetched
+            mock_format.return_value = (
+                "WEBVTT\n\n00:00:00.000 --> 00:00:02.000\nFirst line\n\n"
+                "00:00:02.000 --> 00:00:04.000\nSecond line"
+            )
             doc = await load_youtube_transcript(url)
             assert isinstance(doc, Document)
             assert "First line" in doc.page_content
@@ -164,28 +190,40 @@ class TestYouTubeTranscriptLoading:
         url = "https://www.youtube.com/watch?v=invalid"
 
         with (
-            patch.object(
-                YouTubeTranscriptApi,
-                "get_transcript",
-                side_effect=Exception("Transcript not found"),
-            ),
+            patch(
+                "neuron_server.tools.document_utils.YouTubeTranscriptApi"
+            ) as mock_api_class,
             pytest.raises(DocumentLoadError),
         ):
+            mock_api = mock_api_class.return_value
+            mock_api.fetch.side_effect = Exception("Transcript not found")
             await load_youtube_transcript(url)
 
     @pytest.mark.asyncio
     async def test_transcript_metadata_merging(
-        self, mock_youtube_transcript: list[MockTranscriptLine]
+        self, mock_youtube_transcript: list[dict]
     ) -> None:
         """Test metadata merging in transcript loading."""
         url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
         custom_metadata = {"custom_key": "custom_value"}
 
-        with patch.object(
-            YouTubeTranscriptApi,
-            "get_transcript",
-            return_value=mock_youtube_transcript,
+        with (
+            patch(
+                "neuron_server.tools.document_utils.YouTubeTranscriptApi"
+            ) as mock_api_class,
+            patch(
+                "neuron_server.tools.document_utils.WebVTTFormatter.format_transcript"
+            ) as mock_format,
         ):
+            mock_api = mock_api_class.return_value
+            mock_fetched = AsyncMock()
+            mock_fetched.to_raw_data = Mock()
+            mock_fetched.to_raw_data.return_value = mock_youtube_transcript
+            mock_api.fetch.return_value = mock_fetched
+            mock_format.return_value = (
+                "WEBVTT\n\n00:00:00.000 --> 00:00:02.000\nFirst line\n\n"
+                "00:00:02.000 --> 00:00:04.000\nSecond line"
+            )
             doc = await load_youtube_transcript(url, metadata=custom_metadata)
             assert doc.metadata["custom_key"] == "custom_value"
             assert doc.metadata["video_id"] == "dQw4w9WgXcQ"
@@ -346,16 +384,28 @@ class TestDocumentLoading:
 
     @pytest.mark.asyncio
     async def test_youtube_url_loading(
-        self, mock_youtube_transcript: list[MockTranscriptLine]
+        self, mock_youtube_transcript: list[dict]
     ) -> None:
         """Test loading YouTube URL."""
         url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 
-        with patch.object(
-            YouTubeTranscriptApi,
-            "get_transcript",
-            return_value=mock_youtube_transcript,
+        with (
+            patch(
+                "neuron_server.tools.document_utils.YouTubeTranscriptApi"
+            ) as mock_api_class,
+            patch(
+                "neuron_server.tools.document_utils.WebVTTFormatter.format_transcript"
+            ) as mock_format,
         ):
+            mock_api = mock_api_class.return_value
+            mock_fetched = AsyncMock()
+            mock_fetched.to_raw_data = Mock()
+            mock_fetched.to_raw_data.return_value = mock_youtube_transcript
+            mock_api.fetch.return_value = mock_fetched
+            mock_format.return_value = (
+                "WEBVTT\n\n00:00:00.000 --> 00:00:02.000\nFirst line\n\n"
+                "00:00:02.000 --> 00:00:04.000\nSecond line"
+            )
             docs = await load_document_from_url(url)
             assert len(docs) == 1
             assert docs[0].metadata["type"] == "youtube_transcript"
@@ -399,16 +449,19 @@ class TestDocumentLoading:
     ) -> None:
         """Test loading webpage URL."""
         url = "https://example.com"
-        mock_docs = [Document(page_content="test content", metadata={"source": url})]
+        mock_metadata = MockMetadata(title="Test Title", source=url)
+        mock_result = MockScrapeResponse(
+            markdown="test content", metadata=mock_metadata
+        )
 
-        with patch(
-            "langchain_community.document_loaders.FireCrawlLoader"
-        ) as mock_loader_class:
-            mock_loader = mock_loader_class.return_value
-            mock_loader.aload = AsyncMock(return_value=mock_docs)
+        with patch("firecrawl.AsyncFirecrawlApp") as mock_app_class:
+            mock_app = mock_app_class.return_value
+            mock_app.scrape_url = AsyncMock(return_value=mock_result)
             docs = await load_document_from_url(url)
             assert len(docs) == 1
             assert docs[0].metadata["type"] == "webpage"
+            assert docs[0].page_content == "test content"
+            mock_app.scrape_url.assert_called_once_with(url)
 
     @pytest.mark.asyncio
     async def test_webpage_scrape_mode(
@@ -418,21 +471,19 @@ class TestDocumentLoading:
     ) -> None:
         """Test scrape mode for webpage loading."""
         url = "https://example.com"
-        mock_docs = [Document(page_content="test content", metadata={"source": url})]
+        mock_metadata = MockMetadata(title="Test Title", source=url)
+        mock_result = MockScrapeResponse(
+            markdown="test content", metadata=mock_metadata
+        )
 
-        with patch(
-            "langchain_community.document_loaders.FireCrawlLoader"
-        ) as mock_loader_class:
-            mock_loader = mock_loader_class.return_value
-            mock_loader.aload = AsyncMock(return_value=mock_docs)
-            docs = await load_document_from_url(url, mode="scrape")
+        with patch("firecrawl.AsyncFirecrawlApp") as mock_app_class:
+            mock_app = mock_app_class.return_value
+            mock_app.scrape_url = AsyncMock(return_value=mock_result)
+            docs = await load_document_from_url(url)
             assert len(docs) == 1
             assert docs[0].metadata["type"] == "webpage"
-            mock_loader_class.assert_called_once_with(
-                api_key=mock_loader_class.call_args[1]["api_key"],
-                url=url,
-                mode="scrape",
-            )
+            assert docs[0].page_content == "test content"
+            mock_app.scrape_url.assert_called_once_with(url)
 
     @pytest.mark.asyncio
     async def test_local_network_restriction(
@@ -474,21 +525,21 @@ class TestDocumentLoading:
         assert docs[0].page_content == "Sample text content"
 
     @pytest.mark.asyncio
-    async def test_crawl_mode(self) -> None:
-        """Test crawl mode parameter."""
+    async def test_scrape_with_metadata(self) -> None:
+        """Test scrape with custom metadata."""
         url = "https://example.com"
-        mock_docs = [Document(page_content="test content", metadata={"source": url})]
+        custom_metadata = {"custom_key": "custom_value"}
+        mock_metadata = MockMetadata(title="Test Title", source=url)
+        mock_result = MockScrapeResponse(
+            markdown="test content", metadata=mock_metadata
+        )
 
-        with patch(
-            "langchain_community.document_loaders.FireCrawlLoader"
-        ) as mock_loader_class:
-            mock_loader = mock_loader_class.return_value
-            mock_loader.aload = AsyncMock(return_value=mock_docs)
-            docs = await load_document_from_url(url, mode="crawl")
+        with patch("firecrawl.AsyncFirecrawlApp") as mock_app_class:
+            mock_app = mock_app_class.return_value
+            mock_app.scrape_url = AsyncMock(return_value=mock_result)
+            docs = await load_document_from_url(url, metadata=custom_metadata)
             assert len(docs) == 1
             assert docs[0].metadata["type"] == "webpage"
-            mock_loader_class.assert_called_once_with(
-                api_key=mock_loader_class.call_args[1]["api_key"],
-                url=url,
-                mode="crawl",
-            )
+            assert docs[0].metadata["custom_key"] == "custom_value"
+            assert docs[0].page_content == "test content"
+            mock_app.scrape_url.assert_called_once_with(url)

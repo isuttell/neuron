@@ -21,7 +21,6 @@ import Loading from "@/lib/loading";
 
 const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
   anthropic: "Anthropic",
-  cohere: "Cohere",
   openai: "OpenAI",
   openrouter: "OpenRouter",
 };

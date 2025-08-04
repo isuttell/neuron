@@ -1,6 +1,5 @@
 import asyncio
 import time
-from typing import Literal
 
 from langchain.tools import BaseTool
 from langchain_core.runnables import RunnableConfig
@@ -22,12 +21,6 @@ class GraphWebsiteImportToolArgs(BaseModel):
         "Supports html websites, text files, pdfs, csvs, markdown documents, "
         "and YouTube video transcripts"
     )
-    mode: Literal["scrape", "crawl"] | None = Field(
-        "scrape",
-        description="The mode of the website import. Can be 'scrape' or 'crawl'. "
-        "Scrape is for a single url and Crawl is for the url and all accessible "
-        "sub pages. Only used when importing websites.",
-    )
 
 
 class GraphWebsiteImportTool(BaseTool):
@@ -40,14 +33,13 @@ transcripts, PDFs, text files, markdown, CSV, SRT, VTT, and web pages.
 """.strip()
     args_schema: type[GraphWebsiteImportToolArgs] = GraphWebsiteImportToolArgs
 
-    def _run(self, url: str, config: RunnableConfig, mode: str = "scrape") -> str:
-        return asyncio.run(self._arun(url, config, mode))
+    def _run(self, url: str, config: RunnableConfig) -> str:
+        return asyncio.run(self._arun(url, config))
 
     async def _arun(
         self,
         url: str,
         config: RunnableConfig,
-        mode: str = "scrape",
     ) -> str:
         try:
             logger.debug(f"Importing website '{url}'")
@@ -59,7 +51,6 @@ transcripts, PDFs, text files, markdown, CSV, SRT, VTT, and web pages.
             docs = await load_document_from_url(
                 url,
                 metadata={"personality_id": personality_id},
-                mode=mode,
             )
 
             if len(docs) == 0:

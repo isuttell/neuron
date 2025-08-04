@@ -1,7 +1,6 @@
 import asyncio
 import json
 import time
-from typing import Literal
 from uuid import uuid4
 
 from langchain.tools import BaseTool
@@ -38,14 +37,6 @@ class InspectDocumentToolArgs(BaseModel):
             "The url of the document or website to inspect. Supports html websites, "
             "text files, pdfs, csvs, markdown documents, and youtube urls"
         )
-    )
-    mode: Literal["scrape", "crawl"] | None = Field(
-        "scrape",
-        description=(
-            "The mode of the website import. Can be 'scrape' or 'crawl'. Scrape is "
-            "for a single url and Crawl is for the url and all accessible sub pages. "
-            "Only used when importing websites."
-        ),
     )
     memorize: bool = Field(
         False,
@@ -92,17 +83,15 @@ youtube
         self,
         url: str,
         config: RunnableConfig,
-        mode: str | None = None,
         memorize: bool = False,
         display_name: str | None = None,
     ) -> tuple[str, list[dict]]:
-        return asyncio.run(self._arun(url, config, mode, memorize, display_name))
+        return asyncio.run(self._arun(url, config, memorize, display_name))
 
     async def _arun(
         self,
         url: str,
         config: RunnableConfig,
-        mode: str | None = None,
         memorize: bool = False,
         display_name: str | None = None,
     ) -> tuple[str, list[dict]]:
@@ -113,7 +102,6 @@ youtube
 
             loaded_docs = await load_document_from_url(
                 url,
-                mode=mode,
                 metadata={
                     "personality_id": (
                         config["configurable"].get("personality_id", None)
