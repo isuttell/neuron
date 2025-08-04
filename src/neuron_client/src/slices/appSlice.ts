@@ -40,15 +40,7 @@ interface AppState {
 
 // Load initial state from localStorage
 const loadInitialState = (): AppState => {
-  try {
-    const savedState = localStorage.getItem(STORAGE_KEY);
-    if (savedState) {
-      return JSON.parse(savedState) as AppState;
-    }
-  } catch (error) {
-    console.error("Failed to load app state from localStorage:", error);
-  }
-  return {
+  const defaultState: AppState = {
     sidebar_image: "",
     api: undefined,
     protectedToolSets: undefined,
@@ -62,6 +54,21 @@ const loadInitialState = (): AppState => {
     errorModalMessage: null,
     selectedPersonalityId: null, // Initialize selectedPersonalityId
   };
+
+  try {
+    const savedState = localStorage.getItem(STORAGE_KEY);
+    if (savedState) {
+      const parsedState = JSON.parse(savedState);
+      // Merge saved state with default state to handle new fields
+      return {
+        ...defaultState,
+        ...parsedState,
+      };
+    }
+  } catch (error) {
+    console.error("Failed to load app state from localStorage:", error);
+  }
+  return defaultState;
 };
 
 // Save state to localStorage
