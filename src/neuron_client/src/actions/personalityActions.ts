@@ -68,7 +68,7 @@ export const generatePersonality = createAsyncThunk(
   "personalities/generatePersonality",
   async (personality: GeneratePersonality, thunkAPI) => {
     try {
-      const response = await api.post<{personality: Personality}>(`/personalities/generate`, personality as unknown as Record<string, string | undefined>);
+      const response = await api.post<{personality: Personality}>(`/personalities/generate`, personality as unknown as Record<string, string | undefined>, { timeout: 120000 });
       return response;
     } catch (error) {
       if (error instanceof Error) {
