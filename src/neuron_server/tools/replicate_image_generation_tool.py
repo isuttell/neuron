@@ -21,6 +21,11 @@ from pydantic import BaseModel, Field
 
 from neuron_server.config import config as neuron_config
 from neuron_server.controllers.csrf import create_session_cookie
+from neuron_server.tools.artifact_types import (
+    ToolArtifactMetadata,
+    ToolMediaArtifact,
+    ToolMediaItem,
+)
 from neuron_server.util.image_utilities import create_image_url, create_thumbnails
 from neuron_server.util.slug import safe_filename
 
@@ -326,6 +331,15 @@ class ReplicateImageGenerationTool(BaseTool):
 
         return input_args
 
+    def _get_file_extension_from_url(self, url: str) -> str:
+        """Extract file extension from Replicate FileOutput URL."""
+        # Remove query parameters and get the path
+        url_path = url.split("?")[0]
+        # Extract extension from filename
+        if "." in url_path:
+            return url_path.split(".")[-1].lower()
+        return "png"  # Default fallback
+
     from dataclasses import dataclass
 
     @dataclass
@@ -337,6 +351,52 @@ class ReplicateImageGenerationTool(BaseTool):
         describe: bool
         config: RunnableConfig
         index: int
+
+    async def _save_and_process_svg(
+        self,
+        result: replicate.helpers.FileOutput,
+        params: ImageProcessingParams,
+    ) -> tuple[str, Any]:
+        """Save and process a single generated SVG file."""
+        filename = safe_filename(
+            params.model.replace("/", "_").split(":")[0],
+            params.name,
+            "svg",
+        )
+        file_path = os.path.abspath(os.path.join(neuron_config.static_folder, filename))
+
+        # Save SVG content directly
+        async with aiofiles.open(file_path, "wb") as file:
+            async for chunk in result:
+                await file.write(chunk)
+
+        url = f"{neuron_config.static_content_url}/{filename}"
+
+        # Generate a real UUID for consistent ID between artifact and media_item
+        media_id = uuid4()
+
+        # Prepare artifact for UI using typed models
+        metadata = ToolArtifactMetadata(
+            model=params.model,
+            seed=params.input_args.get("seed"),
+            aspect_ratio=params.input_args.get("aspect_ratio"),
+            style=params.input_args.get("style"),
+            num_inference_steps=params.input_args.get("num_inference_steps"),
+            prompt=params.prompt,
+            output_format="svg",
+        )
+
+        artifact_item = ToolMediaItem(
+            id=media_id,
+            url=url,
+            name=params.name,
+            description="",
+            metadata=metadata,
+        )
+
+        artifact = ToolMediaArtifact(media_type="image", items=[artifact_item])
+
+        return artifact.to_xml(), artifact_item
 
     async def _save_and_process_image(
         self,
@@ -386,12 +446,6 @@ class ReplicateImageGenerationTool(BaseTool):
         media_id = uuid4()
 
         # Prepare artifact for UI using typed models
-        from neuron_server.tools.artifact_types import (
-            ToolArtifactMetadata,
-            ToolMediaArtifact,
-            ToolMediaItem,
-        )
-
         metadata = ToolArtifactMetadata(
             model=params.model,
             seed=params.input_args.get("seed"),
@@ -485,15 +539,24 @@ class ReplicateImageGenerationTool(BaseTool):
                     config=config,
                     index=i,
                 )
-                llm_content, artifact_item = await self._save_and_process_image(
-                    result, params
-                )
+
+                # Detect file format from the result URL
+                file_extension = self._get_file_extension_from_url(result.url)
+
+                # Branch processing based on file type
+                if file_extension == "svg":
+                    llm_content, artifact_item = await self._save_and_process_svg(
+                        result, params
+                    )
+                else:
+                    llm_content, artifact_item = await self._save_and_process_image(
+                        result, params
+                    )
+
                 llm_contents.append(llm_content)
                 artifact_items.append(artifact_item)
 
             # Create typed artifact with all images
-            from neuron_server.tools.artifact_types import ToolMediaArtifact
-
             artifact = ToolMediaArtifact(
                 media_type="image",
                 items=artifact_items,  # List of ToolMediaItem instances

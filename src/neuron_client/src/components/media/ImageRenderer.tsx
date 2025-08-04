@@ -32,8 +32,8 @@ export const ImageRenderer: React.FC<ImageRendererProps> = ({
   const imageRef = useRef<HTMLImageElement>(null);
 
   const imageUrl = isThumbnail
-    ? (url.endsWith(".gif") ? url : url.replace(/\.[^.]+$/, `_${thumbnail_size}.webp`))
-    : (url.endsWith(".gif") ? url : url.replace(/\.[^.]+$/, `_${display_size}.webp`));
+    ? (url.endsWith(".gif") || url.endsWith(".svg") ? url : url.replace(/\.[^.]+$/, `_${thumbnail_size}.webp`))
+    : (url.endsWith(".gif") || url.endsWith(".svg") ? url : url.replace(/\.[^.]+$/, `_${display_size}.webp`));
 
   useEffect(() => {
     if (preload && !isThumbnail) {
