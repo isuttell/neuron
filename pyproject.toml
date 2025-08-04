@@ -102,7 +102,7 @@ fix = true
 [tool.ruff.lint]
 # Enable pycodestyle, Pyflakes, isort, and more
 select = ["E", "F", "I", "N", "UP", "ANN", "B", "A", "C4", "RET", "SIM", "ERA", "PL"]
-ignore = []
+ignore = ["PLC0415"]
 extend-select = ["I"]
 
 [tool.ruff.lint.isort]

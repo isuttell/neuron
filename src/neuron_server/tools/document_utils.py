@@ -260,6 +260,36 @@ async def load_text_from_url(
         raise DocumentLoadError(f"Failed to load text: {str(e)}") from e
 
 
+def _extract_firecrawl_metadata(
+    result: Any,  # noqa: ANN401
+    url: str,
+    custom_metadata: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Extract metadata from FireCrawl result safely."""
+    doc_metadata = {
+        "sourceURL": url,
+        "type": "webpage",
+        "updated_at": int(time.time()),
+    }
+
+    # Extract title and other metadata safely
+    if hasattr(result, "metadata") and result.metadata:
+        if isinstance(result.metadata, dict):
+            doc_metadata["title"] = result.metadata.get("title", "")
+            doc_metadata.update(result.metadata)
+        else:
+            # If metadata is an object, try to get title attribute
+            doc_metadata["title"] = getattr(result.metadata, "title", "")
+            if hasattr(result.metadata, "__dict__"):
+                doc_metadata.update(result.metadata.__dict__)
+
+    # Add any custom metadata passed in
+    if custom_metadata:
+        doc_metadata.update(custom_metadata)
+
+    return doc_metadata
+
+
 async def load_document_from_url(
     url: str,
     metadata: dict[str, Any] | None = None,
@@ -281,13 +311,9 @@ async def load_document_from_url(
             doc = await load_youtube_transcript(url, metadata=metadata)
             return [doc]
 
-        if (
-            url.endswith(".txt")
-            or url.endswith(".md")
-            or url.endswith(".csv")
-            or url.endswith(".srt")
-            or url.endswith(".vtt")
-        ):
+        # Handle text-based file extensions
+        text_extensions = (".txt", ".md", ".csv", ".srt", ".vtt")
+        if url.endswith(text_extensions):
             doc = await load_text_from_url(url, metadata=metadata)
             return [doc]
 
@@ -312,28 +338,7 @@ async def load_document_from_url(
         elif hasattr(result, "data") and hasattr(result.data, "markdown"):
             page_content = result.data.markdown
 
-        # Safe access to metadata
-        doc_metadata = {
-            "sourceURL": url,
-            "type": "webpage",
-            "updated_at": int(time.time()),
-        }
-
-        # Extract title and other metadata safely
-        if hasattr(result, "metadata") and result.metadata:
-            if isinstance(result.metadata, dict):
-                doc_metadata["title"] = result.metadata.get("title", "")
-                doc_metadata.update(result.metadata)
-            else:
-                # If metadata is an object, try to get title attribute
-                doc_metadata["title"] = getattr(result.metadata, "title", "")
-                if hasattr(result.metadata, "__dict__"):
-                    doc_metadata.update(result.metadata.__dict__)
-
-        # Add any custom metadata passed in
-        if metadata:
-            doc_metadata.update(metadata)
-
+        doc_metadata = _extract_firecrawl_metadata(result, url, metadata)
         return [Document(page_content=page_content, metadata=doc_metadata)]
     except (NetworkError, FileFormatError, LocalNetworkError) as e:
         logger.error(f"Failed to load document from {url}: {e}")
