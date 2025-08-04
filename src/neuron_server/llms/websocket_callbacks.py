@@ -14,7 +14,7 @@ from neuron_server.controllers.events.message_events import (
 )
 from neuron_server.controllers.events.thread_events import GetThreadResponse
 from neuron_server.event_router import ErrorEvent
-from neuron_server.llms.callback_handlers import CallbackHandlers
+from neuron_server.llms.callback_handlers import CallbackHandlers, ErrorInfo
 from neuron_server.logger import logger
 from neuron_server.models.thread_model import ThreadModel
 from neuron_server.secure_pubsub import secure_pubsub
@@ -48,14 +48,25 @@ async def on_thread_update(thread: ThreadModel) -> None:
     await secure_pubsub.publish_thread_update(GetThreadResponse(thread=thread))
 
 
-async def on_error(error_message: str, user_id: str | None) -> None:
+async def on_error(error_info: ErrorInfo) -> None:
     """Publish error to user via websocket."""
-    if user_id:
+    # Log the full exception with context for debugging
+    logger.error(
+        f"Error in thread {error_info.thread_id} (run_id: {error_info.run_id}, "
+        f"context: {error_info.error_context}): {error_info.exception}",
+        exc_info=error_info.exception,
+    )
+
+    # Send user-friendly message to the client
+    if error_info.user_id:
         await secure_pubsub.publish_error_to_user(
-            user_id, ErrorEvent(message=error_message)
+            error_info.user_id, ErrorEvent(message=error_info.user_message)
         )
     else:
-        logger.warning("Could not send error to user: user_id not available")
+        logger.warning(
+            f"Could not send error to user: user_id not available "
+            f"(thread_id: {error_info.thread_id})"
+        )
 
 
 async def on_media_artifacts(artifacts: list[ToolMediaArtifact]) -> None:

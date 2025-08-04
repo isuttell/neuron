@@ -13,7 +13,7 @@ from langgraph.graph import StateGraph
 from neuron_server.controllers.events.message_events import ThreadMessage
 from neuron_server.database import pool
 from neuron_server.llms.agent_status_manager import AgentStatusManager
-from neuron_server.llms.callback_handlers import CallbackHandlers
+from neuron_server.llms.callback_handlers import CallbackHandlers, ErrorInfo
 from neuron_server.llms.cancellation_manager import CancellationManager
 from neuron_server.llms.llm import LLM
 from neuron_server.llms.message_processor import get_message_content
@@ -509,9 +509,14 @@ class AgentOrchestrator:
             # Notify error callback if provided
             if callbacks and callbacks.on_error:
                 user_id = config.get("user_id")
-                await callbacks.on_error(
-                    str(e), user_id if user_id != "Unknown" else None
+                error_info = ErrorInfo(
+                    exception=e,
+                    thread_id=thread.id if thread else None,
+                    user_id=user_id if user_id != "Unknown" else None,
+                    run_id=None,  # Run ID not available in orchestrator context
+                    error_context="agent_orchestrator",
                 )
+                await callbacks.on_error(error_info)
 
         finally:
             if thread:
