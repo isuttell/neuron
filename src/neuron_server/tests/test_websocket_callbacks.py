@@ -1,5 +1,6 @@
 """Tests for websocket callbacks."""
 
+from datetime import datetime
 from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
@@ -121,8 +122,6 @@ class TestWebsocketCallbackFunctions:
     @pytest.mark.asyncio
     async def test_on_thread_update(self) -> None:
         """Test on_thread_update callback."""
-        from datetime import datetime
-
         thread = ThreadModel(
             id=uuid4(),
             name="Test Thread",
@@ -230,8 +229,6 @@ class TestWebsocketCallbackFunctions:
         human_message = "Hello"
 
         # Mock ThreadModel
-        from datetime import datetime
-
         mock_thread = ThreadModel(
             id=thread_id,
             name="Test Thread",

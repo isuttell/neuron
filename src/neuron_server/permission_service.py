@@ -1,6 +1,7 @@
 """Permission service for checking user access to threads and personalities."""
 
 import asyncio
+import time
 from uuid import UUID
 
 from neuron_server.logger import logger
@@ -17,8 +18,6 @@ class PermissionCache:
 
     def get(self, key: str) -> bool | None:
         """Get cached permission result."""
-        import time
-
         if key not in self._cache:
             return None
 
@@ -31,8 +30,6 @@ class PermissionCache:
 
     def set(self, key: str, value: bool) -> None:
         """Cache permission result."""
-        import time
-
         self._cache[key] = (value, time.time())
 
     def invalidate_user(self, user_id: str) -> None:

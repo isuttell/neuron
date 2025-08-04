@@ -8,7 +8,15 @@ import uuid
 from typing import Any
 
 import openai
-from quart import Blueprint, Quart, Response, send_from_directory, websocket
+from quart import (
+    Blueprint,
+    Quart,
+    Response,
+    jsonify,
+    request,
+    send_from_directory,
+    websocket,
+)
 from werkzeug.exceptions import HTTPException
 
 from neuron_server.config import config
@@ -120,8 +128,6 @@ async def fix_scheme() -> None:
     is deployed behind a reverse proxy that sets X-Forwarded-Proto header.
     Without this, redirects may incorrectly use http instead of https.
     """
-    from quart import request
-
     forwarded_proto = request.headers.get("X-Forwarded-Proto")
     if forwarded_proto == "https":
         request.scheme = "https"
@@ -364,8 +370,6 @@ async def refresh_csrf() -> tuple[dict[str, str], int]:
     Refresh CSRF token endpoint.
     Used by the frontend when CSRF token becomes invalid.
     """
-    from quart import jsonify
-
     from neuron_server.type_defs.request_proxy import request
 
     # Create new session cookie with CSRF token
