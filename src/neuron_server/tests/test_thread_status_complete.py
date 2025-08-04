@@ -317,8 +317,6 @@ class TestStatusCallbacks:
             with patch(
                 "neuron_server.llms.agent_status_manager.StatusAgent"
             ) as mock_status_agent_class:
-                from datetime import datetime
-
                 mock_status_agent = AsyncMock()
                 mock_status_agent.update_status = AsyncMock(
                     return_value=("Generated status", True)
@@ -390,8 +388,6 @@ class TestStatusCallbacks:
             with patch(
                 "neuron_server.llms.agent_status_manager.StatusAgent"
             ) as mock_status_agent_class:
-                from datetime import datetime
-
                 mock_status_agent = AsyncMock()
                 mock_status_agent.update_status = AsyncMock(
                     return_value=("Generated status", True)

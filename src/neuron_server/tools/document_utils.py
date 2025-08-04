@@ -1,5 +1,6 @@
 import os
 import re
+import tempfile
 import time
 from typing import Any
 
@@ -174,8 +175,6 @@ async def load_pdf_from_url(
     Raises:
         DocumentLoadError: If the PDF cannot be loaded
     """
-    import tempfile
-
     temp_file = None
     try:
         # Create a temporary file that will be automatically cleaned up
