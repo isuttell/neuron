@@ -23,6 +23,10 @@ interface ApiError {
 
 export type ErrorType = 'network' | 'server' | 'auth' | 'not_found' | 'client_error' | 'unknown';
 
+export interface ApiConfig {
+  timeout?: number;
+}
+
 export class ClassifiedError extends Error {
   public readonly type: ErrorType;
   public readonly status?: number;
@@ -108,26 +112,6 @@ class ApiClient {
     );
   }
 
-  private async fetchWithTimeout(
-    url: string,
-    options: RequestInit,
-    timeout: number = this.defaultTimeout
-  ): Promise<Response> {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeout);
-
-    try {
-      const response = await fetch(url, {
-        ...options,
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
-      return response;
-    } catch (error) {
-      clearTimeout(timeoutId);
-      throw error;
-    }
-  }
 
   private async getHeaders(isFormData = false, includeCSRF = false): Promise<HeadersInit> {
     const accessToken = await getAccessToken();
@@ -223,12 +207,23 @@ class ApiClient {
   private async fetchWithCSRF<T>(
     url: string,
     options: RequestInit,
+    config: ApiConfig = {},
     retryCount = 0
   ): Promise<T> {
+    const controller = new AbortController();
+    const timeout = config.timeout ?? this.defaultTimeout;
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+
     try {
-      const response = await this.fetchWithTimeout(url, options);
-      return await this.handleResponse<T>(response);
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      const result = await this.handleResponse<T>(response);
+      return result;
     } catch (error: unknown) {
+      clearTimeout(timeoutId);
       // Check if it's a CSRF error and we haven't exceeded retry limit
       const apiError = error as { status?: number; data?: ApiError };
       if (
@@ -259,7 +254,7 @@ class ApiClient {
         }
 
         // Retry the request
-        return this.fetchWithCSRF<T>(url, options, retryCount + 1);
+        return this.fetchWithCSRF<T>(url, options, config, retryCount + 1);
       }
 
       // If it's not a CSRF error or we've exceeded retries, classify and throw
@@ -267,20 +262,27 @@ class ApiClient {
     }
   }
 
-  async get<T>(endpoint: string): Promise<T> {
+  async get<T>(endpoint: string, config: ApiConfig = {}): Promise<T> {
+    const controller = new AbortController();
+    const timeout = config.timeout ?? this.defaultTimeout;
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+
     try {
       const headers = await this.getHeaders();
-      const response = await this.fetchWithTimeout(`${this.baseUrl}${endpoint}`, {
+      const response = await fetch(`${this.baseUrl}${endpoint}`, {
         headers,
         credentials: "include",
+        signal: controller.signal,
       });
+      clearTimeout(timeoutId);
       return this.handleResponse<T>(response);
     } catch (error: unknown) {
+      clearTimeout(timeoutId);
       throw this.classifyError(error);
     }
   }
 
-  async post<T>(endpoint: string, data: RequestData): Promise<T> {
+  async post<T>(endpoint: string, data: RequestData, config: ApiConfig = {}): Promise<T> {
     const isFormData = data instanceof FormData;
     const headers = await this.getHeaders(isFormData, true); // Include CSRF
     let body: string | FormData;
@@ -297,10 +299,10 @@ class ApiClient {
       headers,
       body,
       credentials: "include",
-    });
+    }, config);
   }
 
-  async put<T>(endpoint: string, data: RequestData): Promise<T> {
+  async put<T>(endpoint: string, data: RequestData, config: ApiConfig = {}): Promise<T> {
     const isFormData = data instanceof FormData;
     const headers = await this.getHeaders(isFormData, true); // Include CSRF
     let body: string | FormData;
@@ -317,10 +319,10 @@ class ApiClient {
       headers,
       body,
       credentials: "include",
-    });
+    }, config);
   }
 
-  async patch<T>(endpoint: string, data: RequestData): Promise<T> {
+  async patch<T>(endpoint: string, data: RequestData, config: ApiConfig = {}): Promise<T> {
     const isFormData = data instanceof FormData;
     const headers = await this.getHeaders(isFormData, true); // Include CSRF
     let body: string | FormData;
@@ -337,10 +339,10 @@ class ApiClient {
       headers,
       body,
       credentials: "include",
-    });
+    }, config);
   }
 
-  async delete<T>(endpoint: string, data?: RequestData): Promise<T> {
+  async delete<T>(endpoint: string, data?: RequestData, config: ApiConfig = {}): Promise<T> {
     const isFormData = data instanceof FormData;
     const headers = await this.getHeaders(isFormData, true); // Include CSRF
     let body: string | FormData | undefined;
@@ -359,7 +361,7 @@ class ApiClient {
       headers,
       body,
       credentials: "include",
-    });
+    }, config);
   }
 }
 
