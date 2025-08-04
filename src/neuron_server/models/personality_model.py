@@ -13,6 +13,7 @@ from neuron_server.models.personality_user_model import PersonalityUserModel
 
 logger = logging.getLogger(__name__)
 
+
 class PersonalityModel(BaseModel):
     id: UUID = Field(default_factory=lambda: uuid4())
     name: str = Field(description="How the personality is referred to in the chat")
