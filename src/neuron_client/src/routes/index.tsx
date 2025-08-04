@@ -5,6 +5,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import {
   getPersonality,
   getPersonalities,
+  getDefaultPersonality,
 } from "../slices/personalitiesSlice";
 import logo from "@/assets/logo.svg";
 import { toast } from "sonner";
@@ -16,7 +17,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { createPersonalityRoom } from "../actions/personalityRoomActions";
 import { sendPersonalityMessage } from "../actions/personalityChatActions";
-import { getCurrentUser } from "../slices/appSlice";
+import { getCurrentUser, getSelectedPersonalityId } from "../slices/appSlice";
 import PersonalitySelector from "../components/PersonalitySelector";
 
 export default function Index() {
@@ -35,6 +36,8 @@ export default function Index() {
   const personalities = useAppSelector(getPersonalities);
   const isConnected = useAppSelector(getConnectionStatus);
   const currentUser = useAppSelector(getCurrentUser);
+  const selectedPersonalityId = useAppSelector(getSelectedPersonalityId);
+  const defaultPersonality = useAppSelector(getDefaultPersonality);
 
   const personalitiesLoading = useAppSelector(
     (state) => state.personalities.loading
@@ -43,6 +46,25 @@ export default function Index() {
   useEffect(() => {
     dispatch(fetchPersonalities());
   }, [dispatch]);
+
+  // Navigate to selected personality if no personality in URL but one is saved, or fallback to default
+  useEffect(() => {
+    if (!personalitiesLoading && personalities.length > 0 && !personalityId) {
+      // First try the sticky personality
+      if (selectedPersonalityId) {
+        const personalityExists = personalities.some(p => p.id === selectedPersonalityId);
+        if (personalityExists) {
+          navigate(`/${selectedPersonalityId}`);
+          return;
+        }
+      }
+
+      // Fallback to default personality if no sticky personality or it doesn't exist
+      if (defaultPersonality) {
+        navigate(`/${defaultPersonality.id}`);
+      }
+    }
+  }, [personalities, personalitiesLoading, personalityId, selectedPersonalityId, defaultPersonality, navigate]);
 
   // Redirect to personalities page if personalityId in URL doesn't exist
   useEffect(() => {

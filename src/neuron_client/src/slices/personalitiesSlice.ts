@@ -291,6 +291,9 @@ export const getPersonality = createSelector(
 export const getPersonalities = (state: RootState) =>
   state.personalities.personalities;
 
+export const getDefaultPersonality = (state: RootState) =>
+  state.personalities.personalities.find((personality) => personality.default);
+
 
 export const getPersonalitiesLoading = (state: RootState) =>
   state.personalities.loading;

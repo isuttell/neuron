@@ -35,19 +35,12 @@ interface AppState {
   connectionStatus: ConnectionStatus; // Track connection status
   showErrorModal: boolean; // Track if error modal should be shown
   errorModalMessage: string | null; // Error message for modal
+  selectedPersonalityId: string | null; // Track selected personality
 }
 
 // Load initial state from localStorage
 const loadInitialState = (): AppState => {
-  try {
-    const savedState = localStorage.getItem(STORAGE_KEY);
-    if (savedState) {
-      return JSON.parse(savedState) as AppState;
-    }
-  } catch (error) {
-    console.error("Failed to load app state from localStorage:", error);
-  }
-  return {
+  const defaultState: AppState = {
     sidebar_image: "",
     api: undefined,
     protectedToolSets: undefined,
@@ -59,7 +52,23 @@ const loadInitialState = (): AppState => {
     connectionStatus: 'connecting',
     showErrorModal: false,
     errorModalMessage: null,
+    selectedPersonalityId: null, // Initialize selectedPersonalityId
   };
+
+  try {
+    const savedState = localStorage.getItem(STORAGE_KEY);
+    if (savedState) {
+      const parsedState = JSON.parse(savedState);
+      // Merge saved state with default state to handle new fields
+      return {
+        ...defaultState,
+        ...parsedState,
+      };
+    }
+  } catch (error) {
+    console.error("Failed to load app state from localStorage:", error);
+  }
+  return defaultState;
 };
 
 // Save state to localStorage
@@ -121,6 +130,10 @@ export const appSlice = createSlice({
     setErrorModal: (state, action: PayloadAction<{ show: boolean; message?: string }>) => {
       state.showErrorModal = action.payload.show;
       state.errorModalMessage = action.payload.message || null;
+    },
+    setSelectedPersonalityId: (state, action: PayloadAction<string | null>) => {
+      state.selectedPersonalityId = action.payload;
+      saveState(state);
     },
     handleApiError: (state, action: PayloadAction<SerializableError>) => {
       const error = action.payload;
@@ -187,6 +200,7 @@ export const {
   setBuildHashMismatch,
   setConnectionStatus,
   setErrorModal,
+  setSelectedPersonalityId,
   handleApiError
 } = appSlice.actions;
 
@@ -199,6 +213,7 @@ export const getCurrentUser = (state: RootState) => state.app.currentUser;
 export const getFavoritePersonalitiesCollapsed = (state: RootState) => state.app.favoritePersonalitiesCollapsed;
 export const getBuildHashMismatch = (state: RootState) => state.app.buildHashMismatch;
 export const getConnectionStatus = (state: RootState) => state.app.connectionStatus;
+export const getSelectedPersonalityId = (state: RootState) => state.app.selectedPersonalityId;
 export const getErrorModal = createSelector(
   (state: RootState) => state.app.showErrorModal,
   (state: RootState) => state.app.errorModalMessage,
