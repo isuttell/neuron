@@ -150,8 +150,8 @@ export function RootComponent() {
   // Check if all authentication conditions are met (removed isConnected check)
   const isFullyAuthenticated = !isLoading && isAuthenticated && userSynced && connectionStatus === 'connected';
 
-  // Show spinner for connecting states and network errors (but not server/auth errors which show modal)
-  const shouldShowSpinner = (!isFullyAuthenticated && connectionStatus !== 'server_error' && connectionStatus !== 'auth_error');
+  // Show spinner for connecting states and network errors (but not server/auth/account errors which show ConnectionError)
+  const shouldShowSpinner = (!isFullyAuthenticated && connectionStatus !== 'server_error' && connectionStatus !== 'auth_error' && connectionStatus !== 'account_not_activated');
 
   return (
     <SidebarProvider>

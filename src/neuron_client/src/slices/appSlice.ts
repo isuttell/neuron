@@ -4,6 +4,7 @@ import { createSelector } from '@reduxjs/toolkit';
 import type { RootState } from "../store";
 import { api } from "@/lib/api";
 import { toSerializableError, isClassifiedError, type SerializableError } from "../types/error";
+import { isUserRoleRequiredError } from "@/lib/authErrorHandler";
 
 // Constants for localStorage keys
 const STORAGE_KEY = "neuron_app_settings";
@@ -17,7 +18,7 @@ interface Config {
   protectedToolSets?: Record<string, string>;
 }
 
-export type ConnectionStatus = 'connected' | 'connecting' | 'network_error' | 'server_error' | 'auth_error';
+export type ConnectionStatus = 'connected' | 'connecting' | 'network_error' | 'server_error' | 'auth_error' | 'account_not_activated';
 
 // Define a type for the slice state
 interface AppState {
@@ -137,6 +138,14 @@ export const appSlice = createSlice({
     },
     handleApiError: (state, action: PayloadAction<SerializableError>) => {
       const error = action.payload;
+
+      // Check for "User role required" errors first
+      if (error.type === 'auth' && isUserRoleRequiredError(error)) {
+        state.connectionStatus = 'account_not_activated';
+        state.showErrorModal = false; // Don't show modal, show ConnectionError instead
+        state.errorModalMessage = null;
+        return;
+      }
 
       switch (error.type) {
         case 'network':
