@@ -1,5 +1,6 @@
 FROM python:3.12-slim-bookworm AS server-builder
 
+ARG GIT_COMMIT
 ENV LANG=C.UTF-8
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
@@ -31,8 +32,10 @@ RUN poetry install --no-root --no-interaction --no-ansi
 
 FROM python:3.12-slim-bookworm
 
+ARG GIT_COMMIT
 ENV PATH="/app/.venv/bin:$PATH"
 ENV PORT=5000
+ENV GIT_COMMIT=${GIT_COMMIT}
 
 RUN apt-get update && \
   apt-get install -qy ca-certificates curl ffmpeg unzip && \
