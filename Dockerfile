@@ -38,7 +38,7 @@ ENV PORT=5000
 ENV GIT_COMMIT=${GIT_COMMIT}
 
 RUN apt-get update && \
-  apt-get install -qy ca-certificates curl ffmpeg unzip && \
+  apt-get install -qy ca-certificates curl ffmpeg unzip tini && \
   install -m 0755 -d /etc/apt/keyrings && \
   curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc && \
   chmod a+r /etc/apt/keyrings/docker.asc && \
@@ -72,6 +72,6 @@ USER neuron
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD curl -f http://localhost:$PORT/status || exit 1
 
-ENTRYPOINT [ "python" ]
+ENTRYPOINT [ "tini", "--", "python" ]
 
 CMD ["-m", "neuron_server"]
