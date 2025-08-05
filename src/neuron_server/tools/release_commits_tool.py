@@ -250,9 +250,14 @@ and bug fixes, but do not include things like logging changes for example.
         commits = []
         deployed_commit_sha = config.git_commit
 
+        # If deployed commit is unknown, return empty list for security
+        if deployed_commit_sha == "unknown":
+            logger.warning("Deployed commit is unknown")
+            return []
+
         async with aiohttp.ClientSession() as session:
             url = f"{self._api_base}/repos/{owner}/{repo}/commits"
-            query_params = {"limit": max_results}
+            query_params = {"limit": max_results, "sort": "oldest"}
 
             if date_range.get("from_date"):
                 query_params["since"] = date_range["from_date"]
@@ -262,27 +267,13 @@ and bug fixes, but do not include things like logging changes for example.
             async with session.get(url, params=query_params) as response:
                 if response.status == HTTP_OK:
                     commit_data = await response.json()
+
+                    # Process commits from oldest to newest until we reach
+                    # the deployed commit
                     for commit in commit_data:
                         commit_sha = commit["sha"]
 
-                        # Stop processing commits if we've reached the deployed commit
-                        # This ensures we don't show commits after deployed version
-                        if (
-                            deployed_commit_sha
-                            and deployed_commit_sha != "unknown"
-                            and commit_sha == deployed_commit_sha
-                        ):
-                            # Include the deployed commit itself, then stop
-                            commits.append(
-                                {
-                                    "sha": commit_sha,
-                                    "message": commit["commit"]["message"],
-                                    "date": commit["commit"]["author"]["date"],
-                                    "url": commit["html_url"],
-                                }
-                            )
-                            break
-
+                        # Add commit to results
                         commits.append(
                             {
                                 "sha": commit_sha,
@@ -291,6 +282,20 @@ and bug fixes, but do not include things like logging changes for example.
                                 "url": commit["html_url"],
                             }
                         )
+
+                        # Check if this is the deployed commit - if so, we stop here
+                        # This ensures we include all commits up to and including
+                        # the deployed version
+                        if (
+                            deployed_commit_sha
+                            and deployed_commit_sha != "unknown"
+                            and commit_sha == deployed_commit_sha
+                        ):
+                            logger.debug(
+                                f"Reached deployed commit {deployed_commit_sha}, "
+                                f"collected {len(commits)} commits total"
+                            )
+                            break
 
         return commits
 
@@ -312,9 +317,23 @@ and bug fixes, but do not include things like logging changes for example.
         response_lines = [
             "# Release Commits Analysis",
             "",
-            "## Summary",
-            f"- **Total Commits**: {summary['total_commits']}",
         ]
+
+        # Add warning if deployed commit is unknown
+        if config.git_commit == "unknown":
+            response_lines.extend(
+                [
+                    "⚠️ **Note**: Deployment information is not available. ",
+                ]
+            )
+            return "\n".join(response_lines)
+
+        response_lines.extend(
+            [
+                "## Summary",
+                f"- **Total Commits**: {summary['total_commits']}",
+            ]
+        )
 
         if date_range.get("from_date") or date_range.get("to_date"):
             response_lines.extend(
@@ -349,7 +368,7 @@ and bug fixes, but do not include things like logging changes for example.
         summary = analysis_data["summary"]
 
         # Build description with date range info if available
-        description = "Release commits summary"
+        description = "Release Notes"
         if date_range.get("from_date") or date_range.get("to_date"):
             from_date = date_range.get("from_date", "beginning")
             to_date = date_range.get("to_date", "present")
@@ -358,16 +377,16 @@ and bug fixes, but do not include things like logging changes for example.
         # Create data artifact with only summary information (no raw commit messages)
         artifacts.append(
             ToolMediaArtifact(
-                media_type="data",
+                media_type="text",
                 items=[
                     ToolMediaItem(
                         id=str(uuid.uuid4()),
                         url="",
-                        name="Release Commits Summary",
+                        name="Release Notes",
                         description=description,
                         metadata=ToolArtifactMetadata(
-                            type="release_commits",
-                            query="Release commits summary",
+                            type="release_notes",
+                            query="Release notes",
                             **summary,  # Include summary stats in metadata
                         ),
                     )
