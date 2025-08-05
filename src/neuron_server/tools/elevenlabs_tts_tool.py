@@ -44,6 +44,10 @@ AvailableVoices = Literal[
     "Nassim - Corporate Narration",  # Deep middle-aged American male for
     # corporate narration
     "Donovan",  # Deep male hard boiled conversational voice
+    "Clyde - Vintage Male Radio Announcer",  # Vintage male radio announcer
+    "Cherry Twinkle – Adorable Cartoon Girl",  # Bright bubbly cartoon voice
+    "Raju - Human-like Customer Care Voice",  # Natural conversational customer care
+    "Wyatt- Wise Rustic Cowboy",  # Weathered cowboy with Southern flavor
 ]
 
 
@@ -77,6 +81,10 @@ Isaac: Personal cloned voice
 Sexy Female Villain Voice: Young American female with confident, seductive villain voice
 Nassim: Middle-aged American male with deep voice for corporate narration
 Donovan: Deep male voice with hard boiled conversational style
+Clyde - Vintage Male Radio Announcer: Vintage male announcer for old timey radio style
+Cherry Twinkle – Adorable Cartoon Girl: Bright, bubbly animated voice
+Raju - Human-like Customer Care Voice: Natural conversational voice for customer care
+Wyatt- Wise Rustic Cowboy: Weathered cowboy voice with Southern flavor for storytelling
 """
     )
     text: str = Field(description="The text to be spoken.")
@@ -274,14 +282,50 @@ need it.
             ) from e
 
 
+async def list_voices() -> None:
+    """List all available voices from ElevenLabs API."""
+    try:
+        client = AsyncElevenLabs(api_key=neuron_config.elevenlabs_api_key)
+        voices_response = await client.voices.get_all()
+
+        print(f"Found {len(voices_response.voices)} voices:")
+        print("-" * 80)
+
+        for voice in voices_response.voices:
+            print(f"Name: {voice.name}")
+            print(f"ID: {voice.voice_id}")
+            print(f"Category: {getattr(voice, 'category', 'N/A')}")
+            print(f"Description: {getattr(voice, 'description', 'N/A')}")
+            print("-" * 40)
+
+    except Exception as e:
+        logger.error(f"Failed to get voices: {e}")
+        print(f"ERROR: {e}")
+
+
 def main() -> None:
     import argparse
 
     parser = argparse.ArgumentParser(description="Generate an audio file from text.")
     parser.add_argument(
-        "script", type=str, help="The filename script to generate audio from."
+        "--list-voices",
+        action="store_true",
+        help="List all available voices from ElevenLabs API",
+    )
+    parser.add_argument(
+        "script",
+        type=str,
+        nargs="?",
+        help="The filename script to generate audio from.",
     )
     args = parser.parse_args()
+
+    if args.list_voices:
+        asyncio.run(list_voices())
+        return
+
+    if not args.script:
+        parser.error("script argument is required when not using --list-voices")
 
     # Call the tool to generate the audio
     tool = ElevenLabsTTSTool()
