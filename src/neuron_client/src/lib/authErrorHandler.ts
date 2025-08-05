@@ -30,6 +30,29 @@ export function isApiAuthError(error: unknown): boolean {
 }
 
 /**
+ * Checks if an error is specifically a "User role required" error
+ */
+export function isUserRoleRequiredError(error: unknown): boolean {
+  if (!error) return false;
+
+  // Check multiple possible locations for the error message
+  const apiError = error as Record<string, unknown>;
+  const possibleMessages = [
+    apiError.message,
+    (apiError.data as Record<string, unknown>)?.message,
+    (apiError.data as Record<string, unknown>)?.error,
+    // For ClassifiedError objects, the message might be directly on the error
+    error instanceof Error ? error.message : null,
+    // Also check toString() as a fallback
+    typeof error === 'object' && error !== null ? error.toString() : null
+  ].filter(Boolean);
+
+  return possibleMessages.some(msg =>
+    typeof msg === 'string' && msg.includes('User role required')
+  );
+}
+
+/**
  * Checks if an error is a recoverable Auth0 SDK error
  */
 export function isRecoverableAuth0Error(error: unknown): boolean {
@@ -55,10 +78,17 @@ export function isRecoverableAuth0Error(error: unknown): boolean {
  * Handles API authentication errors by reloading the page
  *
  * This is appropriate for 401 errors from the API which indicate
- * server-side token validation failure.
+ * server-side token validation failure. However, "User role required"
+ * errors should not trigger a reload as they indicate insufficient permissions
+ * rather than authentication failure.
  */
 export function handleApiAuthError(error: unknown): void {
   if (isApiAuthError(error)) {
+    // Don't reload for "User role required" errors - let the app handle them through Redux
+    if (isUserRoleRequiredError(error)) {
+      return;
+    }
+
     console.warn('API authentication error detected, reloading page to re-authenticate:', error);
 
     // Small delay to allow any pending operations to complete
