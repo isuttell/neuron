@@ -339,7 +339,7 @@ async def ws() -> None:
 async def health() -> dict[str, str]:
     await client.ping()
     await pool.check()
-    return {"server": "neuron", "status": "healthy"}
+    return {"server": "neuron", "status": "healthy", "commit": config.git_commit}
 
 
 app.register_blueprint(blueprint, url_prefix="/")
