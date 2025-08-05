@@ -67,6 +67,7 @@ from neuron_server.tools.openweathermap_overview_tool import (
 )
 from neuron_server.tools.pyodide_code_interpreter_tool import PyodideCodeInterpreterTool
 from neuron_server.tools.read_thread_memory_tool import ReadThreadMemoryTool
+from neuron_server.tools.release_commits_tool import ReleaseCommitsTool
 from neuron_server.tools.replicate_audio_generation_tool import (
     ReplicateAudioGenerationTool,
 )
@@ -207,6 +208,9 @@ tool_sets: dict[str, list[BaseTool]] = {
     "code_interpreter": [
         CodeInterpreterTool(),
         PyodideCodeInterpreterTool(),
+    ],
+    "neuron": [
+        ReleaseCommitsTool(),
     ],
 }
 
