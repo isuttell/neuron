@@ -44,6 +44,7 @@ class TestTools:
             "notifications",
             "code_interpreter",
             "glados",
+            "neuron",
         }
         assert set(tool_sets.keys()) == expected_categories
 

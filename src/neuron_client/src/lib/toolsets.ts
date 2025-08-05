@@ -11,6 +11,7 @@ export const ToolSetLabels: Record<string, string> = {
   image: "Image Generation",
   inspect: "Inspect",
   kepler: "Kepler",
+  neuron: "Neuron",
   notifications: "Notifications",
   reasoning: "Reasoning",
   search: "Search",
