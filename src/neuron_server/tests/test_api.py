@@ -333,7 +333,7 @@ async def test_websocket_invalid_token(app: Quart) -> None:
 async def test_websocket_valid_connection(app: Quart) -> None:
     mock_token = TokenPayload(
         user_id="test_user",
-        roles=[],
+        roles=["user"],
         email="test@example.com",
         nickname="test",
         permissions=[],
