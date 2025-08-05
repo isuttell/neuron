@@ -65,7 +65,7 @@ def app() -> Quart:
 def mock_token() -> TokenPayload:
     return TokenPayload(
         user_id="test_user_id",
-        roles=[],
+        roles=["user"],
         email="test@example.com",
         nickname="test_user",
         picture=None,
@@ -126,7 +126,7 @@ def mock_decode_token() -> AsyncMock:
     with patch("neuron_server.controllers.auth.decode_token") as mock:
         mock.return_value = TokenPayload(
             user_id="test_user_id",
-            roles=[],
+            roles=["user"],
             email="test@example.com",
             nickname="test_user",
             picture=None,
@@ -700,7 +700,7 @@ async def test_set_default_personality_success(
     # Create admin token
     admin_token = TokenPayload(
         user_id="admin_user_id",
-        roles=["admin"],
+        roles=["user", "admin"],
         email="admin@example.com",
         nickname="admin_user",
         picture=None,
@@ -798,7 +798,7 @@ async def test_set_default_personality_not_found(
     # Create admin token
     admin_token = TokenPayload(
         user_id="admin_user_id",
-        roles=["admin"],
+        roles=["user", "admin"],
         email="admin@example.com",
         nickname="admin_user",
         picture=None,
@@ -1089,7 +1089,7 @@ class TestGeneratePersonalityEndpoint:
         # Create token with tool permission
         mock_token = TokenPayload(
             user_id="test_user_id",
-            roles=["tool-search"],
+            roles=["user", "tool-search"],
             email="test@example.com",
             nickname="test_user",
             picture=None,
@@ -1162,7 +1162,9 @@ class TestGeneratePersonalityEndpoint:
                 assert result["personality"]["tool_set"] == "search"
 
             # Verify tool validation was called
-            mock_validate_tools.assert_called_once_with("search", ["tool-search"])
+            mock_validate_tools.assert_called_once_with(
+                "search", ["user", "tool-search"]
+            )
 
     @pytest.mark.asyncio
     async def test_generate_personality_validation_error(

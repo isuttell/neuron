@@ -116,6 +116,10 @@ def requires_auth(func: Callable[..., T]) -> Callable[..., T]:
         token = get_token_auth_header()
         token_payload = await decode_token(token)
 
+        # Check if user has the required "user" role
+        if "user" not in token_payload.roles:
+            raise Unauthorized("User role required")
+
         # Cast request to our custom type and set the token
         typed_request = cast("NeuronRequest", request)
         typed_request.token = token_payload

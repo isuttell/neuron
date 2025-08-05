@@ -25,7 +25,7 @@ def mock_token() -> TokenPayload:
     """Create a mock token for testing."""
     return TokenPayload(
         user_id="test_user_id",
-        roles=[],
+        roles=["user"],
         email="test@example.com",
         nickname="test_user",
         picture=None,
@@ -56,7 +56,7 @@ def mock_decode_token() -> AsyncMock:
     with patch("neuron_server.controllers.auth.decode_token") as mock:
         mock.return_value = TokenPayload(
             user_id="test_user_id",
-            roles=[],
+            roles=["user"],
             email="test@example.com",
             nickname="test_user",
             picture=None,
