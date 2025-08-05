@@ -487,3 +487,113 @@ class TestReleaseCommitsTool:
             assert "feat: add new feature X" in content
             assert "fix: resolve bug in component Y" in content
             assert "docs: update README with installation instructions" in content
+
+
+class TestReleaseCommitsDeploymentFiltering:
+    """Test suite for deployment commit filtering functionality."""
+
+    @pytest.fixture
+    def mock_commits_data(self) -> list[dict]:
+        """Mock commit data for testing deployment filtering."""
+        return [
+            {
+                "sha": "abc123newer",
+                "commit": {
+                    "message": "feat: unreleased feature",
+                    "author": {"date": "2024-01-03T10:00:00Z"},
+                },
+                "html_url": "https://gitea.zaks.io/isuttell/neuron/commit/abc123newer",
+            },
+            {
+                "sha": "def456deployed",
+                "commit": {
+                    "message": "fix: deployed bug fix",
+                    "author": {"date": "2024-01-02T10:00:00Z"},
+                },
+                "html_url": "https://gitea.zaks.io/isuttell/neuron/commit/def456deployed",
+            },
+            {
+                "sha": "ghi789older",
+                "commit": {
+                    "message": "feat: older feature",
+                    "author": {"date": "2024-01-01T10:00:00Z"},
+                },
+                "html_url": "https://gitea.zaks.io/isuttell/neuron/commit/ghi789older",
+            },
+        ]
+
+    @patch("neuron_server.tools.release_commits_tool.config")
+    @patch("aiohttp.ClientSession.get")
+    async def test_commits_filtered_by_deployed_commit(
+        self, mock_get: AsyncMock, mock_config: AsyncMock, mock_commits_data: list[dict]
+    ) -> None:
+        """Test that commits are filtered to only show up to deployed commit."""
+        # Setup config to return deployed commit SHA
+        mock_config.git_commit = "def456deployed"
+
+        # Mock API responses
+        mock_response = AsyncMock()
+        mock_response.status = 200
+        mock_response.json = AsyncMock(return_value=mock_commits_data)
+        mock_get.return_value.__aenter__.return_value = mock_response
+
+        tool = ReleaseCommitsTool()
+        commits = await tool._get_commits_in_range("isuttell", "neuron", {}, 50)
+
+        # Should only include deployed commit and older commits, not newer ones
+        assert len(commits) == 2
+        assert commits[0]["sha"] == "abc123newer"  # Added before deployed commit
+        assert commits[1]["sha"] == "def456deployed"  # Deployed commit (included)
+        # "ghi789older" should not be included since we stop at deployed commit
+
+    @patch("neuron_server.tools.release_commits_tool.config")
+    @patch("aiohttp.ClientSession.get")
+    async def test_commits_unfiltered_when_no_deployed_commit(
+        self, mock_get: AsyncMock, mock_config: AsyncMock, mock_commits_data: list[dict]
+    ) -> None:
+        """Test that all commits are shown when no deployed commit is configured."""
+        # Setup config with unknown deployed commit
+        mock_config.git_commit = "unknown"
+
+        # Mock API responses
+        mock_response = AsyncMock()
+        mock_response.status = 200
+        mock_response.json = AsyncMock(return_value=mock_commits_data)
+        mock_get.return_value.__aenter__.return_value = mock_response
+
+        tool = ReleaseCommitsTool()
+        commits = await tool._get_commits_in_range("isuttell", "neuron", {}, 50)
+
+        # Should include all commits when no deployed commit filter
+        assert len(commits) == 3
+        assert commits[0]["sha"] == "abc123newer"
+        assert commits[1]["sha"] == "def456deployed"
+        assert commits[2]["sha"] == "ghi789older"
+
+    @patch("neuron_server.tools.release_commits_tool.config")
+    @patch("aiohttp.ClientSession.get")
+    async def test_resolve_date_range_uses_deployed_commit_date(
+        self, mock_get: AsyncMock, mock_config: AsyncMock
+    ) -> None:
+        """Test that date range resolution uses deployed commit date as boundary."""
+        # Setup config to return deployed commit SHA
+        mock_config.git_commit = "def456deployed"
+
+        # Mock API response for commit date lookup
+        mock_response = AsyncMock()
+        mock_response.status = 200
+        mock_response.json = AsyncMock(
+            return_value={"commit": {"author": {"date": "2024-01-02T10:00:00Z"}}}
+        )
+        mock_get.return_value.__aenter__.return_value = mock_response
+
+        tool = ReleaseCommitsTool()
+
+        from neuron_server.tools.release_commits_tool import ReleaseCommitsParams
+
+        params = ReleaseCommitsParams()
+
+        date_range = await tool._resolve_date_range("isuttell", "neuron", params)
+
+        # Should set to_date to deployed commit date
+        assert date_range["to_date"] == "2024-01-02T10:00:00Z"

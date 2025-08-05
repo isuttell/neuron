@@ -11,6 +11,7 @@ from langchain_core.callbacks import (
 )
 from pydantic import BaseModel, Field
 
+from neuron_server.config import config
 from neuron_server.logger import logger
 from neuron_server.tools.artifact_types import (
     ToolArtifactMetadata,
@@ -70,8 +71,10 @@ Features:
 - Generate release notes from commit messages
 - Support for both version-based and time-based analysis
 - Clean commit history without technical details
+- Automatically limits results to deployed version (only shows live features)
 
 Use this tool to generate release notes and understand code changes over time.
+Only shows commits that are actually deployed - no unreleased features displayed.
 Note: Do not include developer related information in responses. This tool is for users
 who only interact through the UI. Use this tool to help users understand new features,
 and bug fixes, but do not include things like logging changes for example.
@@ -203,6 +206,16 @@ and bug fixes, but do not include things like logging changes for example.
                 if tag_date:
                     resolved_range["to_date"] = tag_date
 
+        # Always limit to deployed commit date to prevent showing unreleased features
+        deployed_commit_date = await self._get_commit_date(
+            owner, repo, config.git_commit
+        )
+        if deployed_commit_date and (
+            not resolved_range["to_date"]
+            or deployed_commit_date < resolved_range["to_date"]
+        ):
+            resolved_range["to_date"] = deployed_commit_date
+
         return resolved_range
 
     async def _get_tag_date(self, owner: str, repo: str, tag_name: str) -> str | None:
@@ -215,11 +228,28 @@ and bug fixes, but do not include things like logging changes for example.
                     return tag_data.get("commit", {}).get("created")
                 return None
 
+    async def _get_commit_date(
+        self, owner: str, repo: str, commit_sha: str
+    ) -> str | None:
+        """Get the date of a specific commit."""
+        if not commit_sha or commit_sha == "unknown":
+            return None
+
+        async with aiohttp.ClientSession() as session:
+            url = f"{self._api_base}/repos/{owner}/{repo}/commits/{commit_sha}"
+            async with session.get(url) as response:
+                if response.status == HTTP_OK:
+                    commit_data = await response.json()
+                    return commit_data.get("commit", {}).get("author", {}).get("date")
+                return None
+
     async def _get_commits_in_range(
         self, owner: str, repo: str, date_range: dict[str, str | None], max_results: int
     ) -> list[dict]:
-        """Fetch commits within the specified range."""
+        """Fetch commits within range, filtered by deployed commit boundary."""
         commits = []
+        deployed_commit_sha = config.git_commit
+
         async with aiohttp.ClientSession() as session:
             url = f"{self._api_base}/repos/{owner}/{repo}/commits"
             query_params = {"limit": max_results}
@@ -233,9 +263,29 @@ and bug fixes, but do not include things like logging changes for example.
                 if response.status == HTTP_OK:
                     commit_data = await response.json()
                     for commit in commit_data:
+                        commit_sha = commit["sha"]
+
+                        # Stop processing commits if we've reached the deployed commit
+                        # This ensures we don't show commits after deployed version
+                        if (
+                            deployed_commit_sha
+                            and deployed_commit_sha != "unknown"
+                            and commit_sha == deployed_commit_sha
+                        ):
+                            # Include the deployed commit itself, then stop
+                            commits.append(
+                                {
+                                    "sha": commit_sha,
+                                    "message": commit["commit"]["message"],
+                                    "date": commit["commit"]["author"]["date"],
+                                    "url": commit["html_url"],
+                                }
+                            )
+                            break
+
                         commits.append(
                             {
-                                "sha": commit["sha"],
+                                "sha": commit_sha,
                                 "message": commit["commit"]["message"],
                                 "date": commit["commit"]["author"]["date"],
                                 "url": commit["html_url"],

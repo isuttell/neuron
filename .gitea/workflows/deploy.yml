@@ -70,6 +70,8 @@ jobs:
             ${{ startsWith(github.ref, 'refs/tags/') && format('gitea.zaks.io/isuttell/neuron-server:{0}', github.ref_name) || '' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          build-args: |
+            GIT_COMMIT=${{ github.sha }}
 
       - name: Deploy notification
         run: |
@@ -115,6 +117,8 @@ jobs:
             ${{ startsWith(github.ref, 'refs/tags/') && format('gitea.zaks.io/isuttell/neuron-client:{0}', github.ref_name) || '' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          build-args: |
+            GIT_COMMIT=${{ github.sha }}
 
       - name: Deploy notification
         run: |

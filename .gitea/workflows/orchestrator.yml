@@ -108,6 +108,8 @@ jobs:
           tags: gitea.zaks.io/isuttell/neuron-server:pr-${{ github.event.pull_request.number }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          build-args: |
+            GIT_COMMIT=${{ github.sha }}
 
   # Run frontend tests if frontend files changed
   frontend-tests:
@@ -161,6 +163,8 @@ jobs:
           tags: gitea.zaks.io/isuttell/neuron-client:pr-${{ github.event.pull_request.number }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          build-args: |
+            GIT_COMMIT=${{ github.sha }}
 
 
   # Run workflow linting if workflows changed

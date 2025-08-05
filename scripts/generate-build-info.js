@@ -43,7 +43,8 @@ function generateBuildInfo() {
       assetHash,
       assets,
       timestamp: new Date().toISOString(),
-      buildTime: Date.now()
+      buildTime: Date.now(),
+      gitCommit: process.env.GIT_COMMIT || null
     };
 
     // Write build info file

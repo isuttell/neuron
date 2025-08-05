@@ -258,6 +258,10 @@ class Config(BaseModel):
         default=os.environ.get("CLIENT_URL", "http://neuron_client"),
         description="URL of the client container for fetching build info",
     )
+    git_commit: str = Field(
+        default=os.environ.get("GIT_COMMIT", "unknown"),
+        description="Git commit hash of the deployed version",
+    )
 
 
 config = Config()
