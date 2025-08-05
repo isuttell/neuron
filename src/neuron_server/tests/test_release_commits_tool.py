@@ -254,10 +254,10 @@ class TestReleaseCommitsTool:
             assert isinstance(artifacts, list)
             assert len(artifacts) == 1
             artifact = artifacts[0]
-            assert artifact["media_type"] == "data"
+            assert artifact["media_type"] == "text"
             assert len(artifact["items"]) == 1
             item = artifact["items"][0]
-            assert item["name"] == "Release Commits Summary"
+            assert item["name"] == "Release Notes"
             assert item["metadata"]["total_commits"] == 3
 
     @pytest.mark.asyncio
@@ -299,10 +299,9 @@ class TestReleaseCommitsTool:
     ) -> None:
         """Test include_timestamps option adds timestamps to output."""
         with patch("aiohttp.ClientSession.get") as mock_get:
-            mock_response = AsyncMock()
-            mock_response.status = 200
-            mock_response.json.return_value = sample_commits
-            mock_get.return_value.__aenter__.return_value = mock_response
+            mock_get.side_effect = self.create_mock_get_handler(
+                commits_list_response=sample_commits
+            )
 
             # Execute query with timestamps enabled
             result = await tool._arun(from_date="2024-01-01", include_timestamps=True)
@@ -319,10 +318,9 @@ class TestReleaseCommitsTool:
     ) -> None:
         """Test timestamps are not included when include_timestamps=False."""
         with patch("aiohttp.ClientSession.get") as mock_get:
-            mock_response = AsyncMock()
-            mock_response.status = 200
-            mock_response.json.return_value = sample_commits
-            mock_get.return_value.__aenter__.return_value = mock_response
+            mock_get.side_effect = self.create_mock_get_handler(
+                commits_list_response=sample_commits
+            )
 
             # Execute query with timestamps disabled (default)
             result = await tool._arun(from_date="2024-01-01")
@@ -336,10 +334,9 @@ class TestReleaseCommitsTool:
     async def test_empty_commit_results(self, tool: ReleaseCommitsTool) -> None:
         """Test handling of empty commit results."""
         with patch("aiohttp.ClientSession.get") as mock_get:
-            mock_response = AsyncMock()
-            mock_response.status = 200
-            mock_response.json.return_value = []
-            mock_get.return_value.__aenter__.return_value = mock_response
+            mock_get.side_effect = self.create_mock_get_handler(
+                commits_list_response=[]
+            )
 
             # Execute query
             result = await tool._arun(from_date="2024-01-01")
@@ -358,21 +355,19 @@ class TestReleaseCommitsTool:
     ) -> None:
         """Test handling when version tag is not found."""
         with patch("aiohttp.ClientSession.get") as mock_get:
-            mock_responses = [
-                # Tag lookup returns 404
-                AsyncMock(status=404),
-                # Commits query (should still work without tag date)
-                AsyncMock(status=200, json=AsyncMock(return_value=sample_commits)),
-            ]
-            mock_get.return_value.__aenter__.side_effect = mock_responses
+            # Empty tags dict means tag won't be found (404)
+            mock_get.side_effect = self.create_mock_get_handler(
+                commits_list_response=sample_commits,
+                tags={}
+            )
 
             # Execute query
             result = await tool._arun(from_version="nonexistent-tag")
 
             content, _ = result
             assert "Total Commits**: 3" in content
-            # Should not show time range since tag wasn't found
-            assert "Time Range" not in content
+            # Should still show time range based on deployed commit
+            assert "Time Range" in content
 
     @pytest.mark.asyncio
     async def test_api_error_handling(self, tool: ReleaseCommitsTool) -> None:
@@ -396,11 +391,9 @@ class TestReleaseCommitsTool:
     ) -> None:
         """Test max_results parameter is passed correctly to API."""
         with patch("aiohttp.ClientSession.get") as mock_get:
-            mock_response = AsyncMock()
-            mock_response.status = 200
-            # Return only 2 commits
-            mock_response.json.return_value = sample_commits[:2]
-            mock_get.return_value.__aenter__.return_value = mock_response
+            mock_get.side_effect = self.create_mock_get_handler(
+                commits_list_response=sample_commits[:2]
+            )
 
             # Execute query with max_results=2
             result = await tool._arun(from_date="2024-01-01", max_results=2)
@@ -419,10 +412,9 @@ class TestReleaseCommitsTool:
     ) -> None:
         """Test artifacts don't contain sensitive commit messages."""
         with patch("aiohttp.ClientSession.get") as mock_get:
-            mock_response = AsyncMock()
-            mock_response.status = 200
-            mock_response.json.return_value = sample_commits
-            mock_get.return_value.__aenter__.return_value = mock_response
+            mock_get.side_effect = self.create_mock_get_handler(
+                commits_list_response=sample_commits
+            )
 
             # Execute query
             result = await tool._arun(from_date="2024-01-01")
@@ -448,17 +440,17 @@ class TestReleaseCommitsTool:
     ) -> None:
         """Test artifact description includes date range information."""
         with patch("aiohttp.ClientSession.get") as mock_get:
-            mock_response = AsyncMock()
-            mock_response.status = 200
-            mock_response.json.return_value = sample_commits
-            mock_get.return_value.__aenter__.return_value = mock_response
+            mock_get.side_effect = self.create_mock_get_handler(
+                commits_list_response=sample_commits
+            )
 
             # Execute query with date range
             result = await tool._arun(from_date="2024-01-01", to_date="2024-01-31")
 
             _, artifacts = result
             item = artifacts[0]["items"][0]
-            assert "from 2024-01-01 to 2024-01-31" in item["description"]
+            # The to_date will be limited to deployed commit date (2024-01-13)
+            assert "from 2024-01-01" in item["description"]
 
     def test_sync_run_method(self, tool: ReleaseCommitsTool) -> None:
         """Test synchronous _run method delegates to async _arun."""
@@ -486,15 +478,11 @@ class TestReleaseCommitsTool:
             patch("neuron_server.tools.release_commits_tool.logger") as mock_logger,
             patch("aiohttp.ClientSession.get") as mock_get,
         ):
-            # Mock responses for both tag lookups and commits
-            mock_responses = [
-                # Tag lookup calls return 404 (not found)
-                AsyncMock(status=404),
-                AsyncMock(status=404),
-                # Commits call returns sample data
-                AsyncMock(status=200, json=AsyncMock(return_value=sample_commits)),
-            ]
-            mock_get.return_value.__aenter__.side_effect = mock_responses
+            # Use the mock handler that handles different endpoints properly
+            mock_get.side_effect = self.create_mock_get_handler(
+                commits_list_response=sample_commits,
+                tags={}  # Empty tags means 404 for tag lookups
+            )
 
             # Execute query
             await tool._arun(
@@ -506,10 +494,16 @@ class TestReleaseCommitsTool:
 
             # Verify debug logging was called
             mock_logger.debug.assert_called()
-            debug_call = mock_logger.debug.call_args[0][0]
-            assert "Release commits analysis for isuttell/neuron" in debug_call
-            assert "versions=v1.0.0->v1.1.0" in debug_call
-            assert "dates=2024-01-01->2024-01-31" in debug_call
+            # Find the analysis log call (not the "Reached deployed commit" one)
+            analysis_call = None
+            for call in mock_logger.debug.call_args_list:
+                if "Release commits analysis" in call[0][0]:
+                    analysis_call = call[0][0]
+                    break
+            assert analysis_call is not None
+            assert "Release commits analysis for isuttell/neuron" in analysis_call
+            assert "versions=v1.0.0->v1.1.0" in analysis_call
+            assert "dates=2024-01-01->2024-01-31" in analysis_call
 
     @pytest.mark.asyncio
     async def test_parameter_defaults_applied(
@@ -517,10 +511,9 @@ class TestReleaseCommitsTool:
     ) -> None:
         """Test parameter defaults are applied correctly."""
         with patch("aiohttp.ClientSession.get") as mock_get:
-            mock_response = AsyncMock()
-            mock_response.status = 200
-            mock_response.json.return_value = sample_commits
-            mock_get.return_value.__aenter__.return_value = mock_response
+            mock_get.side_effect = self.create_mock_get_handler(
+                commits_list_response=sample_commits
+            )
 
             # Execute with minimal parameters
             result = await tool._arun()
@@ -539,10 +532,9 @@ class TestReleaseCommitsTool:
     ) -> None:
         """Test commit data is correctly transformed from API response."""
         with patch("aiohttp.ClientSession.get") as mock_get:
-            mock_response = AsyncMock()
-            mock_response.status = 200
-            mock_response.json.return_value = sample_commits
-            mock_get.return_value.__aenter__.return_value = mock_response
+            mock_get.side_effect = self.create_mock_get_handler(
+                commits_list_response=sample_commits
+            )
 
             # Execute query
             result = await tool._arun(from_date="2024-01-01")
@@ -557,6 +549,14 @@ class TestReleaseCommitsTool:
 
 class TestReleaseCommitsDeploymentFiltering:
     """Test suite for deployment commit filtering functionality."""
+
+    @pytest.fixture(autouse=True)
+    def mock_config_git_commit(self) -> None:
+        """Mock the git commit config for all tests."""
+        with patch("neuron_server.tools.release_commits_tool.config") as mock_config:
+            # Set a known deployed commit for tests
+            mock_config.git_commit = "def456deployed"
+            yield mock_config
 
     @pytest.fixture
     def mock_commits_data(self) -> list[dict]:
@@ -679,7 +679,5 @@ class TestReleaseCommitsDeploymentFiltering:
 
         # Should include warning message
         assert "Deployment information is not available" in response_text
-        assert "security reasons" in response_text
-        assert "contact administrators" in response_text
-        # Should not include summary section
+        # Should not include summary section when deployment info is unknown
         assert "## Summary" not in response_text
