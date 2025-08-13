@@ -1,4 +1,5 @@
 import asyncio
+import uuid
 from typing import Any
 
 from langchain.tools import BaseTool
@@ -7,6 +8,11 @@ from pydantic import BaseModel, Field
 
 from neuron_server.logger import logger
 from neuron_server.models.thread_model import ThreadModel
+from neuron_server.tools.artifact_types import (
+    ToolArtifactMetadata,
+    ToolMediaArtifact,
+    ToolMediaItem,
+)
 
 
 class SetThreadMemoryToolArgs(BaseModel):
@@ -33,19 +39,20 @@ class SetThreadMemoryTool(BaseTool):
     )
 
     args_schema: type[SetThreadMemoryToolArgs] = SetThreadMemoryToolArgs
+    response_format: str = "content_and_artifact"
 
     def _run(
         self,
         *args: Any,
         **kwargs: Any,
-    ) -> str:
+    ) -> tuple[str, list[dict]]:
         return asyncio.run(self._arun(*args, **kwargs))
 
     async def _arun(
         self,
         memory: str,
         config: RunnableConfig,
-    ) -> str:
+    ) -> tuple[str, list[dict]]:
         try:
             thread_id = config["configurable"].get("thread_id")
             if thread_id is None:
@@ -66,16 +73,37 @@ class SetThreadMemoryTool(BaseTool):
                 len(memory),
             )
 
+            # Create media artifact with the updated memory
+            artifacts = [
+                ToolMediaArtifact(
+                    media_type="text",
+                    items=[
+                        ToolMediaItem(
+                            id=str(uuid.uuid4()),
+                            url="",
+                            name="Tasks Updated",
+                            description=memory,
+                            metadata=ToolArtifactMetadata(
+                                type="thread_memory",
+                            ),
+                        )
+                    ],
+                )
+            ]
+
             # Return success message with previous content
             if previous_memory:
-                return (
+                response_text = (
                     "Successfully updated your internal task tracker.\n\n"
                     "Previous notes that were overwritten:\n"
                     "```\n"
                     f"{previous_memory}\n"
                     "```"
                 )
-            return "Successfully updated your internal task tracker."
+            else:
+                response_text = "Successfully updated your internal task tracker."
+
+            return response_text, [artifact.model_dump() for artifact in artifacts]
         except Exception as e:
             logger.error("Failed to update thread memory: %s", str(e), exc_info=True)
             raise RuntimeError("Failed to update thread memory") from e

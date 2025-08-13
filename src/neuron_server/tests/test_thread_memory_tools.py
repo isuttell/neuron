@@ -88,7 +88,18 @@ class TestSetThreadMemoryTool:
                 "memory",
                 sample_planning_board,
             )
-            assert result == "Successfully updated your internal task tracker."
+            # Check the response tuple
+            assert isinstance(result, tuple)
+            assert len(result) == 2
+            response_text, artifacts = result
+            assert response_text == "Successfully updated your internal task tracker."
+            assert isinstance(artifacts, list)
+            assert len(artifacts) == 1
+            assert artifacts[0]["type"] == "media"
+            assert artifacts[0]["media_type"] == "text"
+            assert len(artifacts[0]["items"]) == 1
+            assert artifacts[0]["items"][0]["name"] == "Tasks Updated"
+            assert artifacts[0]["items"][0]["description"] == sample_planning_board
 
     @pytest.mark.asyncio
     async def test_successful_update_with_previous(
@@ -118,9 +129,20 @@ class TestSetThreadMemoryTool:
                 "memory",
                 sample_planning_board,
             )
-            assert "Successfully updated your internal task tracker" in result
-            assert "Previous notes that were overwritten:" in result
-            assert previous_content in result
+            # Check the response tuple
+            assert isinstance(result, tuple)
+            assert len(result) == 2
+            response_text, artifacts = result
+            assert "Successfully updated your internal task tracker" in response_text
+            assert "Previous notes that were overwritten:" in response_text
+            assert previous_content in response_text
+            assert isinstance(artifacts, list)
+            assert len(artifacts) == 1
+            assert artifacts[0]["type"] == "media"
+            assert artifacts[0]["media_type"] == "text"
+            assert len(artifacts[0]["items"]) == 1
+            assert artifacts[0]["items"][0]["name"] == "Tasks Updated"
+            assert artifacts[0]["items"][0]["description"] == sample_planning_board
 
     @pytest.mark.asyncio
     async def test_missing_thread_id(self, sample_planning_board: str) -> None:
@@ -189,7 +211,13 @@ class TestSetThreadMemoryTool:
         ):
             tool = SetThreadMemoryTool()
             result = tool._run(memory=sample_planning_board, config=mock_config)
-            assert "Successfully updated your internal task tracker" in result
+            # Check the response tuple
+            assert isinstance(result, tuple)
+            assert len(result) == 2
+            response_text, artifacts = result
+            assert "Successfully updated your internal task tracker" in response_text
+            assert isinstance(artifacts, list)
+            assert len(artifacts) == 1
 
 
 class TestReadThreadMemoryTool:
@@ -334,7 +362,9 @@ class TestThreadMemoryToolsIntegration:
             set_result = await set_tool._arun(
                 memory=sample_planning_board, config=mock_config
             )
-            assert set_result == "Successfully updated your internal task tracker."
+            assert isinstance(set_result, tuple)
+            response_text, _ = set_result
+            assert response_text == "Successfully updated your internal task tracker."
 
             # Verify set was called
             mock_set.assert_called_once()
@@ -387,13 +417,17 @@ class TestThreadMemoryToolsIntegration:
 
             # Set initial tasks
             result1 = await set_tool._arun(memory=initial_tasks, config=mock_config)
-            assert result1 == "Successfully updated your internal task tracker."
+            assert isinstance(result1, tuple)
+            response_text1, _ = result1
+            assert response_text1 == "Successfully updated your internal task tracker."
             assert mock_set.call_count == 1
 
             # Update with completed task
             result2 = await set_tool._arun(memory=updated_tasks, config=mock_config)
-            assert "Previous notes that were overwritten:" in result2
-            assert initial_tasks in result2
+            assert isinstance(result2, tuple)
+            response_text2, _ = result2
+            assert "Previous notes that were overwritten:" in response_text2
+            assert initial_tasks in response_text2
             expected_calls = 2
             assert mock_set.call_count == expected_calls
 
