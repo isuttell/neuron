@@ -62,7 +62,7 @@ class AgentStatusManager:
         "ffmpeg": "Processing media file",
         "ffprobe": "Analyzing media file",
         # Document/Graph operations
-        "document_inspect": "Analyzing document",
+        "web_fetch": "Fetching web content",
         "query_documents": "Searching documents",
         "graph_query_tool": "Querying knowledge graph",
         "graph_question_tool": "Answering from knowledge graph",

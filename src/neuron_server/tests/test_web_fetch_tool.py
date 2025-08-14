@@ -11,9 +11,9 @@ from neuron_server.tools.document_utils import (
     is_youtube_url,
     load_youtube_transcript,
 )
-from neuron_server.tools.inspect_document_tool import (
-    InspectDocumentTool,
-    InspectDocumentToolArgs,
+from neuron_server.tools.web_fetch_tool import (
+    WebFetchTool,
+    WebFetchToolArgs,
 )
 
 
@@ -102,7 +102,7 @@ async def test_inspect_document_tool_youtube() -> None:
         {"text": "This is a test", "start": 1.5, "duration": 2.0},
     ]
 
-    tool = InspectDocumentTool()
+    tool = WebFetchTool()
     with (
         patch(
             "neuron_server.tools.document_utils.YouTubeTranscriptApi"
@@ -138,15 +138,15 @@ async def test_inspect_document_tool_youtube() -> None:
 async def test_inspect_document_tool_args_memorize() -> None:
     """Test InspectDocumentToolArgs with memorize parameter."""
     # Test default memorize value
-    args = InspectDocumentToolArgs(url="https://example.com")
+    args = WebFetchToolArgs(url="https://example.com")
     assert args.memorize is False
 
     # Test explicit memorize=True
-    args = InspectDocumentToolArgs(url="https://example.com", memorize=True)
+    args = WebFetchToolArgs(url="https://example.com", memorize=True)
     assert args.memorize is True
 
     # Test explicit memorize=False
-    args = InspectDocumentToolArgs(url="https://example.com", memorize=False)
+    args = WebFetchToolArgs(url="https://example.com", memorize=False)
     assert args.memorize is False
 
 
@@ -174,15 +174,11 @@ async def test_inspect_document_tool_memorize_functionality() -> None:
         }
     )
 
-    tool = InspectDocumentTool()
+    tool = WebFetchTool()
 
     with (
-        patch(
-            "neuron_server.tools.inspect_document_tool.load_document_from_url"
-        ) as mock_load,
-        patch(
-            "neuron_server.tools.inspect_document_tool.memories_store"
-        ) as mock_memory_store,
+        patch("neuron_server.tools.web_fetch_tool.load_document_from_url") as mock_load,
+        patch("neuron_server.tools.web_fetch_tool.memories_store") as mock_memory_store,
     ):
         mock_load.return_value = mock_docs
         mock_memory_store.aadd_documents = AsyncMock()
@@ -234,15 +230,11 @@ async def test_inspect_document_tool_no_memorize() -> None:
     ]
 
     config = RunnableConfig(configurable={"user_id": "test_user"})
-    tool = InspectDocumentTool()
+    tool = WebFetchTool()
 
     with (
-        patch(
-            "neuron_server.tools.inspect_document_tool.load_document_from_url"
-        ) as mock_load,
-        patch(
-            "neuron_server.tools.inspect_document_tool.memories_store"
-        ) as mock_memory_store,
+        patch("neuron_server.tools.web_fetch_tool.load_document_from_url") as mock_load,
+        patch("neuron_server.tools.web_fetch_tool.memories_store") as mock_memory_store,
     ):
         mock_load.return_value = mock_docs
         mock_memory_store.aadd_documents = AsyncMock()
@@ -276,15 +268,11 @@ async def test_inspect_document_tool_memorize_chunking() -> None:
         configurable={"user_id": "test_user", "thread_id": "test_thread"}
     )
 
-    tool = InspectDocumentTool()
+    tool = WebFetchTool()
 
     with (
-        patch(
-            "neuron_server.tools.inspect_document_tool.load_document_from_url"
-        ) as mock_load,
-        patch(
-            "neuron_server.tools.inspect_document_tool.memories_store"
-        ) as mock_memory_store,
+        patch("neuron_server.tools.web_fetch_tool.load_document_from_url") as mock_load,
+        patch("neuron_server.tools.web_fetch_tool.memories_store") as mock_memory_store,
     ):
         mock_load.return_value = mock_docs
         mock_memory_store.aadd_documents = AsyncMock()
@@ -316,16 +304,12 @@ async def test_inspect_document_tool_memorize_error_handling() -> None:
     ]
 
     config = RunnableConfig(configurable={"user_id": "test_user"})
-    tool = InspectDocumentTool()
+    tool = WebFetchTool()
 
     with (
-        patch(
-            "neuron_server.tools.inspect_document_tool.load_document_from_url"
-        ) as mock_load,
-        patch(
-            "neuron_server.tools.inspect_document_tool.memories_store"
-        ) as mock_memory_store,
-        patch("neuron_server.tools.inspect_document_tool.logger") as mock_logger,
+        patch("neuron_server.tools.web_fetch_tool.load_document_from_url") as mock_load,
+        patch("neuron_server.tools.web_fetch_tool.memories_store") as mock_memory_store,
+        patch("neuron_server.tools.web_fetch_tool.logger") as mock_logger,
     ):
         mock_load.return_value = mock_docs
         # Make memory storage fail

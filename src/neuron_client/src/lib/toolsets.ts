@@ -9,7 +9,6 @@ export const ToolSetLabels: Record<string, string> = {
   hd2: "Hell Divers 2",
   homeassistant: "Smart Home",
   image: "Image Generation",
-  inspect: "Inspect",
   kepler: "Kepler",
   neuron: "Neuron",
   notifications: "Notifications",
