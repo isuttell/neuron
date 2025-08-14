@@ -17,7 +17,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { createPersonalityRoom } from "../actions/personalityRoomActions";
 import { sendPersonalityMessage } from "../actions/personalityChatActions";
-import { getCurrentUser, getSelectedPersonalityId } from "../slices/appSlice";
+import { getCurrentUser, getSelectedPersonalityId, getModePreference, setModePreference } from "../slices/appSlice";
 import PersonalitySelector from "../components/PersonalitySelector";
 
 export default function Index() {
@@ -25,11 +25,8 @@ export default function Index() {
   const navigate = useNavigate();
   const { personalityId } = useParams();
   const [isLoading, setLoading] = useState(false);
-  const [isChatMode, setIsChatMode] = useState(() => {
-    // Load preference from localStorage, default to true (Chat mode)
-    const saved = localStorage.getItem("neuron_mode_preference");
-    return saved !== null ? saved === "chat" : true;
-  });
+  const modePreference = useAppSelector(getModePreference);
+  const isChatMode = modePreference === 'chat';
   const selectedPersonality = useAppSelector(
     (state) => personalityId ? getPersonality(state, personalityId) : undefined
   );
@@ -76,10 +73,6 @@ export default function Index() {
     }
   }, [personalities, personalitiesLoading, personalityId, navigate]);
 
-  // Save mode preference to localStorage when it changes
-  useEffect(() => {
-    localStorage.setItem("neuron_mode_preference", isChatMode ? "chat" : "agent");
-  }, [isChatMode]);
 
   const handleSubmit = (prompt: string, file?: File | Blob) => {
     if (!personalityId || isLoading) {
@@ -171,16 +164,22 @@ export default function Index() {
             <div className="flex items-center gap-4">
               <PersonalitySelector />
               <div className="flex items-center gap-2">
-                <Label htmlFor="mode-switch" className="text-sm text-muted-foreground">
+                <Label
+                  htmlFor="mode-switch"
+                  className={`text-sm ${isChatMode ? '' : 'opacity-50'} text-muted-foreground transition-opacity`}
+                >
                   Chat
                 </Label>
                 <Switch
                   id="mode-switch"
                   checked={!isChatMode}
-                  onCheckedChange={(checked) => setIsChatMode(!checked)}
+                  onCheckedChange={(checked) => dispatch(setModePreference(checked ? 'agent' : 'chat'))}
                   disabled={!personalityId || !isConnected}
                 />
-                <Label htmlFor="mode-switch" className="text-sm text-muted-foreground">
+                <Label
+                  htmlFor="mode-switch"
+                  className={`text-sm ${isChatMode ? 'opacity-50' : ''} text-muted-foreground transition-opacity`}
+                >
                   Agent
                 </Label>
               </div>
