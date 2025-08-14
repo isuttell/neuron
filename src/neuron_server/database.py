@@ -550,6 +550,74 @@ class PersonalityDocument(Base):
     )
 
 
+class MicroApp(Base):
+    __tablename__ = "micro_apps"
+
+    id = Column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(Text, nullable=False)
+    description = Column(Text, nullable=False)
+    schema = Column(JSONB, nullable=False)  # JSON schema for data validation
+    creator_id = Column(String, nullable=False, index=True)  # User who created the app
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    # Relationships
+    actions: Mapped[list["MicroAppAction"]] = relationship(
+        back_populates="app", cascade="all, delete-orphan"
+    )
+    data_records: Mapped[list["MicroAppData"]] = relationship(
+        back_populates="app", cascade="all, delete-orphan"
+    )
+
+
+class MicroAppAction(Base):
+    __tablename__ = "micro_app_actions"
+
+    id = Column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    app_id = Column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("micro_apps.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    name = Column(Text, nullable=False)
+    description = Column(Text, nullable=False)
+    action_type = Column(
+        String, nullable=False
+    )  # create, read, update, delete, aggregate, custom
+    parameters = Column(JSONB, nullable=False, default={})  # Action-specific parameters
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    app: Mapped["MicroApp"] = relationship(back_populates="actions")
+
+
+class MicroAppData(Base):
+    __tablename__ = "micro_app_data"
+
+    id = Column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    app_id = Column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("micro_apps.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    user_id = Column(String, nullable=False, index=True)  # User who owns this data
+    data = Column(JSONB, nullable=False)  # Data conforming to the app's schema
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    # Relationships
+    app: Mapped["MicroApp"] = relationship(back_populates="data_records")
+
+    # Compound index for efficient user+app queries
+    __table_args__ = (
+        UniqueConstraint("app_id", "user_id", "id", name="uq_app_user_data"),
+    )
+
+
 # Create async session maker
 get_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
