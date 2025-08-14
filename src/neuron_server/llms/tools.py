@@ -57,6 +57,10 @@ from neuron_server.tools.media_list_reorder_items_tool import (
 from neuron_server.tools.media_list_update_tool import MediaListUpdateTool
 from neuron_server.tools.memory_recall_tool import MemoryRecallTool
 from neuron_server.tools.memory_store_tool import MemoryStoreTool
+from neuron_server.tools.micro_app_create_tool import MicroAppCreateTool
+from neuron_server.tools.micro_app_data_tool import MicroAppDataTool
+from neuron_server.tools.micro_app_executor_tool import MicroAppExecutorTool
+from neuron_server.tools.micro_app_manager_tool import MicroAppManagerTool
 from neuron_server.tools.moon_tool import MoonTool
 from neuron_server.tools.openweathermap_forecast_tool import (
     OpenWeatherMapForecastTool,
@@ -206,6 +210,12 @@ tool_sets: dict[str, list[BaseTool]] = {
     "neuron": [
         ReleaseCommitsTool(),
     ],
+    "micro_apps": [
+        MicroAppCreateTool(),
+        MicroAppExecutorTool(),
+        MicroAppManagerTool(),
+        MicroAppDataTool(),
+    ],
 }
 
 default_tools: list[BaseTool] = list(
@@ -247,6 +257,13 @@ thread_memory_tools: list[BaseTool] = [
 
 personality_tools: list[BaseTool] = []
 
+micro_app_tools: list[BaseTool] = [
+    MicroAppCreateTool(),
+    MicroAppExecutorTool(),
+    MicroAppManagerTool(),
+    MicroAppDataTool(),
+]
+
 
 async def get_tools(query: str) -> list[BaseTool]:
     """Get tools based on query string.
@@ -269,9 +286,9 @@ async def get_tools(query: str) -> list[BaseTool]:
     ts.extend(personality_tools)
     ts.extend(schedule_tools)
     ts.extend(thread_memory_tools)
-    # Always include WebFetchTool and InspectImageTool
     ts.append(WebFetchTool())
     ts.append(InspectImageTool())
+    ts.extend(micro_app_tools)
 
     return list({tool.name: tool for tool in ts}.values())
 
