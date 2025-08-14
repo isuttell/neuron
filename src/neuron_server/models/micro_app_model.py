@@ -214,39 +214,22 @@ class MicroAppModel(BaseModel):
             ]
 
     @classmethod
-    async def update_name(cls, app_id: UUID, new_name: str) -> bool:
-        """Update the app's name"""
+    async def update(cls, app_id: UUID, updates: dict[str, str]) -> bool:
+        """Update the app's name and/or description (maintains schema immutability)"""
         async with get_session() as session:
             app = await session.get(MicroApp, app_id)
             if not app:
                 return False
 
-            app.name = new_name
+            # Update allowed fields only (maintain schema immutability)
+            if "name" in updates:
+                app.name = updates["name"]
+            if "description" in updates:
+                app.description = updates["description"]
+
             await session.commit()
             return True
 
-    @classmethod
-    async def update_descriptions(
-        cls, app_id: UUID, field_descriptions: dict[str, str]
-    ) -> bool:
-        """Update field descriptions in the app's schema (for agent instructions)"""
-        async with get_session() as session:
-            app = await session.get(MicroApp, app_id)
-            if not app:
-                return False
-
-            # Update descriptions in the schema
-            schema = app.schema.copy()
-            if "properties" in schema:
-                for field_name, description in field_descriptions.items():
-                    if field_name in schema["properties"]:
-                        schema["properties"][field_name]["description"] = (
-                            description
-                        )
-
-            app.schema = schema
-            await session.commit()
-            return True
 
     @classmethod
     async def delete(cls, app_id: UUID) -> bool:

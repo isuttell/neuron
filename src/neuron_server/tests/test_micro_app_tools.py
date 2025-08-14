@@ -351,8 +351,8 @@ async def test_user_data_isolation(user_config):
 
 
 @pytest.mark.asyncio
-async def test_update_name_success(user_config):
-    """Test that the creator can successfully update the app name"""
+async def test_update_success(user_config):
+    """Test that the creator can successfully update app name and description"""
     app_id = uuid4()
 
     # Mock the app created by the current user
@@ -363,27 +363,28 @@ async def test_update_name_success(user_config):
 
     with (
         patch.object(MicroAppModel, "get", AsyncMock(return_value=mock_app)),
-        patch.object(MicroAppModel, "update_name", AsyncMock(return_value=True)),
+        patch.object(MicroAppModel, "update", AsyncMock(return_value=True)),
     ):
         manager_tool = MicroAppManagerTool()
 
-        # Update name as creator
+        # Update name and description as creator
         result = await manager_tool._arun(
-            operation="update_name",
+            operation="update",
             app_id=str(app_id),
-            new_name="New Name",
+            updates={"name": "New Name", "description": "Updated description"},
             config=user_config,
         )
 
-        assert "Successfully updated app name to 'New Name'" in result
+        assert "Successfully updated name, description for app" in result
 
-        # Verify update_name was called with correct parameters
-        MicroAppModel.update_name.assert_called_once_with(app_id, "New Name")
+        # Verify update was called with correct parameters
+        expected_updates = {"name": "New Name", "description": "Updated description"}
+        MicroAppModel.update.assert_called_once_with(app_id, expected_updates)
 
 
 @pytest.mark.asyncio
-async def test_update_name_permission_check(user_config):
-    """Test that only the creator can update the app name"""
+async def test_update_permission_check(user_config):
+    """Test that only the creator can update the app"""
     app_id = uuid4()
 
     # Mock the app created by a different user
@@ -395,42 +396,44 @@ async def test_update_name_permission_check(user_config):
     with patch.object(MicroAppModel, "get", AsyncMock(return_value=mock_app)):
         manager_tool = MicroAppManagerTool()
 
-        # Try to update name as non-creator
+        # Try to update as non-creator
         result = await manager_tool._arun(
-            operation="update_name",
+            operation="update",
             app_id=str(app_id),
-            new_name="Hacked Name",
-            config=user_config,  # user_id is test_user_123
-        )
-
-        assert "You can only rename apps you created" in result
-        assert "different_user" in result
-
-
-@pytest.mark.asyncio
-async def test_update_descriptions_permission_check(user_config):
-    """Test that only the creator can update field descriptions"""
-    app_id = uuid4()
-
-    # Mock the app created by a different user
-    mock_app = Mock()
-    mock_app.id = app_id
-    mock_app.name = "Protected App"
-    mock_app.creator_id = "different_user"  # Different from test_user_123
-
-    with patch.object(MicroAppModel, "get", AsyncMock(return_value=mock_app)):
-        manager_tool = MicroAppManagerTool()
-
-        # Try to update descriptions as non-creator
-        result = await manager_tool._arun(
-            operation="update_descriptions",
-            app_id=str(app_id),
-            field_descriptions={"title": "New description"},
+            updates={"name": "Hacked Name"},
             config=user_config,  # user_id is test_user_123
         )
 
         assert "You can only update apps you created" in result
         assert "different_user" in result
+
+
+@pytest.mark.asyncio
+async def test_update_invalid_fields(user_config):
+    """Test that only allowed fields can be updated"""
+    app_id = uuid4()
+
+    # Mock the app created by the current user
+    mock_app = Mock()
+    mock_app.id = app_id
+    mock_app.name = "Test App"
+    mock_app.creator_id = "test_user_123"
+
+    with patch.object(MicroAppModel, "get", AsyncMock(return_value=mock_app)):
+        manager_tool = MicroAppManagerTool()
+
+        # Try to update invalid fields
+        result = await manager_tool._arun(
+            operation="update",
+            app_id=str(app_id),
+            updates={"schema": {"new": "schema"}, "creator_id": "hacker"},
+            config=user_config,
+        )
+
+        assert "Invalid fields:" in result
+        assert "schema" in result and "creator_id" in result
+        assert "Only these fields can be updated:" in result
+        assert "name" in result and "description" in result
 
 
 @pytest.mark.asyncio

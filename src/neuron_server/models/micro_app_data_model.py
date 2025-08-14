@@ -5,7 +5,7 @@ from uuid import UUID, uuid4
 
 import jsonschema
 from pydantic import BaseModel, Field
-from sqlalchemy import Float, and_, cast, func, select
+from sqlalchemy import Float, and_, func, select
 from sqlalchemy.dialects.postgresql import JSONB
 
 from neuron_server.database import MicroApp, MicroAppData, get_session
@@ -103,17 +103,19 @@ class MicroAppDataModel(BaseModel):
                 )
             )
 
-            # Apply filters using JSONB operations
+            # Apply filters using safe JSONB operations
             if filters:
                 for key, value in filters.items():
                     # Support nested key access with dot notation
                     keys = key.split(".")
-                    json_path = MicroAppData.data
-                    for k in keys[:-1]:
-                        json_path = json_path[k]
-                    json_path = json_path[keys[-1]]
-                    # Cast to JSONB for proper comparison
-                    query = query.where(json_path == cast(value, JSONB))
+                    # Validate key components to prevent injection
+                    for k in keys:
+                        if not k.replace("_", "").replace("-", "").isalnum():
+                            raise ValueError(f"Invalid key component: {k}")
+
+                    # Use PostgreSQL's jsonb_extract_path_text with array of keys
+                    path_expr = func.jsonb_extract_path_text(MicroAppData.data, *keys)
+                    query = query.where(path_expr == str(value))
 
             query = query.limit(limit).offset(offset)
             result = await session.execute(query)
@@ -156,6 +158,8 @@ class MicroAppDataModel(BaseModel):
 
             # Get the app to validate against its schema
             app = await session.get(MicroApp, record.app_id)
+            if not app:
+                raise ValueError(f"App with ID {record.app_id} not found")
 
             # Merge with existing data if partial update
             new_data = {**record.data, **data} if partial else data
@@ -214,15 +218,18 @@ class MicroAppDataModel(BaseModel):
                 )
             )
 
-            # Apply filters
+            # Apply filters using safe JSONB operations
             if filters:
                 for key, value in filters.items():
                     keys = key.split(".")
-                    json_path = MicroAppData.data
-                    for k in keys[:-1]:
-                        json_path = json_path[k]
-                    json_path = json_path[keys[-1]]
-                    query = query.where(json_path == cast(value, JSONB))
+                    # Validate key components to prevent injection
+                    for k in keys:
+                        if not k.replace("_", "").replace("-", "").isalnum():
+                            raise ValueError(f"Invalid key component: {k}")
+
+                    # Use PostgreSQL's jsonb_extract_path_text with array of keys
+                    path_expr = func.jsonb_extract_path_text(MicroAppData.data, *keys)
+                    query = query.where(path_expr == str(value))
 
             result = await session.execute(query)
             return result.scalar() or 0
@@ -238,11 +245,14 @@ class MicroAppDataModel(BaseModel):
     ) -> float | int | None:
         """Perform aggregation operations on data records"""
         async with get_session() as session:
-            # Build the base query
+            # Build the base query using safe JSON path extraction
             keys = field.split(".")
-            json_path = MicroAppData.data
+            # Validate key components to prevent injection
             for k in keys:
-                json_path = json_path[k]
+                if not k.replace("_", "").replace("-", "").isalnum():
+                    raise ValueError(f"Invalid key component: {k}")
+
+            json_path = func.jsonb_extract_path(MicroAppData.data, *keys)
 
             # Select the appropriate aggregation function
             if operation == "sum":
@@ -265,15 +275,20 @@ class MicroAppDataModel(BaseModel):
                 )
             )
 
-            # Apply filters
+            # Apply filters using safe JSONB operations
             if filters:
                 for key, value in filters.items():
                     filter_keys = key.split(".")
-                    filter_path = MicroAppData.data
-                    for k in filter_keys[:-1]:
-                        filter_path = filter_path[k]
-                    filter_path = filter_path[filter_keys[-1]]
-                    query = query.where(filter_path == cast(value, JSONB))
+                    # Validate key components to prevent injection
+                    for k in filter_keys:
+                        if not k.replace("_", "").replace("-", "").isalnum():
+                            raise ValueError(f"Invalid key component: {k}")
+
+                    # Use PostgreSQL's jsonb_extract_path_text with array of keys
+                    filter_expr = func.jsonb_extract_path_text(
+                        MicroAppData.data, *filter_keys
+                    )
+                    query = query.where(filter_expr == str(value))
 
             result = await session.execute(query)
             return result.scalar()
