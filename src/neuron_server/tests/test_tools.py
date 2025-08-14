@@ -8,6 +8,7 @@ from langchain.tools import BaseTool
 from neuron_server.llms.tools import (
     get_tools,
     memory_tools,
+    micro_app_tools,
     personality_tools,
     schedule_tools,
     thread_memory_tools,
@@ -44,6 +45,7 @@ class TestTools:
             "code_interpreter",
             "glados",
             "neuron",
+            "micro_apps",
         }
         assert set(tool_sets.keys()) == expected_categories
 
@@ -55,14 +57,16 @@ class TestTools:
             tools = await get_tools("reasoning")
             # Should include reasoning tools plus required tools
             assert any(isinstance(tool, BaseTool) for tool in tools)
-            # WebFetchTool and InspectImageTool are always included
+            # WebFetchTool, InspectImageTool and micro_app_tools are always included
+            # memory_tools are not included when memory_enabled = False
             assert (
                 len(tools)
                 == len(tool_sets["reasoning"])
                 + len(personality_tools)
                 + len(schedule_tools)
                 + len(thread_memory_tools)
-                + 2
+                + len(micro_app_tools)
+                + 2  # WebFetchTool and InspectImageTool
             )
 
     @pytest.mark.asyncio
@@ -77,7 +81,9 @@ class TestTools:
                 + len(personality_tools)
                 + len(schedule_tools)
                 + len(thread_memory_tools)
+                + len(micro_app_tools)
                 + 2  # WebFetchTool and InspectImageTool always included
+                # memory_tools are not included when memory_enabled = False
             )
             assert len(tools) == expected_count
 
@@ -133,12 +139,14 @@ class TestTools:
             mock_config.memory_enabled = False
             tools = await get_tools("")
             # Should only include required tools
-            # WebFetchTool and InspectImageTool are always included
+            # WebFetchTool, InspectImageTool and micro_app_tools are always included
+            # memory_tools are not included when memory_enabled = False
             expected_count = (
                 len(personality_tools)
                 + len(schedule_tools)
                 + len(thread_memory_tools)
-                + 2
+                + len(micro_app_tools)
+                + 2  # WebFetchTool and InspectImageTool
             )
             assert len(tools) == expected_count
 
@@ -150,12 +158,14 @@ class TestTools:
             # Should not raise exception, just ignore invalid category
             tools = await get_tools("invalid_category")
             # Should only include required tools
-            # WebFetchTool and InspectImageTool are always included
+            # WebFetchTool, InspectImageTool and micro_app_tools are always included
+            # memory_tools are not included when memory_enabled = False
             expected_count = (
                 len(personality_tools)
                 + len(schedule_tools)
                 + len(thread_memory_tools)
-                + 2
+                + len(micro_app_tools)
+                + 2  # WebFetchTool and InspectImageTool
             )
             assert len(tools) == expected_count
 

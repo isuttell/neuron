@@ -1,8 +1,6 @@
+from collections.abc import Sequence
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any, Self
-
-if TYPE_CHECKING:
-    from collections.abc import Sequence
+from typing import Any, Self
 from uuid import UUID, uuid4
 
 import jsonschema

@@ -1,10 +1,7 @@
 import asyncio
 import json
 import logging
-from typing import TYPE_CHECKING, Any
-
-if TYPE_CHECKING:
-    from neuron_server.models.micro_app_model import MicroAppActionModel
+from typing import Any
 from uuid import UUID
 
 from langchain.tools import BaseTool
@@ -12,7 +9,7 @@ from langchain_core.runnables import RunnableConfig
 from pydantic import BaseModel, Field
 
 from neuron_server.models.micro_app_data_model import MicroAppDataModel
-from neuron_server.models.micro_app_model import MicroAppModel
+from neuron_server.models.micro_app_model import MicroAppActionModel, MicroAppModel
 
 logger = logging.getLogger(__name__)
 
