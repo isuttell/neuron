@@ -2,6 +2,7 @@ import React from "react";
 import { Bot, AlertCircle, Loader2, Edit, Pen } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import FuzzyTimeAgo from "@/components/FuzzyTimeAgo";
 import Content from "./Content";
@@ -71,6 +72,7 @@ const PersonalityChatItem: React.FC<PersonalityChatItemProps> = ({
   const isPersonality = message.user_id === null;
   const isOptimistic = 'isOptimistic' in message && message.isOptimistic;
   const hasError = 'error' in message && message.error;
+  const isStreaming = 'isStreaming' in message && message.isStreaming;
 
   // Check if message has been edited (created_at != updated_at)
   const isEdited = !isOptimistic && 'created_at' in message && 'updated_at' in message &&
@@ -173,12 +175,21 @@ const PersonalityChatItem: React.FC<PersonalityChatItemProps> = ({
 
             {/* Message Content */}
             <div className="prose prose-sm max-w-none break-words">
-              <Content
-                content={message.content}
-                onPromptClick={onPromptClick}
-                promptColor={promptColor}
-                promptHoverColor={promptHoverColor}
-              />
+              {isStreaming && !message.content ? (
+                // Show skeleton when streaming with no content yet
+                <div className="flex gap-2 mt-2">
+                  <Skeleton className="h-4 w-[33px]" />
+                  <Skeleton className="h-4 w-[20px]" />
+                  <Skeleton className="h-4 w-[66px]" />
+                </div>
+              ) : (
+                <Content
+                  content={message.content}
+                  onPromptClick={onPromptClick}
+                  promptColor={promptColor}
+                  promptHoverColor={promptHoverColor}
+                />
+              )}
             </div>
 
             {/* Timestamp */}

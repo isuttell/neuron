@@ -61,3 +61,10 @@ class PersonalityMessageDeletedEvent(OutgoingEvent):
     type: Literal["personality_message_deleted"] = "personality_message_deleted"
     personality_id: UUID
     message_id: UUID
+
+
+class PersonalityChatPartialMessageEvent(OutgoingEvent):
+    type: Literal["personality_chat_partial"] = "personality_chat_partial"
+    personality_id: UUID
+    room_id: UUID
+    message: PartialMessage  # Use PartialMessage like regular partial messages

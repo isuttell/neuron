@@ -4,7 +4,6 @@ import MediaTimeline from "@/components/MediaTimeline";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import DeletePersonalityRoomDialog from "@/components/DeletePersonalityRoomDialog";
 import { Spinner } from "@/components/ui/spinner";
-import { Skeleton } from "@/components/ui/skeleton";
 import Loading from "@/lib/loading";
 import PersonalityRoomUsersDialog from "@/rooms/PersonalityRoomUsersDialog";
 import { ErrorPage } from "@/components/ErrorPage";
@@ -76,6 +75,9 @@ export default function PersonalityChatRoom() {
     (state) => roomId ? selectMediaByRoomId(state, roomId) : [],
     shallowEqual
   );
+
+  // Check if we have a streaming message
+  // const hasStreamingMessage = messages.some(msg => 'isStreaming' in msg && msg.isStreaming);
 
   // Check if AI is working (status is not empty and not idle)
   const isAiWorking = room?.status !== "" && room?.status !== null && room?.status !== "contemplating";
@@ -312,17 +314,6 @@ export default function PersonalityChatRoom() {
                 {loading && (
                   <div className="flex my-4 pl-5">
                     <Spinner size={48} strokeWidth={2} className="text-muted-foreground" />
-                  </div>
-                )}
-
-                {isAiWorking && (
-                  <div
-                    ref={skeletonRef}
-                    className="flex flex-col space-y-2 pl-10"
-                  >
-                    <Skeleton className="h-4 w-[250px]" />
-                    <Skeleton className="h-4 w-[200px]" />
-                    <Skeleton className="h-4 w-[180px]" />
                   </div>
                 )}
 

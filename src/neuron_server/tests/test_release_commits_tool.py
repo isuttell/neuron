@@ -357,8 +357,7 @@ class TestReleaseCommitsTool:
         with patch("aiohttp.ClientSession.get") as mock_get:
             # Empty tags dict means tag won't be found (404)
             mock_get.side_effect = self.create_mock_get_handler(
-                commits_list_response=sample_commits,
-                tags={}
+                commits_list_response=sample_commits, tags={}
             )
 
             # Execute query
@@ -481,7 +480,7 @@ class TestReleaseCommitsTool:
             # Use the mock handler that handles different endpoints properly
             mock_get.side_effect = self.create_mock_get_handler(
                 commits_list_response=sample_commits,
-                tags={}  # Empty tags means 404 for tag lookups
+                tags={},  # Empty tags means 404 for tag lookups
             )
 
             # Execute query

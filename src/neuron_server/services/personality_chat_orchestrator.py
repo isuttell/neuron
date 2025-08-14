@@ -1,5 +1,6 @@
 import asyncio
 import os
+from datetime import datetime
 from uuid import UUID
 
 import aiofiles
@@ -539,7 +540,6 @@ AGENT ACTION: {action}"""
         personality: PersonalityModel,
         chat_history: str,
         latest_message: str,
-        user_id: str,
         action: str = "working on your request",
     ) -> None:
         """Generate and update personality status in background.
@@ -608,6 +608,7 @@ AGENT ACTION: {action}"""
         message: PersonalityMessageModel,
         username: str,
         existing_thread_id: UUID | None = None,
+        skeleton_message_id: UUID | None = None,
     ) -> tuple[str, list[ToolMediaArtifact], UUID | None]:
         """Generate a personality response using the agent system.
 
@@ -620,6 +621,7 @@ AGENT ACTION: {action}"""
             username: The username of the user who sent the message
             existing_thread_id: Optional existing thread ID to reuse instead of \
 creating new
+            skeleton_message_id: Optional ID of skeleton message to use for streaming
 
         Returns:
             Tuple of (response text, list of media artifacts, thread_id).
@@ -739,20 +741,67 @@ creating new
             # Create message list for agent
             messages = [HumanMessage(content=prompt)]
 
+            # Create streaming callback for partial messages
+            message_index = 0
+
+            async def streaming_callback(token: str) -> None:
+                """Callback to handle streaming tokens during agent execution.
+
+                Args:
+                    token: The token/text chunk being streamed
+                """
+                nonlocal message_index
+
+                # Only stream if we have a skeleton message ID
+                if not skeleton_message_id:
+                    return
+
+                # Create a PartialMessage similar to how regular threads work
+                from neuron_server.controllers.events.message_events import (
+                    PartialMessage,
+                    PersonalityChatPartialMessageEvent,
+                )
+
+                # Create content in the same format as regular partial messages
+                content = [{"type": "text", "text": token, "index": message_index}]
+
+                partial_msg = PartialMessage(
+                    id=str(skeleton_message_id),  # Use skeleton message ID
+                    type="ai",
+                    content=content,
+                    thread_id=thread.id,
+                    index=message_index,
+                    status="streaming",
+                    node="personality_chat",
+                    created_at=datetime.now().isoformat(),
+                )
+
+                partial_event = PersonalityChatPartialMessageEvent(
+                    personality_id=personality_id,
+                    room_id=room_id,
+                    message=partial_msg,
+                )
+
+                await secure_pubsub.publish_personality_room_message(
+                    personality_id, room_id, partial_event
+                )
+
+                message_index += 1
+
             # Create status callback that updates room status
             async def status_callback(
-                thread_id: UUID,
+                _: UUID,  # thread_id not used
                 raw_status: str,
                 generated_message: str,
-                human_message: str | None,
+                __: str | None,  # human_message not used
             ) -> None:
                 """Callback to update personality room status based on agent status.
 
                 Args:
-                    thread_id: The thread ID (temporary for personality chat)
+                    _: The thread ID (unused)
                     raw_status: The raw status (e.g., "update_memory", "thinking")
                     generated_message: The AI-generated status message
-                    human_message: The user's message that triggered this
+                    __: The user's message (unused)
                 """
                 logger.debug(
                     f"Status callback called: raw_status={raw_status}, "
@@ -771,12 +820,12 @@ creating new
                 )
 
             # Create error callback for this personality room
-            async def error_callback(error_message: str, user_id: str | None) -> None:
+            async def error_callback(error_message: str, _: str | None) -> None:
                 """Callback to handle errors during agent execution.
 
                 Args:
                     error_message: The error message to send
-                    user_id: The user ID who triggered the error (unused here)
+                    _: The user ID who triggered the error (unused)
                 """
                 try:
                     # Publish error to the personality room
@@ -803,6 +852,7 @@ creating new
                 thread_id=thread.id,  # Use real thread_id
                 status_callback=status_callback,
                 error_callback=error_callback,
+                streaming_callback=streaming_callback,  # Pass the streaming callback
                 create_media_items=True,  # Create media items from artifacts
             )
             response_text, media_artifacts = response_result
@@ -821,7 +871,6 @@ creating new
         personality_id: UUID,
         room_id: UUID,
         response_content: str,
-        user_id: str,
         media_artifacts: list[ToolMediaArtifact] = None,
         thread_id: UUID | None = None,
     ) -> None:
@@ -888,6 +937,102 @@ creating new
             logger.error(
                 f"Error creating/broadcasting personality response: {e}", exc_info=True
             )
+
+    async def _create_and_broadcast_skeleton_message(
+        self,
+        personality_id: UUID,
+        room_id: UUID,
+    ) -> PersonalityMessageModel:
+        """Create a skeleton message for streaming.
+
+        Args:
+            personality_id: The personality ID
+            room_id: The room ID
+
+        Returns:
+            The created skeleton message
+        """
+        # Create skeleton AI message before agent execution
+        skeleton_params = PersonalityMessageModel.CreateParams(
+            personality_id=personality_id,
+            personality_room_id=room_id,
+            content="",  # Empty content for skeleton
+            user_id=None,  # AI message
+        )
+        skeleton_message = await PersonalityMessageModel.create(params=skeleton_params)
+
+        # Broadcast skeleton message immediately so UI can show streaming
+        # Add isStreaming flag to message data so frontend shows skeleton
+        skeleton_msg_data = skeleton_message.model_dump()
+        skeleton_msg_data["isStreaming"] = True
+        skeleton_event = PersonalityMessageEvent(
+            personality_messages=[skeleton_msg_data],
+            media_items=[],
+            personality_message_media_items=[],
+        )
+        await secure_pubsub.publish_personality_room_message(
+            personality_id, room_id, skeleton_event
+        )
+
+        return skeleton_message
+
+    async def _finalize_and_broadcast_message(
+        self,
+        skeleton_message: PersonalityMessageModel,
+        personality_id: UUID,
+        room_id: UUID,
+        response_text: str,
+        media_artifacts: list[ToolMediaArtifact],
+    ) -> None:
+        """Update skeleton message with final content and broadcast.
+
+        Args:
+            skeleton_message: The skeleton message to update
+            personality_id: The personality ID
+            room_id: The room ID
+            response_text: The final response text
+            media_artifacts: Media artifacts to associate
+        """
+        # Update skeleton message with final content
+        update_params = PersonalityMessageModel.UpdateParams(
+            message_id=skeleton_message.id,
+            content=response_text,
+        )
+        final_message = await PersonalityMessageModel.update(params=update_params)
+
+        # Associate media items with the message
+        media_items_to_broadcast = []
+        if media_artifacts:
+            media_item_ids = []
+            for artifact in media_artifacts:
+                for item in artifact.items:
+                    media_item_ids.append(item.id)
+                    # Fetch the created media item for broadcasting
+                    media_item = await MediaItemModel.get(item.id)
+                    if media_item:
+                        media_items_to_broadcast.append(media_item)
+
+            # Associate media items with the personality message
+            if media_item_ids:
+                await PersonalityMessageModel.associate_media_items(
+                    skeleton_message.id, media_item_ids
+                )
+
+        # Broadcast final message update
+        final_event = PersonalityMessageEvent(
+            personality_messages=[final_message.model_dump()],
+            media_items=[item.model_dump() for item in media_items_to_broadcast],
+            personality_message_media_items=[
+                {
+                    "personality_message_id": str(final_message.id),
+                    "media_item_id": str(item.id),
+                }
+                for item in media_items_to_broadcast
+            ],
+        )
+        await secure_pubsub.publish_personality_room_message(
+            personality_id, room_id, final_event
+        )
 
     async def process_user_message(
         self, personality_id: UUID, message_id: UUID
@@ -1011,7 +1156,6 @@ creating new
                         personality=personality,
                         chat_history=chat_history,
                         latest_message=message.content,
-                        user_id=message.user_id,
                         action="thinking about your message",
                     )
                 )
@@ -1021,11 +1165,16 @@ creating new
                 if message.user_id in users:
                     username = users[message.user_id].nickname
 
-                # Generate personality response
+                # Create and broadcast skeleton message for streaming
+                skeleton_message = await self._create_and_broadcast_skeleton_message(
+                    personality_id, message.personality_room_id
+                )
+
+                # Generate personality response with skeleton message ID
                 (
                     response_text,
                     media_artifacts,
-                    thread_id,
+                    _,  # thread_id not used
                 ) = await self.generate_personality_response(
                     personality_id=personality_id,
                     room_id=message.personality_room_id,
@@ -1034,16 +1183,16 @@ creating new
                     message=message,
                     username=username,
                     existing_thread_id=analysis.extracted_thread_id,
+                    skeleton_message_id=skeleton_message.id,  # Pass skeleton ID
                 )
 
-                # Create and broadcast the response
-                await self.create_and_broadcast_personality_response(
+                # Finalize and broadcast the complete message
+                await self._finalize_and_broadcast_message(
+                    skeleton_message,
                     personality_id,
                     message.personality_room_id,
                     response_text,
-                    message.user_id,
                     media_artifacts,
-                    thread_id,
                 )
 
         except Exception as e:
