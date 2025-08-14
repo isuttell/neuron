@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import warnings
 from typing import Any
 
 from langchain.tools import BaseTool
@@ -7,6 +8,13 @@ from langchain_core.runnables import RunnableConfig
 from pydantic import BaseModel, Field, field_validator
 
 from neuron_server.models.micro_app_model import MicroAppActionModel, MicroAppModel
+
+# Suppress Pydantic field name shadowing warnings for this module
+warnings.filterwarnings(
+    "ignore",
+    message="Field name .* shadows an attribute in parent",
+    category=UserWarning
+)
 
 logger = logging.getLogger(__name__)
 

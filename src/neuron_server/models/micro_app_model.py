@@ -1,3 +1,4 @@
+import warnings
 from datetime import UTC, datetime
 from typing import Self
 from uuid import UUID, uuid4
@@ -8,6 +9,13 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from neuron_server.database import MicroApp, MicroAppAction, get_session
+
+# Suppress Pydantic field name shadowing warnings for this module
+warnings.filterwarnings(
+    "ignore",
+    message="Field name .* shadows an attribute in parent",
+    category=UserWarning
+)
 
 
 class MicroAppActionModel(BaseModel):
