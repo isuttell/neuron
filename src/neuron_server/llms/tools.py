@@ -41,7 +41,6 @@ from neuron_server.tools.homeassistant_sensor_tool import (
 from neuron_server.tools.homeassistant_service_tool import (
     HomeAssistantServiceTool,
 )
-from neuron_server.tools.inspect_document_tool import InspectDocumentTool
 from neuron_server.tools.inspect_image_tool import InspectImageTool
 from neuron_server.tools.media_list_access_tool import MediaListAccessTool
 from neuron_server.tools.media_list_add_item_tool import MediaListAddItemTool
@@ -93,6 +92,7 @@ from neuron_server.tools.send_notification_tool import SendNotificationTool
 from neuron_server.tools.set_thread_memory_tool import SetThreadMemoryTool
 from neuron_server.tools.sun_tool import SunTool
 from neuron_server.tools.tavily_search_tool import TavilySearchTool
+from neuron_server.tools.web_fetch_tool import WebFetchTool
 from neuron_server.tools.whisper_stt_tool import WhisperSTTTool
 
 homeassistant_api = HomeAssistantAPI(token=config.homeassistant.token)
@@ -125,20 +125,14 @@ tool_sets: dict[str, list[BaseTool]] = {
         GraphImportTool(),
         GraphWebsiteImportTool(),
     ],
-    "inspect": [
-        InspectImageTool(),
-        InspectDocumentTool(),
-    ],
     "document_query": [],
     "image": [
         ReplicateImageGenerationTool(),
         ReplicateKontextImageTool(),
-        InspectImageTool(),
         AppImageTool(),
     ],
     "video": [
         FFmpegTool(),
-        InspectImageTool(),
         ReplicateVideoGenerationTool(),
         ReplicateAudioGenerationTool(),
         ReplicateMusicGenerationTool(),
@@ -158,7 +152,7 @@ tool_sets: dict[str, list[BaseTool]] = {
     ],
     "search": [
         TavilySearchTool(),
-        InspectDocumentTool(),
+        WebFetchTool(),
     ],
     "arxiv": [
         ArxivSearchTool(),
@@ -218,7 +212,6 @@ default_tools: list[BaseTool] = list(
     {
         tool.name: tool
         for tool in [
-            *tool_sets["inspect"],
             *tool_sets["tts"],
         ]
     }.values()
@@ -276,6 +269,9 @@ async def get_tools(query: str) -> list[BaseTool]:
     ts.extend(personality_tools)
     ts.extend(schedule_tools)
     ts.extend(thread_memory_tools)
+    # Always include WebFetchTool and InspectImageTool
+    ts.append(WebFetchTool())
+    ts.append(InspectImageTool())
 
     return list({tool.name: tool for tool in ts}.values())
 

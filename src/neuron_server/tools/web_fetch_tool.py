@@ -25,13 +25,13 @@ from neuron_server.tools.memory_recall_tool import MemoryStats
 from neuron_server.vectorstores import memories_store
 
 
-class InspectDocumentToolError(BaseDocumentError):
-    """Error raised by the InspectDocumentTool."""
+class WebFetchToolError(BaseDocumentError):
+    """Error raised by the WebFetchTool."""
 
     pass
 
 
-class InspectDocumentToolArgs(BaseModel):
+class WebFetchToolArgs(BaseModel):
     url: str = Field(
         description=(
             "The url of the document or website to inspect. Supports html websites, "
@@ -56,8 +56,8 @@ class InspectDocumentToolArgs(BaseModel):
     )
 
 
-class InspectDocumentTool(BaseTool):
-    name: str = "document_inspect"
+class WebFetchTool(BaseTool):
+    name: str = "web_fetch"
     description: str = """
 This tool downloads documents, scrapes websites, extracts transcripts from youtube
 videos, and returns the raw text.
@@ -76,7 +76,7 @@ vtt
 pdf
 youtube
 """.strip()
-    args_schema: type[InspectDocumentToolArgs] = InspectDocumentToolArgs
+    args_schema: type[WebFetchToolArgs] = WebFetchToolArgs
     response_format: str = "content_and_artifact"
 
     def _run(
@@ -114,7 +114,7 @@ youtube
                 },
             )
             if len(loaded_docs) == 0:
-                raise InspectDocumentToolError("No documents found")
+                raise WebFetchToolError("No documents found")
 
             results = []
             for index, doc in enumerate(loaded_docs):
@@ -244,7 +244,7 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    tool = InspectDocumentTool()
+    tool = WebFetchTool()
     results = tool._run(
         url=args.url,
         mode=args.mode,

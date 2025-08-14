@@ -27,7 +27,6 @@ class TestTools:
             "finance",
             "kepler",
             "graph",
-            "inspect",
             "document_query",
             "image",
             "video",
@@ -56,22 +55,29 @@ class TestTools:
             tools = await get_tools("reasoning")
             # Should include reasoning tools plus required tools
             assert any(isinstance(tool, BaseTool) for tool in tools)
-            assert len(tools) == len(tool_sets["reasoning"]) + len(
-                personality_tools
-            ) + len(schedule_tools) + len(thread_memory_tools)
+            # WebFetchTool and InspectImageTool are always included
+            assert (
+                len(tools)
+                == len(tool_sets["reasoning"])
+                + len(personality_tools)
+                + len(schedule_tools)
+                + len(thread_memory_tools)
+                + 2
+            )
 
     @pytest.mark.asyncio
     async def test_get_tools_multiple_categories(self) -> None:
         """Test get_tools with multiple categories."""
         with patch("neuron_server.llms.tools.config") as mock_config:
             mock_config.memory_enabled = False
-            tools = await get_tools("reasoning+inspect")
+            tools = await get_tools("reasoning+image")
             expected_count = (
                 len(tool_sets["reasoning"])
-                + len(tool_sets["inspect"])
+                + len(tool_sets["image"])
                 + len(personality_tools)
                 + len(schedule_tools)
                 + len(thread_memory_tools)
+                + 2  # WebFetchTool and InspectImageTool always included
             )
             assert len(tools) == expected_count
 
@@ -97,7 +103,7 @@ class TestTools:
         with patch("neuron_server.llms.tools.config") as mock_config:
             mock_config.memory_enabled = False
             # Use categories that might share tools
-            tools = await get_tools("inspect+image")  # Both contain InspectImageTool
+            tools = await get_tools("image+video")  # Both might share some tools
             # Count unique tool names
             unique_names = {tool.name for tool in tools}
             assert len(tools) == len(unique_names)
@@ -127,8 +133,12 @@ class TestTools:
             mock_config.memory_enabled = False
             tools = await get_tools("")
             # Should only include required tools
+            # WebFetchTool and InspectImageTool are always included
             expected_count = (
-                len(personality_tools) + len(schedule_tools) + len(thread_memory_tools)
+                len(personality_tools)
+                + len(schedule_tools)
+                + len(thread_memory_tools)
+                + 2
             )
             assert len(tools) == expected_count
 
@@ -140,8 +150,12 @@ class TestTools:
             # Should not raise exception, just ignore invalid category
             tools = await get_tools("invalid_category")
             # Should only include required tools
+            # WebFetchTool and InspectImageTool are always included
             expected_count = (
-                len(personality_tools) + len(schedule_tools) + len(thread_memory_tools)
+                len(personality_tools)
+                + len(schedule_tools)
+                + len(thread_memory_tools)
+                + 2
             )
             assert len(tools) == expected_count
 
