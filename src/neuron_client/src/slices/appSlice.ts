@@ -37,6 +37,7 @@ interface AppState {
   showErrorModal: boolean; // Track if error modal should be shown
   errorModalMessage: string | null; // Error message for modal
   selectedPersonalityId: string | null; // Track selected personality
+  modePreference: 'chat' | 'agent'; // Track user's preferred mode (chat or agent)
 }
 
 // Load initial state from localStorage
@@ -54,6 +55,7 @@ const loadInitialState = (): AppState => {
     showErrorModal: false,
     errorModalMessage: null,
     selectedPersonalityId: null, // Initialize selectedPersonalityId
+    modePreference: 'agent', // Default to agent mode
   };
 
   try {
@@ -136,6 +138,10 @@ export const appSlice = createSlice({
       state.selectedPersonalityId = action.payload;
       saveState(state);
     },
+    setModePreference: (state, action: PayloadAction<'chat' | 'agent'>) => {
+      state.modePreference = action.payload;
+      saveState(state);
+    },
     handleApiError: (state, action: PayloadAction<SerializableError>) => {
       const error = action.payload;
 
@@ -210,6 +216,7 @@ export const {
   setConnectionStatus,
   setErrorModal,
   setSelectedPersonalityId,
+  setModePreference,
   handleApiError
 } = appSlice.actions;
 
@@ -223,6 +230,7 @@ export const getFavoritePersonalitiesCollapsed = (state: RootState) => state.app
 export const getBuildHashMismatch = (state: RootState) => state.app.buildHashMismatch;
 export const getConnectionStatus = (state: RootState) => state.app.connectionStatus;
 export const getSelectedPersonalityId = (state: RootState) => state.app.selectedPersonalityId;
+export const getModePreference = (state: RootState) => state.app.modePreference;
 export const getErrorModal = createSelector(
   (state: RootState) => state.app.showErrorModal,
   (state: RootState) => state.app.errorModalMessage,
