@@ -156,6 +156,7 @@ async def post_thread_message(thread_id: UUID) -> tuple[dict[str, str], int]:
             "username": request.token.nickname,
             "prompt": prompt,
             "temp_id": temp_id,
+            "user_roles": request.token.roles,
         }
     )
 
@@ -202,6 +203,7 @@ async def apost_message(
             "user_id": session.user_id,
             "username": session.nickname,
             "prompt": event.prompt,
+            "user_roles": session.token.roles,
         }
     )
 

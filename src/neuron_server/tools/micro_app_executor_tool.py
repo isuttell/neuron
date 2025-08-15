@@ -73,8 +73,7 @@ class MicroAppExecutorTool(BaseTool):
             if not action:
                 available_actions = ", ".join([a.name for a in app.actions])
                 msg = (
-                    f"Action '{action_name}' not found. "
-                    f"Available: {available_actions}"
+                    f"Action '{action_name}' not found. Available: {available_actions}"
                 )
                 raise ValueError(msg)
 
@@ -85,7 +84,6 @@ class MicroAppExecutorTool(BaseTool):
                 parameters=parameters,
                 user_id=user_id,
             )
-
 
         except ValueError as e:
             logger.error("Validation error executing action: %s", e)

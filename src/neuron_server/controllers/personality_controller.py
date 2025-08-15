@@ -133,10 +133,16 @@ def validate_tool_set_permissions(tool_set: str | None, user_roles: list[str]) -
 
 
 async def ainvoke_update_personality(
-    llm: LLM, personality: PersonalityModel, context: str, prompt: str
+    llm: LLM,
+    personality: PersonalityModel,
+    context: str,
+    prompt: str,
+    user_roles: list[str] | None = None,
 ) -> str:
     tools = (
-        await get_tools(personality.tool_set) if personality.tool_set else default_tools
+        await get_tools(personality.tool_set, user_roles)
+        if personality.tool_set
+        else default_tools
     )
     chain: Runnable = (
         personality_update_prompt | llm.model.bind_tools(tools) | StrOutputParser()
@@ -734,6 +740,7 @@ async def post_personality_context(personality_id: UUID) -> dict[str, str]:
         personality=personality,
         context=payload.context,
         prompt=payload.prompt,
+        user_roles=request.token.roles,
     )
     return {"context": context}
 

@@ -13,7 +13,7 @@ from neuron_server.models.micro_app_model import MicroAppActionModel, MicroAppMo
 warnings.filterwarnings(
     "ignore",
     message="Field name .* shadows an attribute in parent",
-    category=UserWarning
+    category=UserWarning,
 )
 
 logger = logging.getLogger(__name__)

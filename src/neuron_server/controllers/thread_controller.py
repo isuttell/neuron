@@ -202,6 +202,7 @@ async def post_create_thread() -> dict[str, dict]:
                     "user_id": request.token.user_id,
                     "username": request.token.nickname,
                     "prompt": prompt,
+                    "user_roles": request.token.roles,
                 }
             )
         )
