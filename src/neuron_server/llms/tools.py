@@ -57,6 +57,7 @@ from neuron_server.tools.media_list_reorder_items_tool import (
 from neuron_server.tools.media_list_update_tool import MediaListUpdateTool
 from neuron_server.tools.memory_recall_tool import MemoryRecallTool
 from neuron_server.tools.memory_store_tool import MemoryStoreTool
+from neuron_server.tools.micro_app_admin_data_tool import MicroAppAdminDataTool
 from neuron_server.tools.micro_app_create_tool import MicroAppCreateTool
 from neuron_server.tools.micro_app_data_tool import MicroAppDataTool
 from neuron_server.tools.micro_app_executor_tool import MicroAppExecutorTool
@@ -100,6 +101,11 @@ from neuron_server.tools.web_fetch_tool import WebFetchTool
 from neuron_server.tools.whisper_stt_tool import WhisperSTTTool
 
 homeassistant_api = HomeAssistantAPI(token=config.homeassistant.token)
+
+# Admin-only tools that require admin role to access
+ADMIN_ONLY_TOOLS = [
+    "micro_app_admin_data",
+]
 
 # Initialize toolsets that require configuration
 glados_toolset = GladosToolset()
@@ -215,6 +221,7 @@ tool_sets: dict[str, list[BaseTool]] = {
         MicroAppExecutorTool(),
         MicroAppManagerTool(),
         MicroAppDataTool(),
+        MicroAppAdminDataTool(),
     ],
 }
 
@@ -262,14 +269,16 @@ micro_app_tools: list[BaseTool] = [
     MicroAppExecutorTool(),
     MicroAppManagerTool(),
     MicroAppDataTool(),
+    MicroAppAdminDataTool(),
 ]
 
 
-async def get_tools(query: str) -> list[BaseTool]:
+async def get_tools(query: str, user_roles: list[str] | None = None) -> list[BaseTool]:
     """Get tools based on query string.
 
     Args:
         query: Query string containing tool categories separated by '+'
+        user_roles: List of user roles for filtering admin tools
 
     Returns:
         List of tools from requested categories plus required tools
@@ -289,6 +298,10 @@ async def get_tools(query: str) -> list[BaseTool]:
     ts.append(WebFetchTool())
     ts.append(InspectImageTool())
     ts.extend(micro_app_tools)
+
+    # Filter admin tools if user doesn't have admin role
+    if user_roles is None or "admin" not in user_roles:
+        ts = [tool for tool in ts if tool.name not in ADMIN_ONLY_TOOLS]
 
     return list({tool.name: tool for tool in ts}.values())
 

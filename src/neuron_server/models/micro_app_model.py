@@ -14,7 +14,7 @@ from neuron_server.database import MicroApp, MicroAppAction, get_session
 warnings.filterwarnings(
     "ignore",
     message="Field name .* shadows an attribute in parent",
-    category=UserWarning
+    category=UserWarning,
 )
 
 
@@ -229,7 +229,6 @@ class MicroAppModel(BaseModel):
 
             await session.commit()
             return True
-
 
     @classmethod
     async def delete(cls, app_id: UUID) -> bool:

@@ -37,6 +37,7 @@ class StreamArgs(TypedDict, total=False):
         prompt: The prompt text
         location: The location string (default: San Diego coordinates)
         temp_id: Temporary ID for optimistic updates (optional)
+        user_roles: User roles for filtering admin tools (optional)
     """
 
     thread_id: UUID
@@ -46,6 +47,7 @@ class StreamArgs(TypedDict, total=False):
     prompt: str
     location: str
     temp_id: str | None
+    user_roles: list[str] | None
 
 
 # Default location for backward compatibility @TODO make dynamic
@@ -83,6 +85,7 @@ async def execute_agent_with_messages(  # noqa: PLR0913
     location: str = DEFAULT_LOCATION,
     thread_id: UUID | None = None,
     create_media_items: bool = False,
+    user_roles: list[str] | None = None,
 ) -> list[HumanMessage | AIMessage]:
     """Execute agent with custom messages list.
 
@@ -99,6 +102,7 @@ async def execute_agent_with_messages(  # noqa: PLR0913
         thread_id: Optional thread ID for creating media items (default: None)
         create_media_items: Whether to create MediaItem records from artifacts
             (default: False, requires thread_id)
+        user_roles: List of user roles for filtering admin tools
 
     Returns:
         All messages from the agent execution, including tool calls and responses
@@ -111,7 +115,11 @@ async def execute_agent_with_messages(  # noqa: PLR0913
         raise BadRequest("Personality not found")
 
     llm: LLM = await ProviderModelModel.get_active_llm()
-    tools = await get_tools(personality.tool_set) if personality.tool_set else None
+    tools = (
+        await get_tools(personality.tool_set, user_roles)
+        if personality.tool_set
+        else None
+    )
     graph = llm.create_workflow(tools)
     graph.checkpointer = None
     result = await graph.ainvoke(
@@ -221,6 +229,7 @@ async def execute_agent_with_messages_streaming(  # noqa: PLR0913
     error_callback: ErrorCallback | None = None,
     streaming_callback: Callable[[str], Awaitable[None]] | None = None,
     create_media_items: bool = False,
+    user_roles: list[str] | None = None,
 ) -> tuple[str, list]:
     """Execute agent with custom messages list using streaming and status callbacks.
 
@@ -239,6 +248,7 @@ async def execute_agent_with_messages_streaming(  # noqa: PLR0913
         error_callback: Optional callback for error handling
         streaming_callback: Optional callback for streaming tokens
         create_media_items: Whether to create MediaItem records from artifacts
+        user_roles: List of user roles for filtering admin tools
 
     Returns:
         Tuple of (response text, media artifacts)
@@ -264,6 +274,7 @@ async def execute_agent_with_messages_streaming(  # noqa: PLR0913
         username=username,
         prompt=prompt,
         location=location,
+        user_roles=user_roles,
     )
 
     # Add create_media_items to args if specified

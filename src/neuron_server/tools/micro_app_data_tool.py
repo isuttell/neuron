@@ -289,8 +289,7 @@ Updated at: {updated.updated_at.isoformat()}"""
         """Create multiple records at once"""
         if not data or not isinstance(data, list):
             msg = (
-                "'data' parameter (list of dicts) is required for "
-                "bulk_create operation"
+                "'data' parameter (list of dicts) is required for bulk_create operation"
             )
             raise ValueError(msg)
 

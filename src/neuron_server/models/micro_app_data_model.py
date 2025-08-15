@@ -7,6 +7,9 @@ import jsonschema
 from pydantic import BaseModel, Field
 from sqlalchemy import Float, and_, func, select
 from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.sql import ColumnElement
+from sqlalchemy.sql.functions import Function
+from sqlalchemy.sql.selectable import Select
 
 from neuron_server.database import MicroApp, MicroAppData, get_session
 
@@ -332,3 +335,168 @@ class MicroAppDataModel(BaseModel):
                 )
                 for record in records
             ]
+
+    @classmethod
+    async def admin_query(
+        cls,
+        app_id: UUID,
+        filters: dict[str, Any] | None = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> Sequence[Self]:
+        """Query data records for a micro-app across ALL users (admin only)"""
+        async with get_session() as session:
+            query = select(MicroAppData).where(MicroAppData.app_id == app_id)
+
+            if filters:
+                for key, value in filters.items():
+                    if key == "user_id":
+                        query = query.where(MicroAppData.user_id == str(value))
+                        continue
+
+                    keys = key.split(".")
+                    for k in keys:
+                        if not k.replace("_", "").replace("-", "").isalnum():
+                            raise ValueError(f"Invalid key component: {k}")
+
+                    path_expr = func.jsonb_extract_path_text(MicroAppData.data, *keys)
+                    query = query.where(path_expr == str(value))
+
+            query = (
+                query.limit(limit)
+                .offset(offset)
+                .order_by(MicroAppData.created_at.desc())
+            )
+            result = await session.execute(query)
+            records = result.scalars().all()
+
+            return [
+                cls(
+                    id=record.id,
+                    app_id=record.app_id,
+                    user_id=record.user_id,
+                    data=record.data,
+                    created_at=record.created_at,
+                    updated_at=record.updated_at,
+                )
+                for record in records
+            ]
+
+    @classmethod
+    async def admin_get(cls, record_id: UUID) -> Self | None:
+        """Get a specific data record by ID regardless of user (admin only)"""
+        async with get_session() as session:
+            result = await session.execute(
+                select(MicroAppData).where(MicroAppData.id == record_id)
+            )
+            record = result.scalar_one_or_none()
+
+            if not record:
+                return None
+
+            return cls(
+                id=record.id,
+                app_id=record.app_id,
+                user_id=record.user_id,
+                data=record.data,
+                created_at=record.created_at,
+                updated_at=record.updated_at,
+            )
+
+    @classmethod
+    async def admin_count(
+        cls,
+        app_id: UUID,
+        filters: dict[str, Any] | None = None,
+    ) -> int:
+        """Count data records for a micro-app across ALL users (admin only)"""
+        async with get_session() as session:
+            query = select(func.count(MicroAppData.id)).where(
+                MicroAppData.app_id == app_id
+            )
+
+            if filters:
+                for key, value in filters.items():
+                    if key == "user_id":
+                        query = query.where(MicroAppData.user_id == str(value))
+                        continue
+
+                    keys = key.split(".")
+                    for k in keys:
+                        if not k.replace("_", "").replace("-", "").isalnum():
+                            raise ValueError(f"Invalid key component: {k}")
+
+                    path_expr = func.jsonb_extract_path_text(MicroAppData.data, *keys)
+                    query = query.where(path_expr == str(value))
+
+            result = await session.execute(query)
+            return result.scalar() or 0
+
+    @classmethod
+    async def admin_aggregate(
+        cls,
+        app_id: UUID,
+        field: str,
+        operation: str,
+        filters: dict[str, Any] | None = None,
+    ) -> float | int | None:
+        """Perform aggregation operations on data records across ALL users."""
+        async with get_session() as session:
+            # Validate and build field path
+            keys = field.split(".")
+            for k in keys:
+                if not k.replace("_", "").replace("-", "").isalnum():
+                    raise ValueError(f"Invalid key component: {k}")
+
+            json_path = func.jsonb_extract_path(MicroAppData.data, *keys)
+
+            # Get aggregation function
+            agg_func = cls._get_aggregation_function(json_path, operation)
+            query = select(agg_func).where(MicroAppData.app_id == app_id)
+
+            # Apply filters
+            query = cls._apply_admin_filters(query, filters)
+
+            result = await session.execute(query)
+            return result.scalar()
+
+    @staticmethod
+    def _get_aggregation_function(
+        json_path: ColumnElement[Any], operation: str
+    ) -> Function[Any]:
+        """Get the appropriate SQLAlchemy aggregation function."""
+        aggregation_map = {
+            "sum": lambda: func.sum(json_path.cast(JSONB).cast(Float)),
+            "avg": lambda: func.avg(json_path.cast(JSONB).cast(Float)),
+            "min": lambda: func.min(json_path.cast(JSONB)),
+            "max": lambda: func.max(json_path.cast(JSONB)),
+            "count": lambda: func.count(json_path),
+        }
+
+        if operation not in aggregation_map:
+            raise ValueError(f"Unsupported aggregation operation: {operation}")
+
+        return aggregation_map[operation]()
+
+    @staticmethod
+    def _apply_admin_filters(
+        query: Select[tuple[MicroAppData]], filters: dict[str, Any] | None
+    ) -> Select[tuple[MicroAppData]]:
+        """Apply filters to admin queries (no user_id restrictions)."""
+        if not filters:
+            return query
+
+        for key, value in filters.items():
+            if key == "user_id":
+                query = query.where(MicroAppData.user_id == str(value))
+                continue
+
+            filter_keys = key.split(".")
+            for k in filter_keys:
+                if not k.replace("_", "").replace("-", "").isalnum():
+                    raise ValueError(f"Invalid key component: {k}")
+
+            filter_expr = func.jsonb_extract_path_text(MicroAppData.data, *filter_keys)
+            query = query.where(filter_expr == str(value))
+
+        return query

@@ -6,6 +6,7 @@ import pytest
 from langchain.tools import BaseTool
 
 from neuron_server.llms.tools import (
+    ADMIN_ONLY_TOOLS,
     get_tools,
     memory_tools,
     micro_app_tools,
@@ -66,6 +67,7 @@ class TestTools:
                 + len(schedule_tools)
                 + len(thread_memory_tools)
                 + len(micro_app_tools)
+                - len(ADMIN_ONLY_TOOLS)  # Admin tools filtered out
                 + 2  # WebFetchTool and InspectImageTool
             )
 
@@ -82,6 +84,7 @@ class TestTools:
                 + len(schedule_tools)
                 + len(thread_memory_tools)
                 + len(micro_app_tools)
+                - len(ADMIN_ONLY_TOOLS)  # Admin tools filtered out
                 + 2  # WebFetchTool and InspectImageTool always included
                 # memory_tools are not included when memory_enabled = False
             )
@@ -146,6 +149,7 @@ class TestTools:
                 + len(schedule_tools)
                 + len(thread_memory_tools)
                 + len(micro_app_tools)
+                - len(ADMIN_ONLY_TOOLS)  # Admin tools filtered out
                 + 2  # WebFetchTool and InspectImageTool
             )
             assert len(tools) == expected_count
@@ -165,6 +169,7 @@ class TestTools:
                 + len(schedule_tools)
                 + len(thread_memory_tools)
                 + len(micro_app_tools)
+                - len(ADMIN_ONLY_TOOLS)  # Admin tools filtered out
                 + 2  # WebFetchTool and InspectImageTool
             )
             assert len(tools) == expected_count

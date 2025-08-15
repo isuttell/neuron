@@ -474,6 +474,7 @@ async def test_apost_message() -> None:
     mock_session = Mock()
     mock_session.user_id = user_id
     mock_session.nickname = "testuser"
+    mock_session.token.roles = ["user"]
 
     with (
         patch("neuron_server.controllers.message_controller.UUID") as mock_uuid,
@@ -503,6 +504,7 @@ async def test_apost_message() -> None:
                 "user_id": user_id,
                 "username": "testuser",
                 "prompt": "Test message",
+                "user_roles": ["user"],
             }
         )
 

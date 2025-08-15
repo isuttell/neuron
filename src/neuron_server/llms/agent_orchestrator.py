@@ -164,7 +164,11 @@ class AgentOrchestrator:
             Tuple of (LLM instance, graph workflow)
         """
         llm: LLM = await ProviderModelModel.get_active_llm()
-        tools = await get_tools(personality.tool_set) if personality.tool_set else None
+        tools = (
+            await get_tools(personality.tool_set, config.get("user_roles"))
+            if personality.tool_set
+            else None
+        )
         graph = llm.create_workflow(tools)
         graph.checkpointer = AsyncPostgresSaver(pool)
 
@@ -235,6 +239,7 @@ class AgentOrchestrator:
                     "personality_id": str(stream_config.config["personality_id"]),
                     "username": stream_config.config["username"],
                     "user_id": str(stream_config.config["user_id"]),
+                    "user_roles": stream_config.config.get("user_roles"),
                 },
             },
             version="v2",
