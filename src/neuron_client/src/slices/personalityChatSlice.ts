@@ -144,6 +144,14 @@ export const personalityChatSlice = createSlice({
         }
       }
 
+      // Check if this is updating an existing streaming message
+      const existingMessage = state.messageMap[incomingMessage.id];
+      if (existingMessage && 'isStreaming' in existingMessage) {
+        // Remove streaming flag from the actual message in state
+        const streamingMessage = existingMessage as PersonalityChatMessage & { isStreaming?: boolean };
+        delete streamingMessage.isStreaming;
+      }
+
       upsert(state, incomingMessage);
 
       // Process media item relationships from WebSocket event
@@ -221,6 +229,47 @@ export const personalityChatSlice = createSlice({
       // Reset pagination state
       delete state.hasMore[personalityId];
       delete state.loadingMore[personalityId];
+    },
+
+    partialPersonalityMessage: (
+      state,
+      action: PayloadAction<{
+        personality_id: string;
+        room_id: string;
+        message: {
+          id: string;
+          content: Array<{ type: string; text: string; index: number }>;
+          thread_id: string;
+          status: string;
+          created_at: string;
+        };
+      }>
+    ) => {
+      const { message } = action.payload;
+
+      // Use the message ID directly - it's the skeleton message ID
+      const messageId = message.id;
+
+      // Extract the text content from the message content array
+      const incomingText = message.content
+        .filter(item => item.type === "text")
+        .map(item => item.text)
+        .join("");
+
+      // Check if we already have this message (should be the skeleton)
+      const existingMessage = state.messageMap[messageId];
+
+      if (existingMessage) {
+        // Concatenate the new token to existing content
+        existingMessage.content = (existingMessage.content || "") + incomingText;
+        existingMessage.updated_at = Date.now();
+        // Mark as streaming if not already marked
+        if (!('isStreaming' in existingMessage)) {
+          const streamingMessage = existingMessage as PersonalityChatMessage & { isStreaming?: boolean };
+          streamingMessage.isStreaming = true;
+        }
+      }
+      // Note: We don't create a new message here since the skeleton should already exist
     },
   },
   extraReducers: (builder) => {
@@ -390,6 +439,7 @@ export const {
   deleteMessage,
   setLoadingMore,
   clearMessages,
+  partialPersonalityMessage,
 } = personalityChatSlice.actions;
 
 // Base selectors

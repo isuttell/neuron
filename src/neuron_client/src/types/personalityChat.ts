@@ -88,8 +88,15 @@ export interface OptimisticPersonalityMessage extends Omit<PersonalityMessage, '
   error?: string;
 }
 
-// Union type to handle both regular and optimistic messages
-export type PersonalityChatMessage = PersonalityMessage | OptimisticPersonalityMessage;
+// Streaming message interface for partial content
+export interface StreamingPersonalityMessage extends Omit<PersonalityMessage, 'created_at' | 'updated_at'> {
+  created_at: number;
+  updated_at: number;
+  isStreaming?: boolean;
+}
+
+// Union type to handle both regular, optimistic, and streaming messages
+export type PersonalityChatMessage = PersonalityMessage | OptimisticPersonalityMessage | StreamingPersonalityMessage;
 
 // WebSocket event types (future-ready)
 export interface PersonalityChatMessageEvent {
@@ -108,4 +115,23 @@ export interface PersonalityChatDeleteEvent {
   type: "personality_chat_delete";
   message_id: string;
   personality_id: string;
+}
+
+// Partial message similar to regular thread partial messages
+export interface PersonalityPartialMessage {
+  id: string;
+  type: "ai";
+  content: Array<{ type: string; text: string; index: number }>;
+  thread_id: string;
+  index: number;
+  status: string;
+  node: string;
+  created_at: string;
+}
+
+export interface PersonalityChatPartialMessageEvent {
+  type: "personality_chat_partial";
+  personality_id: string;
+  room_id: string;
+  message: PersonalityPartialMessage;
 }

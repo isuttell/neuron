@@ -615,7 +615,7 @@ class TestPersonalityChatOrchestrator:
 
             room_id = uuid4()
             await orchestrator.create_and_broadcast_personality_response(
-                sample_personality_id, room_id, "Test response", sample_user_id
+                sample_personality_id, room_id, "Test response"
             )
 
             # Verify message was created
@@ -659,7 +659,6 @@ class TestPersonalityChatOrchestrator:
                 personality=mock_personality,
                 chat_history="<chat_history>Test</chat_history>",
                 latest_message="Test message",
-                user_id=sample_user_id,
             )
 
             # Verify status generation
@@ -711,8 +710,11 @@ class TestPersonalityChatOrchestrator:
                 orchestrator, "generate_personality_response"
             ) as mock_generate,
             patch.object(
-                orchestrator, "create_and_broadcast_personality_response"
-            ) as mock_create_broadcast,
+                orchestrator, "_create_and_broadcast_skeleton_message"
+            ) as mock_create_skeleton,
+            patch.object(
+                orchestrator, "_finalize_and_broadcast_message"
+            ) as mock_finalize,
         ):
             # Setup mocks
             mock_get_message.return_value = mock_user_message
@@ -744,6 +746,11 @@ class TestPersonalityChatOrchestrator:
             # Mock response generation
             mock_generate.return_value = ("Here's my response", [], uuid4())
 
+            # Mock skeleton message
+            mock_skeleton = MagicMock()
+            mock_skeleton.id = uuid4()
+            mock_create_skeleton.return_value = mock_skeleton
+
             await orchestrator.process_user_message(
                 sample_personality_id, sample_message_id
             )
@@ -757,7 +764,8 @@ class TestPersonalityChatOrchestrator:
 
             # Verify response generation and broadcast
             mock_generate.assert_called_once()
-            mock_create_broadcast.assert_called_once()
+            mock_create_skeleton.assert_called_once()
+            mock_finalize.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_process_user_message_quick_response(
@@ -924,8 +932,11 @@ class TestPersonalityChatOrchestrator:
                 orchestrator, "generate_personality_response"
             ) as mock_generate,
             patch.object(
-                orchestrator, "create_and_broadcast_personality_response"
-            ) as mock_create_broadcast,
+                orchestrator, "_create_and_broadcast_skeleton_message"
+            ) as mock_create_skeleton,
+            patch.object(
+                orchestrator, "_finalize_and_broadcast_message"
+            ) as mock_finalize,
         ):
             # Setup mocks
             mock_get_message.return_value = mock_user_message
@@ -977,6 +988,11 @@ class TestPersonalityChatOrchestrator:
                 uuid4(),
             )
 
+            # Mock skeleton message
+            mock_skeleton = MagicMock()
+            mock_skeleton.id = uuid4()
+            mock_create_skeleton.return_value = mock_skeleton
+
             await orchestrator.process_user_message(
                 sample_personality_id, sample_message_id
             )
@@ -1012,4 +1028,153 @@ class TestPersonalityChatOrchestrator:
 
             # Verify response was still generated
             mock_generate.assert_called_once()
-            mock_create_broadcast.assert_called_once()
+            mock_create_skeleton.assert_called_once()
+            mock_finalize.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_process_user_message_skeleton_streaming(
+        self,
+        orchestrator: PersonalityChatOrchestrator,
+        sample_personality_id: UUID,
+        sample_message_id: UUID,
+        mock_personality: PersonalityModel,
+        mock_user_message: PersonalityMessageModel,
+        mock_users_dict: dict[str, UserModel],
+    ) -> None:
+        """Test that skeleton message includes isStreaming flag when broadcast."""
+        with (
+            patch(
+                "neuron_server.models.personality_message_model.PersonalityMessageModel.get"
+            ) as mock_get_message,
+            patch(
+                "neuron_server.models.personality_model.PersonalityModel.get"
+            ) as mock_get_personality,
+            patch(
+                "neuron_server.models.personality_room_model.PersonalityRoomModel.get"
+            ) as mock_get_room,
+            patch(
+                "neuron_server.models.personality_room_model.PersonalityRoomModel.update_status"
+            ),
+            patch.object(orchestrator, "broadcast_personality_room_status_update"),
+            patch.object(orchestrator, "analyze_message_direction") as mock_analyze,
+            patch.object(orchestrator, "get_personality_users_dict") as mock_get_users,
+            patch.object(
+                orchestrator, "get_token_limited_message_history"
+            ) as mock_get_history,
+            patch.object(orchestrator, "convert_to_chat_history") as mock_convert,
+            patch.object(orchestrator, "get_personality_fast_model") as mock_get_model,
+            patch(
+                "neuron_server.models.personality_message_model.PersonalityMessageModel.create"
+            ) as mock_create_skeleton,
+            patch(
+                "neuron_server.models.personality_message_model.PersonalityMessageModel.update"
+            ) as mock_update_skeleton,
+            patch(
+                "neuron_server.services.personality_chat_orchestrator.secure_pubsub"
+            ) as mock_pubsub,
+            patch.object(
+                orchestrator, "generate_personality_response"
+            ) as mock_generate,
+        ):
+            # Setup mocks
+            mock_get_message.return_value = mock_user_message
+            mock_get_personality.return_value = mock_personality
+
+            # Mock room
+            mock_room = MagicMock()
+            mock_room.id = mock_user_message.personality_room_id
+            mock_room.name = "Test Room"
+            mock_get_room.return_value = mock_room
+
+            mock_get_users.return_value = mock_users_dict
+            mock_get_history.return_value = []
+            mock_convert.return_value = "<chat_history>Test</chat_history>"
+            mock_get_model.return_value = MagicMock(spec=Runnable)
+
+            # Mock analysis - message is directed and confident
+            mock_analysis = PersonalityDirectedAnalysis(
+                is_directed=True,
+                confidence=0.8,
+                reasoning="Direct question",
+                quick_response=None,
+                should_use_quick_response=False,
+                suggested_room_name=None,
+                should_update_room_name=False,
+            )
+            mock_analyze.return_value = mock_analysis
+
+            # Mock skeleton message creation
+            mock_skeleton = MagicMock()
+            mock_skeleton.id = uuid4()
+            mock_skeleton.content = ""  # Empty content for skeleton
+            mock_skeleton.model_dump.return_value = {
+                "id": str(mock_skeleton.id),
+                "content": "",
+                "user_id": None,
+            }
+            mock_create_skeleton.return_value = mock_skeleton
+
+            # Mock skeleton message update
+            mock_final_message = MagicMock()
+            mock_final_message.id = mock_skeleton.id
+            mock_final_message.content = "Here's my response"
+            mock_final_message.model_dump.return_value = {
+                "id": str(mock_skeleton.id),
+                "content": "Here's my response",
+                "user_id": None,
+            }
+            mock_update_skeleton.return_value = mock_final_message
+
+            # Mock response generation
+            mock_generate.return_value = ("Here's my response", [], uuid4())
+
+            # Setup pubsub mock
+            mock_pubsub.publish_personality_room_message = AsyncMock()
+
+            await orchestrator.process_user_message(
+                sample_personality_id, sample_message_id
+            )
+
+            # Find the call that broadcast the skeleton message
+            calls = mock_pubsub.publish_personality_room_message.call_args_list
+            skeleton_broadcast_call = None
+
+            for call in calls:
+                event = call[0][2]  # Third argument is the event
+                if (
+                    hasattr(event, "personality_messages")
+                    and event.personality_messages
+                ):
+                    # Check if this is the skeleton message
+                    # (empty content with streaming flag)
+                    message_data = event.personality_messages[0]
+                    if (
+                        message_data.get("content") == ""
+                        and "isStreaming" in message_data
+                    ):
+                        skeleton_broadcast_call = call
+                        break
+
+            # Verify skeleton message was broadcast with isStreaming flag
+            assert skeleton_broadcast_call is not None, (
+                "Skeleton message with isStreaming flag not broadcast"
+            )
+
+            skeleton_event = skeleton_broadcast_call[0][2]
+            skeleton_msg_data = skeleton_event.personality_messages[0]
+
+            # Verify the skeleton message has empty content and isStreaming flag
+            assert skeleton_msg_data["content"] == ""
+            assert skeleton_msg_data["isStreaming"] is True
+
+            # Verify skeleton message was created
+            mock_create_skeleton.assert_called_once()
+            create_params = mock_create_skeleton.call_args[1]["params"]
+            assert create_params.content == ""  # Empty content for skeleton
+            assert create_params.user_id is None  # AI message
+
+            # Verify response was generated with skeleton message ID
+            mock_generate.assert_called_once()
+            call_kwargs = mock_generate.call_args[1]
+            assert "skeleton_message_id" in call_kwargs
+            assert call_kwargs["skeleton_message_id"] == mock_skeleton.id

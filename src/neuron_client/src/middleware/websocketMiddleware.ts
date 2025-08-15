@@ -20,6 +20,7 @@ import {
   upsertMessage as upsertPersonalityChatMessage,
   updateMessage as updatePersonalityChatMessage,
   deleteMessage as deletePersonalityChatMessage,
+  partialPersonalityMessage,
 } from "../slices/personalityChatSlice";
 import {
   handleRoomCreated,
@@ -42,6 +43,7 @@ import type {
   PersonalityChatMessageEvent,
   PersonalityChatUpdateEvent,
   PersonalityChatDeleteEvent,
+  PersonalityChatPartialMessageEvent,
   PersonalityMessageEvent,
   PersonalityMessageDeletedEvent,
   RoomJoinedEvent,
@@ -201,6 +203,14 @@ const websocketMiddleware =
 
         socketManager.on("personality_chat_delete", (event: PersonalityChatDeleteEvent) => {
           dispatch(deletePersonalityChatMessage(event));
+        });
+
+        socketManager.on("personality_chat_partial", (event: PersonalityChatPartialMessageEvent) => {
+          dispatch(partialPersonalityMessage({
+            personality_id: event.personality_id,
+            room_id: event.room_id,
+            message: event.message,
+          }));
         });
 
         // New personality message events from room system

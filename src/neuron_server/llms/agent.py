@@ -1,11 +1,13 @@
+from collections.abc import Awaitable
 from datetime import datetime
-from typing import Any, TypedDict
+from typing import Any, Callable, TypedDict
 from uuid import UUID
 
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from werkzeug.exceptions import BadRequest
 
+from neuron_server.controllers.events.message_events import PartialMessage
 from neuron_server.database import pool
 from neuron_server.llms.agent_orchestrator import (
     AgentOrchestrator,
@@ -217,6 +219,7 @@ async def execute_agent_with_messages_streaming(  # noqa: PLR0913
     location: str = DEFAULT_LOCATION,
     status_callback: StatusCallback | None = None,
     error_callback: ErrorCallback | None = None,
+    streaming_callback: Callable[[str], Awaitable[None]] | None = None,
     create_media_items: bool = False,
 ) -> tuple[str, list]:
     """Execute agent with custom messages list using streaming and status callbacks.
@@ -234,6 +237,7 @@ async def execute_agent_with_messages_streaming(  # noqa: PLR0913
         location: Location string (default: San Diego)
         status_callback: Optional callback for status updates
         error_callback: Optional callback for error handling
+        streaming_callback: Optional callback for streaming tokens
         create_media_items: Whether to create MediaItem records from artifacts
 
     Returns:
@@ -266,11 +270,41 @@ async def execute_agent_with_messages_streaming(  # noqa: PLR0913
     if create_media_items:
         args["create_media_items"] = True
 
-    # Create callbacks with status and error callbacks
+    # Create callbacks with status, error, and streaming callbacks
     callbacks = None
-    if status_callback or error_callback:
+    if status_callback or error_callback or streaming_callback:
+        # Create a PartialMessageCallback that extracts content and
+        # calls streaming_callback
+        partial_callback = None
+        if streaming_callback:
+
+            async def partial_callback(partial_message: PartialMessage) -> None:
+                # Extract content from partial message and call the streaming callback
+                # Skip streaming events from the update_title node to prevent
+                # title from streaming
+                if (
+                    hasattr(partial_message, "node")
+                    and partial_message.node == "update_title"
+                ):
+                    return
+
+                if hasattr(partial_message, "content"):
+                    content = partial_message.content
+                    if isinstance(content, list):
+                        # Handle list content format
+                        text_parts = [
+                            part.get("text", "")
+                            for part in content
+                            if isinstance(part, dict) and part.get("type") == "text"
+                        ]
+                        content = "".join(text_parts)
+                    if content:
+                        await streaming_callback(content)
+
         callbacks = CallbackHandlers(
-            on_status_change=status_callback, on_error=error_callback
+            on_status_change=status_callback,
+            on_error=error_callback,
+            on_stream_token=partial_callback,
         )
 
     # Use the global orchestrator
