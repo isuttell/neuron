@@ -47,6 +47,9 @@ from neuron_server.controllers.message_controller import (
 from neuron_server.controllers.message_controller import (
     router as message_router,
 )
+from neuron_server.controllers.micro_app_controller import (
+    blueprint as micro_app_blueprint,
+)
 from neuron_server.controllers.personality_controller import (
     blueprint as personality_blueprint,
 )
@@ -360,6 +363,7 @@ app.register_blueprint(embedding_blueprint, url_prefix="/api/embeddings")
 app.register_blueprint(media_blueprint, url_prefix="/api/media")
 app.register_blueprint(scheduler_blueprint, url_prefix="/api/scheduler")
 app.register_blueprint(provider_blueprint, url_prefix="/api/providers")
+app.register_blueprint(micro_app_blueprint, url_prefix="/api")
 app.register_blueprint(user_bp, url_prefix="/api/users")
 
 

@@ -26,6 +26,7 @@ import {
   LayoutGrid,
   LogOut,
   Shield,
+  Package,
 } from "lucide-react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 
@@ -59,6 +60,11 @@ export function MainSidebar() {
       to: "/personalities",
       label: "Personalities",
       Icon: CircleUser,
+    },
+    {
+      to: "/micro-apps",
+      label: "Micro Apps",
+      Icon: Package,
     },
     ...(isAdmin ? [{
       to: "/gallery",

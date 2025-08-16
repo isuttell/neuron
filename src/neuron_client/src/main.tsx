@@ -15,6 +15,10 @@ import CodeViewer from "./routes/code-viewer.tsx";
 import Help from "./routes/help.tsx";
 import Index from "./routes/index.tsx";
 import MediaLists from "./routes/media-lists.tsx";
+import MicroApps from "./routes/micro-apps.tsx";
+import MicroAppList from "./routes/micro-app-list.tsx";
+import MicroAppDetail from "./routes/micro-app-detail.tsx";
+import { MicroAppContainer } from "./components/MicroAppContainer";
 import Personalities from "./routes/personalities.tsx";
 import Personality from "./routes/personality.tsx";
 import PersonalityChatRoom from "./routes/PersonalityChatRoom.tsx";
@@ -84,6 +88,32 @@ const router = createBrowserRouter(
         {
           path: "/media-lists",
           element: <MediaLists />,
+        },
+        {
+          path: "/micro-apps",
+          element: <MicroAppContainer />,
+          children: [
+            {
+              index: true,
+              element: <MicroApps />,
+            },
+            {
+              path: ":appId",
+              element: <MicroAppList />,
+            },
+            {
+              path: ":appId/record/new",
+              element: <MicroAppDetail mode="create" />,
+            },
+            {
+              path: ":appId/record/:recordId",
+              element: <MicroAppDetail mode="view" />,
+            },
+            {
+              path: ":appId/record/:recordId/edit",
+              element: <MicroAppDetail mode="edit" />,
+            },
+          ],
         },
         {
           path: "/scheduled",

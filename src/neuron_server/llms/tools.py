@@ -60,6 +60,7 @@ from neuron_server.tools.memory_store_tool import MemoryStoreTool
 from neuron_server.tools.micro_app_admin_data_tool import MicroAppAdminDataTool
 from neuron_server.tools.micro_app_create_tool import MicroAppCreateTool
 from neuron_server.tools.micro_app_data_tool import MicroAppDataTool
+from neuron_server.tools.micro_app_display_config_tool import MicroAppDisplayConfigTool
 from neuron_server.tools.micro_app_executor_tool import MicroAppExecutorTool
 from neuron_server.tools.micro_app_manager_tool import MicroAppManagerTool
 from neuron_server.tools.moon_tool import MoonTool
@@ -222,6 +223,7 @@ tool_sets: dict[str, list[BaseTool]] = {
         MicroAppManagerTool(),
         MicroAppDataTool(),
         MicroAppAdminDataTool(),
+        MicroAppDisplayConfigTool(),
     ],
 }
 
@@ -270,6 +272,7 @@ micro_app_tools: list[BaseTool] = [
     MicroAppManagerTool(),
     MicroAppDataTool(),
     MicroAppAdminDataTool(),
+    MicroAppDisplayConfigTool(),
 ]
 
 

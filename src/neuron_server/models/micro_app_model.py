@@ -1,4 +1,5 @@
 import warnings
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Self
 from uuid import UUID, uuid4
@@ -9,6 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from neuron_server.database import MicroApp, MicroAppAction, get_session
+from neuron_server.models.display_config_model import DisplayConfig
 
 # Suppress Pydantic field name shadowing warnings for this module
 warnings.filterwarnings(
@@ -16,6 +18,18 @@ warnings.filterwarnings(
     message="Field name .* shadows an attribute in parent",
     category=UserWarning,
 )
+
+
+@dataclass
+class CreateMicroAppData:
+    """Data class for micro-app creation parameters"""
+
+    name: str
+    description: str
+    schema: dict
+    creator_id: str
+    actions: list["MicroAppActionModel"]
+    display_schema: dict | None = None
 
 
 class MicroAppActionModel(BaseModel):
@@ -44,6 +58,9 @@ class MicroAppModel(BaseModel):
     name: str = Field(description="Name of the micro-app")
     description: str = Field(description="Description of the micro-app's purpose")
     schema: dict = Field(description="JSON schema for data validation")
+    display_schema: dict | None = Field(
+        default=None, description="Display configuration for frontend rendering"
+    )
     creator_id: str = Field(description="ID of the user who created this app")
     actions: list[MicroAppActionModel] = Field(
         default_factory=list, description="Available actions for this app"
@@ -62,32 +79,46 @@ class MicroAppModel(BaseModel):
             raise ValueError(f"Invalid JSON Schema: {e}") from e
         return v
 
+    @field_validator("display_schema")
     @classmethod
-    async def create(
-        cls,
-        name: str,
-        description: str,
-        schema: dict,
-        creator_id: str,
-        actions: list[MicroAppActionModel],
-    ) -> Self:
+    def validate_display_schema(cls, v: dict | None) -> dict | None:
+        """Validate display schema structure using Pydantic model"""
+        if v is None:
+            return v
+
+        if not isinstance(v, dict):
+            raise ValueError("Display schema must be a dictionary")
+
+        # Use Pydantic model for validation
+        try:
+            DisplayConfig.model_validate(v)
+        except Exception as e:
+            raise ValueError(f"Invalid display schema: {e}") from e
+
+        return v
+
+    @classmethod
+    async def create(cls, data: CreateMicroAppData) -> Self:
         """Create a new micro-app with its actions"""
-        # Validate the schema
-        cls.validate_json_schema(schema)
+        # Validate the schemas
+        cls.validate_json_schema(data.schema)
+        if data.display_schema is not None:
+            cls.validate_display_schema(data.display_schema)
 
         async with get_session() as session:
             # Create the app
             app = MicroApp(
-                name=name,
-                description=description,
-                schema=schema,
-                creator_id=creator_id,
+                name=data.name,
+                description=data.description,
+                schema=data.schema,
+                display_schema=data.display_schema,
+                creator_id=data.creator_id,
             )
             session.add(app)
             await session.flush()  # Get the app ID
 
             # Create the actions
-            for action_model in actions:
+            for action_model in data.actions:
                 action = MicroAppAction(
                     app_id=app.id,
                     name=action_model.name,
@@ -105,8 +136,9 @@ class MicroAppModel(BaseModel):
                 name=app.name,
                 description=app.description,
                 schema=app.schema,
+                display_schema=app.display_schema,
                 creator_id=app.creator_id,
-                actions=actions,
+                actions=data.actions,
                 created_at=app.created_at,
                 updated_at=app.updated_at,
             )
@@ -141,6 +173,7 @@ class MicroAppModel(BaseModel):
                 name=app.name,
                 description=app.description,
                 schema=app.schema,
+                display_schema=app.display_schema,
                 creator_id=app.creator_id,
                 actions=actions,
                 created_at=app.created_at,
@@ -162,6 +195,7 @@ class MicroAppModel(BaseModel):
                     name=app.name,
                     description=app.description,
                     schema=app.schema,
+                    display_schema=app.display_schema,
                     creator_id=app.creator_id,
                     actions=[
                         MicroAppActionModel(
@@ -196,6 +230,7 @@ class MicroAppModel(BaseModel):
                     name=app.name,
                     description=app.description,
                     schema=app.schema,
+                    display_schema=app.display_schema,
                     creator_id=app.creator_id,
                     actions=[
                         MicroAppActionModel(
@@ -214,8 +249,8 @@ class MicroAppModel(BaseModel):
             ]
 
     @classmethod
-    async def update(cls, app_id: UUID, updates: dict[str, str]) -> bool:
-        """Update the app's name and/or description (maintains schema immutability)"""
+    async def update(cls, app_id: UUID, updates: dict[str, str | dict | None]) -> bool:
+        """Update name, description, and/or display_schema"""
         async with get_session() as session:
             app = await session.get(MicroApp, app_id)
             if not app:
@@ -226,6 +261,11 @@ class MicroAppModel(BaseModel):
                 app.name = updates["name"]
             if "description" in updates:
                 app.description = updates["description"]
+            if "display_schema" in updates:
+                display_schema = updates["display_schema"]
+                if display_schema is not None:
+                    cls.validate_display_schema(display_schema)
+                app.display_schema = display_schema
 
             await session.commit()
             return True

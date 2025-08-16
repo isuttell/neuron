@@ -112,6 +112,7 @@ export const usePersonalityRoom = (
         dispatch(leavePersonalityRoom({ personalityId: currentPersonalityId, roomId: currentRoomId }));
       }
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run on mount/unmount
 
   return {

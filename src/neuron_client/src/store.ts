@@ -7,6 +7,7 @@ import images from "./slices/imagesSlice";
 import mediaListsReducer from "./slices/mediaListsSlice";
 import mediaReducer from "./slices/mediaSlice";
 import messages from "./slices/messagesSlice";
+import microAppsReducer from "./slices/microAppsSlice";
 import personalities from "./slices/personalitiesSlice";
 import personalityChat from "./slices/personalityChatSlice";
 import personalityRoom from "./slices/personalityRoomSlice";
@@ -38,6 +39,7 @@ export const store = configureStore({
     scheduler: schedulerReducer,
     providers: providersReducer,
     users: usersReducer,
+    microApps: microAppsReducer,
   },
   // @ts-expect-error - Redux middleware type incompatibility
   middleware: (getDefaultMiddleware) =>

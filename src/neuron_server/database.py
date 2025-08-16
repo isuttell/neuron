@@ -557,6 +557,7 @@ class MicroApp(Base):
     name = Column(Text, nullable=False)
     description = Column(Text, nullable=False)
     schema = Column(JSONB, nullable=False)  # JSON schema for data validation
+    display_schema = Column(JSONB, nullable=True)  # Display configuration for frontend
     creator_id = Column(String, nullable=False, index=True)  # User who created the app
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(
