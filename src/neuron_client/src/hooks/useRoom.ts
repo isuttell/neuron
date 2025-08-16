@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import { useAppDispatch, useAppSelector } from "../hooks";
 import {
   joinRoomStart,
@@ -70,7 +70,7 @@ export const useRoom = (
   isSubscribedRef.current = isSubscribed;
 
   // Manual join function
-  const joinRoomManual = async (): Promise<void> => {
+  const joinRoomManual = useCallback(async (): Promise<void> => {
     if (!roomId || !isConnected || isSubscribed) {
       return;
     }
@@ -93,7 +93,7 @@ export const useRoom = (
       dispatch(joinRoomFailure({ roomType, roomId, error: errorMessage }));
       throw err;
     }
-  };
+  }, [roomId, isConnected, isSubscribed, dispatch, roomType]);
 
   // Manual leave function
   const leaveRoomManual = (): void => {
@@ -125,7 +125,7 @@ export const useRoom = (
     joinRoomManual().catch((err) => {
       console.error(`Failed to auto-join ${roomType} room:`, err);
     });
-  }, [roomType, roomId, isConnected, isSubscribed, isJoining, autoJoin]);
+  }, [roomType, roomId, isConnected, isSubscribed, isJoining, autoJoin, joinRoomManual]);
 
   // Dedicated cleanup effect - runs only on mount/unmount
   useEffect(() => {
@@ -150,6 +150,7 @@ export const useRoom = (
         dispatch(leaveRoom({ roomType: initialRoomType, roomId: initialRoomId }));
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Empty dependency array - only runs on mount/unmount
 
   return {

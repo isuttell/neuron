@@ -12,6 +12,7 @@ import images from "./slices/imagesSlice";
 import mediaListsReducer from "./slices/mediaListsSlice";
 import mediaReducer from "./slices/mediaSlice";
 import messages from "./slices/messagesSlice";
+import microAppsReducer from "./slices/microAppsSlice";
 import personalities from "./slices/personalitiesSlice";
 import personalityChat from "./slices/personalityChatSlice";
 import personalityRoom from "./slices/personalityRoomSlice";
@@ -37,41 +38,25 @@ export function renderWithProviders(
     preloadedState = {},
     store = configureStore({
       reducer: {
-        // @ts-expect-error - Redux reducer type incompatibility
         app,
-        // @ts-expect-error - Redux reducer type incompatibility
         messages,
-        // @ts-expect-error - Redux reducer type incompatibility
         threads,
-        // @ts-expect-error - Redux reducer type incompatibility
         socket,
-        // @ts-expect-error - Redux reducer type incompatibility
         personalities,
-        // @ts-expect-error - Redux reducer type incompatibility
         personalityChat,
-        // @ts-expect-error - Redux reducer type incompatibility
         personalityRoom,
-        // @ts-expect-error - Redux reducer type incompatibility
         room,
-        // @ts-expect-error - Redux reducer type incompatibility
         favorites: favoritesReducer,
-        // @ts-expect-error - Redux reducer type incompatibility
         images,
-        // @ts-expect-error - Redux reducer type incompatibility
         prompts: promptsReducer,
-        // @ts-expect-error - Redux reducer type incompatibility
         embeddings: embeddingsReducer,
-        // @ts-expect-error - Redux reducer type incompatibility
         media: mediaReducer,
-        // @ts-expect-error - Redux reducer type incompatibility
         mediaLists: mediaListsReducer,
-        // @ts-expect-error - Redux reducer type incompatibility
         scheduler: schedulerReducer,
-        // @ts-expect-error - Redux reducer type incompatibility
         providers: providersReducer,
-        // @ts-expect-error - Redux reducer type incompatibility
         users: usersReducer,
-      },
+        microApps: microAppsReducer,
+      } as Parameters<typeof configureStore>[0]['reducer'],
       preloadedState,
       middleware: (getDefaultMiddleware) =>
         getDefaultMiddleware({
