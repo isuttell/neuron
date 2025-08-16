@@ -56,7 +56,8 @@ export function renderWithProviders(
         providers: providersReducer,
         users: usersReducer,
         microApps: microAppsReducer,
-      } as Parameters<typeof configureStore>[0]['reducer'],
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any,
       preloadedState,
       middleware: (getDefaultMiddleware) =>
         getDefaultMiddleware({
