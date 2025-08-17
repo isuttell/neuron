@@ -192,14 +192,14 @@ describe("ApiClient", () => {
     });
 
     it("should handle timeout errors with specific timeout duration", async () => {
-      // Mock fetch to simulate a timeout by rejecting after a delay
+      // Mock fetch to simulate a timeout by taking longer than the timeout duration
       (global.fetch as vi.Mock).mockImplementationOnce(() => {
         return new Promise((_, reject) => {
           setTimeout(() => {
             const abortError = new Error("The operation was aborted");
             abortError.name = "AbortError";
             reject(abortError);
-          }, 100);
+          }, 75); // Longer than 50ms timeout to trigger the natural timeout
         });
       });
 
