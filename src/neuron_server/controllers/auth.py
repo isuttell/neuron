@@ -174,3 +174,83 @@ def requires_api_key(func: Callable[..., T]) -> Callable[..., T]:
         return await func(*args, **kwargs)
 
     return decorated
+
+
+def has_permission(token_payload: TokenPayload, permission: str) -> bool:
+    """Check if user has a specific permission"""
+    return permission in token_payload.permissions
+
+
+def has_role(token_payload: TokenPayload, role: str) -> bool:
+    """Check if user has a specific role"""
+    return role in token_payload.roles
+
+
+def _create_auth_decorator(
+    check_func: Callable[[TokenPayload, str], bool],
+    access_type: str,
+    value: str,
+) -> Callable[[Callable[..., T]], Callable[..., T]]:
+    """
+    Common implementation for auth decorators.
+
+    Args:
+        check_func: Function to check if user has required access (permission or role)
+        access_type: Type of access being checked ("Permission" or "Role")
+        value: The specific permission or role required
+    """
+
+    def decorator(func: Callable[..., T]) -> Callable[..., T]:
+        @wraps(func)
+        async def decorated(*args: object, **kwargs: object) -> T:
+            token = get_token_auth_header()
+            token_payload = await decode_token(token)
+
+            # Check if user has the required "user" role first
+            if "user" not in token_payload.roles:
+                raise Unauthorized("User role required")
+
+            # Check if user has the required access
+            if not check_func(token_payload, value):
+                raise Unauthorized(f"{access_type} '{value}' required")
+
+            # Cast request to our custom type and set the token
+            typed_request = cast("NeuronRequest", request)
+            typed_request.token = token_payload
+
+            return await func(*args, **kwargs)
+
+        return decorated
+
+    return decorator
+
+
+def requires_permission(
+    permission: str,
+) -> Callable[[Callable[..., T]], Callable[..., T]]:
+    """
+    Decorator that requires a specific permission for endpoint access.
+
+    Permissions are fine-grained access controls
+    (e.g., "admin-prompts", "admin-providers").
+    Use this when you need granular access control beyond just role membership.
+
+    Note: Currently permissions don't appear in Auth0 user objects in the frontend,
+    so this is primarily for backend-only endpoints or when permissions are available.
+    """
+    return _create_auth_decorator(has_permission, "Permission", permission)
+
+
+def requires_role(
+    role: str,
+) -> Callable[[Callable[..., T]], Callable[..., T]]:
+    """
+    Decorator that requires a specific role for endpoint access.
+
+    Roles are broader access controls (e.g., "admin", "user").
+    Use this when you need simple role-based access control that works consistently
+    across both frontend and backend, as roles are available in Auth0 user objects.
+
+    This is the preferred approach for most access control needs.
+    """
+    return _create_auth_decorator(has_role, "Role", role)

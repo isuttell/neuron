@@ -61,11 +61,11 @@ export function MainSidebar() {
       label: "Personalities",
       Icon: CircleUser,
     },
-    {
+    ...(isAdmin ? [{
       to: "/micro-apps",
       label: "Micro Apps",
       Icon: Package,
-    },
+    }] : []),
     ...(isAdmin ? [{
       to: "/gallery",
       label: "Recent Media",
