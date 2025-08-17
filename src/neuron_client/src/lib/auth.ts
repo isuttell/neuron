@@ -6,7 +6,6 @@ import { User } from "@auth0/auth0-react";
 export const PERMISSIONS = {
   ADMIN_PROMPTS: "admin-prompts",
   ADMIN_PROVIDERS: "admin-providers",
-  BETA_MICRO_APPS: "beta:micro-apps-display",
   ADMIN: "admin", // For backwards compatibility with roles
 } as const;
 
@@ -16,7 +15,6 @@ export const PERMISSIONS = {
 export const ROLES = {
   ADMIN: "admin",
 } as const;
-
 
 /**
  * Extract user permissions from Auth0 user object
@@ -67,11 +65,4 @@ export function canAccessPrompts(user: User | undefined): boolean {
  */
 export function canAccessProviders(user: User | undefined): boolean {
   return hasPermission(user, PERMISSIONS.ADMIN_PROVIDERS);
-}
-
-/**
- * Check if user can access micro apps beta feature
- */
-export function canAccessMicroApps(user: User | undefined): boolean {
-  return hasPermission(user, PERMISSIONS.BETA_MICRO_APPS);
 }

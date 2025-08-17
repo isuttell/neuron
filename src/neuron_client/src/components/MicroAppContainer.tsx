@@ -7,7 +7,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { AlertTriangle, ArrowLeft } from "lucide-react";
 import { MicroAppErrorBoundary } from "./MicroAppErrorBoundary";
-import { RoleGuard } from "./BetaFeatureGuard";
+import { RoleGuard } from "./AccessGuards";
 import { ROLES } from "../lib/auth";
 import { useAppDispatch, useAppSelector } from "../hooks";
 import {
