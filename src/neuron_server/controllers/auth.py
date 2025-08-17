@@ -174,3 +174,73 @@ def requires_api_key(func: Callable[..., T]) -> Callable[..., T]:
         return await func(*args, **kwargs)
 
     return decorated
+
+
+def has_permission(token_payload: TokenPayload, permission: str) -> bool:
+    """Check if user has a specific permission"""
+    return permission in token_payload.permissions
+
+
+def requires_permission(
+    permission: str,
+) -> Callable[[Callable[..., T]], Callable[..., T]]:
+    """Decorator that requires a specific permission"""
+
+    def decorator(func: Callable[..., T]) -> Callable[..., T]:
+        @wraps(func)
+        async def decorated(*args: object, **kwargs: object) -> T:
+            token = get_token_auth_header()
+            token_payload = await decode_token(token)
+
+            # Check if user has the required "user" role first
+            if "user" not in token_payload.roles:
+                raise Unauthorized("User role required")
+
+            # Check if user has the required permission
+            if not has_permission(token_payload, permission):
+                raise Unauthorized(f"Permission '{permission}' required")
+
+            # Cast request to our custom type and set the token
+            typed_request = cast("NeuronRequest", request)
+            typed_request.token = token_payload
+
+            return await func(*args, **kwargs)
+
+        return decorated
+
+    return decorator
+
+
+def has_role(token_payload: TokenPayload, role: str) -> bool:
+    """Check if user has a specific role"""
+    return role in token_payload.roles
+
+
+def requires_role(
+    role: str,
+) -> Callable[[Callable[..., T]], Callable[..., T]]:
+    """Decorator that requires a specific role"""
+
+    def decorator(func: Callable[..., T]) -> Callable[..., T]:
+        @wraps(func)
+        async def decorated(*args: object, **kwargs: object) -> T:
+            token = get_token_auth_header()
+            token_payload = await decode_token(token)
+
+            # Check if user has the required "user" role first
+            if "user" not in token_payload.roles:
+                raise Unauthorized("User role required")
+
+            # Check if user has the required role
+            if not has_role(token_payload, role):
+                raise Unauthorized(f"Role '{role}' required")
+
+            # Cast request to our custom type and set the token
+            typed_request = cast("NeuronRequest", request)
+            typed_request.token = token_payload
+
+            return await func(*args, **kwargs)
+
+        return decorated
+
+    return decorator

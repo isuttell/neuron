@@ -7,6 +7,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { AlertTriangle, ArrowLeft } from "lucide-react";
 import { MicroAppErrorBoundary } from "./MicroAppErrorBoundary";
+import { RoleGuard } from "./BetaFeatureGuard";
+import { ROLES } from "../lib/auth";
 import { useAppDispatch, useAppSelector } from "../hooks";
 import {
   selectMicroApps,
@@ -17,6 +19,14 @@ import {
 } from "../slices/microAppsSlice";
 
 export function MicroAppContainer() {
+  return (
+    <RoleGuard role={ROLES.ADMIN}>
+      <MicroAppContainerContent />
+    </RoleGuard>
+  );
+}
+
+function MicroAppContainerContent() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const { appId, recordId } = useParams<{ appId: string; recordId?: string }>();

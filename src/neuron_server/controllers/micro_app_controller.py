@@ -5,7 +5,10 @@ from pydantic import BaseModel, Field
 from quart import Blueprint, request
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
-from neuron_server.controllers.auth import TokenPayload, requires_auth
+from neuron_server.controllers.auth import (
+    TokenPayload,
+    requires_role,
+)
 from neuron_server.controllers.csrf import requires_csrf
 from neuron_server.models.micro_app_data_model import MicroAppDataModel
 from neuron_server.models.micro_app_model import (
@@ -47,7 +50,7 @@ class UpdateMicroAppDataRequest(BaseModel):
 
 
 @blueprint.get("/micro-apps")
-@requires_auth
+@requires_role("admin")
 async def list_micro_apps() -> list[dict]:
     """List all micro-apps available to the user"""
     assert isinstance(request.token, TokenPayload)
@@ -57,7 +60,7 @@ async def list_micro_apps() -> list[dict]:
 
 
 @blueprint.post("/micro-apps")
-@requires_auth
+@requires_role("admin")
 @requires_csrf
 async def create_micro_app() -> dict:
     """Create a new micro-app"""
@@ -88,7 +91,7 @@ async def create_micro_app() -> dict:
 
 
 @blueprint.get("/micro-apps/<uuid:app_id>")
-@requires_auth
+@requires_role("admin")
 async def get_micro_app(app_id: UUID) -> dict:
     """Get a specific micro-app by ID"""
     assert isinstance(request.token, TokenPayload)
@@ -101,7 +104,7 @@ async def get_micro_app(app_id: UUID) -> dict:
 
 
 @blueprint.put("/micro-apps/<uuid:app_id>")
-@requires_auth
+@requires_role("admin")
 @requires_csrf
 async def update_micro_app(app_id: UUID) -> dict:
     """Update a micro-app (name, description, display_schema only)"""
@@ -146,7 +149,7 @@ async def update_micro_app(app_id: UUID) -> dict:
 
 
 @blueprint.delete("/micro-apps/<uuid:app_id>")
-@requires_auth
+@requires_role("admin")
 @requires_csrf
 async def delete_micro_app(app_id: UUID) -> dict:
     """Delete a micro-app and all its data"""
@@ -168,7 +171,7 @@ async def delete_micro_app(app_id: UUID) -> dict:
 
 
 @blueprint.get("/micro-apps/<uuid:app_id>/data")
-@requires_auth
+@requires_role("admin")
 async def list_micro_app_data(app_id: UUID) -> dict:
     """List data records for a micro-app"""
     assert isinstance(request.token, TokenPayload)
@@ -213,7 +216,7 @@ async def list_micro_app_data(app_id: UUID) -> dict:
 
 
 @blueprint.post("/micro-apps/<uuid:app_id>/data")
-@requires_auth
+@requires_role("admin")
 @requires_csrf
 async def create_micro_app_data(app_id: UUID) -> dict:
     """Create a new data record for a micro-app"""
@@ -239,7 +242,7 @@ async def create_micro_app_data(app_id: UUID) -> dict:
 
 
 @blueprint.get("/micro-apps/<uuid:app_id>/data/<uuid:record_id>")
-@requires_auth
+@requires_role("admin")
 async def get_micro_app_data(app_id: UUID, record_id: UUID) -> dict:
     """Get a specific data record"""
     assert isinstance(request.token, TokenPayload)
@@ -252,7 +255,7 @@ async def get_micro_app_data(app_id: UUID, record_id: UUID) -> dict:
 
 
 @blueprint.put("/micro-apps/<uuid:app_id>/data/<uuid:record_id>")
-@requires_auth
+@requires_role("admin")
 @requires_csrf
 async def update_micro_app_data(app_id: UUID, record_id: UUID) -> dict:
     """Update a data record"""
@@ -284,7 +287,7 @@ async def update_micro_app_data(app_id: UUID, record_id: UUID) -> dict:
 
 
 @blueprint.delete("/micro-apps/<uuid:app_id>/data/<uuid:record_id>")
-@requires_auth
+@requires_role("admin")
 @requires_csrf
 async def delete_micro_app_data(app_id: UUID, record_id: UUID) -> dict:
     """Delete a data record"""

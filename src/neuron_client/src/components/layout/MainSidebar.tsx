@@ -49,7 +49,7 @@ export function MainSidebar() {
   const location = useLocation();
   const { logout, user } = useAuth0();
   const sidebarImage = useAppSelector(getSidebarImage);
-  const { canAccessPrompts, canAccessProviders, isAdmin } = usePermissions();
+  const { canAccessPrompts, canAccessProviders, isAdmin, canAccessMicroApps } = usePermissions();
   const links: SidebarLink[] = [
     {
       to: "/",
@@ -61,11 +61,11 @@ export function MainSidebar() {
       label: "Personalities",
       Icon: CircleUser,
     },
-    {
+    ...(canAccessMicroApps ? [{
       to: "/micro-apps",
       label: "Micro Apps",
       Icon: Package,
-    },
+    }] : []),
     ...(isAdmin ? [{
       to: "/gallery",
       label: "Recent Media",

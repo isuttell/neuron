@@ -8,6 +8,7 @@ import {
   isAdmin,
   canAccessPrompts,
   canAccessProviders,
+  canAccessMicroApps,
   PERMISSIONS,
   ROLES
 } from "@/lib/auth";
@@ -31,6 +32,7 @@ export function usePermissions() {
     isAdmin: isAdmin(user),
     canAccessPrompts: canAccessPrompts(user),
     canAccessProviders: canAccessProviders(user),
+    canAccessMicroApps: canAccessMicroApps(user),
 
     // Constants for easy access
     PERMISSIONS,
