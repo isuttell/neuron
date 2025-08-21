@@ -480,13 +480,14 @@ async def delete_personality(personality_id: UUID) -> Response:
 @blueprint.get("/<uuid:personality_id>/users")
 @requires_auth
 async def get_personality_users(personality_id: UUID) -> dict[str, list[dict]]:
-    """Get all users associated with a personality.
+    """Get all users in the system for personality user management.
 
     Args:
         personality_id: The ID of the personality to get users for
 
     Returns:
-        A dictionary with a list of user objects including their roles
+        A dictionary with a list of all user objects, including their roles
+        for this personality if they are associated with it
 
     Raises:
         Forbidden: If the user doesn't have admin access to the personality
@@ -507,24 +508,24 @@ async def get_personality_users(personality_id: UUID) -> dict[str, list[dict]]:
     if not personality:
         raise NotFound(f"Personality with id {personality_id} not found")
 
-    # Get all users with access to the personality
+    # Get all users in the system
+    all_users = await UserModel.get_all()
+
+    # Get users with access to this specific personality
     personality_users = await PersonalityUserModel.get_personality_users(
         personality_id=personality_id
     )
 
-    # Get full user details for each user
-    user_ids = [pu.user_id for pu in personality_users]
-    users = await UserModel.get_by_ids(user_ids=user_ids)
+    # Create a mapping of user_id to role for users associated with this personality
+    personality_user_roles = {pu.user_id: pu.role for pu in personality_users}
 
-    # Add role to each user
+    # Add role to each user if they are associated with this personality
     result = []
-    for user in users:
+    for user in all_users:
         user_dict = user.model_dump()
-        # Find role from personality_users
-        for pu in personality_users:
-            if pu.user_id == user.id:
-                user_dict["role"] = pu.role
-                break
+        # Add role if user is associated with this personality
+        if user.id in personality_user_roles:
+            user_dict["role"] = personality_user_roles[user.id]
         result.append(user_dict)
 
     return {"users": result}
