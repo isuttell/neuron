@@ -160,14 +160,14 @@ async def test_get_personality_users(
             PersonalityUserModel, "get_personality_users", new_callable=AsyncMock
         ) as mock_get_users,
         patch.object(
-            UserModel, "get_by_ids", new_callable=AsyncMock
-        ) as mock_get_users_model,
+            UserModel, "get_all", new_callable=AsyncMock
+        ) as mock_get_all_users,
     ):
         # Setup mocks
         mock_has_admin.return_value = True
         mock_get.return_value = mock_personality
         mock_get_users.return_value = [mock_personality_user]
-        mock_get_users_model.return_value = [mock_user]
+        mock_get_all_users.return_value = [mock_user]
 
         # Create request context
         async with app.test_request_context(
@@ -197,7 +197,7 @@ async def test_get_personality_users(
         )
         mock_get.assert_called_once_with(personality_id=personality_id)
         mock_get_users.assert_called_once_with(personality_id=personality_id)
-        mock_get_users_model.assert_called_once_with(user_ids=[mock_user.id])
+        mock_get_all_users.assert_called_once()
 
 
 @pytest.mark.asyncio
