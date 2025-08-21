@@ -18,6 +18,7 @@ from neuron_server.tools.automatic1111_tool import Automatic1111API, Automatic11
 from neuron_server.tools.code_interpreter_tool import CodeInterpreterTool
 from neuron_server.tools.deepseek_reasoning_tool import DeepSeekReasoningTool
 from neuron_server.tools.dice_tool import DiceTool
+from neuron_server.tools.elevenlabs_music_tool import ElevenLabsMusicTool
 from neuron_server.tools.elevenlabs_soundeffects_tool import (
     ElevenLabsSoundEffectsTool,
 )
@@ -83,9 +84,6 @@ from neuron_server.tools.replicate_kokoro_tts_tool import ReplicateKokoroTTSTool
 from neuron_server.tools.replicate_kontext_image_tool import (
     ReplicateKontextImageTool,
 )
-from neuron_server.tools.replicate_music_generation_tool import (
-    ReplicateMusicGenerationTool,
-)
 from neuron_server.tools.replicate_play_dialog_tts_tool import ReplicatePlayDialogTool
 from neuron_server.tools.replicate_video_generation_tool import (
     ReplicateVideoGenerationTool,
@@ -146,13 +144,16 @@ tool_sets: dict[str, list[BaseTool]] = {
         FFmpegTool(),
         ReplicateVideoGenerationTool(),
         ReplicateAudioGenerationTool(),
-        ReplicateMusicGenerationTool(),
     ],
     "audio": [
         FFmpegTool(),
         ElevenLabsSoundEffectsTool(),
-        ReplicateMusicGenerationTool(),
+        ReplicateAudioGenerationTool(),
         WhisperSTTTool(),
+    ],
+    "music": [
+        ElevenLabsMusicTool(),
+        FFmpegTool(),
     ],
     "tts": [
         ElevenLabsTTSTool(),

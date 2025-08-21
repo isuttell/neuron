@@ -33,6 +33,7 @@ class TestTools:
             "image",
             "video",
             "audio",
+            "music",
             "tts",
             "search",
             "arxiv",
