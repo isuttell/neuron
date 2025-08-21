@@ -123,9 +123,7 @@ class ElevenLabsTTSTool(BaseTool):
     description: str = """
 This tool generates audio from a provided script using ElevenLabs' TTS APIs and
 returns a link to the final audio file. Use this tool to generate high quality
-audio for characters when the users requests it. This returns an audio tag to be
-shown to the user so they can play it. Hide the filename as the user will not
-need it.
+audio for characters when the users requests it.
 """.strip()
     args_schema: type[ElevenLabsTTSToolArgs] = ElevenLabsTTSToolArgs
     response_format: str = "content_and_artifact"

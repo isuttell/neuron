@@ -1239,14 +1239,14 @@ files = [
 
 [[package]]
 name = "elevenlabs"
-version = "2.8.1"
+version = "2.11.0"
 description = ""
 optional = false
 python-versions = "<4.0,>=3.8"
 groups = ["main"]
 files = [
-    {file = "elevenlabs-2.8.1-py3-none-any.whl", hash = "sha256:f0aa8d02595edf5a38b72f9d032293a0820062786849f6ef9e2e9231c98d3e27"},
-    {file = "elevenlabs-2.8.1.tar.gz", hash = "sha256:ace2d780e3d58f8408f57f70358286c0cc8581d2f8ac5c1cfacab384dc76f411"},
+    {file = "elevenlabs-2.11.0-py3-none-any.whl", hash = "sha256:90b3d9098f15f293de86ecaaacf03a492fcd4fe8ba33eda18e3c3556741e7bde"},
+    {file = "elevenlabs-2.11.0.tar.gz", hash = "sha256:ddad47450f14eb5097d6654e2b2738d7100c57779a225720a6449a3299f31fee"},
 ]
 
 [package.dependencies]
