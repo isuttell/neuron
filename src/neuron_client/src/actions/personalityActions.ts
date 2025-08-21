@@ -1,6 +1,6 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import { Embedding } from "@/slices/embeddingsSlice";
-import type { Personality, UserWithRole, IncomingPersonalityDocumentsEvent } from "../slices/personalitiesSlice.d";
+import type { Personality, IncomingPersonalityDocumentsEvent } from "../slices/personalitiesSlice.d";
 import type { PersonalityUser } from "../types/personality";
 import { api } from "@/lib/api";
 import { User } from "@/types/user";
@@ -208,8 +208,8 @@ export const fetchPersonalityUsers = createAsyncThunk(
   "personalities/fetchUsers",
   async (personalityId: string, thunkAPI) => {
     try {
-      const response = await api.get<{ users: UserWithRole[] }>(`/personalities/${personalityId}/users`);
-      return { personalityId, users: response.users };
+      const response = await api.get<{ users: User[]; personality_users: PersonalityUser[] }>(`/personalities/${personalityId}/users`);
+      return { personalityId, users: response.users, personality_users: response.personality_users };
     } catch (error) {
       if (error instanceof Error) {
         return thunkAPI.rejectWithValue(error.message);
@@ -237,8 +237,8 @@ export const addPersonalityUser = createAsyncThunk(
       });
 
       // Fetch updated users list
-      const response = await api.get<{ users: UserWithRole[] }>(`/personalities/${personalityId}/users`);
-      return { personalityId, users: response.users };
+      const response = await api.get<{ users: User[]; personality_users: PersonalityUser[] }>(`/personalities/${personalityId}/users`);
+      return { personalityId, users: response.users, personality_users: response.personality_users };
     } catch (error) {
       if (error instanceof Error) {
         return thunkAPI.rejectWithValue(error.message);
@@ -258,8 +258,8 @@ export const updatePersonalityUserRole = createAsyncThunk(
       });
 
       // Fetch updated users list
-      const response = await api.get<{ users: UserWithRole[] }>(`/personalities/${personalityId}/users`);
-      return { personalityId, users: response.users };
+      const response = await api.get<{ users: User[]; personality_users: PersonalityUser[] }>(`/personalities/${personalityId}/users`);
+      return { personalityId, users: response.users, personality_users: response.personality_users };
     } catch (error) {
       if (error instanceof Error) {
         return thunkAPI.rejectWithValue(error.message);
@@ -276,8 +276,8 @@ export const removePersonalityUser = createAsyncThunk(
       await api.delete(`/personalities/${personalityId}/users/${userId}`);
 
       // Fetch updated users list
-      const response = await api.get<{ users: UserWithRole[] }>(`/personalities/${personalityId}/users`);
-      return { personalityId, users: response.users };
+      const response = await api.get<{ users: User[]; personality_users: PersonalityUser[] }>(`/personalities/${personalityId}/users`);
+      return { personalityId, users: response.users, personality_users: response.personality_users };
     } catch (error) {
       if (error instanceof Error) {
         return thunkAPI.rejectWithValue(error.message);

@@ -150,6 +150,11 @@ async def test_get_personality_users(
     mock_personality_user = MagicMock()
     mock_personality_user.user_id = mock_user.id
     mock_personality_user.role = "admin"
+    mock_personality_user.model_dump.return_value = {
+        "user_id": mock_user.id,
+        "role": "admin",
+        "personality_id": personality_id,
+    }
 
     with (
         patch.object(
@@ -169,6 +174,13 @@ async def test_get_personality_users(
         mock_get_users.return_value = [mock_personality_user]
         mock_get_all_users.return_value = [mock_user]
 
+        # Setup mock user model_dump
+        mock_user.model_dump.return_value = {
+            "id": mock_user.id,
+            "email": "test@example.com",
+            "nickname": "test_user",
+        }
+
         # Create request context
         async with app.test_request_context(
             f"/api/personality/{personality_id}/users",
@@ -185,11 +197,14 @@ async def test_get_personality_users(
 
             result = await get_personality_users(personality_id)
 
-            # Verify response
+            # Verify response has separate users and personality_users lists
             assert "users" in result
+            assert "personality_users" in result
             assert len(result["users"]) == 1
+            assert len(result["personality_users"]) == 1
             assert result["users"][0]["id"] == mock_user.id
-            assert result["users"][0]["role"] == "admin"
+            assert result["personality_users"][0]["user_id"] == mock_user.id
+            assert result["personality_users"][0]["role"] == "admin"
 
         # Verify mocks were called correctly
         mock_has_admin.assert_called_once_with(

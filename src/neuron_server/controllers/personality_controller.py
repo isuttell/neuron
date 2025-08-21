@@ -508,27 +508,18 @@ async def get_personality_users(personality_id: UUID) -> dict[str, list[dict]]:
     if not personality:
         raise NotFound(f"Personality with id {personality_id} not found")
 
-    # Get all users in the system
+    # Get all users in the system (for adding)
     all_users = await UserModel.get_all()
 
-    # Get users with access to this specific personality
+    # Get users with access to this specific personality (current associations)
     personality_users = await PersonalityUserModel.get_personality_users(
         personality_id=personality_id
     )
 
-    # Create a mapping of user_id to role for users associated with this personality
-    personality_user_roles = {pu.user_id: pu.role for pu in personality_users}
-
-    # Add role to each user if they are associated with this personality
-    result = []
-    for user in all_users:
-        user_dict = user.model_dump()
-        # Add role if user is associated with this personality
-        if user.id in personality_user_roles:
-            user_dict["role"] = personality_user_roles[user.id]
-        result.append(user_dict)
-
-    return {"users": result}
+    return {
+        "users": [user.model_dump() for user in all_users],
+        "personality_users": [pu.model_dump() for pu in personality_users],
+    }
 
 
 @blueprint.post("/<uuid:personality_id>/users")
@@ -554,11 +545,13 @@ async def add_personality_user(personality_id: UUID) -> dict[str, dict]:
     body = await request.get_json()
     payload = PersonalityUserPayload(**body)
 
-    # Check if user has admin access
+    # Check if user has admin access to personality or is system admin
     has_admin = await PersonalityModel.has_admin_access(
         personality_id=personality_id, user_id=user_id
     )
-    if not has_admin:
+    is_system_admin = "admin" in request.token.roles
+
+    if not has_admin and not is_system_admin:
         raise Forbidden("You do not have permission to add users to this personality")
 
     # Check if personality exists

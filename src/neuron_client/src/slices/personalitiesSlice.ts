@@ -10,7 +10,6 @@ import type {
   IncomingPersonalityEvent,
   IncomingPersonalitiesEvent,
   PersonalityState,
-  UserWithRole,
   PersonalityDocument,
 } from "./personalitiesSlice.d";
 import type { PersonalityUser } from "../types/personality";
@@ -52,13 +51,6 @@ function groupPersonalityUsersByPersonalityId(personalityUsers: PersonalityUser[
   return grouped;
 }
 
-function convertUserWithRoleToPersonalityUser(userWithRole: UserWithRole, personalityId: string): PersonalityUser {
-  return {
-    user_id: userWithRole.id,
-    personality_id: personalityId,
-    role: userWithRole.role
-  };
-}
 
 export const personalitiesSlice = createSlice({
   name: "personalities",
@@ -233,31 +225,20 @@ export const personalitiesSlice = createSlice({
       })
       // Fetch personality users
       .addCase(actions.fetchPersonalityUsers.fulfilled, (state, action) => {
-        const convertedUsers = action.payload.users.map(user =>
-          convertUserWithRoleToPersonalityUser(user, action.payload.personalityId)
-        );
-        state.personalityUsers[action.payload.personalityId] = convertedUsers;
+        // Store the personality users directly (no conversion needed)
+        state.personalityUsers[action.payload.personalityId] = action.payload.personality_users || [];
       })
       // Add personality user
       .addCase(actions.addPersonalityUser.fulfilled, (state, action) => {
-        const convertedUsers = action.payload.users.map(user =>
-          convertUserWithRoleToPersonalityUser(user, action.payload.personalityId)
-        );
-        state.personalityUsers[action.payload.personalityId] = convertedUsers;
+        state.personalityUsers[action.payload.personalityId] = action.payload.personality_users || [];
       })
       // Update personality user role
       .addCase(actions.updatePersonalityUserRole.fulfilled, (state, action) => {
-        const convertedUsers = action.payload.users.map(user =>
-          convertUserWithRoleToPersonalityUser(user, action.payload.personalityId)
-        );
-        state.personalityUsers[action.payload.personalityId] = convertedUsers;
+        state.personalityUsers[action.payload.personalityId] = action.payload.personality_users || [];
       })
       // Remove personality user
       .addCase(actions.removePersonalityUser.fulfilled, (state, action) => {
-        const convertedUsers = action.payload.users.map(user =>
-          convertUserWithRoleToPersonalityUser(user, action.payload.personalityId)
-        );
-        state.personalityUsers[action.payload.personalityId] = convertedUsers;
+        state.personalityUsers[action.payload.personalityId] = action.payload.personality_users || [];
       })
       // Fetch personality documents
       .addCase(actions.fetchPersonalityDocuments.fulfilled, (state, action) => {
