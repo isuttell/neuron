@@ -52,7 +52,7 @@ class TestCookieSigning:
         assert verified["csrf_token"] == data["csrf_token"]
 
     def test_verify_expired_cookie(self):
-        """Test that expired cookies are rejected."""
+        """Test that expired cookies return expiration marker."""
         data = {
             "user_id": "test123",
             "expires": (datetime.utcnow() - timedelta(hours=1)).isoformat(),
@@ -61,7 +61,8 @@ class TestCookieSigning:
         signed = sign_cookie_data(data)
         verified = verify_cookie_data(signed)
 
-        assert verified is None
+        assert verified is not None
+        assert verified.get("_session_expired") is True
 
     def test_verify_tampered_cookie(self):
         """Test that tampered cookies are rejected."""
