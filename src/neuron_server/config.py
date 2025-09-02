@@ -58,8 +58,8 @@ class RedisConfig(BaseModel):
         default=os.environ.get("REDIS_PASSWORD"), description="Redis password"
     )
     session_ttl: int = Field(
-        default=int(os.environ.get("REDIS_SESSION_TTL", "86400")),
-        description="Session TTL in seconds (default: 24 hours)",
+        default=int(os.environ.get("REDIS_SESSION_TTL", "604800")),
+        description="Session TTL in seconds (default: 7 days)",
     )
 
 
@@ -239,11 +239,11 @@ class Config(BaseModel):
         description="Secret key for CSRF token signing. MUST be set in production!",
     )
     csrf_cookie_max_age: int = Field(
-        default=int(os.environ.get("CSRF_COOKIE_MAX_AGE", "86400")),  # 24 hours
+        default=int(os.environ.get("CSRF_COOKIE_MAX_AGE", "604800")),  # 7 days
         description="CSRF cookie max age in seconds",
     )
     csrf_token_rotation: bool = Field(
-        default=os.environ.get("CSRF_TOKEN_ROTATION", "True").lower() == "true",
+        default=os.environ.get("CSRF_TOKEN_ROTATION", "False").lower() == "true",
         description="Enable CSRF token rotation on each request",
     )
     is_production: bool = Field(
@@ -262,6 +262,53 @@ class Config(BaseModel):
         default=os.environ.get("GIT_COMMIT", "unknown"),
         description="Git commit hash of the deployed version",
     )
+
+    def validate_production_config(self) -> list[str]:
+        """
+        Validate production configuration and return list of warnings/errors.
+        Should be called during application startup in production.
+        """
+        issues = []
+
+        if self.is_production:
+            # Critical: SECRET_KEY must be set in production
+            if self.secret_key == "dev-secret-key-only-for-local-development":
+                issues.append(
+                    "CRITICAL: SECRET_KEY is using default development value "
+                    "in production!"
+                )
+
+            # Important: Database password should be set
+            if not self.database.password:
+                issues.append("WARNING: Database password is not set")
+
+            # Important: Redis password should be set if available
+            if self.redis.password is None:
+                issues.append("INFO: Redis password is not set (may be intentional)")
+
+            # Auth0 configuration should be set
+            default_client_id = "LYSbL0a44J1McAObzNLfSRdoBZ7KwfPR"
+            if not self.auth0_client_id or self.auth0_client_id == default_client_id:
+                issues.append(
+                    "WARNING: Auth0 client ID appears to be using "
+                    "default/development value"
+                )
+
+            default_domain = "dev-c33mi6x6gyem2l5o.us.auth0.com"
+            if not self.auth0_domain or self.auth0_domain == default_domain:
+                issues.append(
+                    "WARNING: Auth0 domain appears to be using "
+                    "default/development value"
+                )
+
+            # API keys for external services (informational)
+            if not self.openai_api_key:
+                issues.append("INFO: OpenAI API key not set")
+
+            if not self.anthropic_api_key:
+                issues.append("INFO: Anthropic API key not set")
+
+        return issues
 
 
 config = Config()

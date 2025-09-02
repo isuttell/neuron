@@ -44,6 +44,90 @@ IS_PRODUCTION = config.is_production
 T = TypeVar("T")
 
 
+def _should_use_secure_cookies() -> bool:
+    """
+    Determine if secure flag should be used for cookies.
+    Uses enhanced detection for production environments.
+    """
+    # If explicitly in production, always use secure cookies
+    if IS_PRODUCTION:
+        return True
+
+    # Check for HTTPS in current request if available
+    try:
+        if hasattr(request, "is_secure") and request.is_secure:
+            return True
+        if hasattr(request, "scheme") and request.scheme == "https":
+            return True
+        if request.headers.get("X-Forwarded-Proto") == "https":
+            return True
+        if request.headers.get("X-Forwarded-Scheme") == "https":
+            return True
+    except RuntimeError:
+        # No request context available
+        pass
+
+    # Default to secure in production-like environments
+    return IS_PRODUCTION
+
+
+def _get_cookie_domain() -> str | None:
+    """
+    Get appropriate domain for session cookies.
+    Returns None for localhost/development, specific domain for production.
+    """
+    if not IS_PRODUCTION:
+        return None
+
+    # Set domain for production to ensure cookies work across subdomains
+    try:
+        host = request.headers.get("Host", "")
+        if "zaks.io" in host:
+            return ".zaks.io"
+        if "neuron." in host:
+            # Extract main domain from neuron.domain.com
+            parts = host.split(".")
+            min_domain_parts = 2
+            if len(parts) >= min_domain_parts:
+                return f".{'.'.join(parts[-2:])}"
+    except RuntimeError:
+        # No request context available
+        pass
+
+    return None
+
+
+async def _update_session_activity_if_needed(user_id: str | None) -> None:
+    """
+    Update session activity for sliding expiration if user has active sessions.
+    This implements sliding session expiration by extending TTL on each request.
+    """
+    if not user_id:
+        return
+
+    try:
+        # Import here to avoid circular imports
+        from neuron_server.redis_session_store import redis_session_store
+
+        # Get user's active sessions
+        sessions = await redis_session_store.get_user_sessions(user_id)
+
+        # Update activity for all user's sessions to implement sliding expiration
+        for session in sessions:
+            await redis_session_store.update_session_activity(session.session_id)
+
+        if sessions and config.debug:
+            logger.debug(
+                f"Updated activity for {len(sessions)} sessions for user {user_id}"
+            )
+
+    except Exception as e:
+        # Don't fail authentication if session update fails
+        logger.warning(f"Failed to update session activity for user {user_id}: {e}")
+        if config.debug:
+            logger.exception("Session activity update error details")
+
+
 class CSRFError(Forbidden):
     """Custom CSRF error exception with structured error codes"""
 
@@ -51,11 +135,14 @@ class CSRFError(Forbidden):
         self,
         description: str = "CSRF validation failed",
         error_code: str = "CSRF_VALIDATION_FAILED",
+        retry_possible: bool = True,
+        session_expired: bool = False,
     ) -> None:
         super().__init__(description=description)
         self.error_code = error_code
         self.error_type = "csrf"
-        self.retry_possible = True
+        self.retry_possible = retry_possible
+        self.session_expired = session_expired
 
 
 def generate_csrf_token() -> str:
@@ -121,7 +208,8 @@ def verify_cookie_data(signed_data: str) -> dict[str, Any] | None:
             if datetime.utcnow() > expires:
                 if config.debug:
                     logger.warning("Cookie verification failed: Expired")
-                return None
+                # Return special marker for expired sessions
+                return {"_session_expired": True}
 
         return data
 
@@ -218,8 +306,9 @@ async def rotate_csrf_token(response: Response, user_id: str) -> str | None:
         max_age=COOKIE_MAX_AGE,
         httponly=True,
         samesite="Lax",
-        secure=IS_PRODUCTION,  # Use secure flag in production
+        secure=_should_use_secure_cookies(),  # Enhanced secure flag detection
         path="/",  # Ensure cookie is sent with all requests
+        domain=_get_cookie_domain(),  # Set domain for production
     )
 
     if config.debug:
@@ -247,6 +336,19 @@ async def _validate_csrf_cookie(request: Request) -> dict[str, Any]:
                 f"{request.method} {request.path}"
             )
         raise CSRFError("Invalid session cookie", "CSRF_SESSION_INVALID")
+
+    # Check for expired session marker
+    if cookie_data.get("_session_expired"):
+        logger.info(f"Session expired for {request.method} {request.path}")
+        raise CSRFError(
+            "Your session has expired. Please log in again.",
+            "CSRF_SESSION_EXPIRED",
+            retry_possible=False,
+            session_expired=True,
+        )
+
+    # Update session activity for sliding expiration
+    await _update_session_activity_if_needed(cookie_data.get("user_id"))
 
     return cookie_data
 
