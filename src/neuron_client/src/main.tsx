@@ -33,6 +33,11 @@ import { store } from "./store"; // Import store
 
 import "./index.css";
 
+const auth0ClientId = import.meta.env.VITE_AUTH0_CLIENT_ID?.trim();
+if (!auth0ClientId) {
+  throw new Error("VITE_AUTH0_CLIENT_ID must be set to your Auth0 client ID");
+}
+
 const router = createBrowserRouter(
   [
     {
@@ -168,7 +173,7 @@ const Auth0ProviderWithNavigate = ({
   return (
     <Auth0Provider
       domain={"dev-c33mi6x6gyem2l5o.us.auth0.com"}
-      clientId={"LYSbL0a44J1McAObzNLfSRdoBZ7KwfPR"}
+      clientId={auth0ClientId}
       authorizationParams={{
         redirect_uri: window.location.origin,
         audience: "https://neuron.zaks.io/api",

@@ -1,3 +1,6 @@
+This is the archived first version of Neuron, superseded in August 2025 by a rewrite on Convex and Cloudflare.
+It was built with heavy AI assistance from the start.
+
 # Neuron
 
 Neuron is an advanced AI chat platform that combines real-time conversation with powerful specialized tools. It actively helps you plan astrophotography sessions, generate AI art and videos, analyze research papers, and even control your smart home devices. It's built to be modular, so you can easily add new capabilities as you need them. Whether you're a researcher, creator, or tech enthusiast, Neuron provides a natural language interface to a growing suite of specialized tools that can help you get things done.
@@ -151,6 +154,9 @@ DEBUG=False
 HOST=0.0.0.0
 PORT=5000
 
+# Authentication
+AUTH0_CLIENT_ID=your_auth0_client_id
+
 # Database configuration
 DATABASE_URL=postgresql+psycopg://user:password@localhost:5432/neuron
 
@@ -167,6 +173,11 @@ REPLICATE_API_KEY=your_replicate_key
 HOMEASSISTANT_URL=http://homeassistant.local:8123
 HOMEASSISTANT_TOKEN=your_long_lived_token
 ```
+
+The server requires a nonempty `AUTH0_CLIENT_ID`. Set the same value as
+`VITE_AUTH0_CLIENT_ID` in `src/neuron_client/.env.local` before starting or
+building the frontend. The frontend throws at startup if it is missing.
+For Docker builds, pass `--build-arg VITE_AUTH0_CLIENT_ID=your_auth0_client_id`.
 
 ### Development Setup
 
@@ -298,13 +309,7 @@ These checks will automatically run when you attempt to commit, but running them
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+This repository is preserved for posterity and is no longer maintained.
 
 ## License
 
@@ -318,7 +323,3 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - [React](https://reactjs.org/) for the frontend framework
 - [Shadcn UI](https://ui.shadcn.com/) for the UI components
 - All the amazing open-source projects that make Neuron possible
-
----
-
-Neuron is continuously evolving with new tools and capabilities. Feel free to reach out with questions or suggestions!

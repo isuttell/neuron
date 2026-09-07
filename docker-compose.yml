@@ -8,6 +8,7 @@ services:
       dockerfile: Dockerfile.client
       args:
         GIT_COMMIT: ${GIT_COMMIT:-unknown}
+        VITE_AUTH0_CLIENT_ID: ${VITE_AUTH0_CLIENT_ID:?Set VITE_AUTH0_CLIENT_ID}
 
   server:
     restart: unless-stopped

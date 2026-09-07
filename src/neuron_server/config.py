@@ -10,6 +10,13 @@ from pydantic import (
 load_dotenv()
 
 
+def required_auth0_client_id() -> str:
+    client_id = os.environ.get("AUTH0_CLIENT_ID", "").strip()
+    if not client_id:
+        raise ValueError("AUTH0_CLIENT_ID must be set to your Auth0 client ID")
+    return client_id
+
+
 class PushoverConfig(BaseModel):
     token: str = Field(
         default=os.environ.get("PUSHOVER_API_TOKEN", ""),
@@ -227,7 +234,7 @@ class Config(BaseModel):
         description="API audience",
     )
     auth0_client_id: str = Field(
-        default=os.environ.get("AUTH0_CLIENT_ID", "LYSbL0a44J1McAObzNLfSRdoBZ7KwfPR"),
+        default_factory=required_auth0_client_id,
         description="Auth0 client ID",
     )
 
@@ -287,13 +294,6 @@ class Config(BaseModel):
                 issues.append("INFO: Redis password is not set (may be intentional)")
 
             # Auth0 configuration should be set
-            default_client_id = "LYSbL0a44J1McAObzNLfSRdoBZ7KwfPR"
-            if not self.auth0_client_id or self.auth0_client_id == default_client_id:
-                issues.append(
-                    "WARNING: Auth0 client ID appears to be using "
-                    "default/development value"
-                )
-
             default_domain = "dev-c33mi6x6gyem2l5o.us.auth0.com"
             if not self.auth0_domain or self.auth0_domain == default_domain:
                 issues.append(

@@ -22,6 +22,8 @@ COPY postcss.config.js tailwind.config.js tsconfig*.json vite.config.ts componen
 COPY scripts/generate-build-info.js ./scripts/
 
 # Build the application
+ARG VITE_AUTH0_CLIENT_ID
+RUN test -n "$VITE_AUTH0_CLIENT_ID" || (echo "VITE_AUTH0_CLIENT_ID must be set" >&2; exit 1)
 RUN npm run build
 
 # Generate build info after build
